@@ -31,19 +31,11 @@ public final class MentraosBle {
       com.google.protobuf.MessageOrBuilder {
 
     /**
-     * <pre>
-     * Optional message ID for request/response correlation
-     * </pre>
-     *
      * <code>string msg_id = 1;</code>
      * @return The msgId.
      */
     java.lang.String getMsgId();
     /**
-     * <pre>
-     * Optional message ID for request/response correlation
-     * </pre>
-     *
      * <code>string msg_id = 1;</code>
      * @return The bytes for msgId.
      */
@@ -195,34 +187,49 @@ public final class MentraosBle {
     mentraos.ble.MentraosBle.MicStateConfigOrBuilder getMicStateOrBuilder();
 
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-     * @return Whether the vadEnabled field is set.
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+     * @return Whether the setVadEnabled field is set.
      */
-    boolean hasVadEnabled();
+    boolean hasSetVadEnabled();
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-     * @return The vadEnabled.
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+     * @return The setVadEnabled.
      */
-    mentraos.ble.MentraosBle.VadEnabledConfig getVadEnabled();
+    mentraos.ble.MentraosBle.VadEnabledRequest getSetVadEnabled();
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
      */
-    mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder getVadEnabledOrBuilder();
+    mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder getSetVadEnabledOrBuilder();
 
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-     * @return Whether the vadConfig field is set.
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+     * @return Whether the setVadConfig field is set.
      */
-    boolean hasVadConfig();
+    boolean hasSetVadConfig();
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-     * @return The vadConfig.
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+     * @return The setVadConfig.
      */
-    mentraos.ble.MentraosBle.VadConfig getVadConfig();
+    mentraos.ble.MentraosBle.VadConfigRequest getSetVadConfig();
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
      */
-    mentraos.ble.MentraosBle.VadConfigOrBuilder getVadConfigOrBuilder();
+    mentraos.ble.MentraosBle.VadConfigRequestOrBuilder getSetVadConfigOrBuilder();
+
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     * @return Whether the requestVadStatus field is set.
+     */
+    boolean hasRequestVadStatus();
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     * @return The requestVadStatus.
+     */
+    mentraos.ble.MentraosBle.VadStatusRequest getRequestVadStatus();
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     */
+    mentraos.ble.MentraosBle.VadStatusRequestOrBuilder getRequestVadStatusOrBuilder();
 
     /**
      * <pre>
@@ -810,8 +817,9 @@ public final class MentraosBle {
       HEAD_UP_ANGLE(15),
       PONG(16),
       MIC_STATE(20),
-      VAD_ENABLED(21),
-      VAD_CONFIG(22),
+      SET_VAD_ENABLED(23),
+      SET_VAD_CONFIG(24),
+      REQUEST_VAD_STATUS(25),
       DISPLAY_TEXT(30),
       DISPLAY_IMAGE(31),
       CACHE_IMAGE(32),
@@ -865,8 +873,9 @@ public final class MentraosBle {
           case 15: return HEAD_UP_ANGLE;
           case 16: return PONG;
           case 20: return MIC_STATE;
-          case 21: return VAD_ENABLED;
-          case 22: return VAD_CONFIG;
+          case 23: return SET_VAD_ENABLED;
+          case 24: return SET_VAD_CONFIG;
+          case 25: return REQUEST_VAD_STATUS;
           case 30: return DISPLAY_TEXT;
           case 31: return DISPLAY_IMAGE;
           case 32: return CACHE_IMAGE;
@@ -914,10 +923,6 @@ public final class MentraosBle {
     @SuppressWarnings("serial")
     private volatile java.lang.Object msgId_ = "";
     /**
-     * <pre>
-     * Optional message ID for request/response correlation
-     * </pre>
-     *
      * <code>string msg_id = 1;</code>
      * @return The msgId.
      */
@@ -935,10 +940,6 @@ public final class MentraosBle {
       }
     }
     /**
-     * <pre>
-     * Optional message ID for request/response correlation
-     * </pre>
-     *
      * <code>string msg_id = 1;</code>
      * @return The bytes for msgId.
      */
@@ -1229,66 +1230,97 @@ public final class MentraosBle {
       return mentraos.ble.MentraosBle.MicStateConfig.getDefaultInstance();
     }
 
-    public static final int VAD_ENABLED_FIELD_NUMBER = 21;
+    public static final int SET_VAD_ENABLED_FIELD_NUMBER = 23;
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-     * @return Whether the vadEnabled field is set.
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+     * @return Whether the setVadEnabled field is set.
      */
     @java.lang.Override
-    public boolean hasVadEnabled() {
-      return payloadCase_ == 21;
+    public boolean hasSetVadEnabled() {
+      return payloadCase_ == 23;
     }
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-     * @return The vadEnabled.
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+     * @return The setVadEnabled.
      */
     @java.lang.Override
-    public mentraos.ble.MentraosBle.VadEnabledConfig getVadEnabled() {
-      if (payloadCase_ == 21) {
-         return (mentraos.ble.MentraosBle.VadEnabledConfig) payload_;
+    public mentraos.ble.MentraosBle.VadEnabledRequest getSetVadEnabled() {
+      if (payloadCase_ == 23) {
+         return (mentraos.ble.MentraosBle.VadEnabledRequest) payload_;
       }
-      return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+      return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
     }
     /**
-     * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+     * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
      */
     @java.lang.Override
-    public mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder getVadEnabledOrBuilder() {
-      if (payloadCase_ == 21) {
-         return (mentraos.ble.MentraosBle.VadEnabledConfig) payload_;
+    public mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder getSetVadEnabledOrBuilder() {
+      if (payloadCase_ == 23) {
+         return (mentraos.ble.MentraosBle.VadEnabledRequest) payload_;
       }
-      return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+      return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
     }
 
-    public static final int VAD_CONFIG_FIELD_NUMBER = 22;
+    public static final int SET_VAD_CONFIG_FIELD_NUMBER = 24;
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-     * @return Whether the vadConfig field is set.
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+     * @return Whether the setVadConfig field is set.
      */
     @java.lang.Override
-    public boolean hasVadConfig() {
-      return payloadCase_ == 22;
+    public boolean hasSetVadConfig() {
+      return payloadCase_ == 24;
     }
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-     * @return The vadConfig.
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+     * @return The setVadConfig.
      */
     @java.lang.Override
-    public mentraos.ble.MentraosBle.VadConfig getVadConfig() {
-      if (payloadCase_ == 22) {
-         return (mentraos.ble.MentraosBle.VadConfig) payload_;
+    public mentraos.ble.MentraosBle.VadConfigRequest getSetVadConfig() {
+      if (payloadCase_ == 24) {
+         return (mentraos.ble.MentraosBle.VadConfigRequest) payload_;
       }
-      return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+      return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
     }
     /**
-     * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+     * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
      */
     @java.lang.Override
-    public mentraos.ble.MentraosBle.VadConfigOrBuilder getVadConfigOrBuilder() {
-      if (payloadCase_ == 22) {
-         return (mentraos.ble.MentraosBle.VadConfig) payload_;
+    public mentraos.ble.MentraosBle.VadConfigRequestOrBuilder getSetVadConfigOrBuilder() {
+      if (payloadCase_ == 24) {
+         return (mentraos.ble.MentraosBle.VadConfigRequest) payload_;
       }
-      return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+      return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
+    }
+
+    public static final int REQUEST_VAD_STATUS_FIELD_NUMBER = 25;
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     * @return Whether the requestVadStatus field is set.
+     */
+    @java.lang.Override
+    public boolean hasRequestVadStatus() {
+      return payloadCase_ == 25;
+    }
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     * @return The requestVadStatus.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatusRequest getRequestVadStatus() {
+      if (payloadCase_ == 25) {
+         return (mentraos.ble.MentraosBle.VadStatusRequest) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+    }
+    /**
+     * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatusRequestOrBuilder getRequestVadStatusOrBuilder() {
+      if (payloadCase_ == 25) {
+         return (mentraos.ble.MentraosBle.VadStatusRequest) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
     }
 
     public static final int DISPLAY_TEXT_FIELD_NUMBER = 30;
@@ -2308,11 +2340,14 @@ public final class MentraosBle {
       if (payloadCase_ == 20) {
         output.writeMessage(20, (mentraos.ble.MentraosBle.MicStateConfig) payload_);
       }
-      if (payloadCase_ == 21) {
-        output.writeMessage(21, (mentraos.ble.MentraosBle.VadEnabledConfig) payload_);
+      if (payloadCase_ == 23) {
+        output.writeMessage(23, (mentraos.ble.MentraosBle.VadEnabledRequest) payload_);
       }
-      if (payloadCase_ == 22) {
-        output.writeMessage(22, (mentraos.ble.MentraosBle.VadConfig) payload_);
+      if (payloadCase_ == 24) {
+        output.writeMessage(24, (mentraos.ble.MentraosBle.VadConfigRequest) payload_);
+      }
+      if (payloadCase_ == 25) {
+        output.writeMessage(25, (mentraos.ble.MentraosBle.VadStatusRequest) payload_);
       }
       if (payloadCase_ == 30) {
         output.writeMessage(30, (mentraos.ble.MentraosBle.DisplayText) payload_);
@@ -2442,13 +2477,17 @@ public final class MentraosBle {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(20, (mentraos.ble.MentraosBle.MicStateConfig) payload_);
       }
-      if (payloadCase_ == 21) {
+      if (payloadCase_ == 23) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(21, (mentraos.ble.MentraosBle.VadEnabledConfig) payload_);
+          .computeMessageSize(23, (mentraos.ble.MentraosBle.VadEnabledRequest) payload_);
       }
-      if (payloadCase_ == 22) {
+      if (payloadCase_ == 24) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(22, (mentraos.ble.MentraosBle.VadConfig) payload_);
+          .computeMessageSize(24, (mentraos.ble.MentraosBle.VadConfigRequest) payload_);
+      }
+      if (payloadCase_ == 25) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(25, (mentraos.ble.MentraosBle.VadStatusRequest) payload_);
       }
       if (payloadCase_ == 30) {
         size += com.google.protobuf.CodedOutputStream
@@ -2613,13 +2652,17 @@ public final class MentraosBle {
           if (!getMicState()
               .equals(other.getMicState())) return false;
           break;
-        case 21:
-          if (!getVadEnabled()
-              .equals(other.getVadEnabled())) return false;
+        case 23:
+          if (!getSetVadEnabled()
+              .equals(other.getSetVadEnabled())) return false;
           break;
-        case 22:
-          if (!getVadConfig()
-              .equals(other.getVadConfig())) return false;
+        case 24:
+          if (!getSetVadConfig()
+              .equals(other.getSetVadConfig())) return false;
+          break;
+        case 25:
+          if (!getRequestVadStatus()
+              .equals(other.getRequestVadStatus())) return false;
           break;
         case 30:
           if (!getDisplayText()
@@ -2782,13 +2825,17 @@ public final class MentraosBle {
           hash = (37 * hash) + MIC_STATE_FIELD_NUMBER;
           hash = (53 * hash) + getMicState().hashCode();
           break;
-        case 21:
-          hash = (37 * hash) + VAD_ENABLED_FIELD_NUMBER;
-          hash = (53 * hash) + getVadEnabled().hashCode();
+        case 23:
+          hash = (37 * hash) + SET_VAD_ENABLED_FIELD_NUMBER;
+          hash = (53 * hash) + getSetVadEnabled().hashCode();
           break;
-        case 22:
-          hash = (37 * hash) + VAD_CONFIG_FIELD_NUMBER;
-          hash = (53 * hash) + getVadConfig().hashCode();
+        case 24:
+          hash = (37 * hash) + SET_VAD_CONFIG_FIELD_NUMBER;
+          hash = (53 * hash) + getSetVadConfig().hashCode();
+          break;
+        case 25:
+          hash = (37 * hash) + REQUEST_VAD_STATUS_FIELD_NUMBER;
+          hash = (53 * hash) + getRequestVadStatus().hashCode();
           break;
         case 30:
           hash = (37 * hash) + DISPLAY_TEXT_FIELD_NUMBER;
@@ -3066,11 +3113,14 @@ public final class MentraosBle {
         if (micStateBuilder_ != null) {
           micStateBuilder_.clear();
         }
-        if (vadEnabledBuilder_ != null) {
-          vadEnabledBuilder_.clear();
+        if (setVadEnabledBuilder_ != null) {
+          setVadEnabledBuilder_.clear();
         }
-        if (vadConfigBuilder_ != null) {
-          vadConfigBuilder_.clear();
+        if (setVadConfigBuilder_ != null) {
+          setVadConfigBuilder_.clear();
+        }
+        if (requestVadStatusBuilder_ != null) {
+          requestVadStatusBuilder_.clear();
         }
         if (displayTextBuilder_ != null) {
           displayTextBuilder_.clear();
@@ -3237,13 +3287,17 @@ public final class MentraosBle {
             micStateBuilder_ != null) {
           result.payload_ = micStateBuilder_.build();
         }
-        if (payloadCase_ == 21 &&
-            vadEnabledBuilder_ != null) {
-          result.payload_ = vadEnabledBuilder_.build();
+        if (payloadCase_ == 23 &&
+            setVadEnabledBuilder_ != null) {
+          result.payload_ = setVadEnabledBuilder_.build();
         }
-        if (payloadCase_ == 22 &&
-            vadConfigBuilder_ != null) {
-          result.payload_ = vadConfigBuilder_.build();
+        if (payloadCase_ == 24 &&
+            setVadConfigBuilder_ != null) {
+          result.payload_ = setVadConfigBuilder_.build();
+        }
+        if (payloadCase_ == 25 &&
+            requestVadStatusBuilder_ != null) {
+          result.payload_ = requestVadStatusBuilder_.build();
         }
         if (payloadCase_ == 30 &&
             displayTextBuilder_ != null) {
@@ -3409,12 +3463,16 @@ public final class MentraosBle {
             mergeMicState(other.getMicState());
             break;
           }
-          case VAD_ENABLED: {
-            mergeVadEnabled(other.getVadEnabled());
+          case SET_VAD_ENABLED: {
+            mergeSetVadEnabled(other.getSetVadEnabled());
             break;
           }
-          case VAD_CONFIG: {
-            mergeVadConfig(other.getVadConfig());
+          case SET_VAD_CONFIG: {
+            mergeSetVadConfig(other.getSetVadConfig());
+            break;
+          }
+          case REQUEST_VAD_STATUS: {
+            mergeRequestVadStatus(other.getRequestVadStatus());
             break;
           }
           case DISPLAY_TEXT: {
@@ -3620,20 +3678,27 @@ public final class MentraosBle {
                 payloadCase_ = 20;
                 break;
               } // case 162
-              case 170: {
+              case 186: {
                 input.readMessage(
-                    internalGetVadEnabledFieldBuilder().getBuilder(),
+                    internalGetSetVadEnabledFieldBuilder().getBuilder(),
                     extensionRegistry);
-                payloadCase_ = 21;
+                payloadCase_ = 23;
                 break;
-              } // case 170
-              case 178: {
+              } // case 186
+              case 194: {
                 input.readMessage(
-                    internalGetVadConfigFieldBuilder().getBuilder(),
+                    internalGetSetVadConfigFieldBuilder().getBuilder(),
                     extensionRegistry);
-                payloadCase_ = 22;
+                payloadCase_ = 24;
                 break;
-              } // case 178
+              } // case 194
+              case 202: {
+                input.readMessage(
+                    internalGetRequestVadStatusFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 25;
+                break;
+              } // case 202
               case 242: {
                 input.readMessage(
                     internalGetDisplayTextFieldBuilder().getBuilder(),
@@ -3865,10 +3930,6 @@ public final class MentraosBle {
 
       private java.lang.Object msgId_ = "";
       /**
-       * <pre>
-       * Optional message ID for request/response correlation
-       * </pre>
-       *
        * <code>string msg_id = 1;</code>
        * @return The msgId.
        */
@@ -3885,10 +3946,6 @@ public final class MentraosBle {
         }
       }
       /**
-       * <pre>
-       * Optional message ID for request/response correlation
-       * </pre>
-       *
        * <code>string msg_id = 1;</code>
        * @return The bytes for msgId.
        */
@@ -3906,10 +3963,6 @@ public final class MentraosBle {
         }
       }
       /**
-       * <pre>
-       * Optional message ID for request/response correlation
-       * </pre>
-       *
        * <code>string msg_id = 1;</code>
        * @param value The msgId to set.
        * @return This builder for chaining.
@@ -3923,10 +3976,6 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Optional message ID for request/response correlation
-       * </pre>
-       *
        * <code>string msg_id = 1;</code>
        * @return This builder for chaining.
        */
@@ -3937,10 +3986,6 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Optional message ID for request/response correlation
-       * </pre>
-       *
        * <code>string msg_id = 1;</code>
        * @param value The bytes for msgId to set.
        * @return This builder for chaining.
@@ -5164,287 +5209,429 @@ public final class MentraosBle {
       }
 
       private com.google.protobuf.SingleFieldBuilder<
-          mentraos.ble.MentraosBle.VadEnabledConfig, mentraos.ble.MentraosBle.VadEnabledConfig.Builder, mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder> vadEnabledBuilder_;
+          mentraos.ble.MentraosBle.VadEnabledRequest, mentraos.ble.MentraosBle.VadEnabledRequest.Builder, mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder> setVadEnabledBuilder_;
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-       * @return Whether the vadEnabled field is set.
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+       * @return Whether the setVadEnabled field is set.
        */
       @java.lang.Override
-      public boolean hasVadEnabled() {
-        return payloadCase_ == 21;
+      public boolean hasSetVadEnabled() {
+        return payloadCase_ == 23;
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
-       * @return The vadEnabled.
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
+       * @return The setVadEnabled.
        */
       @java.lang.Override
-      public mentraos.ble.MentraosBle.VadEnabledConfig getVadEnabled() {
-        if (vadEnabledBuilder_ == null) {
-          if (payloadCase_ == 21) {
-            return (mentraos.ble.MentraosBle.VadEnabledConfig) payload_;
+      public mentraos.ble.MentraosBle.VadEnabledRequest getSetVadEnabled() {
+        if (setVadEnabledBuilder_ == null) {
+          if (payloadCase_ == 23) {
+            return (mentraos.ble.MentraosBle.VadEnabledRequest) payload_;
           }
-          return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
         } else {
-          if (payloadCase_ == 21) {
-            return vadEnabledBuilder_.getMessage();
+          if (payloadCase_ == 23) {
+            return setVadEnabledBuilder_.getMessage();
           }
-          return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
         }
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
-      public Builder setVadEnabled(mentraos.ble.MentraosBle.VadEnabledConfig value) {
-        if (vadEnabledBuilder_ == null) {
+      public Builder setSetVadEnabled(mentraos.ble.MentraosBle.VadEnabledRequest value) {
+        if (setVadEnabledBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
           }
           payload_ = value;
           onChanged();
         } else {
-          vadEnabledBuilder_.setMessage(value);
+          setVadEnabledBuilder_.setMessage(value);
         }
-        payloadCase_ = 21;
+        payloadCase_ = 23;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
-      public Builder setVadEnabled(
-          mentraos.ble.MentraosBle.VadEnabledConfig.Builder builderForValue) {
-        if (vadEnabledBuilder_ == null) {
+      public Builder setSetVadEnabled(
+          mentraos.ble.MentraosBle.VadEnabledRequest.Builder builderForValue) {
+        if (setVadEnabledBuilder_ == null) {
           payload_ = builderForValue.build();
           onChanged();
         } else {
-          vadEnabledBuilder_.setMessage(builderForValue.build());
+          setVadEnabledBuilder_.setMessage(builderForValue.build());
         }
-        payloadCase_ = 21;
+        payloadCase_ = 23;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
-      public Builder mergeVadEnabled(mentraos.ble.MentraosBle.VadEnabledConfig value) {
-        if (vadEnabledBuilder_ == null) {
-          if (payloadCase_ == 21 &&
-              payload_ != mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance()) {
-            payload_ = mentraos.ble.MentraosBle.VadEnabledConfig.newBuilder((mentraos.ble.MentraosBle.VadEnabledConfig) payload_)
+      public Builder mergeSetVadEnabled(mentraos.ble.MentraosBle.VadEnabledRequest value) {
+        if (setVadEnabledBuilder_ == null) {
+          if (payloadCase_ == 23 &&
+              payload_ != mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadEnabledRequest.newBuilder((mentraos.ble.MentraosBle.VadEnabledRequest) payload_)
                 .mergeFrom(value).buildPartial();
           } else {
             payload_ = value;
           }
           onChanged();
         } else {
-          if (payloadCase_ == 21) {
-            vadEnabledBuilder_.mergeFrom(value);
+          if (payloadCase_ == 23) {
+            setVadEnabledBuilder_.mergeFrom(value);
           } else {
-            vadEnabledBuilder_.setMessage(value);
+            setVadEnabledBuilder_.setMessage(value);
           }
         }
-        payloadCase_ = 21;
+        payloadCase_ = 23;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
-      public Builder clearVadEnabled() {
-        if (vadEnabledBuilder_ == null) {
-          if (payloadCase_ == 21) {
+      public Builder clearSetVadEnabled() {
+        if (setVadEnabledBuilder_ == null) {
+          if (payloadCase_ == 23) {
             payloadCase_ = 0;
             payload_ = null;
             onChanged();
           }
         } else {
-          if (payloadCase_ == 21) {
+          if (payloadCase_ == 23) {
             payloadCase_ = 0;
             payload_ = null;
           }
-          vadEnabledBuilder_.clear();
+          setVadEnabledBuilder_.clear();
         }
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
-      public mentraos.ble.MentraosBle.VadEnabledConfig.Builder getVadEnabledBuilder() {
-        return internalGetVadEnabledFieldBuilder().getBuilder();
+      public mentraos.ble.MentraosBle.VadEnabledRequest.Builder getSetVadEnabledBuilder() {
+        return internalGetSetVadEnabledFieldBuilder().getBuilder();
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
       @java.lang.Override
-      public mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder getVadEnabledOrBuilder() {
-        if ((payloadCase_ == 21) && (vadEnabledBuilder_ != null)) {
-          return vadEnabledBuilder_.getMessageOrBuilder();
+      public mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder getSetVadEnabledOrBuilder() {
+        if ((payloadCase_ == 23) && (setVadEnabledBuilder_ != null)) {
+          return setVadEnabledBuilder_.getMessageOrBuilder();
         } else {
-          if (payloadCase_ == 21) {
-            return (mentraos.ble.MentraosBle.VadEnabledConfig) payload_;
+          if (payloadCase_ == 23) {
+            return (mentraos.ble.MentraosBle.VadEnabledRequest) payload_;
           }
-          return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
         }
       }
       /**
-       * <code>.mentraos.ble.VadEnabledConfig vad_enabled = 21;</code>
+       * <code>.mentraos.ble.VadEnabledRequest set_vad_enabled = 23;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          mentraos.ble.MentraosBle.VadEnabledConfig, mentraos.ble.MentraosBle.VadEnabledConfig.Builder, mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder> 
-          internalGetVadEnabledFieldBuilder() {
-        if (vadEnabledBuilder_ == null) {
-          if (!(payloadCase_ == 21)) {
-            payload_ = mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
+          mentraos.ble.MentraosBle.VadEnabledRequest, mentraos.ble.MentraosBle.VadEnabledRequest.Builder, mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder> 
+          internalGetSetVadEnabledFieldBuilder() {
+        if (setVadEnabledBuilder_ == null) {
+          if (!(payloadCase_ == 23)) {
+            payload_ = mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
           }
-          vadEnabledBuilder_ = new com.google.protobuf.SingleFieldBuilder<
-              mentraos.ble.MentraosBle.VadEnabledConfig, mentraos.ble.MentraosBle.VadEnabledConfig.Builder, mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder>(
-                  (mentraos.ble.MentraosBle.VadEnabledConfig) payload_,
+          setVadEnabledBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadEnabledRequest, mentraos.ble.MentraosBle.VadEnabledRequest.Builder, mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadEnabledRequest) payload_,
                   getParentForChildren(),
                   isClean());
           payload_ = null;
         }
-        payloadCase_ = 21;
+        payloadCase_ = 23;
         onChanged();
-        return vadEnabledBuilder_;
+        return setVadEnabledBuilder_;
       }
 
       private com.google.protobuf.SingleFieldBuilder<
-          mentraos.ble.MentraosBle.VadConfig, mentraos.ble.MentraosBle.VadConfig.Builder, mentraos.ble.MentraosBle.VadConfigOrBuilder> vadConfigBuilder_;
+          mentraos.ble.MentraosBle.VadConfigRequest, mentraos.ble.MentraosBle.VadConfigRequest.Builder, mentraos.ble.MentraosBle.VadConfigRequestOrBuilder> setVadConfigBuilder_;
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-       * @return Whether the vadConfig field is set.
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+       * @return Whether the setVadConfig field is set.
        */
       @java.lang.Override
-      public boolean hasVadConfig() {
-        return payloadCase_ == 22;
+      public boolean hasSetVadConfig() {
+        return payloadCase_ == 24;
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
-       * @return The vadConfig.
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
+       * @return The setVadConfig.
        */
       @java.lang.Override
-      public mentraos.ble.MentraosBle.VadConfig getVadConfig() {
-        if (vadConfigBuilder_ == null) {
-          if (payloadCase_ == 22) {
-            return (mentraos.ble.MentraosBle.VadConfig) payload_;
+      public mentraos.ble.MentraosBle.VadConfigRequest getSetVadConfig() {
+        if (setVadConfigBuilder_ == null) {
+          if (payloadCase_ == 24) {
+            return (mentraos.ble.MentraosBle.VadConfigRequest) payload_;
           }
-          return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
         } else {
-          if (payloadCase_ == 22) {
-            return vadConfigBuilder_.getMessage();
+          if (payloadCase_ == 24) {
+            return setVadConfigBuilder_.getMessage();
           }
-          return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
         }
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
-      public Builder setVadConfig(mentraos.ble.MentraosBle.VadConfig value) {
-        if (vadConfigBuilder_ == null) {
+      public Builder setSetVadConfig(mentraos.ble.MentraosBle.VadConfigRequest value) {
+        if (setVadConfigBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
           }
           payload_ = value;
           onChanged();
         } else {
-          vadConfigBuilder_.setMessage(value);
+          setVadConfigBuilder_.setMessage(value);
         }
-        payloadCase_ = 22;
+        payloadCase_ = 24;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
-      public Builder setVadConfig(
-          mentraos.ble.MentraosBle.VadConfig.Builder builderForValue) {
-        if (vadConfigBuilder_ == null) {
+      public Builder setSetVadConfig(
+          mentraos.ble.MentraosBle.VadConfigRequest.Builder builderForValue) {
+        if (setVadConfigBuilder_ == null) {
           payload_ = builderForValue.build();
           onChanged();
         } else {
-          vadConfigBuilder_.setMessage(builderForValue.build());
+          setVadConfigBuilder_.setMessage(builderForValue.build());
         }
-        payloadCase_ = 22;
+        payloadCase_ = 24;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
-      public Builder mergeVadConfig(mentraos.ble.MentraosBle.VadConfig value) {
-        if (vadConfigBuilder_ == null) {
-          if (payloadCase_ == 22 &&
-              payload_ != mentraos.ble.MentraosBle.VadConfig.getDefaultInstance()) {
-            payload_ = mentraos.ble.MentraosBle.VadConfig.newBuilder((mentraos.ble.MentraosBle.VadConfig) payload_)
+      public Builder mergeSetVadConfig(mentraos.ble.MentraosBle.VadConfigRequest value) {
+        if (setVadConfigBuilder_ == null) {
+          if (payloadCase_ == 24 &&
+              payload_ != mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadConfigRequest.newBuilder((mentraos.ble.MentraosBle.VadConfigRequest) payload_)
                 .mergeFrom(value).buildPartial();
           } else {
             payload_ = value;
           }
           onChanged();
         } else {
-          if (payloadCase_ == 22) {
-            vadConfigBuilder_.mergeFrom(value);
+          if (payloadCase_ == 24) {
+            setVadConfigBuilder_.mergeFrom(value);
           } else {
-            vadConfigBuilder_.setMessage(value);
+            setVadConfigBuilder_.setMessage(value);
           }
         }
-        payloadCase_ = 22;
+        payloadCase_ = 24;
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
-      public Builder clearVadConfig() {
-        if (vadConfigBuilder_ == null) {
-          if (payloadCase_ == 22) {
+      public Builder clearSetVadConfig() {
+        if (setVadConfigBuilder_ == null) {
+          if (payloadCase_ == 24) {
             payloadCase_ = 0;
             payload_ = null;
             onChanged();
           }
         } else {
-          if (payloadCase_ == 22) {
+          if (payloadCase_ == 24) {
             payloadCase_ = 0;
             payload_ = null;
           }
-          vadConfigBuilder_.clear();
+          setVadConfigBuilder_.clear();
         }
         return this;
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
-      public mentraos.ble.MentraosBle.VadConfig.Builder getVadConfigBuilder() {
-        return internalGetVadConfigFieldBuilder().getBuilder();
+      public mentraos.ble.MentraosBle.VadConfigRequest.Builder getSetVadConfigBuilder() {
+        return internalGetSetVadConfigFieldBuilder().getBuilder();
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
       @java.lang.Override
-      public mentraos.ble.MentraosBle.VadConfigOrBuilder getVadConfigOrBuilder() {
-        if ((payloadCase_ == 22) && (vadConfigBuilder_ != null)) {
-          return vadConfigBuilder_.getMessageOrBuilder();
+      public mentraos.ble.MentraosBle.VadConfigRequestOrBuilder getSetVadConfigOrBuilder() {
+        if ((payloadCase_ == 24) && (setVadConfigBuilder_ != null)) {
+          return setVadConfigBuilder_.getMessageOrBuilder();
         } else {
-          if (payloadCase_ == 22) {
-            return (mentraos.ble.MentraosBle.VadConfig) payload_;
+          if (payloadCase_ == 24) {
+            return (mentraos.ble.MentraosBle.VadConfigRequest) payload_;
           }
-          return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+          return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
         }
       }
       /**
-       * <code>.mentraos.ble.VadConfig vad_config = 22;</code>
+       * <code>.mentraos.ble.VadConfigRequest set_vad_config = 24;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
-          mentraos.ble.MentraosBle.VadConfig, mentraos.ble.MentraosBle.VadConfig.Builder, mentraos.ble.MentraosBle.VadConfigOrBuilder> 
-          internalGetVadConfigFieldBuilder() {
-        if (vadConfigBuilder_ == null) {
-          if (!(payloadCase_ == 22)) {
-            payload_ = mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
+          mentraos.ble.MentraosBle.VadConfigRequest, mentraos.ble.MentraosBle.VadConfigRequest.Builder, mentraos.ble.MentraosBle.VadConfigRequestOrBuilder> 
+          internalGetSetVadConfigFieldBuilder() {
+        if (setVadConfigBuilder_ == null) {
+          if (!(payloadCase_ == 24)) {
+            payload_ = mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
           }
-          vadConfigBuilder_ = new com.google.protobuf.SingleFieldBuilder<
-              mentraos.ble.MentraosBle.VadConfig, mentraos.ble.MentraosBle.VadConfig.Builder, mentraos.ble.MentraosBle.VadConfigOrBuilder>(
-                  (mentraos.ble.MentraosBle.VadConfig) payload_,
+          setVadConfigBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadConfigRequest, mentraos.ble.MentraosBle.VadConfigRequest.Builder, mentraos.ble.MentraosBle.VadConfigRequestOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadConfigRequest) payload_,
                   getParentForChildren(),
                   isClean());
           payload_ = null;
         }
-        payloadCase_ = 22;
+        payloadCase_ = 24;
         onChanged();
-        return vadConfigBuilder_;
+        return setVadConfigBuilder_;
+      }
+
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadStatusRequest, mentraos.ble.MentraosBle.VadStatusRequest.Builder, mentraos.ble.MentraosBle.VadStatusRequestOrBuilder> requestVadStatusBuilder_;
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       * @return Whether the requestVadStatus field is set.
+       */
+      @java.lang.Override
+      public boolean hasRequestVadStatus() {
+        return payloadCase_ == 25;
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       * @return The requestVadStatus.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusRequest getRequestVadStatus() {
+        if (requestVadStatusBuilder_ == null) {
+          if (payloadCase_ == 25) {
+            return (mentraos.ble.MentraosBle.VadStatusRequest) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 25) {
+            return requestVadStatusBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+        }
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      public Builder setRequestVadStatus(mentraos.ble.MentraosBle.VadStatusRequest value) {
+        if (requestVadStatusBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          requestVadStatusBuilder_.setMessage(value);
+        }
+        payloadCase_ = 25;
+        return this;
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      public Builder setRequestVadStatus(
+          mentraos.ble.MentraosBle.VadStatusRequest.Builder builderForValue) {
+        if (requestVadStatusBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          requestVadStatusBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 25;
+        return this;
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      public Builder mergeRequestVadStatus(mentraos.ble.MentraosBle.VadStatusRequest value) {
+        if (requestVadStatusBuilder_ == null) {
+          if (payloadCase_ == 25 &&
+              payload_ != mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadStatusRequest.newBuilder((mentraos.ble.MentraosBle.VadStatusRequest) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 25) {
+            requestVadStatusBuilder_.mergeFrom(value);
+          } else {
+            requestVadStatusBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 25;
+        return this;
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      public Builder clearRequestVadStatus() {
+        if (requestVadStatusBuilder_ == null) {
+          if (payloadCase_ == 25) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 25) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          requestVadStatusBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      public mentraos.ble.MentraosBle.VadStatusRequest.Builder getRequestVadStatusBuilder() {
+        return internalGetRequestVadStatusFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusRequestOrBuilder getRequestVadStatusOrBuilder() {
+        if ((payloadCase_ == 25) && (requestVadStatusBuilder_ != null)) {
+          return requestVadStatusBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 25) {
+            return (mentraos.ble.MentraosBle.VadStatusRequest) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+        }
+      }
+      /**
+       * <code>.mentraos.ble.VadStatusRequest request_vad_status = 25;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadStatusRequest, mentraos.ble.MentraosBle.VadStatusRequest.Builder, mentraos.ble.MentraosBle.VadStatusRequestOrBuilder> 
+          internalGetRequestVadStatusFieldBuilder() {
+        if (requestVadStatusBuilder_ == null) {
+          if (!(payloadCase_ == 25)) {
+            payload_ = mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+          }
+          requestVadStatusBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadStatusRequest, mentraos.ble.MentraosBle.VadStatusRequest.Builder, mentraos.ble.MentraosBle.VadStatusRequestOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadStatusRequest) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 25;
+        onChanged();
+        return requestVadStatusBuilder_;
       }
 
       private com.google.protobuf.SingleFieldBuilder<
@@ -9933,7 +10120,88 @@ public final class MentraosBle {
 
     /**
      * <pre>
-     * Display System  
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     * @return Whether the vadEnabledSet field is set.
+     */
+    boolean hasVadEnabledSet();
+    /**
+     * <pre>
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     * @return The vadEnabledSet.
+     */
+    mentraos.ble.MentraosBle.VadEnabledResponse getVadEnabledSet();
+    /**
+     * <pre>
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     */
+    mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder getVadEnabledSetOrBuilder();
+
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     * @return Whether the vadConfigured field is set.
+     */
+    boolean hasVadConfigured();
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     * @return The vadConfigured.
+     */
+    mentraos.ble.MentraosBle.VadConfigResponse getVadConfigured();
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     */
+    mentraos.ble.MentraosBle.VadConfigResponseOrBuilder getVadConfiguredOrBuilder();
+
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     * @return Whether the vadStatus field is set.
+     */
+    boolean hasVadStatus();
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     * @return The vadStatus.
+     */
+    mentraos.ble.MentraosBle.VadStatus getVadStatus();
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     */
+    mentraos.ble.MentraosBle.VadStatusOrBuilder getVadStatusOrBuilder();
+
+    /**
+     * <pre>
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -9942,7 +10210,7 @@ public final class MentraosBle {
     boolean hasImageTransferComplete();
     /**
      * <pre>
-     * Display System  
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -9951,7 +10219,7 @@ public final class MentraosBle {
     mentraos.ble.MentraosBle.ImageTransferComplete getImageTransferComplete();
     /**
      * <pre>
-     * Display System  
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -10113,6 +10381,9 @@ public final class MentraosBle {
       HEAD_UP_ANGLE_SET(14),
       PING(15),
       VAD_EVENT(20),
+      VAD_ENABLED_SET(21),
+      VAD_CONFIGURED(22),
+      VAD_STATUS(23),
       IMAGE_TRANSFER_COMPLETE(30),
       DISPLAY_QUEUE_INFO(31),
       IMU_DATA(40),
@@ -10143,6 +10414,9 @@ public final class MentraosBle {
           case 14: return HEAD_UP_ANGLE_SET;
           case 15: return PING;
           case 20: return VAD_EVENT;
+          case 21: return VAD_ENABLED_SET;
+          case 22: return VAD_CONFIGURED;
+          case 23: return VAD_STATUS;
           case 30: return IMAGE_TRANSFER_COMPLETE;
           case 31: return DISPLAY_QUEUE_INFO;
           case 40: return IMU_DATA;
@@ -10405,10 +10679,139 @@ public final class MentraosBle {
       return mentraos.ble.MentraosBle.VadEvent.getDefaultInstance();
     }
 
+    public static final int VAD_ENABLED_SET_FIELD_NUMBER = 21;
+    /**
+     * <pre>
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     * @return Whether the vadEnabledSet field is set.
+     */
+    @java.lang.Override
+    public boolean hasVadEnabledSet() {
+      return payloadCase_ == 21;
+    }
+    /**
+     * <pre>
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     * @return The vadEnabledSet.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadEnabledResponse getVadEnabledSet() {
+      if (payloadCase_ == 21) {
+         return (mentraos.ble.MentraosBle.VadEnabledResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+    }
+    /**
+     * <pre>
+     * response to set_vad_enabled
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder getVadEnabledSetOrBuilder() {
+      if (payloadCase_ == 21) {
+         return (mentraos.ble.MentraosBle.VadEnabledResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+    }
+
+    public static final int VAD_CONFIGURED_FIELD_NUMBER = 22;
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     * @return Whether the vadConfigured field is set.
+     */
+    @java.lang.Override
+    public boolean hasVadConfigured() {
+      return payloadCase_ == 22;
+    }
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     * @return The vadConfigured.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadConfigResponse getVadConfigured() {
+      if (payloadCase_ == 22) {
+         return (mentraos.ble.MentraosBle.VadConfigResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+    }
+    /**
+     * <pre>
+     * response to set_vad_config
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadConfigResponseOrBuilder getVadConfiguredOrBuilder() {
+      if (payloadCase_ == 22) {
+         return (mentraos.ble.MentraosBle.VadConfigResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+    }
+
+    public static final int VAD_STATUS_FIELD_NUMBER = 23;
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     * @return Whether the vadStatus field is set.
+     */
+    @java.lang.Override
+    public boolean hasVadStatus() {
+      return payloadCase_ == 23;
+    }
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     * @return The vadStatus.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatus getVadStatus() {
+      if (payloadCase_ == 23) {
+         return (mentraos.ble.MentraosBle.VadStatus) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+    }
+    /**
+     * <pre>
+     * response to request_vad_status
+     * </pre>
+     *
+     * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatusOrBuilder getVadStatusOrBuilder() {
+      if (payloadCase_ == 23) {
+         return (mentraos.ble.MentraosBle.VadStatus) payload_;
+      }
+      return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+    }
+
     public static final int IMAGE_TRANSFER_COMPLETE_FIELD_NUMBER = 30;
     /**
      * <pre>
-     * Display System  
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -10420,7 +10823,7 @@ public final class MentraosBle {
     }
     /**
      * <pre>
-     * Display System  
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -10435,7 +10838,7 @@ public final class MentraosBle {
     }
     /**
      * <pre>
-     * Display System  
+     * Display System
      * </pre>
      *
      * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -10662,6 +11065,15 @@ public final class MentraosBle {
       if (payloadCase_ == 20) {
         output.writeMessage(20, (mentraos.ble.MentraosBle.VadEvent) payload_);
       }
+      if (payloadCase_ == 21) {
+        output.writeMessage(21, (mentraos.ble.MentraosBle.VadEnabledResponse) payload_);
+      }
+      if (payloadCase_ == 22) {
+        output.writeMessage(22, (mentraos.ble.MentraosBle.VadConfigResponse) payload_);
+      }
+      if (payloadCase_ == 23) {
+        output.writeMessage(23, (mentraos.ble.MentraosBle.VadStatus) payload_);
+      }
       if (payloadCase_ == 30) {
         output.writeMessage(30, (mentraos.ble.MentraosBle.ImageTransferComplete) payload_);
       }
@@ -10716,6 +11128,18 @@ public final class MentraosBle {
       if (payloadCase_ == 20) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(20, (mentraos.ble.MentraosBle.VadEvent) payload_);
+      }
+      if (payloadCase_ == 21) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(21, (mentraos.ble.MentraosBle.VadEnabledResponse) payload_);
+      }
+      if (payloadCase_ == 22) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(22, (mentraos.ble.MentraosBle.VadConfigResponse) payload_);
+      }
+      if (payloadCase_ == 23) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(23, (mentraos.ble.MentraosBle.VadStatus) payload_);
       }
       if (payloadCase_ == 30) {
         size += com.google.protobuf.CodedOutputStream
@@ -10786,6 +11210,18 @@ public final class MentraosBle {
           if (!getVadEvent()
               .equals(other.getVadEvent())) return false;
           break;
+        case 21:
+          if (!getVadEnabledSet()
+              .equals(other.getVadEnabledSet())) return false;
+          break;
+        case 22:
+          if (!getVadConfigured()
+              .equals(other.getVadConfigured())) return false;
+          break;
+        case 23:
+          if (!getVadStatus()
+              .equals(other.getVadStatus())) return false;
+          break;
         case 30:
           if (!getImageTransferComplete()
               .equals(other.getImageTransferComplete())) return false;
@@ -10852,6 +11288,18 @@ public final class MentraosBle {
         case 20:
           hash = (37 * hash) + VAD_EVENT_FIELD_NUMBER;
           hash = (53 * hash) + getVadEvent().hashCode();
+          break;
+        case 21:
+          hash = (37 * hash) + VAD_ENABLED_SET_FIELD_NUMBER;
+          hash = (53 * hash) + getVadEnabledSet().hashCode();
+          break;
+        case 22:
+          hash = (37 * hash) + VAD_CONFIGURED_FIELD_NUMBER;
+          hash = (53 * hash) + getVadConfigured().hashCode();
+          break;
+        case 23:
+          hash = (37 * hash) + VAD_STATUS_FIELD_NUMBER;
+          hash = (53 * hash) + getVadStatus().hashCode();
           break;
         case 30:
           hash = (37 * hash) + IMAGE_TRANSFER_COMPLETE_FIELD_NUMBER;
@@ -11036,6 +11484,15 @@ public final class MentraosBle {
         if (vadEventBuilder_ != null) {
           vadEventBuilder_.clear();
         }
+        if (vadEnabledSetBuilder_ != null) {
+          vadEnabledSetBuilder_.clear();
+        }
+        if (vadConfiguredBuilder_ != null) {
+          vadConfiguredBuilder_.clear();
+        }
+        if (vadStatusBuilder_ != null) {
+          vadStatusBuilder_.clear();
+        }
         if (imageTransferCompleteBuilder_ != null) {
           imageTransferCompleteBuilder_.clear();
         }
@@ -11123,6 +11580,18 @@ public final class MentraosBle {
             vadEventBuilder_ != null) {
           result.payload_ = vadEventBuilder_.build();
         }
+        if (payloadCase_ == 21 &&
+            vadEnabledSetBuilder_ != null) {
+          result.payload_ = vadEnabledSetBuilder_.build();
+        }
+        if (payloadCase_ == 22 &&
+            vadConfiguredBuilder_ != null) {
+          result.payload_ = vadConfiguredBuilder_.build();
+        }
+        if (payloadCase_ == 23 &&
+            vadStatusBuilder_ != null) {
+          result.payload_ = vadStatusBuilder_.build();
+        }
         if (payloadCase_ == 30 &&
             imageTransferCompleteBuilder_ != null) {
           result.payload_ = imageTransferCompleteBuilder_.build();
@@ -11188,6 +11657,18 @@ public final class MentraosBle {
           }
           case VAD_EVENT: {
             mergeVadEvent(other.getVadEvent());
+            break;
+          }
+          case VAD_ENABLED_SET: {
+            mergeVadEnabledSet(other.getVadEnabledSet());
+            break;
+          }
+          case VAD_CONFIGURED: {
+            mergeVadConfigured(other.getVadConfigured());
+            break;
+          }
+          case VAD_STATUS: {
+            mergeVadStatus(other.getVadStatus());
             break;
           }
           case IMAGE_TRANSFER_COMPLETE: {
@@ -11293,6 +11774,27 @@ public final class MentraosBle {
                 payloadCase_ = 20;
                 break;
               } // case 162
+              case 170: {
+                input.readMessage(
+                    internalGetVadEnabledSetFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 21;
+                break;
+              } // case 170
+              case 178: {
+                input.readMessage(
+                    internalGetVadConfiguredFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 22;
+                break;
+              } // case 178
+              case 186: {
+                input.readMessage(
+                    internalGetVadStatusFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 23;
+                break;
+              } // case 186
               case 242: {
                 input.readMessage(
                     internalGetImageTransferCompleteFieldBuilder().getBuilder(),
@@ -12434,10 +12936,544 @@ public final class MentraosBle {
       }
 
       private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadEnabledResponse, mentraos.ble.MentraosBle.VadEnabledResponse.Builder, mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder> vadEnabledSetBuilder_;
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       * @return Whether the vadEnabledSet field is set.
+       */
+      @java.lang.Override
+      public boolean hasVadEnabledSet() {
+        return payloadCase_ == 21;
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       * @return The vadEnabledSet.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledResponse getVadEnabledSet() {
+        if (vadEnabledSetBuilder_ == null) {
+          if (payloadCase_ == 21) {
+            return (mentraos.ble.MentraosBle.VadEnabledResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 21) {
+            return vadEnabledSetBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      public Builder setVadEnabledSet(mentraos.ble.MentraosBle.VadEnabledResponse value) {
+        if (vadEnabledSetBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          vadEnabledSetBuilder_.setMessage(value);
+        }
+        payloadCase_ = 21;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      public Builder setVadEnabledSet(
+          mentraos.ble.MentraosBle.VadEnabledResponse.Builder builderForValue) {
+        if (vadEnabledSetBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          vadEnabledSetBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 21;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      public Builder mergeVadEnabledSet(mentraos.ble.MentraosBle.VadEnabledResponse value) {
+        if (vadEnabledSetBuilder_ == null) {
+          if (payloadCase_ == 21 &&
+              payload_ != mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadEnabledResponse.newBuilder((mentraos.ble.MentraosBle.VadEnabledResponse) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 21) {
+            vadEnabledSetBuilder_.mergeFrom(value);
+          } else {
+            vadEnabledSetBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 21;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      public Builder clearVadEnabledSet() {
+        if (vadEnabledSetBuilder_ == null) {
+          if (payloadCase_ == 21) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 21) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          vadEnabledSetBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      public mentraos.ble.MentraosBle.VadEnabledResponse.Builder getVadEnabledSetBuilder() {
+        return internalGetVadEnabledSetFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder getVadEnabledSetOrBuilder() {
+        if ((payloadCase_ == 21) && (vadEnabledSetBuilder_ != null)) {
+          return vadEnabledSetBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 21) {
+            return (mentraos.ble.MentraosBle.VadEnabledResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to set_vad_enabled
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadEnabledResponse vad_enabled_set = 21;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadEnabledResponse, mentraos.ble.MentraosBle.VadEnabledResponse.Builder, mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder> 
+          internalGetVadEnabledSetFieldBuilder() {
+        if (vadEnabledSetBuilder_ == null) {
+          if (!(payloadCase_ == 21)) {
+            payload_ = mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+          }
+          vadEnabledSetBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadEnabledResponse, mentraos.ble.MentraosBle.VadEnabledResponse.Builder, mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadEnabledResponse) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 21;
+        onChanged();
+        return vadEnabledSetBuilder_;
+      }
+
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadConfigResponse, mentraos.ble.MentraosBle.VadConfigResponse.Builder, mentraos.ble.MentraosBle.VadConfigResponseOrBuilder> vadConfiguredBuilder_;
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       * @return Whether the vadConfigured field is set.
+       */
+      @java.lang.Override
+      public boolean hasVadConfigured() {
+        return payloadCase_ == 22;
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       * @return The vadConfigured.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigResponse getVadConfigured() {
+        if (vadConfiguredBuilder_ == null) {
+          if (payloadCase_ == 22) {
+            return (mentraos.ble.MentraosBle.VadConfigResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 22) {
+            return vadConfiguredBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      public Builder setVadConfigured(mentraos.ble.MentraosBle.VadConfigResponse value) {
+        if (vadConfiguredBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          vadConfiguredBuilder_.setMessage(value);
+        }
+        payloadCase_ = 22;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      public Builder setVadConfigured(
+          mentraos.ble.MentraosBle.VadConfigResponse.Builder builderForValue) {
+        if (vadConfiguredBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          vadConfiguredBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 22;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      public Builder mergeVadConfigured(mentraos.ble.MentraosBle.VadConfigResponse value) {
+        if (vadConfiguredBuilder_ == null) {
+          if (payloadCase_ == 22 &&
+              payload_ != mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadConfigResponse.newBuilder((mentraos.ble.MentraosBle.VadConfigResponse) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 22) {
+            vadConfiguredBuilder_.mergeFrom(value);
+          } else {
+            vadConfiguredBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 22;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      public Builder clearVadConfigured() {
+        if (vadConfiguredBuilder_ == null) {
+          if (payloadCase_ == 22) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 22) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          vadConfiguredBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      public mentraos.ble.MentraosBle.VadConfigResponse.Builder getVadConfiguredBuilder() {
+        return internalGetVadConfiguredFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigResponseOrBuilder getVadConfiguredOrBuilder() {
+        if ((payloadCase_ == 22) && (vadConfiguredBuilder_ != null)) {
+          return vadConfiguredBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 22) {
+            return (mentraos.ble.MentraosBle.VadConfigResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to set_vad_config
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadConfigResponse vad_configured = 22;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadConfigResponse, mentraos.ble.MentraosBle.VadConfigResponse.Builder, mentraos.ble.MentraosBle.VadConfigResponseOrBuilder> 
+          internalGetVadConfiguredFieldBuilder() {
+        if (vadConfiguredBuilder_ == null) {
+          if (!(payloadCase_ == 22)) {
+            payload_ = mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+          }
+          vadConfiguredBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadConfigResponse, mentraos.ble.MentraosBle.VadConfigResponse.Builder, mentraos.ble.MentraosBle.VadConfigResponseOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadConfigResponse) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 22;
+        onChanged();
+        return vadConfiguredBuilder_;
+      }
+
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadStatus, mentraos.ble.MentraosBle.VadStatus.Builder, mentraos.ble.MentraosBle.VadStatusOrBuilder> vadStatusBuilder_;
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       * @return Whether the vadStatus field is set.
+       */
+      @java.lang.Override
+      public boolean hasVadStatus() {
+        return payloadCase_ == 23;
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       * @return The vadStatus.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatus getVadStatus() {
+        if (vadStatusBuilder_ == null) {
+          if (payloadCase_ == 23) {
+            return (mentraos.ble.MentraosBle.VadStatus) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 23) {
+            return vadStatusBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      public Builder setVadStatus(mentraos.ble.MentraosBle.VadStatus value) {
+        if (vadStatusBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          vadStatusBuilder_.setMessage(value);
+        }
+        payloadCase_ = 23;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      public Builder setVadStatus(
+          mentraos.ble.MentraosBle.VadStatus.Builder builderForValue) {
+        if (vadStatusBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          vadStatusBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 23;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      public Builder mergeVadStatus(mentraos.ble.MentraosBle.VadStatus value) {
+        if (vadStatusBuilder_ == null) {
+          if (payloadCase_ == 23 &&
+              payload_ != mentraos.ble.MentraosBle.VadStatus.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VadStatus.newBuilder((mentraos.ble.MentraosBle.VadStatus) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 23) {
+            vadStatusBuilder_.mergeFrom(value);
+          } else {
+            vadStatusBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 23;
+        return this;
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      public Builder clearVadStatus() {
+        if (vadStatusBuilder_ == null) {
+          if (payloadCase_ == 23) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 23) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          vadStatusBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      public mentraos.ble.MentraosBle.VadStatus.Builder getVadStatusBuilder() {
+        return internalGetVadStatusFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusOrBuilder getVadStatusOrBuilder() {
+        if ((payloadCase_ == 23) && (vadStatusBuilder_ != null)) {
+          return vadStatusBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 23) {
+            return (mentraos.ble.MentraosBle.VadStatus) payload_;
+          }
+          return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * response to request_vad_status
+       * </pre>
+       *
+       * <code>.mentraos.ble.VadStatus vad_status = 23;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VadStatus, mentraos.ble.MentraosBle.VadStatus.Builder, mentraos.ble.MentraosBle.VadStatusOrBuilder> 
+          internalGetVadStatusFieldBuilder() {
+        if (vadStatusBuilder_ == null) {
+          if (!(payloadCase_ == 23)) {
+            payload_ = mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+          }
+          vadStatusBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VadStatus, mentraos.ble.MentraosBle.VadStatus.Builder, mentraos.ble.MentraosBle.VadStatusOrBuilder>(
+                  (mentraos.ble.MentraosBle.VadStatus) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 23;
+        onChanged();
+        return vadStatusBuilder_;
+      }
+
+      private com.google.protobuf.SingleFieldBuilder<
           mentraos.ble.MentraosBle.ImageTransferComplete, mentraos.ble.MentraosBle.ImageTransferComplete.Builder, mentraos.ble.MentraosBle.ImageTransferCompleteOrBuilder> imageTransferCompleteBuilder_;
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12449,7 +13485,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12471,7 +13507,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12491,7 +13527,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12509,7 +13545,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12536,7 +13572,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12559,7 +13595,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12569,7 +13605,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -12587,7 +13623,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Display System  
+       * Display System
        * </pre>
        *
        * <code>.mentraos.ble.ImageTransferComplete image_transfer_complete = 30;</code>
@@ -20802,895 +21838,6 @@ public final class MentraosBle {
 
   }
 
-  public interface VadEnabledConfigOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadEnabledConfig)
-      com.google.protobuf.MessageOrBuilder {
-
-    /**
-     * <code>bool enabled = 1;</code>
-     * @return The enabled.
-     */
-    boolean getEnabled();
-  }
-  /**
-   * Protobuf type {@code mentraos.ble.VadEnabledConfig}
-   */
-  public static final class VadEnabledConfig extends
-      com.google.protobuf.GeneratedMessage implements
-      // @@protoc_insertion_point(message_implements:mentraos.ble.VadEnabledConfig)
-      VadEnabledConfigOrBuilder {
-  private static final long serialVersionUID = 0L;
-    static {
-      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
-        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
-        /* major= */ 4,
-        /* minor= */ 32,
-        /* patch= */ 0,
-        /* suffix= */ "",
-        VadEnabledConfig.class.getName());
-    }
-    // Use VadEnabledConfig.newBuilder() to construct.
-    private VadEnabledConfig(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
-      super(builder);
-    }
-    private VadEnabledConfig() {
-    }
-
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledConfig_descriptor;
-    }
-
-    @java.lang.Override
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledConfig_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              mentraos.ble.MentraosBle.VadEnabledConfig.class, mentraos.ble.MentraosBle.VadEnabledConfig.Builder.class);
-    }
-
-    public static final int ENABLED_FIELD_NUMBER = 1;
-    private boolean enabled_ = false;
-    /**
-     * <code>bool enabled = 1;</code>
-     * @return The enabled.
-     */
-    @java.lang.Override
-    public boolean getEnabled() {
-      return enabled_;
-    }
-
-    private byte memoizedIsInitialized = -1;
-    @java.lang.Override
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized == 1) return true;
-      if (isInitialized == 0) return false;
-
-      memoizedIsInitialized = 1;
-      return true;
-    }
-
-    @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      if (enabled_ != false) {
-        output.writeBool(1, enabled_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-
-    @java.lang.Override
-    public int getSerializedSize() {
-      int size = memoizedSize;
-      if (size != -1) return size;
-
-      size = 0;
-      if (enabled_ != false) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBoolSize(1, enabled_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSize = size;
-      return size;
-    }
-
-    @java.lang.Override
-    public boolean equals(final java.lang.Object obj) {
-      if (obj == this) {
-       return true;
-      }
-      if (!(obj instanceof mentraos.ble.MentraosBle.VadEnabledConfig)) {
-        return super.equals(obj);
-      }
-      mentraos.ble.MentraosBle.VadEnabledConfig other = (mentraos.ble.MentraosBle.VadEnabledConfig) obj;
-
-      if (getEnabled()
-          != other.getEnabled()) return false;
-      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
-      return true;
-    }
-
-    @java.lang.Override
-    public int hashCode() {
-      if (memoizedHashCode != 0) {
-        return memoizedHashCode;
-      }
-      int hash = 41;
-      hash = (19 * hash) + getDescriptor().hashCode();
-      hash = (37 * hash) + ENABLED_FIELD_NUMBER;
-      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
-          getEnabled());
-      hash = (29 * hash) + getUnknownFields().hashCode();
-      memoizedHashCode = hash;
-      return hash;
-    }
-
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input, extensionRegistry);
-    }
-
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseDelimitedWithIOException(PARSER, input);
-    }
-
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input);
-    }
-    public static mentraos.ble.MentraosBle.VadEnabledConfig parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input, extensionRegistry);
-    }
-
-    @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder() {
-      return DEFAULT_INSTANCE.toBuilder();
-    }
-    public static Builder newBuilder(mentraos.ble.MentraosBle.VadEnabledConfig prototype) {
-      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
-    }
-    @java.lang.Override
-    public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
-    }
-
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    /**
-     * Protobuf type {@code mentraos.ble.VadEnabledConfig}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadEnabledConfig)
-        mentraos.ble.MentraosBle.VadEnabledConfigOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledConfig_descriptor;
-      }
-
-      @java.lang.Override
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledConfig_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                mentraos.ble.MentraosBle.VadEnabledConfig.class, mentraos.ble.MentraosBle.VadEnabledConfig.Builder.class);
-      }
-
-      // Construct using mentraos.ble.MentraosBle.VadEnabledConfig.newBuilder()
-      private Builder() {
-
-      }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-        super(parent);
-
-      }
-      @java.lang.Override
-      public Builder clear() {
-        super.clear();
-        bitField0_ = 0;
-        enabled_ = false;
-        return this;
-      }
-
-      @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledConfig_descriptor;
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadEnabledConfig getDefaultInstanceForType() {
-        return mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance();
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadEnabledConfig build() {
-        mentraos.ble.MentraosBle.VadEnabledConfig result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadEnabledConfig buildPartial() {
-        mentraos.ble.MentraosBle.VadEnabledConfig result = new mentraos.ble.MentraosBle.VadEnabledConfig(this);
-        if (bitField0_ != 0) { buildPartial0(result); }
-        onBuilt();
-        return result;
-      }
-
-      private void buildPartial0(mentraos.ble.MentraosBle.VadEnabledConfig result) {
-        int from_bitField0_ = bitField0_;
-        if (((from_bitField0_ & 0x00000001) != 0)) {
-          result.enabled_ = enabled_;
-        }
-      }
-
-      @java.lang.Override
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof mentraos.ble.MentraosBle.VadEnabledConfig) {
-          return mergeFrom((mentraos.ble.MentraosBle.VadEnabledConfig)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-
-      public Builder mergeFrom(mentraos.ble.MentraosBle.VadEnabledConfig other) {
-        if (other == mentraos.ble.MentraosBle.VadEnabledConfig.getDefaultInstance()) return this;
-        if (other.getEnabled() != false) {
-          setEnabled(other.getEnabled());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        onChanged();
-        return this;
-      }
-
-      @java.lang.Override
-      public final boolean isInitialized() {
-        return true;
-      }
-
-      @java.lang.Override
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        if (extensionRegistry == null) {
-          throw new java.lang.NullPointerException();
-        }
-        try {
-          boolean done = false;
-          while (!done) {
-            int tag = input.readTag();
-            switch (tag) {
-              case 0:
-                done = true;
-                break;
-              case 8: {
-                enabled_ = input.readBool();
-                bitField0_ |= 0x00000001;
-                break;
-              } // case 8
-              default: {
-                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
-                  done = true; // was an endgroup tag
-                }
-                break;
-              } // default:
-            } // switch (tag)
-          } // while (!done)
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          throw e.unwrapIOException();
-        } finally {
-          onChanged();
-        } // finally
-        return this;
-      }
-      private int bitField0_;
-
-      private boolean enabled_ ;
-      /**
-       * <code>bool enabled = 1;</code>
-       * @return The enabled.
-       */
-      @java.lang.Override
-      public boolean getEnabled() {
-        return enabled_;
-      }
-      /**
-       * <code>bool enabled = 1;</code>
-       * @param value The enabled to set.
-       * @return This builder for chaining.
-       */
-      public Builder setEnabled(boolean value) {
-
-        enabled_ = value;
-        bitField0_ |= 0x00000001;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>bool enabled = 1;</code>
-       * @return This builder for chaining.
-       */
-      public Builder clearEnabled() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        enabled_ = false;
-        onChanged();
-        return this;
-      }
-
-      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadEnabledConfig)
-    }
-
-    // @@protoc_insertion_point(class_scope:mentraos.ble.VadEnabledConfig)
-    private static final mentraos.ble.MentraosBle.VadEnabledConfig DEFAULT_INSTANCE;
-    static {
-      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadEnabledConfig();
-    }
-
-    public static mentraos.ble.MentraosBle.VadEnabledConfig getDefaultInstance() {
-      return DEFAULT_INSTANCE;
-    }
-
-    private static final com.google.protobuf.Parser<VadEnabledConfig>
-        PARSER = new com.google.protobuf.AbstractParser<VadEnabledConfig>() {
-      @java.lang.Override
-      public VadEnabledConfig parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        Builder builder = newBuilder();
-        try {
-          builder.mergeFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          throw e.setUnfinishedMessage(builder.buildPartial());
-        } catch (com.google.protobuf.UninitializedMessageException e) {
-          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
-        } catch (java.io.IOException e) {
-          throw new com.google.protobuf.InvalidProtocolBufferException(e)
-              .setUnfinishedMessage(builder.buildPartial());
-        }
-        return builder.buildPartial();
-      }
-    };
-
-    public static com.google.protobuf.Parser<VadEnabledConfig> parser() {
-      return PARSER;
-    }
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<VadEnabledConfig> getParserForType() {
-      return PARSER;
-    }
-
-    @java.lang.Override
-    public mentraos.ble.MentraosBle.VadEnabledConfig getDefaultInstanceForType() {
-      return DEFAULT_INSTANCE;
-    }
-
-  }
-
-  public interface VadConfigOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadConfig)
-      com.google.protobuf.MessageOrBuilder {
-
-    /**
-     * <pre>
-     * 0-100
-     * </pre>
-     *
-     * <code>uint32 sensitivity = 1;</code>
-     * @return The sensitivity.
-     */
-    int getSensitivity();
-  }
-  /**
-   * Protobuf type {@code mentraos.ble.VadConfig}
-   */
-  public static final class VadConfig extends
-      com.google.protobuf.GeneratedMessage implements
-      // @@protoc_insertion_point(message_implements:mentraos.ble.VadConfig)
-      VadConfigOrBuilder {
-  private static final long serialVersionUID = 0L;
-    static {
-      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
-        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
-        /* major= */ 4,
-        /* minor= */ 32,
-        /* patch= */ 0,
-        /* suffix= */ "",
-        VadConfig.class.getName());
-    }
-    // Use VadConfig.newBuilder() to construct.
-    private VadConfig(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
-      super(builder);
-    }
-    private VadConfig() {
-    }
-
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfig_descriptor;
-    }
-
-    @java.lang.Override
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfig_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              mentraos.ble.MentraosBle.VadConfig.class, mentraos.ble.MentraosBle.VadConfig.Builder.class);
-    }
-
-    public static final int SENSITIVITY_FIELD_NUMBER = 1;
-    private int sensitivity_ = 0;
-    /**
-     * <pre>
-     * 0-100
-     * </pre>
-     *
-     * <code>uint32 sensitivity = 1;</code>
-     * @return The sensitivity.
-     */
-    @java.lang.Override
-    public int getSensitivity() {
-      return sensitivity_;
-    }
-
-    private byte memoizedIsInitialized = -1;
-    @java.lang.Override
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized == 1) return true;
-      if (isInitialized == 0) return false;
-
-      memoizedIsInitialized = 1;
-      return true;
-    }
-
-    @java.lang.Override
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      if (sensitivity_ != 0) {
-        output.writeUInt32(1, sensitivity_);
-      }
-      getUnknownFields().writeTo(output);
-    }
-
-    @java.lang.Override
-    public int getSerializedSize() {
-      int size = memoizedSize;
-      if (size != -1) return size;
-
-      size = 0;
-      if (sensitivity_ != 0) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt32Size(1, sensitivity_);
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSize = size;
-      return size;
-    }
-
-    @java.lang.Override
-    public boolean equals(final java.lang.Object obj) {
-      if (obj == this) {
-       return true;
-      }
-      if (!(obj instanceof mentraos.ble.MentraosBle.VadConfig)) {
-        return super.equals(obj);
-      }
-      mentraos.ble.MentraosBle.VadConfig other = (mentraos.ble.MentraosBle.VadConfig) obj;
-
-      if (getSensitivity()
-          != other.getSensitivity()) return false;
-      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
-      return true;
-    }
-
-    @java.lang.Override
-    public int hashCode() {
-      if (memoizedHashCode != 0) {
-        return memoizedHashCode;
-      }
-      int hash = 41;
-      hash = (19 * hash) + getDescriptor().hashCode();
-      hash = (37 * hash) + SENSITIVITY_FIELD_NUMBER;
-      hash = (53 * hash) + getSensitivity();
-      hash = (29 * hash) + getUnknownFields().hashCode();
-      memoizedHashCode = hash;
-      return hash;
-    }
-
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        java.nio.ByteBuffer data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        java.nio.ByteBuffer data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input, extensionRegistry);
-    }
-
-    public static mentraos.ble.MentraosBle.VadConfig parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseDelimitedWithIOException(PARSER, input);
-    }
-
-    public static mentraos.ble.MentraosBle.VadConfig parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input);
-    }
-    public static mentraos.ble.MentraosBle.VadConfig parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return com.google.protobuf.GeneratedMessage
-          .parseWithIOException(PARSER, input, extensionRegistry);
-    }
-
-    @java.lang.Override
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder() {
-      return DEFAULT_INSTANCE.toBuilder();
-    }
-    public static Builder newBuilder(mentraos.ble.MentraosBle.VadConfig prototype) {
-      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
-    }
-    @java.lang.Override
-    public Builder toBuilder() {
-      return this == DEFAULT_INSTANCE
-          ? new Builder() : new Builder().mergeFrom(this);
-    }
-
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    /**
-     * Protobuf type {@code mentraos.ble.VadConfig}
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadConfig)
-        mentraos.ble.MentraosBle.VadConfigOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfig_descriptor;
-      }
-
-      @java.lang.Override
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfig_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                mentraos.ble.MentraosBle.VadConfig.class, mentraos.ble.MentraosBle.VadConfig.Builder.class);
-      }
-
-      // Construct using mentraos.ble.MentraosBle.VadConfig.newBuilder()
-      private Builder() {
-
-      }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-        super(parent);
-
-      }
-      @java.lang.Override
-      public Builder clear() {
-        super.clear();
-        bitField0_ = 0;
-        sensitivity_ = 0;
-        return this;
-      }
-
-      @java.lang.Override
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfig_descriptor;
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadConfig getDefaultInstanceForType() {
-        return mentraos.ble.MentraosBle.VadConfig.getDefaultInstance();
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadConfig build() {
-        mentraos.ble.MentraosBle.VadConfig result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-
-      @java.lang.Override
-      public mentraos.ble.MentraosBle.VadConfig buildPartial() {
-        mentraos.ble.MentraosBle.VadConfig result = new mentraos.ble.MentraosBle.VadConfig(this);
-        if (bitField0_ != 0) { buildPartial0(result); }
-        onBuilt();
-        return result;
-      }
-
-      private void buildPartial0(mentraos.ble.MentraosBle.VadConfig result) {
-        int from_bitField0_ = bitField0_;
-        if (((from_bitField0_ & 0x00000001) != 0)) {
-          result.sensitivity_ = sensitivity_;
-        }
-      }
-
-      @java.lang.Override
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof mentraos.ble.MentraosBle.VadConfig) {
-          return mergeFrom((mentraos.ble.MentraosBle.VadConfig)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-
-      public Builder mergeFrom(mentraos.ble.MentraosBle.VadConfig other) {
-        if (other == mentraos.ble.MentraosBle.VadConfig.getDefaultInstance()) return this;
-        if (other.getSensitivity() != 0) {
-          setSensitivity(other.getSensitivity());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        onChanged();
-        return this;
-      }
-
-      @java.lang.Override
-      public final boolean isInitialized() {
-        return true;
-      }
-
-      @java.lang.Override
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        if (extensionRegistry == null) {
-          throw new java.lang.NullPointerException();
-        }
-        try {
-          boolean done = false;
-          while (!done) {
-            int tag = input.readTag();
-            switch (tag) {
-              case 0:
-                done = true;
-                break;
-              case 8: {
-                sensitivity_ = input.readUInt32();
-                bitField0_ |= 0x00000001;
-                break;
-              } // case 8
-              default: {
-                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
-                  done = true; // was an endgroup tag
-                }
-                break;
-              } // default:
-            } // switch (tag)
-          } // while (!done)
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          throw e.unwrapIOException();
-        } finally {
-          onChanged();
-        } // finally
-        return this;
-      }
-      private int bitField0_;
-
-      private int sensitivity_ ;
-      /**
-       * <pre>
-       * 0-100
-       * </pre>
-       *
-       * <code>uint32 sensitivity = 1;</code>
-       * @return The sensitivity.
-       */
-      @java.lang.Override
-      public int getSensitivity() {
-        return sensitivity_;
-      }
-      /**
-       * <pre>
-       * 0-100
-       * </pre>
-       *
-       * <code>uint32 sensitivity = 1;</code>
-       * @param value The sensitivity to set.
-       * @return This builder for chaining.
-       */
-      public Builder setSensitivity(int value) {
-
-        sensitivity_ = value;
-        bitField0_ |= 0x00000001;
-        onChanged();
-        return this;
-      }
-      /**
-       * <pre>
-       * 0-100
-       * </pre>
-       *
-       * <code>uint32 sensitivity = 1;</code>
-       * @return This builder for chaining.
-       */
-      public Builder clearSensitivity() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        sensitivity_ = 0;
-        onChanged();
-        return this;
-      }
-
-      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadConfig)
-    }
-
-    // @@protoc_insertion_point(class_scope:mentraos.ble.VadConfig)
-    private static final mentraos.ble.MentraosBle.VadConfig DEFAULT_INSTANCE;
-    static {
-      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadConfig();
-    }
-
-    public static mentraos.ble.MentraosBle.VadConfig getDefaultInstance() {
-      return DEFAULT_INSTANCE;
-    }
-
-    private static final com.google.protobuf.Parser<VadConfig>
-        PARSER = new com.google.protobuf.AbstractParser<VadConfig>() {
-      @java.lang.Override
-      public VadConfig parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        Builder builder = newBuilder();
-        try {
-          builder.mergeFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          throw e.setUnfinishedMessage(builder.buildPartial());
-        } catch (com.google.protobuf.UninitializedMessageException e) {
-          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
-        } catch (java.io.IOException e) {
-          throw new com.google.protobuf.InvalidProtocolBufferException(e)
-              .setUnfinishedMessage(builder.buildPartial());
-        }
-        return builder.buildPartial();
-      }
-    };
-
-    public static com.google.protobuf.Parser<VadConfig> parser() {
-      return PARSER;
-    }
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<VadConfig> getParserForType() {
-      return PARSER;
-    }
-
-    @java.lang.Override
-    public mentraos.ble.MentraosBle.VadConfig getDefaultInstanceForType() {
-      return DEFAULT_INSTANCE;
-    }
-
-  }
-
   public interface VadEventOrBuilder extends
       // @@protoc_insertion_point(interface_extends:mentraos.ble.VadEvent)
       com.google.protobuf.MessageOrBuilder {
@@ -21707,6 +21854,10 @@ public final class MentraosBle {
     mentraos.ble.MentraosBle.VadEvent.State getState();
   }
   /**
+   * <pre>
+   * Events: emitted when voice activity starts/stops
+   * </pre>
+   *
    * Protobuf type {@code mentraos.ble.VadEvent}
    */
   public static final class VadEvent extends
@@ -22036,6 +22187,10 @@ public final class MentraosBle {
       return builder;
     }
     /**
+     * <pre>
+     * Events: emitted when voice activity starts/stops
+     * </pre>
+     *
      * Protobuf type {@code mentraos.ble.VadEvent}
      */
     public static final class Builder extends
@@ -22268,6 +22423,4066 @@ public final class MentraosBle {
 
     @java.lang.Override
     public mentraos.ble.MentraosBle.VadEvent getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadEnabledRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadEnabledRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <code>bool enabled = 2;</code>
+     * @return The enabled.
+     */
+    boolean getEnabled();
+  }
+  /**
+   * <pre>
+   * Enable/disable VAD (request)
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadEnabledRequest}
+   */
+  public static final class VadEnabledRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadEnabledRequest)
+      VadEnabledRequestOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadEnabledRequest.class.getName());
+    }
+    // Use VadEnabledRequest.newBuilder() to construct.
+    private VadEnabledRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadEnabledRequest() {
+      msgId_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledRequest_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadEnabledRequest.class, mentraos.ble.MentraosBle.VadEnabledRequest.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int ENABLED_FIELD_NUMBER = 2;
+    private boolean enabled_ = false;
+    /**
+     * <code>bool enabled = 2;</code>
+     * @return The enabled.
+     */
+    @java.lang.Override
+    public boolean getEnabled() {
+      return enabled_;
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (enabled_ != false) {
+        output.writeBool(2, enabled_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (enabled_ != false) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, enabled_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadEnabledRequest)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadEnabledRequest other = (mentraos.ble.MentraosBle.VadEnabledRequest) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getEnabled()
+          != other.getEnabled()) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + ENABLED_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+          getEnabled());
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadEnabledRequest prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Enable/disable VAD (request)
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadEnabledRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadEnabledRequest)
+        mentraos.ble.MentraosBle.VadEnabledRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledRequest_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadEnabledRequest.class, mentraos.ble.MentraosBle.VadEnabledRequest.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadEnabledRequest.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        enabled_ = false;
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledRequest_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledRequest getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledRequest build() {
+        mentraos.ble.MentraosBle.VadEnabledRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledRequest buildPartial() {
+        mentraos.ble.MentraosBle.VadEnabledRequest result = new mentraos.ble.MentraosBle.VadEnabledRequest(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadEnabledRequest result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.enabled_ = enabled_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadEnabledRequest) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadEnabledRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadEnabledRequest other) {
+        if (other == mentraos.ble.MentraosBle.VadEnabledRequest.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getEnabled() != false) {
+          setEnabled(other.getEnabled());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                enabled_ = input.readBool();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private boolean enabled_ ;
+      /**
+       * <code>bool enabled = 2;</code>
+       * @return The enabled.
+       */
+      @java.lang.Override
+      public boolean getEnabled() {
+        return enabled_;
+      }
+      /**
+       * <code>bool enabled = 2;</code>
+       * @param value The enabled to set.
+       * @return This builder for chaining.
+       */
+      public Builder setEnabled(boolean value) {
+
+        enabled_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>bool enabled = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearEnabled() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        enabled_ = false;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadEnabledRequest)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadEnabledRequest)
+    private static final mentraos.ble.MentraosBle.VadEnabledRequest DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadEnabledRequest();
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledRequest getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadEnabledRequest>
+        PARSER = new com.google.protobuf.AbstractParser<VadEnabledRequest>() {
+      @java.lang.Override
+      public VadEnabledRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadEnabledRequest> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadEnabledRequest> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadEnabledRequest getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadEnabledResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadEnabledResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <code>bool success = 2;</code>
+     * @return The success.
+     */
+    boolean getSuccess();
+
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The error.
+     */
+    java.lang.String getError();
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The bytes for error.
+     */
+    com.google.protobuf.ByteString
+        getErrorBytes();
+  }
+  /**
+   * <pre>
+   * Response to enable/disable VAD
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadEnabledResponse}
+   */
+  public static final class VadEnabledResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadEnabledResponse)
+      VadEnabledResponseOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadEnabledResponse.class.getName());
+    }
+    // Use VadEnabledResponse.newBuilder() to construct.
+    private VadEnabledResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadEnabledResponse() {
+      msgId_ = "";
+      error_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledResponse_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadEnabledResponse.class, mentraos.ble.MentraosBle.VadEnabledResponse.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int SUCCESS_FIELD_NUMBER = 2;
+    private boolean success_ = false;
+    /**
+     * <code>bool success = 2;</code>
+     * @return The success.
+     */
+    @java.lang.Override
+    public boolean getSuccess() {
+      return success_;
+    }
+
+    public static final int ERROR_FIELD_NUMBER = 3;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object error_ = "";
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The error.
+     */
+    @java.lang.Override
+    public java.lang.String getError() {
+      java.lang.Object ref = error_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        error_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The bytes for error.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getErrorBytes() {
+      java.lang.Object ref = error_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        error_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (success_ != false) {
+        output.writeBool(2, success_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(error_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 3, error_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (success_ != false) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, success_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(error_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(3, error_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadEnabledResponse)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadEnabledResponse other = (mentraos.ble.MentraosBle.VadEnabledResponse) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getSuccess()
+          != other.getSuccess()) return false;
+      if (!getError()
+          .equals(other.getError())) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + SUCCESS_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+          getSuccess());
+      hash = (37 * hash) + ERROR_FIELD_NUMBER;
+      hash = (53 * hash) + getError().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadEnabledResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadEnabledResponse prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Response to enable/disable VAD
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadEnabledResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadEnabledResponse)
+        mentraos.ble.MentraosBle.VadEnabledResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledResponse_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadEnabledResponse.class, mentraos.ble.MentraosBle.VadEnabledResponse.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadEnabledResponse.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        success_ = false;
+        error_ = "";
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadEnabledResponse_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledResponse getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledResponse build() {
+        mentraos.ble.MentraosBle.VadEnabledResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadEnabledResponse buildPartial() {
+        mentraos.ble.MentraosBle.VadEnabledResponse result = new mentraos.ble.MentraosBle.VadEnabledResponse(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadEnabledResponse result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.success_ = success_;
+        }
+        if (((from_bitField0_ & 0x00000004) != 0)) {
+          result.error_ = error_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadEnabledResponse) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadEnabledResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadEnabledResponse other) {
+        if (other == mentraos.ble.MentraosBle.VadEnabledResponse.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getSuccess() != false) {
+          setSuccess(other.getSuccess());
+        }
+        if (!other.getError().isEmpty()) {
+          error_ = other.error_;
+          bitField0_ |= 0x00000004;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                success_ = input.readBool();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              case 26: {
+                error_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000004;
+                break;
+              } // case 26
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private boolean success_ ;
+      /**
+       * <code>bool success = 2;</code>
+       * @return The success.
+       */
+      @java.lang.Override
+      public boolean getSuccess() {
+        return success_;
+      }
+      /**
+       * <code>bool success = 2;</code>
+       * @param value The success to set.
+       * @return This builder for chaining.
+       */
+      public Builder setSuccess(boolean value) {
+
+        success_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>bool success = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearSuccess() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        success_ = false;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object error_ = "";
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return The error.
+       */
+      public java.lang.String getError() {
+        java.lang.Object ref = error_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          error_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return The bytes for error.
+       */
+      public com.google.protobuf.ByteString
+          getErrorBytes() {
+        java.lang.Object ref = error_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          error_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @param value The error to set.
+       * @return This builder for chaining.
+       */
+      public Builder setError(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        error_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearError() {
+        error_ = getDefaultInstance().getError();
+        bitField0_ = (bitField0_ & ~0x00000004);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @param value The bytes for error to set.
+       * @return This builder for chaining.
+       */
+      public Builder setErrorBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        error_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadEnabledResponse)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadEnabledResponse)
+    private static final mentraos.ble.MentraosBle.VadEnabledResponse DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadEnabledResponse();
+    }
+
+    public static mentraos.ble.MentraosBle.VadEnabledResponse getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadEnabledResponse>
+        PARSER = new com.google.protobuf.AbstractParser<VadEnabledResponse>() {
+      @java.lang.Override
+      public VadEnabledResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadEnabledResponse> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadEnabledResponse> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadEnabledResponse getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadConfigRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadConfigRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <pre>
+     * 0-100
+     * </pre>
+     *
+     * <code>uint32 sensitivity = 2;</code>
+     * @return The sensitivity.
+     */
+    int getSensitivity();
+  }
+  /**
+   * <pre>
+   * Configure VAD sensitivity (request)
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadConfigRequest}
+   */
+  public static final class VadConfigRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadConfigRequest)
+      VadConfigRequestOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadConfigRequest.class.getName());
+    }
+    // Use VadConfigRequest.newBuilder() to construct.
+    private VadConfigRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadConfigRequest() {
+      msgId_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigRequest_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadConfigRequest.class, mentraos.ble.MentraosBle.VadConfigRequest.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int SENSITIVITY_FIELD_NUMBER = 2;
+    private int sensitivity_ = 0;
+    /**
+     * <pre>
+     * 0-100
+     * </pre>
+     *
+     * <code>uint32 sensitivity = 2;</code>
+     * @return The sensitivity.
+     */
+    @java.lang.Override
+    public int getSensitivity() {
+      return sensitivity_;
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (sensitivity_ != 0) {
+        output.writeUInt32(2, sensitivity_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (sensitivity_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(2, sensitivity_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadConfigRequest)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadConfigRequest other = (mentraos.ble.MentraosBle.VadConfigRequest) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getSensitivity()
+          != other.getSensitivity()) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + SENSITIVITY_FIELD_NUMBER;
+      hash = (53 * hash) + getSensitivity();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadConfigRequest prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Configure VAD sensitivity (request)
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadConfigRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadConfigRequest)
+        mentraos.ble.MentraosBle.VadConfigRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigRequest_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadConfigRequest.class, mentraos.ble.MentraosBle.VadConfigRequest.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadConfigRequest.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        sensitivity_ = 0;
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigRequest_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigRequest getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigRequest build() {
+        mentraos.ble.MentraosBle.VadConfigRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigRequest buildPartial() {
+        mentraos.ble.MentraosBle.VadConfigRequest result = new mentraos.ble.MentraosBle.VadConfigRequest(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadConfigRequest result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.sensitivity_ = sensitivity_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadConfigRequest) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadConfigRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadConfigRequest other) {
+        if (other == mentraos.ble.MentraosBle.VadConfigRequest.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getSensitivity() != 0) {
+          setSensitivity(other.getSensitivity());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                sensitivity_ = input.readUInt32();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private int sensitivity_ ;
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 2;</code>
+       * @return The sensitivity.
+       */
+      @java.lang.Override
+      public int getSensitivity() {
+        return sensitivity_;
+      }
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 2;</code>
+       * @param value The sensitivity to set.
+       * @return This builder for chaining.
+       */
+      public Builder setSensitivity(int value) {
+
+        sensitivity_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearSensitivity() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        sensitivity_ = 0;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadConfigRequest)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadConfigRequest)
+    private static final mentraos.ble.MentraosBle.VadConfigRequest DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadConfigRequest();
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigRequest getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadConfigRequest>
+        PARSER = new com.google.protobuf.AbstractParser<VadConfigRequest>() {
+      @java.lang.Override
+      public VadConfigRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadConfigRequest> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadConfigRequest> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadConfigRequest getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadConfigResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadConfigResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <code>bool success = 2;</code>
+     * @return The success.
+     */
+    boolean getSuccess();
+
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The error.
+     */
+    java.lang.String getError();
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The bytes for error.
+     */
+    com.google.protobuf.ByteString
+        getErrorBytes();
+  }
+  /**
+   * <pre>
+   * Response to VAD config
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadConfigResponse}
+   */
+  public static final class VadConfigResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadConfigResponse)
+      VadConfigResponseOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadConfigResponse.class.getName());
+    }
+    // Use VadConfigResponse.newBuilder() to construct.
+    private VadConfigResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadConfigResponse() {
+      msgId_ = "";
+      error_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigResponse_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadConfigResponse.class, mentraos.ble.MentraosBle.VadConfigResponse.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int SUCCESS_FIELD_NUMBER = 2;
+    private boolean success_ = false;
+    /**
+     * <code>bool success = 2;</code>
+     * @return The success.
+     */
+    @java.lang.Override
+    public boolean getSuccess() {
+      return success_;
+    }
+
+    public static final int ERROR_FIELD_NUMBER = 3;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object error_ = "";
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The error.
+     */
+    @java.lang.Override
+    public java.lang.String getError() {
+      java.lang.Object ref = error_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        error_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * optional diagnostics
+     * </pre>
+     *
+     * <code>string error = 3;</code>
+     * @return The bytes for error.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getErrorBytes() {
+      java.lang.Object ref = error_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        error_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (success_ != false) {
+        output.writeBool(2, success_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(error_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 3, error_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (success_ != false) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, success_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(error_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(3, error_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadConfigResponse)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadConfigResponse other = (mentraos.ble.MentraosBle.VadConfigResponse) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getSuccess()
+          != other.getSuccess()) return false;
+      if (!getError()
+          .equals(other.getError())) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + SUCCESS_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+          getSuccess());
+      hash = (37 * hash) + ERROR_FIELD_NUMBER;
+      hash = (53 * hash) + getError().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadConfigResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadConfigResponse prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Response to VAD config
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadConfigResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadConfigResponse)
+        mentraos.ble.MentraosBle.VadConfigResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigResponse_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadConfigResponse.class, mentraos.ble.MentraosBle.VadConfigResponse.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadConfigResponse.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        success_ = false;
+        error_ = "";
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadConfigResponse_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigResponse getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigResponse build() {
+        mentraos.ble.MentraosBle.VadConfigResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadConfigResponse buildPartial() {
+        mentraos.ble.MentraosBle.VadConfigResponse result = new mentraos.ble.MentraosBle.VadConfigResponse(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadConfigResponse result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.success_ = success_;
+        }
+        if (((from_bitField0_ & 0x00000004) != 0)) {
+          result.error_ = error_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadConfigResponse) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadConfigResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadConfigResponse other) {
+        if (other == mentraos.ble.MentraosBle.VadConfigResponse.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getSuccess() != false) {
+          setSuccess(other.getSuccess());
+        }
+        if (!other.getError().isEmpty()) {
+          error_ = other.error_;
+          bitField0_ |= 0x00000004;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                success_ = input.readBool();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              case 26: {
+                error_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000004;
+                break;
+              } // case 26
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private boolean success_ ;
+      /**
+       * <code>bool success = 2;</code>
+       * @return The success.
+       */
+      @java.lang.Override
+      public boolean getSuccess() {
+        return success_;
+      }
+      /**
+       * <code>bool success = 2;</code>
+       * @param value The success to set.
+       * @return This builder for chaining.
+       */
+      public Builder setSuccess(boolean value) {
+
+        success_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>bool success = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearSuccess() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        success_ = false;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object error_ = "";
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return The error.
+       */
+      public java.lang.String getError() {
+        java.lang.Object ref = error_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          error_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return The bytes for error.
+       */
+      public com.google.protobuf.ByteString
+          getErrorBytes() {
+        java.lang.Object ref = error_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          error_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @param value The error to set.
+       * @return This builder for chaining.
+       */
+      public Builder setError(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        error_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearError() {
+        error_ = getDefaultInstance().getError();
+        bitField0_ = (bitField0_ & ~0x00000004);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * optional diagnostics
+       * </pre>
+       *
+       * <code>string error = 3;</code>
+       * @param value The bytes for error to set.
+       * @return This builder for chaining.
+       */
+      public Builder setErrorBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        error_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadConfigResponse)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadConfigResponse)
+    private static final mentraos.ble.MentraosBle.VadConfigResponse DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadConfigResponse();
+    }
+
+    public static mentraos.ble.MentraosBle.VadConfigResponse getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadConfigResponse>
+        PARSER = new com.google.protobuf.AbstractParser<VadConfigResponse>() {
+      @java.lang.Override
+      public VadConfigResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadConfigResponse> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadConfigResponse> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadConfigResponse getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadStatusRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadStatusRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+  }
+  /**
+   * <pre>
+   * Query current VAD state (request)
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadStatusRequest}
+   */
+  public static final class VadStatusRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadStatusRequest)
+      VadStatusRequestOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadStatusRequest.class.getName());
+    }
+    // Use VadStatusRequest.newBuilder() to construct.
+    private VadStatusRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadStatusRequest() {
+      msgId_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatusRequest_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatusRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadStatusRequest.class, mentraos.ble.MentraosBle.VadStatusRequest.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadStatusRequest)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadStatusRequest other = (mentraos.ble.MentraosBle.VadStatusRequest) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadStatusRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadStatusRequest prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Query current VAD state (request)
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadStatusRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadStatusRequest)
+        mentraos.ble.MentraosBle.VadStatusRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatusRequest_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatusRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadStatusRequest.class, mentraos.ble.MentraosBle.VadStatusRequest.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadStatusRequest.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatusRequest_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusRequest getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusRequest build() {
+        mentraos.ble.MentraosBle.VadStatusRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatusRequest buildPartial() {
+        mentraos.ble.MentraosBle.VadStatusRequest result = new mentraos.ble.MentraosBle.VadStatusRequest(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadStatusRequest result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadStatusRequest) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadStatusRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadStatusRequest other) {
+        if (other == mentraos.ble.MentraosBle.VadStatusRequest.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadStatusRequest)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadStatusRequest)
+    private static final mentraos.ble.MentraosBle.VadStatusRequest DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadStatusRequest();
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatusRequest getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadStatusRequest>
+        PARSER = new com.google.protobuf.AbstractParser<VadStatusRequest>() {
+      @java.lang.Override
+      public VadStatusRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadStatusRequest> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadStatusRequest> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatusRequest getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VadStatusOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VadStatus)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <code>bool enabled = 2;</code>
+     * @return The enabled.
+     */
+    boolean getEnabled();
+
+    /**
+     * <pre>
+     * 0-100
+     * </pre>
+     *
+     * <code>uint32 sensitivity = 3;</code>
+     * @return The sensitivity.
+     */
+    int getSensitivity();
+  }
+  /**
+   * <pre>
+   * Current VAD state (response)
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VadStatus}
+   */
+  public static final class VadStatus extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VadStatus)
+      VadStatusOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VadStatus.class.getName());
+    }
+    // Use VadStatus.newBuilder() to construct.
+    private VadStatus(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VadStatus() {
+      msgId_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatus_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatus_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VadStatus.class, mentraos.ble.MentraosBle.VadStatus.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int ENABLED_FIELD_NUMBER = 2;
+    private boolean enabled_ = false;
+    /**
+     * <code>bool enabled = 2;</code>
+     * @return The enabled.
+     */
+    @java.lang.Override
+    public boolean getEnabled() {
+      return enabled_;
+    }
+
+    public static final int SENSITIVITY_FIELD_NUMBER = 3;
+    private int sensitivity_ = 0;
+    /**
+     * <pre>
+     * 0-100
+     * </pre>
+     *
+     * <code>uint32 sensitivity = 3;</code>
+     * @return The sensitivity.
+     */
+    @java.lang.Override
+    public int getSensitivity() {
+      return sensitivity_;
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (enabled_ != false) {
+        output.writeBool(2, enabled_);
+      }
+      if (sensitivity_ != 0) {
+        output.writeUInt32(3, sensitivity_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (enabled_ != false) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(2, enabled_);
+      }
+      if (sensitivity_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(3, sensitivity_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VadStatus)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VadStatus other = (mentraos.ble.MentraosBle.VadStatus) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getEnabled()
+          != other.getEnabled()) return false;
+      if (getSensitivity()
+          != other.getSensitivity()) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + ENABLED_FIELD_NUMBER;
+      hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
+          getEnabled());
+      hash = (37 * hash) + SENSITIVITY_FIELD_NUMBER;
+      hash = (53 * hash) + getSensitivity();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatus parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatus parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VadStatus parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VadStatus prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * Current VAD state (response)
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VadStatus}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VadStatus)
+        mentraos.ble.MentraosBle.VadStatusOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatus_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatus_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VadStatus.class, mentraos.ble.MentraosBle.VadStatus.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VadStatus.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        enabled_ = false;
+        sensitivity_ = 0;
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VadStatus_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatus getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VadStatus.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatus build() {
+        mentraos.ble.MentraosBle.VadStatus result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VadStatus buildPartial() {
+        mentraos.ble.MentraosBle.VadStatus result = new mentraos.ble.MentraosBle.VadStatus(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VadStatus result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.enabled_ = enabled_;
+        }
+        if (((from_bitField0_ & 0x00000004) != 0)) {
+          result.sensitivity_ = sensitivity_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VadStatus) {
+          return mergeFrom((mentraos.ble.MentraosBle.VadStatus)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VadStatus other) {
+        if (other == mentraos.ble.MentraosBle.VadStatus.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getEnabled() != false) {
+          setEnabled(other.getEnabled());
+        }
+        if (other.getSensitivity() != 0) {
+          setSensitivity(other.getSensitivity());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                enabled_ = input.readBool();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              case 24: {
+                sensitivity_ = input.readUInt32();
+                bitField0_ |= 0x00000004;
+                break;
+              } // case 24
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private boolean enabled_ ;
+      /**
+       * <code>bool enabled = 2;</code>
+       * @return The enabled.
+       */
+      @java.lang.Override
+      public boolean getEnabled() {
+        return enabled_;
+      }
+      /**
+       * <code>bool enabled = 2;</code>
+       * @param value The enabled to set.
+       * @return This builder for chaining.
+       */
+      public Builder setEnabled(boolean value) {
+
+        enabled_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>bool enabled = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearEnabled() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        enabled_ = false;
+        onChanged();
+        return this;
+      }
+
+      private int sensitivity_ ;
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 3;</code>
+       * @return The sensitivity.
+       */
+      @java.lang.Override
+      public int getSensitivity() {
+        return sensitivity_;
+      }
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 3;</code>
+       * @param value The sensitivity to set.
+       * @return This builder for chaining.
+       */
+      public Builder setSensitivity(int value) {
+
+        sensitivity_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * 0-100
+       * </pre>
+       *
+       * <code>uint32 sensitivity = 3;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearSensitivity() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        sensitivity_ = 0;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VadStatus)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VadStatus)
+    private static final mentraos.ble.MentraosBle.VadStatus DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VadStatus();
+    }
+
+    public static mentraos.ble.MentraosBle.VadStatus getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VadStatus>
+        PARSER = new com.google.protobuf.AbstractParser<VadStatus>() {
+      @java.lang.Override
+      public VadStatus parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VadStatus> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VadStatus> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VadStatus getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
@@ -26546,7 +30761,7 @@ public final class MentraosBle {
 
     /**
      * <pre>
-     * Text box Y position  
+     * Text box Y position
      * </pre>
      *
      * <code>uint32 y = 4;</code>
@@ -27005,7 +31220,7 @@ public final class MentraosBle {
     private int y_ = 0;
     /**
      * <pre>
-     * Text box Y position  
+     * Text box Y position
      * </pre>
      *
      * <code>uint32 y = 4;</code>
@@ -27847,7 +32062,7 @@ public final class MentraosBle {
       private int y_ ;
       /**
        * <pre>
-       * Text box Y position  
+       * Text box Y position
        * </pre>
        *
        * <code>uint32 y = 4;</code>
@@ -27859,7 +32074,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Text box Y position  
+       * Text box Y position
        * </pre>
        *
        * <code>uint32 y = 4;</code>
@@ -27875,7 +32090,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Text box Y position  
+       * Text box Y position
        * </pre>
        *
        * <code>uint32 y = 4;</code>
@@ -46928,20 +51143,40 @@ public final class MentraosBle {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_mentraos_ble_MicStateConfig_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_mentraos_ble_VadEnabledConfig_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_mentraos_ble_VadEnabledConfig_fieldAccessorTable;
-  private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_mentraos_ble_VadConfig_descriptor;
-  private static final 
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_mentraos_ble_VadConfig_fieldAccessorTable;
-  private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_mentraos_ble_VadEvent_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_mentraos_ble_VadEvent_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadEnabledRequest_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadEnabledRequest_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadEnabledResponse_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadEnabledResponse_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadConfigRequest_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadConfigRequest_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadConfigResponse_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadConfigResponse_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadStatusRequest_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadStatusRequest_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VadStatus_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VadStatus_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_mentraos_ble_DisplayText_descriptor;
   private static final 
@@ -47132,7 +51367,7 @@ public final class MentraosBle {
   static {
     java.lang.String[] descriptorData = {
       "\n\035mcu_client/mentraos_ble.proto\022\014mentrao" +
-      "s.ble\"\210\021\n\016PhoneToGlasses\022\016\n\006msg_id\030\001 \001(\t" +
+      "s.ble\"\326\021\n\016PhoneToGlasses\022\016\n\006msg_id\030\001 \001(\t" +
       "\0225\n\ndisconnect\030\n \001(\0132\037.mentraos.ble.Disc" +
       "onnectRequestH\000\022:\n\rbattery_state\030\013 \001(\0132!" +
       ".mentraos.ble.BatteryStateRequestH\000\0228\n\014g" +
@@ -47144,176 +51379,189 @@ public final class MentraosBle {
       "traos.ble.HeadUpAngleConfigH\000\022*\n\004pong\030\020 " +
       "\001(\0132\032.mentraos.ble.PongResponseH\000\0221\n\tmic" +
       "_state\030\024 \001(\0132\034.mentraos.ble.MicStateConf" +
-      "igH\000\0225\n\013vad_enabled\030\025 \001(\0132\036.mentraos.ble" +
-      ".VadEnabledConfigH\000\022-\n\nvad_config\030\026 \001(\0132" +
-      "\027.mentraos.ble.VadConfigH\000\0221\n\014display_te" +
-      "xt\030\036 \001(\0132\031.mentraos.ble.DisplayTextH\000\0223\n" +
-      "\rdisplay_image\030\037 \001(\0132\032.mentraos.ble.Disp" +
-      "layImageH\000\022/\n\013cache_image\030  \001(\0132\030.mentra" +
-      "os.ble.CacheImageH\000\022@\n\024display_cached_im" +
-      "age\030! \001(\0132 .mentraos.ble.DisplayCachedIm" +
-      "ageH\000\022<\n\022clear_cached_image\030\" \001(\0132\036.ment" +
-      "raos.ble.ClearCachedImageH\000\022D\n\026display_s" +
-      "crolling_text\030# \001(\0132\".mentraos.ble.Displ" +
-      "ayScrollingTextH\000\022+\n\tdraw_line\030( \001(\0132\026.m" +
-      "entraos.ble.DrawLineH\000\022+\n\tdraw_rect\030) \001(" +
-      "\0132\026.mentraos.ble.DrawRectH\000\022/\n\013draw_circ" +
-      "le\030* \001(\0132\030.mentraos.ble.DrawCircleH\000\0223\n\r" +
-      "display_batch\0304 \001(\0132\032.mentraos.ble.Displ" +
-      "ayBatchH\000\022-\n\006commit\030+ \001(\0132\033.mentraos.ble" +
-      ".CommitDisplayH\000\0229\n\rdisplay_power\030$ \001(\0132" +
-      " .mentraos.ble.DisplayPowerConfigH\000\0224\n\nb" +
-      "rightness\030% \001(\0132\036.mentraos.ble.Brightnes" +
-      "sConfigH\000\022=\n\017auto_brightness\030& \001(\0132\".men" +
-      "traos.ble.AutoBrightnessConfigH\000\022F\n\024auto" +
-      "_brightness_mult\030\' \001(\0132&.mentraos.ble.Au" +
-      "toBrightnessMultiplierH\000\022?\n\020display_dist" +
-      "ance\030, \001(\0132#.mentraos.ble.DisplayDistanc" +
-      "eConfigH\000\022;\n\016display_height\030- \001(\0132!.ment" +
-      "raos.ble.DisplayHeightConfigH\000\0223\n\rclear_" +
-      "display\030. \001(\0132\032.mentraos.ble.ClearDispla" +
-      "yH\000\022@\n\024queue_status_request\0303 \001(\0132 .ment" +
-      "raos.ble.DisplayQueueStatusH\000\0227\n\017cache_d" +
-      "ashboard\030/ \001(\0132\034.mentraos.ble.CacheDashb" +
-      "oardH\000\0227\n\017clear_dashboard\0300 \001(\0132\034.mentra" +
-      "os.ble.ClearDashboardH\000\022D\n\021dashboard_tri" +
-      "gger\0301 \001(\0132\'.mentraos.ble.ConfigureDashb" +
-      "oardTriggerH\000\0225\n\013imu_enabled\0307 \001(\0132\036.men" +
-      "traos.ble.ImuEnabledConfigH\000\0224\n\nimu_sing" +
-      "le\0308 \001(\0132\036.mentraos.ble.ImuSingleRequest" +
-      "H\000\0223\n\nimu_stream\0309 \001(\0132\035.mentraos.ble.Im" +
-      "uStreamConfigH\000\0227\n\014head_gesture\030: \001(\0132\037." +
-      "mentraos.ble.HeadGestureConfigH\000\022/\n\007rest" +
-      "art\030< \001(\0132\034.mentraos.ble.RestartRequestH" +
-      "\000\022:\n\rfactory_reset\030= \001(\0132!.mentraos.ble." +
-      "FactoryResetRequestH\000B\t\n\007payload\"\327\005\n\016Gla" +
-      "ssesToPhone\0225\n\016battery_status\030\n \001(\0132\033.me" +
-      "ntraos.ble.BatteryStatusH\000\0225\n\016charging_s" +
-      "tate\030\013 \001(\0132\033.mentraos.ble.ChargingStateH" +
-      "\000\022/\n\013device_info\030\014 \001(\0132\030.mentraos.ble.De" +
-      "viceInfoH\000\0223\n\rhead_position\030\r \001(\0132\032.ment" +
-      "raos.ble.HeadPositionH\000\022>\n\021head_up_angle" +
-      "_set\030\016 \001(\0132!.mentraos.ble.HeadUpAngleRes" +
-      "ponseH\000\022)\n\004ping\030\017 \001(\0132\031.mentraos.ble.Pin" +
-      "gRequestH\000\022+\n\tvad_event\030\024 \001(\0132\026.mentraos" +
-      ".ble.VadEventH\000\022F\n\027image_transfer_comple" +
-      "te\030\036 \001(\0132#.mentraos.ble.ImageTransferCom" +
-      "pleteH\000\022<\n\022display_queue_info\030\037 \001(\0132\036.me" +
-      "ntraos.ble.DisplayQueueInfoH\000\022)\n\010imu_dat" +
-      "a\030( \001(\0132\025.mentraos.ble.ImuDataH\000\0221\n\014butt" +
-      "on_event\030) \001(\0132\031.mentraos.ble.ButtonEven" +
-      "tH\000\0221\n\014head_gesture\030* \001(\0132\031.mentraos.ble" +
-      ".HeadGestureH\000\0227\n\017dashboard_shown\030+ \001(\0132" +
-      "\034.mentraos.ble.DashboardShownH\000B\t\n\007paylo" +
-      "ad\"\023\n\021DisconnectRequest\"\025\n\023BatteryStateR" +
-      "equest\"0\n\rBatteryStatus\022\r\n\005level\030\001 \001(\r\022\020" +
-      "\n\010charging\030\002 \001(\010\"j\n\rChargingState\0220\n\005sta" +
-      "te\030\001 \001(\0162!.mentraos.ble.ChargingState.St" +
-      "ate\"\'\n\005State\022\020\n\014NOT_CHARGING\020\000\022\014\n\010CHARGI" +
-      "NG\020\001\"\024\n\022GlassesInfoRequest\"b\n\nDeviceInfo" +
-      "\022\022\n\nfw_version\030\001 \001(\t\022\020\n\010hw_model\030\002 \001(\t\022." +
-      "\n\010features\030\003 \001(\0132\034.mentraos.ble.DeviceFe" +
-      "atures\"\242\001\n\016DeviceFeatures\022\016\n\006camera\030\001 \001(" +
-      "\010\022\017\n\007display\030\002 \001(\010\022\020\n\010audio_tx\030\003 \001(\010\022\020\n\010" +
-      "audio_rx\030\004 \001(\010\022\013\n\003imu\030\005 \001(\010\022\013\n\003vad\030\006 \001(\010" +
-      "\022\025\n\rmic_switching\030\007 \001(\010\022\032\n\022image_chunk_b" +
-      "uffer\030\010 \001(\r\"\024\n\022PairingModeRequest\"\025\n\023Hea" +
-      "dPositionRequest\"\035\n\014HeadPosition\022\r\n\005angl" +
-      "e\030\001 \001(\005\"\"\n\021HeadUpAngleConfig\022\r\n\005angle\030\001 " +
-      "\001(\r\"&\n\023HeadUpAngleResponse\022\017\n\007success\030\001 " +
-      "\001(\010\"\035\n\013PingRequest\022\016\n\006msg_id\030\001 \001(\t\"\016\n\014Po" +
-      "ngResponse\"!\n\016MicStateConfig\022\017\n\007enabled\030" +
-      "\001 \001(\010\"#\n\020VadEnabledConfig\022\017\n\007enabled\030\001 \001" +
-      "(\010\" \n\tVadConfig\022\023\n\013sensitivity\030\001 \001(\r\"Z\n\010" +
-      "VadEvent\022+\n\005state\030\001 \001(\0162\034.mentraos.ble.V" +
-      "adEvent.State\"!\n\005State\022\014\n\010INACTIVE\020\000\022\n\n\006" +
-      "ACTIVE\020\001\"\240\001\n\013DisplayText\022\014\n\004text\030\001 \001(\t\022\r" +
-      "\n\005color\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\0220\n\004s" +
-      "ize\030\005 \001(\0162\".mentraos.ble.DisplayText.Fon" +
-      "tSize\",\n\010FontSize\022\t\n\005SMALL\020\000\022\n\n\006MEDIUM\020\001" +
-      "\022\t\n\005LARGE\020\002\"~\n\014DisplayImage\022\021\n\tstream_id" +
-      "\030\001 \001(\t\022\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 \001(\r\022\r\n\005width\030\004 " +
-      "\001(\r\022\016\n\006height\030\005 \001(\r\022\020\n\010encoding\030\006 \001(\t\022\024\n" +
-      "\014total_chunks\030\007 \001(\r\"x\n\nCacheImage\022\021\n\tstr" +
-      "eam_id\030\001 \001(\t\022\020\n\010image_id\030\002 \001(\r\022\r\n\005width\030" +
-      "\003 \001(\r\022\016\n\006height\030\004 \001(\r\022\020\n\010encoding\030\005 \001(\t\022" +
-      "\024\n\014total_chunks\030\006 \001(\r\"[\n\022DisplayCachedIm" +
-      "age\022\020\n\010image_id\030\001 \001(\r\022\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 " +
-      "\001(\r\022\r\n\005width\030\004 \001(\r\022\016\n\006height\030\005 \001(\r\"$\n\020Cl" +
-      "earCachedImage\022\020\n\010image_id\030\001 \001(\r\"\201\003\n\024Dis" +
-      "playScrollingText\022\014\n\004text\030\001 \001(\t\022\r\n\005color" +
-      "\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 " +
-      "\001(\r\022\016\n\006height\030\006 \001(\r\022;\n\005align\030\007 \001(\0162,.men" +
-      "traos.ble.DisplayScrollingText.Alignment" +
-      "\022\024\n\014line_spacing\030\010 \001(\r\022\r\n\005speed\030\t \001(\r\0229\n" +
-      "\004size\030\n \001(\0162+.mentraos.ble.DisplayScroll" +
-      "ingText.FontSize\022\014\n\004loop\030\013 \001(\010\022\020\n\010pause_" +
-      "ms\030\014 \001(\r\",\n\tAlignment\022\010\n\004LEFT\020\000\022\n\n\006CENTE" +
-      "R\020\001\022\t\n\005RIGHT\020\002\",\n\010FontSize\022\t\n\005SMALL\020\000\022\n\n" +
-      "\006MEDIUM\020\001\022\t\n\005LARGE\020\002\" \n\022DisplayPowerConf" +
-      "ig\022\n\n\002on\030\001 \001(\010\"!\n\020BrightnessConfig\022\r\n\005va" +
-      "lue\030\001 \001(\r\"\'\n\024AutoBrightnessConfig\022\017\n\007ena" +
-      "bled\030\001 \001(\010\".\n\030AutoBrightnessMultiplier\022\022" +
-      "\n\nmultiplier\030\001 \001(\002\"Y\n\010DrawLine\022\r\n\005color\030" +
-      "\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\n\n\002x1\030\003 \001(\r\022\n\n\002y1\030" +
-      "\004 \001(\r\022\n\n\002x2\030\005 \001(\r\022\n\n\002y2\030\006 \001(\r\"^\n\010DrawRec" +
-      "t\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\t\n\001x\030\003 " +
-      "\001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 \001(\r\022\016\n\006height\030" +
-      "\006 \001(\r\"Q\n\nDrawCircle\022\r\n\005color\030\001 \001(\r\022\016\n\006st" +
-      "roke\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\016\n\006radi" +
-      "us\030\005 \001(\r\"\210\003\n\014DisplayBatch\022;\n\010commands\030\001 " +
-      "\003(\0132).mentraos.ble.DisplayBatch.DisplayC" +
-      "ommand\032\272\002\n\016DisplayCommand\022)\n\004text\030\001 \001(\0132" +
-      "\031.mentraos.ble.DisplayTextH\000\0228\n\014cached_i" +
-      "mage\030\002 \001(\0132 .mentraos.ble.DisplayCachedI" +
-      "mageH\000\022&\n\004line\030\003 \001(\0132\026.mentraos.ble.Draw" +
-      "LineH\000\022&\n\004rect\030\004 \001(\0132\026.mentraos.ble.Draw" +
-      "RectH\000\022*\n\006circle\030\005 \001(\0132\030.mentraos.ble.Dr" +
-      "awCircleH\000\022<\n\016scrolling_text\030\006 \001(\0132\".men" +
-      "traos.ble.DisplayScrollingTextH\000B\t\n\007comm" +
-      "and\"%\n\rCommitDisplay\022\024\n\014clear_before\030\001 \001" +
-      "(\010\"\016\n\014ClearDisplay\"\024\n\022DisplayQueueStatus" +
-      "\"u\n\020DisplayQueueInfo\022\027\n\017queued_commands\030" +
-      "\001 \001(\r\022\023\n\013queue_bytes\030\002 \001(\r\022\026\n\016max_queue_" +
-      "size\030\003 \001(\r\022\033\n\023last_commit_success\030\004 \001(\010\"" +
-      ",\n\025DisplayDistanceConfig\022\023\n\013distance_cm\030" +
-      "\001 \001(\r\"%\n\023DisplayHeightConfig\022\016\n\006height\030\001" +
-      " \001(\r\"\240\001\n\025ImageTransferComplete\022\021\n\tstream" +
-      "_id\030\001 \001(\t\022:\n\006status\030\002 \001(\0162*.mentraos.ble" +
-      ".ImageTransferComplete.Status\022\026\n\016missing" +
-      "_chunks\030\003 \003(\r\" \n\006Status\022\006\n\002OK\020\000\022\016\n\nINCOM" +
-      "PLETE\020\001\"#\n\020ImuEnabledConfig\022\017\n\007enabled\030\001" +
-      " \001(\010\"\022\n\020ImuSingleRequest\"\"\n\017ImuStreamCon" +
-      "fig\022\017\n\007enabled\030\001 \001(\010\"x\n\007ImuData\022$\n\005accel" +
-      "\030\001 \001(\0132\025.mentraos.ble.Vector3\022#\n\004gyro\030\002 " +
-      "\001(\0132\025.mentraos.ble.Vector3\022\"\n\003mag\030\003 \001(\0132" +
-      "\025.mentraos.ble.Vector3\"*\n\007Vector3\022\t\n\001x\030\001" +
-      " \001(\002\022\t\n\001y\030\002 \001(\002\022\t\n\001z\030\003 \001(\002\"\265\001\n\013ButtonEve" +
-      "nt\0220\n\006button\030\001 \001(\0162 .mentraos.ble.Button" +
-      "Event.Button\022.\n\005state\030\002 \001(\0162\037.mentraos.b" +
-      "le.ButtonEvent.State\")\n\006Button\022\n\n\006CENTER" +
-      "\020\000\022\010\n\004LEFT\020\001\022\t\n\005RIGHT\020\002\"\031\n\005State\022\006\n\002UP\020\000" +
-      "\022\010\n\004DOWN\020\001\"\233\001\n\013HeadGesture\0222\n\007gesture\030\001 " +
-      "\001(\0162!.mentraos.ble.HeadGesture.Gesture\"X" +
-      "\n\007Gesture\022\007\n\003NOD\020\000\022\t\n\005SHAKE\020\001\022\013\n\007HEAD_UP" +
-      "\020\002\022\r\n\tHEAD_DOWN\020\003\022\r\n\tTILT_LEFT\020\004\022\016\n\nTILT" +
-      "_RIGHT\020\005\"X\n\021HeadGestureConfig\0222\n\007gesture" +
-      "\030\001 \001(\0162!.mentraos.ble.HeadGesture.Gestur" +
-      "e\022\017\n\007enabled\030\002 \001(\010\"\020\n\016RestartRequest\"\025\n\023" +
-      "FactoryResetRequest\"Q\n\016CacheDashboard\022\024\n" +
-      "\014dashboard_id\030\001 \001(\r\022)\n\005batch\030\002 \001(\0132\032.men" +
-      "traos.ble.DisplayBatch\"&\n\016ClearDashboard" +
-      "\022\024\n\014dashboard_id\030\001 \001(\r\"\330\001\n\031ConfigureDash" +
-      "boardTrigger\022\024\n\014dashboard_id\030\001 \001(\r\022D\n\007tr" +
-      "igger\030\002 \001(\01623.mentraos.ble.ConfigureDash" +
-      "boardTrigger.TriggerType\022\023\n\013duration_ms\030" +
-      "\003 \001(\r\"J\n\013TriggerType\022\013\n\007HEAD_UP\020\000\022\r\n\tHEA" +
-      "D_DOWN\020\001\022\016\n\nBUTTON_TAP\020\002\022\017\n\013MANUAL_ONLY\020" +
-      "\003\"\230\001\n\016DashboardShown\022\024\n\014dashboard_id\030\001 \001" +
-      "(\r\022:\n\006source\030\002 \001(\0162*.mentraos.ble.Dashbo" +
-      "ardShown.TriggerSource\"4\n\rTriggerSource\022" +
-      "\013\n\007GESTURE\020\000\022\n\n\006BUTTON\020\001\022\n\n\006MANUAL\020\002b\006pr" +
-      "oto3"
+      "igH\000\022:\n\017set_vad_enabled\030\027 \001(\0132\037.mentraos" +
+      ".ble.VadEnabledRequestH\000\0228\n\016set_vad_conf" +
+      "ig\030\030 \001(\0132\036.mentraos.ble.VadConfigRequest" +
+      "H\000\022<\n\022request_vad_status\030\031 \001(\0132\036.mentrao" +
+      "s.ble.VadStatusRequestH\000\0221\n\014display_text" +
+      "\030\036 \001(\0132\031.mentraos.ble.DisplayTextH\000\0223\n\rd" +
+      "isplay_image\030\037 \001(\0132\032.mentraos.ble.Displa" +
+      "yImageH\000\022/\n\013cache_image\030  \001(\0132\030.mentraos" +
+      ".ble.CacheImageH\000\022@\n\024display_cached_imag" +
+      "e\030! \001(\0132 .mentraos.ble.DisplayCachedImag" +
+      "eH\000\022<\n\022clear_cached_image\030\" \001(\0132\036.mentra" +
+      "os.ble.ClearCachedImageH\000\022D\n\026display_scr" +
+      "olling_text\030# \001(\0132\".mentraos.ble.Display" +
+      "ScrollingTextH\000\022+\n\tdraw_line\030( \001(\0132\026.men" +
+      "traos.ble.DrawLineH\000\022+\n\tdraw_rect\030) \001(\0132" +
+      "\026.mentraos.ble.DrawRectH\000\022/\n\013draw_circle" +
+      "\030* \001(\0132\030.mentraos.ble.DrawCircleH\000\0223\n\rdi" +
+      "splay_batch\0304 \001(\0132\032.mentraos.ble.Display" +
+      "BatchH\000\022-\n\006commit\030+ \001(\0132\033.mentraos.ble.C" +
+      "ommitDisplayH\000\0229\n\rdisplay_power\030$ \001(\0132 ." +
+      "mentraos.ble.DisplayPowerConfigH\000\0224\n\nbri" +
+      "ghtness\030% \001(\0132\036.mentraos.ble.BrightnessC" +
+      "onfigH\000\022=\n\017auto_brightness\030& \001(\0132\".mentr" +
+      "aos.ble.AutoBrightnessConfigH\000\022F\n\024auto_b" +
+      "rightness_mult\030\' \001(\0132&.mentraos.ble.Auto" +
+      "BrightnessMultiplierH\000\022?\n\020display_distan" +
+      "ce\030, \001(\0132#.mentraos.ble.DisplayDistanceC" +
+      "onfigH\000\022;\n\016display_height\030- \001(\0132!.mentra" +
+      "os.ble.DisplayHeightConfigH\000\0223\n\rclear_di" +
+      "splay\030. \001(\0132\032.mentraos.ble.ClearDisplayH" +
+      "\000\022@\n\024queue_status_request\0303 \001(\0132 .mentra" +
+      "os.ble.DisplayQueueStatusH\000\0227\n\017cache_das" +
+      "hboard\030/ \001(\0132\034.mentraos.ble.CacheDashboa" +
+      "rdH\000\0227\n\017clear_dashboard\0300 \001(\0132\034.mentraos" +
+      ".ble.ClearDashboardH\000\022D\n\021dashboard_trigg" +
+      "er\0301 \001(\0132\'.mentraos.ble.ConfigureDashboa" +
+      "rdTriggerH\000\0225\n\013imu_enabled\0307 \001(\0132\036.mentr" +
+      "aos.ble.ImuEnabledConfigH\000\0224\n\nimu_single" +
+      "\0308 \001(\0132\036.mentraos.ble.ImuSingleRequestH\000" +
+      "\0223\n\nimu_stream\0309 \001(\0132\035.mentraos.ble.ImuS" +
+      "treamConfigH\000\0227\n\014head_gesture\030: \001(\0132\037.me" +
+      "ntraos.ble.HeadGestureConfigH\000\022/\n\007restar" +
+      "t\030< \001(\0132\034.mentraos.ble.RestartRequestH\000\022" +
+      ":\n\rfactory_reset\030= \001(\0132!.mentraos.ble.Fa" +
+      "ctoryResetRequestH\000B\t\n\007payload\"\376\006\n\016Glass" +
+      "esToPhone\0225\n\016battery_status\030\n \001(\0132\033.ment" +
+      "raos.ble.BatteryStatusH\000\0225\n\016charging_sta" +
+      "te\030\013 \001(\0132\033.mentraos.ble.ChargingStateH\000\022" +
+      "/\n\013device_info\030\014 \001(\0132\030.mentraos.ble.Devi" +
+      "ceInfoH\000\0223\n\rhead_position\030\r \001(\0132\032.mentra" +
+      "os.ble.HeadPositionH\000\022>\n\021head_up_angle_s" +
+      "et\030\016 \001(\0132!.mentraos.ble.HeadUpAngleRespo" +
+      "nseH\000\022)\n\004ping\030\017 \001(\0132\031.mentraos.ble.PingR" +
+      "equestH\000\022+\n\tvad_event\030\024 \001(\0132\026.mentraos.b" +
+      "le.VadEventH\000\022;\n\017vad_enabled_set\030\025 \001(\0132 " +
+      ".mentraos.ble.VadEnabledResponseH\000\0229\n\016va" +
+      "d_configured\030\026 \001(\0132\037.mentraos.ble.VadCon" +
+      "figResponseH\000\022-\n\nvad_status\030\027 \001(\0132\027.ment" +
+      "raos.ble.VadStatusH\000\022F\n\027image_transfer_c" +
+      "omplete\030\036 \001(\0132#.mentraos.ble.ImageTransf" +
+      "erCompleteH\000\022<\n\022display_queue_info\030\037 \001(\013" +
+      "2\036.mentraos.ble.DisplayQueueInfoH\000\022)\n\010im" +
+      "u_data\030( \001(\0132\025.mentraos.ble.ImuDataH\000\0221\n" +
+      "\014button_event\030) \001(\0132\031.mentraos.ble.Butto" +
+      "nEventH\000\0221\n\014head_gesture\030* \001(\0132\031.mentrao" +
+      "s.ble.HeadGestureH\000\0227\n\017dashboard_shown\030+" +
+      " \001(\0132\034.mentraos.ble.DashboardShownH\000B\t\n\007" +
+      "payload\"\023\n\021DisconnectRequest\"\025\n\023BatteryS" +
+      "tateRequest\"0\n\rBatteryStatus\022\r\n\005level\030\001 " +
+      "\001(\r\022\020\n\010charging\030\002 \001(\010\"j\n\rChargingState\0220" +
+      "\n\005state\030\001 \001(\0162!.mentraos.ble.ChargingSta" +
+      "te.State\"\'\n\005State\022\020\n\014NOT_CHARGING\020\000\022\014\n\010C" +
+      "HARGING\020\001\"\024\n\022GlassesInfoRequest\"b\n\nDevic" +
+      "eInfo\022\022\n\nfw_version\030\001 \001(\t\022\020\n\010hw_model\030\002 " +
+      "\001(\t\022.\n\010features\030\003 \001(\0132\034.mentraos.ble.Dev" +
+      "iceFeatures\"\242\001\n\016DeviceFeatures\022\016\n\006camera" +
+      "\030\001 \001(\010\022\017\n\007display\030\002 \001(\010\022\020\n\010audio_tx\030\003 \001(" +
+      "\010\022\020\n\010audio_rx\030\004 \001(\010\022\013\n\003imu\030\005 \001(\010\022\013\n\003vad\030" +
+      "\006 \001(\010\022\025\n\rmic_switching\030\007 \001(\010\022\032\n\022image_ch" +
+      "unk_buffer\030\010 \001(\r\"\024\n\022PairingModeRequest\"\025" +
+      "\n\023HeadPositionRequest\"\035\n\014HeadPosition\022\r\n" +
+      "\005angle\030\001 \001(\005\"\"\n\021HeadUpAngleConfig\022\r\n\005ang" +
+      "le\030\001 \001(\r\"&\n\023HeadUpAngleResponse\022\017\n\007succe" +
+      "ss\030\001 \001(\010\"\035\n\013PingRequest\022\016\n\006msg_id\030\001 \001(\t\"" +
+      "\016\n\014PongResponse\"!\n\016MicStateConfig\022\017\n\007ena" +
+      "bled\030\001 \001(\010\"Z\n\010VadEvent\022+\n\005state\030\001 \001(\0162\034." +
+      "mentraos.ble.VadEvent.State\"!\n\005State\022\014\n\010" +
+      "INACTIVE\020\000\022\n\n\006ACTIVE\020\001\"4\n\021VadEnabledRequ" +
+      "est\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007enabled\030\002 \001(\010\"D\n\022" +
+      "VadEnabledResponse\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007su" +
+      "ccess\030\002 \001(\010\022\r\n\005error\030\003 \001(\t\"7\n\020VadConfigR" +
+      "equest\022\016\n\006msg_id\030\001 \001(\t\022\023\n\013sensitivity\030\002 " +
+      "\001(\r\"C\n\021VadConfigResponse\022\016\n\006msg_id\030\001 \001(\t" +
+      "\022\017\n\007success\030\002 \001(\010\022\r\n\005error\030\003 \001(\t\"\"\n\020VadS" +
+      "tatusRequest\022\016\n\006msg_id\030\001 \001(\t\"A\n\tVadStatu" +
+      "s\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007enabled\030\002 \001(\010\022\023\n\013se" +
+      "nsitivity\030\003 \001(\r\"\240\001\n\013DisplayText\022\014\n\004text\030" +
+      "\001 \001(\t\022\r\n\005color\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001" +
+      "(\r\0220\n\004size\030\005 \001(\0162\".mentraos.ble.DisplayT" +
+      "ext.FontSize\",\n\010FontSize\022\t\n\005SMALL\020\000\022\n\n\006M" +
+      "EDIUM\020\001\022\t\n\005LARGE\020\002\"~\n\014DisplayImage\022\021\n\tst" +
+      "ream_id\030\001 \001(\t\022\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 \001(\r\022\r\n\005w" +
+      "idth\030\004 \001(\r\022\016\n\006height\030\005 \001(\r\022\020\n\010encoding\030\006" +
+      " \001(\t\022\024\n\014total_chunks\030\007 \001(\r\"x\n\nCacheImage" +
+      "\022\021\n\tstream_id\030\001 \001(\t\022\020\n\010image_id\030\002 \001(\r\022\r\n" +
+      "\005width\030\003 \001(\r\022\016\n\006height\030\004 \001(\r\022\020\n\010encoding" +
+      "\030\005 \001(\t\022\024\n\014total_chunks\030\006 \001(\r\"[\n\022DisplayC" +
+      "achedImage\022\020\n\010image_id\030\001 \001(\r\022\t\n\001x\030\002 \001(\r\022" +
+      "\t\n\001y\030\003 \001(\r\022\r\n\005width\030\004 \001(\r\022\016\n\006height\030\005 \001(" +
+      "\r\"$\n\020ClearCachedImage\022\020\n\010image_id\030\001 \001(\r\"" +
+      "\201\003\n\024DisplayScrollingText\022\014\n\004text\030\001 \001(\t\022\r" +
+      "\n\005color\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005w" +
+      "idth\030\005 \001(\r\022\016\n\006height\030\006 \001(\r\022;\n\005align\030\007 \001(" +
+      "\0162,.mentraos.ble.DisplayScrollingText.Al" +
+      "ignment\022\024\n\014line_spacing\030\010 \001(\r\022\r\n\005speed\030\t" +
+      " \001(\r\0229\n\004size\030\n \001(\0162+.mentraos.ble.Displa" +
+      "yScrollingText.FontSize\022\014\n\004loop\030\013 \001(\010\022\020\n" +
+      "\010pause_ms\030\014 \001(\r\",\n\tAlignment\022\010\n\004LEFT\020\000\022\n" +
+      "\n\006CENTER\020\001\022\t\n\005RIGHT\020\002\",\n\010FontSize\022\t\n\005SMA" +
+      "LL\020\000\022\n\n\006MEDIUM\020\001\022\t\n\005LARGE\020\002\" \n\022DisplayPo" +
+      "werConfig\022\n\n\002on\030\001 \001(\010\"!\n\020BrightnessConfi" +
+      "g\022\r\n\005value\030\001 \001(\r\"\'\n\024AutoBrightnessConfig" +
+      "\022\017\n\007enabled\030\001 \001(\010\".\n\030AutoBrightnessMulti" +
+      "plier\022\022\n\nmultiplier\030\001 \001(\002\"Y\n\010DrawLine\022\r\n" +
+      "\005color\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\n\n\002x1\030\003 \001(\r" +
+      "\022\n\n\002y1\030\004 \001(\r\022\n\n\002x2\030\005 \001(\r\022\n\n\002y2\030\006 \001(\r\"^\n\010" +
+      "DrawRect\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022" +
+      "\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 \001(\r\022\016\n\006" +
+      "height\030\006 \001(\r\"Q\n\nDrawCircle\022\r\n\005color\030\001 \001(" +
+      "\r\022\016\n\006stroke\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022" +
+      "\016\n\006radius\030\005 \001(\r\"\210\003\n\014DisplayBatch\022;\n\010comm" +
+      "ands\030\001 \003(\0132).mentraos.ble.DisplayBatch.D" +
+      "isplayCommand\032\272\002\n\016DisplayCommand\022)\n\004text" +
+      "\030\001 \001(\0132\031.mentraos.ble.DisplayTextH\000\0228\n\014c" +
+      "ached_image\030\002 \001(\0132 .mentraos.ble.Display" +
+      "CachedImageH\000\022&\n\004line\030\003 \001(\0132\026.mentraos.b" +
+      "le.DrawLineH\000\022&\n\004rect\030\004 \001(\0132\026.mentraos.b" +
+      "le.DrawRectH\000\022*\n\006circle\030\005 \001(\0132\030.mentraos" +
+      ".ble.DrawCircleH\000\022<\n\016scrolling_text\030\006 \001(" +
+      "\0132\".mentraos.ble.DisplayScrollingTextH\000B" +
+      "\t\n\007command\"%\n\rCommitDisplay\022\024\n\014clear_bef" +
+      "ore\030\001 \001(\010\"\016\n\014ClearDisplay\"\024\n\022DisplayQueu" +
+      "eStatus\"u\n\020DisplayQueueInfo\022\027\n\017queued_co" +
+      "mmands\030\001 \001(\r\022\023\n\013queue_bytes\030\002 \001(\r\022\026\n\016max" +
+      "_queue_size\030\003 \001(\r\022\033\n\023last_commit_success" +
+      "\030\004 \001(\010\",\n\025DisplayDistanceConfig\022\023\n\013dista" +
+      "nce_cm\030\001 \001(\r\"%\n\023DisplayHeightConfig\022\016\n\006h" +
+      "eight\030\001 \001(\r\"\240\001\n\025ImageTransferComplete\022\021\n" +
+      "\tstream_id\030\001 \001(\t\022:\n\006status\030\002 \001(\0162*.mentr" +
+      "aos.ble.ImageTransferComplete.Status\022\026\n\016" +
+      "missing_chunks\030\003 \003(\r\" \n\006Status\022\006\n\002OK\020\000\022\016" +
+      "\n\nINCOMPLETE\020\001\"#\n\020ImuEnabledConfig\022\017\n\007en" +
+      "abled\030\001 \001(\010\"\022\n\020ImuSingleRequest\"\"\n\017ImuSt" +
+      "reamConfig\022\017\n\007enabled\030\001 \001(\010\"x\n\007ImuData\022$" +
+      "\n\005accel\030\001 \001(\0132\025.mentraos.ble.Vector3\022#\n\004" +
+      "gyro\030\002 \001(\0132\025.mentraos.ble.Vector3\022\"\n\003mag" +
+      "\030\003 \001(\0132\025.mentraos.ble.Vector3\"*\n\007Vector3" +
+      "\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001(\002\022\t\n\001z\030\003 \001(\002\"\265\001\n\013Bu" +
+      "ttonEvent\0220\n\006button\030\001 \001(\0162 .mentraos.ble" +
+      ".ButtonEvent.Button\022.\n\005state\030\002 \001(\0162\037.men" +
+      "traos.ble.ButtonEvent.State\")\n\006Button\022\n\n" +
+      "\006CENTER\020\000\022\010\n\004LEFT\020\001\022\t\n\005RIGHT\020\002\"\031\n\005State\022" +
+      "\006\n\002UP\020\000\022\010\n\004DOWN\020\001\"\233\001\n\013HeadGesture\0222\n\007ges" +
+      "ture\030\001 \001(\0162!.mentraos.ble.HeadGesture.Ge" +
+      "sture\"X\n\007Gesture\022\007\n\003NOD\020\000\022\t\n\005SHAKE\020\001\022\013\n\007" +
+      "HEAD_UP\020\002\022\r\n\tHEAD_DOWN\020\003\022\r\n\tTILT_LEFT\020\004\022" +
+      "\016\n\nTILT_RIGHT\020\005\"X\n\021HeadGestureConfig\0222\n\007" +
+      "gesture\030\001 \001(\0162!.mentraos.ble.HeadGesture" +
+      ".Gesture\022\017\n\007enabled\030\002 \001(\010\"\020\n\016RestartRequ" +
+      "est\"\025\n\023FactoryResetRequest\"Q\n\016CacheDashb" +
+      "oard\022\024\n\014dashboard_id\030\001 \001(\r\022)\n\005batch\030\002 \001(" +
+      "\0132\032.mentraos.ble.DisplayBatch\"&\n\016ClearDa" +
+      "shboard\022\024\n\014dashboard_id\030\001 \001(\r\"\330\001\n\031Config" +
+      "ureDashboardTrigger\022\024\n\014dashboard_id\030\001 \001(" +
+      "\r\022D\n\007trigger\030\002 \001(\01623.mentraos.ble.Config" +
+      "ureDashboardTrigger.TriggerType\022\023\n\013durat" +
+      "ion_ms\030\003 \001(\r\"J\n\013TriggerType\022\013\n\007HEAD_UP\020\000" +
+      "\022\r\n\tHEAD_DOWN\020\001\022\016\n\nBUTTON_TAP\020\002\022\017\n\013MANUA" +
+      "L_ONLY\020\003\"\230\001\n\016DashboardShown\022\024\n\014dashboard" +
+      "_id\030\001 \001(\r\022:\n\006source\030\002 \001(\0162*.mentraos.ble" +
+      ".DashboardShown.TriggerSource\"4\n\rTrigger" +
+      "Source\022\013\n\007GESTURE\020\000\022\n\n\006BUTTON\020\001\022\n\n\006MANUA" +
+      "L\020\002b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -47324,13 +51572,13 @@ public final class MentraosBle {
     internal_static_mentraos_ble_PhoneToGlasses_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_PhoneToGlasses_descriptor,
-        new java.lang.String[] { "MsgId", "Disconnect", "BatteryState", "GlassesInfo", "PairingMode", "HeadPosition", "HeadUpAngle", "Pong", "MicState", "VadEnabled", "VadConfig", "DisplayText", "DisplayImage", "CacheImage", "DisplayCachedImage", "ClearCachedImage", "DisplayScrollingText", "DrawLine", "DrawRect", "DrawCircle", "DisplayBatch", "Commit", "DisplayPower", "Brightness", "AutoBrightness", "AutoBrightnessMult", "DisplayDistance", "DisplayHeight", "ClearDisplay", "QueueStatusRequest", "CacheDashboard", "ClearDashboard", "DashboardTrigger", "ImuEnabled", "ImuSingle", "ImuStream", "HeadGesture", "Restart", "FactoryReset", "Payload", });
+        new java.lang.String[] { "MsgId", "Disconnect", "BatteryState", "GlassesInfo", "PairingMode", "HeadPosition", "HeadUpAngle", "Pong", "MicState", "SetVadEnabled", "SetVadConfig", "RequestVadStatus", "DisplayText", "DisplayImage", "CacheImage", "DisplayCachedImage", "ClearCachedImage", "DisplayScrollingText", "DrawLine", "DrawRect", "DrawCircle", "DisplayBatch", "Commit", "DisplayPower", "Brightness", "AutoBrightness", "AutoBrightnessMult", "DisplayDistance", "DisplayHeight", "ClearDisplay", "QueueStatusRequest", "CacheDashboard", "ClearDashboard", "DashboardTrigger", "ImuEnabled", "ImuSingle", "ImuStream", "HeadGesture", "Restart", "FactoryReset", "Payload", });
     internal_static_mentraos_ble_GlassesToPhone_descriptor =
       getDescriptor().getMessageTypes().get(1);
     internal_static_mentraos_ble_GlassesToPhone_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_GlassesToPhone_descriptor,
-        new java.lang.String[] { "BatteryStatus", "ChargingState", "DeviceInfo", "HeadPosition", "HeadUpAngleSet", "Ping", "VadEvent", "ImageTransferComplete", "DisplayQueueInfo", "ImuData", "ButtonEvent", "HeadGesture", "DashboardShown", "Payload", });
+        new java.lang.String[] { "BatteryStatus", "ChargingState", "DeviceInfo", "HeadPosition", "HeadUpAngleSet", "Ping", "VadEvent", "VadEnabledSet", "VadConfigured", "VadStatus", "ImageTransferComplete", "DisplayQueueInfo", "ImuData", "ButtonEvent", "HeadGesture", "DashboardShown", "Payload", });
     internal_static_mentraos_ble_DisconnectRequest_descriptor =
       getDescriptor().getMessageTypes().get(2);
     internal_static_mentraos_ble_DisconnectRequest_fieldAccessorTable = new
@@ -47421,104 +51669,128 @@ public final class MentraosBle {
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_MicStateConfig_descriptor,
         new java.lang.String[] { "Enabled", });
-    internal_static_mentraos_ble_VadEnabledConfig_descriptor =
-      getDescriptor().getMessageTypes().get(17);
-    internal_static_mentraos_ble_VadEnabledConfig_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-        internal_static_mentraos_ble_VadEnabledConfig_descriptor,
-        new java.lang.String[] { "Enabled", });
-    internal_static_mentraos_ble_VadConfig_descriptor =
-      getDescriptor().getMessageTypes().get(18);
-    internal_static_mentraos_ble_VadConfig_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-        internal_static_mentraos_ble_VadConfig_descriptor,
-        new java.lang.String[] { "Sensitivity", });
     internal_static_mentraos_ble_VadEvent_descriptor =
-      getDescriptor().getMessageTypes().get(19);
+      getDescriptor().getMessageTypes().get(17);
     internal_static_mentraos_ble_VadEvent_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_VadEvent_descriptor,
         new java.lang.String[] { "State", });
-    internal_static_mentraos_ble_DisplayText_descriptor =
+    internal_static_mentraos_ble_VadEnabledRequest_descriptor =
+      getDescriptor().getMessageTypes().get(18);
+    internal_static_mentraos_ble_VadEnabledRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadEnabledRequest_descriptor,
+        new java.lang.String[] { "MsgId", "Enabled", });
+    internal_static_mentraos_ble_VadEnabledResponse_descriptor =
+      getDescriptor().getMessageTypes().get(19);
+    internal_static_mentraos_ble_VadEnabledResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadEnabledResponse_descriptor,
+        new java.lang.String[] { "MsgId", "Success", "Error", });
+    internal_static_mentraos_ble_VadConfigRequest_descriptor =
       getDescriptor().getMessageTypes().get(20);
+    internal_static_mentraos_ble_VadConfigRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadConfigRequest_descriptor,
+        new java.lang.String[] { "MsgId", "Sensitivity", });
+    internal_static_mentraos_ble_VadConfigResponse_descriptor =
+      getDescriptor().getMessageTypes().get(21);
+    internal_static_mentraos_ble_VadConfigResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadConfigResponse_descriptor,
+        new java.lang.String[] { "MsgId", "Success", "Error", });
+    internal_static_mentraos_ble_VadStatusRequest_descriptor =
+      getDescriptor().getMessageTypes().get(22);
+    internal_static_mentraos_ble_VadStatusRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadStatusRequest_descriptor,
+        new java.lang.String[] { "MsgId", });
+    internal_static_mentraos_ble_VadStatus_descriptor =
+      getDescriptor().getMessageTypes().get(23);
+    internal_static_mentraos_ble_VadStatus_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VadStatus_descriptor,
+        new java.lang.String[] { "MsgId", "Enabled", "Sensitivity", });
+    internal_static_mentraos_ble_DisplayText_descriptor =
+      getDescriptor().getMessageTypes().get(24);
     internal_static_mentraos_ble_DisplayText_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayText_descriptor,
         new java.lang.String[] { "Text", "Color", "X", "Y", "Size", });
     internal_static_mentraos_ble_DisplayImage_descriptor =
-      getDescriptor().getMessageTypes().get(21);
+      getDescriptor().getMessageTypes().get(25);
     internal_static_mentraos_ble_DisplayImage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayImage_descriptor,
         new java.lang.String[] { "StreamId", "X", "Y", "Width", "Height", "Encoding", "TotalChunks", });
     internal_static_mentraos_ble_CacheImage_descriptor =
-      getDescriptor().getMessageTypes().get(22);
+      getDescriptor().getMessageTypes().get(26);
     internal_static_mentraos_ble_CacheImage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_CacheImage_descriptor,
         new java.lang.String[] { "StreamId", "ImageId", "Width", "Height", "Encoding", "TotalChunks", });
     internal_static_mentraos_ble_DisplayCachedImage_descriptor =
-      getDescriptor().getMessageTypes().get(23);
+      getDescriptor().getMessageTypes().get(27);
     internal_static_mentraos_ble_DisplayCachedImage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayCachedImage_descriptor,
         new java.lang.String[] { "ImageId", "X", "Y", "Width", "Height", });
     internal_static_mentraos_ble_ClearCachedImage_descriptor =
-      getDescriptor().getMessageTypes().get(24);
+      getDescriptor().getMessageTypes().get(28);
     internal_static_mentraos_ble_ClearCachedImage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ClearCachedImage_descriptor,
         new java.lang.String[] { "ImageId", });
     internal_static_mentraos_ble_DisplayScrollingText_descriptor =
-      getDescriptor().getMessageTypes().get(25);
+      getDescriptor().getMessageTypes().get(29);
     internal_static_mentraos_ble_DisplayScrollingText_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayScrollingText_descriptor,
         new java.lang.String[] { "Text", "Color", "X", "Y", "Width", "Height", "Align", "LineSpacing", "Speed", "Size", "Loop", "PauseMs", });
     internal_static_mentraos_ble_DisplayPowerConfig_descriptor =
-      getDescriptor().getMessageTypes().get(26);
+      getDescriptor().getMessageTypes().get(30);
     internal_static_mentraos_ble_DisplayPowerConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayPowerConfig_descriptor,
         new java.lang.String[] { "On", });
     internal_static_mentraos_ble_BrightnessConfig_descriptor =
-      getDescriptor().getMessageTypes().get(27);
+      getDescriptor().getMessageTypes().get(31);
     internal_static_mentraos_ble_BrightnessConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_BrightnessConfig_descriptor,
         new java.lang.String[] { "Value", });
     internal_static_mentraos_ble_AutoBrightnessConfig_descriptor =
-      getDescriptor().getMessageTypes().get(28);
+      getDescriptor().getMessageTypes().get(32);
     internal_static_mentraos_ble_AutoBrightnessConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_AutoBrightnessConfig_descriptor,
         new java.lang.String[] { "Enabled", });
     internal_static_mentraos_ble_AutoBrightnessMultiplier_descriptor =
-      getDescriptor().getMessageTypes().get(29);
+      getDescriptor().getMessageTypes().get(33);
     internal_static_mentraos_ble_AutoBrightnessMultiplier_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_AutoBrightnessMultiplier_descriptor,
         new java.lang.String[] { "Multiplier", });
     internal_static_mentraos_ble_DrawLine_descriptor =
-      getDescriptor().getMessageTypes().get(30);
+      getDescriptor().getMessageTypes().get(34);
     internal_static_mentraos_ble_DrawLine_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DrawLine_descriptor,
         new java.lang.String[] { "Color", "Stroke", "X1", "Y1", "X2", "Y2", });
     internal_static_mentraos_ble_DrawRect_descriptor =
-      getDescriptor().getMessageTypes().get(31);
+      getDescriptor().getMessageTypes().get(35);
     internal_static_mentraos_ble_DrawRect_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DrawRect_descriptor,
         new java.lang.String[] { "Color", "Stroke", "X", "Y", "Width", "Height", });
     internal_static_mentraos_ble_DrawCircle_descriptor =
-      getDescriptor().getMessageTypes().get(32);
+      getDescriptor().getMessageTypes().get(36);
     internal_static_mentraos_ble_DrawCircle_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DrawCircle_descriptor,
         new java.lang.String[] { "Color", "Stroke", "X", "Y", "Radius", });
     internal_static_mentraos_ble_DisplayBatch_descriptor =
-      getDescriptor().getMessageTypes().get(33);
+      getDescriptor().getMessageTypes().get(37);
     internal_static_mentraos_ble_DisplayBatch_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayBatch_descriptor,
@@ -47530,127 +51802,127 @@ public final class MentraosBle {
         internal_static_mentraos_ble_DisplayBatch_DisplayCommand_descriptor,
         new java.lang.String[] { "Text", "CachedImage", "Line", "Rect", "Circle", "ScrollingText", "Command", });
     internal_static_mentraos_ble_CommitDisplay_descriptor =
-      getDescriptor().getMessageTypes().get(34);
+      getDescriptor().getMessageTypes().get(38);
     internal_static_mentraos_ble_CommitDisplay_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_CommitDisplay_descriptor,
         new java.lang.String[] { "ClearBefore", });
     internal_static_mentraos_ble_ClearDisplay_descriptor =
-      getDescriptor().getMessageTypes().get(35);
+      getDescriptor().getMessageTypes().get(39);
     internal_static_mentraos_ble_ClearDisplay_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ClearDisplay_descriptor,
         new java.lang.String[] { });
     internal_static_mentraos_ble_DisplayQueueStatus_descriptor =
-      getDescriptor().getMessageTypes().get(36);
+      getDescriptor().getMessageTypes().get(40);
     internal_static_mentraos_ble_DisplayQueueStatus_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayQueueStatus_descriptor,
         new java.lang.String[] { });
     internal_static_mentraos_ble_DisplayQueueInfo_descriptor =
-      getDescriptor().getMessageTypes().get(37);
+      getDescriptor().getMessageTypes().get(41);
     internal_static_mentraos_ble_DisplayQueueInfo_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayQueueInfo_descriptor,
         new java.lang.String[] { "QueuedCommands", "QueueBytes", "MaxQueueSize", "LastCommitSuccess", });
     internal_static_mentraos_ble_DisplayDistanceConfig_descriptor =
-      getDescriptor().getMessageTypes().get(38);
+      getDescriptor().getMessageTypes().get(42);
     internal_static_mentraos_ble_DisplayDistanceConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayDistanceConfig_descriptor,
         new java.lang.String[] { "DistanceCm", });
     internal_static_mentraos_ble_DisplayHeightConfig_descriptor =
-      getDescriptor().getMessageTypes().get(39);
+      getDescriptor().getMessageTypes().get(43);
     internal_static_mentraos_ble_DisplayHeightConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DisplayHeightConfig_descriptor,
         new java.lang.String[] { "Height", });
     internal_static_mentraos_ble_ImageTransferComplete_descriptor =
-      getDescriptor().getMessageTypes().get(40);
+      getDescriptor().getMessageTypes().get(44);
     internal_static_mentraos_ble_ImageTransferComplete_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ImageTransferComplete_descriptor,
         new java.lang.String[] { "StreamId", "Status", "MissingChunks", });
     internal_static_mentraos_ble_ImuEnabledConfig_descriptor =
-      getDescriptor().getMessageTypes().get(41);
+      getDescriptor().getMessageTypes().get(45);
     internal_static_mentraos_ble_ImuEnabledConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ImuEnabledConfig_descriptor,
         new java.lang.String[] { "Enabled", });
     internal_static_mentraos_ble_ImuSingleRequest_descriptor =
-      getDescriptor().getMessageTypes().get(42);
+      getDescriptor().getMessageTypes().get(46);
     internal_static_mentraos_ble_ImuSingleRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ImuSingleRequest_descriptor,
         new java.lang.String[] { });
     internal_static_mentraos_ble_ImuStreamConfig_descriptor =
-      getDescriptor().getMessageTypes().get(43);
+      getDescriptor().getMessageTypes().get(47);
     internal_static_mentraos_ble_ImuStreamConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ImuStreamConfig_descriptor,
         new java.lang.String[] { "Enabled", });
     internal_static_mentraos_ble_ImuData_descriptor =
-      getDescriptor().getMessageTypes().get(44);
+      getDescriptor().getMessageTypes().get(48);
     internal_static_mentraos_ble_ImuData_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ImuData_descriptor,
         new java.lang.String[] { "Accel", "Gyro", "Mag", });
     internal_static_mentraos_ble_Vector3_descriptor =
-      getDescriptor().getMessageTypes().get(45);
+      getDescriptor().getMessageTypes().get(49);
     internal_static_mentraos_ble_Vector3_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_Vector3_descriptor,
         new java.lang.String[] { "X", "Y", "Z", });
     internal_static_mentraos_ble_ButtonEvent_descriptor =
-      getDescriptor().getMessageTypes().get(46);
+      getDescriptor().getMessageTypes().get(50);
     internal_static_mentraos_ble_ButtonEvent_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ButtonEvent_descriptor,
         new java.lang.String[] { "Button", "State", });
     internal_static_mentraos_ble_HeadGesture_descriptor =
-      getDescriptor().getMessageTypes().get(47);
+      getDescriptor().getMessageTypes().get(51);
     internal_static_mentraos_ble_HeadGesture_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_HeadGesture_descriptor,
         new java.lang.String[] { "Gesture", });
     internal_static_mentraos_ble_HeadGestureConfig_descriptor =
-      getDescriptor().getMessageTypes().get(48);
+      getDescriptor().getMessageTypes().get(52);
     internal_static_mentraos_ble_HeadGestureConfig_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_HeadGestureConfig_descriptor,
         new java.lang.String[] { "Gesture", "Enabled", });
     internal_static_mentraos_ble_RestartRequest_descriptor =
-      getDescriptor().getMessageTypes().get(49);
+      getDescriptor().getMessageTypes().get(53);
     internal_static_mentraos_ble_RestartRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_RestartRequest_descriptor,
         new java.lang.String[] { });
     internal_static_mentraos_ble_FactoryResetRequest_descriptor =
-      getDescriptor().getMessageTypes().get(50);
+      getDescriptor().getMessageTypes().get(54);
     internal_static_mentraos_ble_FactoryResetRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_FactoryResetRequest_descriptor,
         new java.lang.String[] { });
     internal_static_mentraos_ble_CacheDashboard_descriptor =
-      getDescriptor().getMessageTypes().get(51);
+      getDescriptor().getMessageTypes().get(55);
     internal_static_mentraos_ble_CacheDashboard_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_CacheDashboard_descriptor,
         new java.lang.String[] { "DashboardId", "Batch", });
     internal_static_mentraos_ble_ClearDashboard_descriptor =
-      getDescriptor().getMessageTypes().get(52);
+      getDescriptor().getMessageTypes().get(56);
     internal_static_mentraos_ble_ClearDashboard_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ClearDashboard_descriptor,
         new java.lang.String[] { "DashboardId", });
     internal_static_mentraos_ble_ConfigureDashboardTrigger_descriptor =
-      getDescriptor().getMessageTypes().get(53);
+      getDescriptor().getMessageTypes().get(57);
     internal_static_mentraos_ble_ConfigureDashboardTrigger_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_ConfigureDashboardTrigger_descriptor,
         new java.lang.String[] { "DashboardId", "Trigger", "DurationMs", });
     internal_static_mentraos_ble_DashboardShown_descriptor =
-      getDescriptor().getMessageTypes().get(54);
+      getDescriptor().getMessageTypes().get(58);
     internal_static_mentraos_ble_DashboardShown_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DashboardShown_descriptor,
