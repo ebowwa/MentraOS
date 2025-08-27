@@ -10,6 +10,8 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
+		2022999C2E5D85AB004198FB /* MentraNexSGC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2022999B2E5D85AB004198FB /* MentraNexSGC.swift */; };
+		202299A22E5D86D6004198FB /* mentraos_ble.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 202299A12E5D86D6004198FB /* mentraos_ble.pb.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
 		6D9355E72E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */; };
@@ -81,6 +83,8 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AOS/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = AOS/main.m; sourceTree = "<group>"; };
 		14C4353E097941A5AC9B6A09 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "AOS/noop-file.swift"; sourceTree = "<group>"; };
+		2022999B2E5D85AB004198FB /* MentraNexSGC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraNexSGC.swift; sourceTree = "<group>"; };
+		202299A12E5D86D6004198FB /* mentraos_ble.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mentraos_ble.pb.swift; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
@@ -284,6 +288,8 @@
 		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				202299A12E5D86D6004198FB /* mentraos_ble.pb.swift */,
+				2022999B2E5D85AB004198FB /* MentraNexSGC.swift */,
 				CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */,
 				6DFC99682E33FA9400611B81 /* SpeechRequiredDataType.swift */,
 				6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */,
@@ -624,6 +630,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SWCompression/SWCompression.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/Sentry/Sentry.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/SwiftProtobuf/SwiftProtobuf.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/glog/glog_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/react-native-image-picker/RNImagePickerPrivacyInfo.bundle",
@@ -645,6 +652,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SWCompression.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Sentry.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SwiftProtobuf.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/boost_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/glog_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNImagePickerPrivacyInfo.bundle",
@@ -692,6 +700,7 @@
 				C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */,
 				C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */,
 				C5DE984A2DDD0F420032FC99 /* ltpf.c in Sources */,
+				2022999C2E5D85AB004198FB /* MentraNexSGC.swift in Sources */,
 				C5DE984B2DDD0F420032FC99 /* tns.c in Sources */,
 				C5DE984C2DDD0F420032FC99 /* FrameSize.swift in Sources */,
 				C5DE984D2DDD0F420032FC99 /* VADStrategy.swift in Sources */,
@@ -709,6 +718,7 @@
 				C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */,
 				C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */,
 				C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */,
+				202299A22E5D86D6004198FB /* mentraos_ble.pb.swift in Sources */,
 				C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */,
 				C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */,
 				C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */,
@@ -739,7 +749,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = AOS/AOS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5XXXL6N36;
+				DEVELOPMENT_TEAM = 2WA8MDT58K;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -880,7 +890,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
+				PRODUCT_BUNDLE_IDENTIFIER = test.mentra.mentra;
 				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -902,7 +912,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = AOS/AOS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = T5XXXL6N36;
+				DEVELOPMENT_TEAM = 2WA8MDT58K;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/universal\"",
@@ -1038,7 +1048,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
+				PRODUCT_BUNDLE_IDENTIFIER = test.mentra.mentra;
 				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -1107,10 +1117,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -1166,10 +1173,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

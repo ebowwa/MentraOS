@@ -24,7 +24,7 @@ struct ViewState {
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
-@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback, SherpaOnnxTranscriber.TranscriptDelegate {
+@objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback, MicCallback {
     private static var instance: AOSManager?
 
     static func getInstance() -> AOSManager {
@@ -40,6 +40,7 @@ struct ViewState {
     @objc var g1Manager: ERG1Manager?
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
+    @objc var nexManager: MentraNexSGC?
     var micManager: OnboardMicrophoneManager!
     var serverComms: ServerComms!
 
@@ -100,7 +101,7 @@ struct ViewState {
     private var vadBuffer = [Data]()
     private var isSpeaking = false
 
-    private var transcriber: SherpaOnnxTranscriber?
+    // private var transcriber: SherpaOnnxTranscriber?
 
     private var shouldSendPcmData = true
     private var shouldSendTranscript = false
@@ -110,22 +111,22 @@ struct ViewState {
         serverComms = ServerComms.getInstance()
         super.init()
 
-        // Initialize SherpaOnnx Transcriber
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first,
-           let rootViewController = window.rootViewController
-        {
-            transcriber = SherpaOnnxTranscriber(context: rootViewController)
-        } else {
-            CoreCommsService.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
-        }
+        // Initialize SherpaOnnx Transcriber - DISABLED
+        // if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+        //    let window = windowScene.windows.first,
+        //    let rootViewController = window.rootViewController
+        // {
+        //     transcriber = SherpaOnnxTranscriber(context: rootViewController)
+        // } else {
+        //     CoreCommsService.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+        // }
 
         // Initialize the transcriber
-        if let transcriber = transcriber {
-            transcriber.initialize()
-            transcriber.transcriptDelegate = self
-            CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
-        }
+        // if let transcriber = transcriber {
+        //     transcriber.initialize()
+        //     transcriber.transcriptDelegate = self
+        //     CoreCommsService.log("SherpaOnnxTranscriber fully initialized")
+        // }
 
         Task {
             await loadSettings()
@@ -168,6 +169,8 @@ struct ViewState {
             liveManager = MentraLiveManager()
         } else if wearable.contains("Mach1"), mach1Manager == nil {
             mach1Manager = Mach1Manager()
+        } else if wearable.contains("Nex"), nexManager == nil {
+            nexManager = MentraNexSGC.shared
         }
         initManagerCallbacks()
     }
@@ -484,9 +487,9 @@ struct ViewState {
                         self.serverComms.sendAudioChunk(pcmData)
                     }
 
-                    // Also send to local transcriber when bypassing VAD
+                    // Also send to local transcriber when bypassing VAD - DISABLED
                     if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+                        // self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                     return
                 }
@@ -519,9 +522,9 @@ struct ViewState {
                         self.serverComms.sendAudioChunk(pcmData)
                     }
 
-                    // Send to local transcriber when speech is detected
+                    // Send to local transcriber when speech is detected - DISABLED
                     if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
+                        // self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                 } else {
                     checkSetVadStatus(speaking: false)
@@ -1049,6 +1052,7 @@ struct ViewState {
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
             self.mach1Manager?.disconnect()
+            self.nexManager?.disconnect()
             self.isSearching = false
             handleRequestStatus()
         }
@@ -1059,8 +1063,9 @@ struct ViewState {
         defaultWearable = ""
         deviceName = ""
         g1Manager?.forget()
-//    self.liveManager?.forget()
+        //    self.liveManager?.forget()
         mach1Manager?.forget()
+        nexManager?.disconnect() // For Nex, we just disconnect since there's no forget method
         // self.g1Manager = nil
         // self.liveManager = nil
         handleRequestStatus()
@@ -1087,6 +1092,10 @@ struct ViewState {
             defaultWearable = "Mentra Live"
             initManager(defaultWearable)
             liveManager?.findCompatibleDevices()
+        } else if modelName.contains("Nex") {
+            defaultWearable = "Mentra Nex"
+            initManager(defaultWearable)
+            nexManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             defaultWearable = "Mach1"
             initManager(defaultWearable)
@@ -1557,8 +1566,9 @@ struct ViewState {
         let g1Connected = g1Manager?.g1Ready ?? false
         let liveConnected = liveManager?.connectionState == .connected
         let mach1Connected = mach1Manager?.ready ?? false
+        let nexConnected = nexManager?.isConnected() ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
-        let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
+        let isGlassesConnected = g1Connected || liveConnected || mach1Connected || nexConnected || simulatedConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -2173,47 +2183,47 @@ struct ViewState {
     // MARK: - Cleanup
 
     @objc func cleanup() {
-        // Clean up transcriber resources
-        transcriber?.shutdown()
-        transcriber = nil
+        // Clean up transcriber resources - DISABLED
+        // transcriber?.shutdown()
+        // transcriber = nil
 
         cancellables.removeAll()
         saveSettings()
     }
 
-    // MARK: - SherpaOnnxTranscriber.TranscriptDelegate
+    // MARK: - SherpaOnnxTranscriber.TranscriptDelegate - DISABLED
 
-    func didReceivePartialTranscription(_ text: String) {
-        // Send partial result to server with proper formatting
-        let transcription: [String: Any] = [
-            "type": "local_transcription",
-            "text": text,
-            "isFinal": false,
-            "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
-            "endTime": Int(Date().timeIntervalSince1970 * 1000),
-            "speakerId": 0,
-            "transcribeLanguage": "en-US",
-            "provider": "sherpa-onnx",
-        ]
+    // func didReceivePartialTranscription(_ text: String) {
+    //     // Send partial result to server with proper formatting
+    //     let transcription: [String: Any] = [
+    //         "type": "local_transcription",
+    //         "text": text,
+    //         "isFinal": false,
+    //         "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
+    //         "endTime": Int(Date().timeIntervalSince1970 * 1000),
+    //         "speakerId": 0,
+    //         "transcribeLanguage": "en-US",
+    //         "provider": "sherpa-onnx",
+    //     ]
 
-        serverComms.sendTranscriptionResult(transcription: transcription)
-    }
+    //     serverComms.sendTranscriptionResult(transcription: transcription)
+    // }
 
-    func didReceiveFinalTranscription(_ text: String) {
-        // Send final result to server with proper formatting
-        if !text.isEmpty {
-            let transcription: [String: Any] = [
-                "type": "local_transcription",
-                "text": text,
-                "isFinal": true,
-                "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
-                "endTime": Int(Date().timeIntervalSince1970 * 1000),
-                "speakerId": 0,
-                "transcribeLanguage": "en-US",
-                "provider": "sherpa-onnx",
-            ]
+    // func didReceiveFinalTranscription(_ text: String) {
+    //     // Send final result to server with proper formatting
+    //     if !text.isEmpty {
+    //         let transcription: [String: Any] = [
+    //             "type": "local_transcription",
+    //             "text": text,
+    //             "isFinal": true,
+    //             "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
+    //             "endTime": Int(Date().timeIntervalSince1970 * 1000),
+    //         "speakerId": 0,
+    //         "transcribeLanguage": "en-US",
+    //         "provider": "sherpa-onnx",
+    //     ]
 
-            serverComms.sendTranscriptionResult(transcription: transcription)
-        }
-    }
+    //         serverComms.sendTranscriptionResult(transcription: transcription)
+    //     }
+    // }
 }

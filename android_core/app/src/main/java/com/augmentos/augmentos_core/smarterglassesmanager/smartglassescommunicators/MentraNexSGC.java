@@ -2206,10 +2206,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
                 .setText(text)
-                .setSize(20)
+                .setSize(DisplayText.FontSize.MEDIUM)
                 .setX(20)
                 .setY(260)
-                .setFontCode(20)
                 .setColor(10000).build();
 
         Log.d(TAG, "=== SENDING TEXT TO GLASSES ===");
@@ -2230,10 +2229,15 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
                 .setText(displayTextEvent.text)
-                .setSize(displayTextEvent.size)
+                .setSize(
+                        displayTextEvent.size <= 12
+                                ? DisplayText.FontSize.SMALL
+                                : (displayTextEvent.size <= 20
+                                        ? DisplayText.FontSize.MEDIUM
+                                        : DisplayText.FontSize.LARGE)
+                )
                 .setX(displayTextEvent.x)
                 .setY(displayTextEvent.y)
-                .setFontCode(20)
                 .setColor(10000).build();
 
         Log.d(TAG, "createTextWallChunksForNex textNewBuilder:" + textNewBuilder.toString());
@@ -2273,7 +2277,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     // create a VerticalScrollingfor Nex glasses
     private byte[] createVerticalScrollingTextWallChunksForNex(String text) {
 
-        DisplayScrollingText textNewBuilder = DisplayScrollingText.newBuilder().setText(text).setFontCode(100)
+        DisplayScrollingText textNewBuilder = DisplayScrollingText.newBuilder().setText(text).setSize(DisplayScrollingText.FontSize.MEDIUM)
                 .setHeight(100).setWidth(200).setAlign(DisplayScrollingText.Alignment.CENTER).setLineSpacing(2)
                 .setLoop(true).setPauseMs(10).setSpeed(50).setX(20).setY(50).build();
 
@@ -3077,6 +3081,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 break;
                 case PACKET_TYPE_IMAGE:
                     break;
+                default:
+                    Log.d(TAG, "unknown packetType: " + String.format("%02X ", packetType));
+                    break;
             }
         }
     }
@@ -3246,6 +3253,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
                 break;
                 default:
+                    Log.d(TAG, "unknown payloadCase: " + payloadCase);
                     break;
             }
 
