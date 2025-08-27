@@ -8,7 +8,6 @@ package mentraos.ble;
 
 // All messages from phone to glasses
 message PhoneToGlasses {
-  // Optional: global request/response correlation
   string msg_id = 1;
 
   oneof payload {
