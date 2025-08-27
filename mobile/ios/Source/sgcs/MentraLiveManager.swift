@@ -1880,19 +1880,31 @@ typealias JSONObject = [String: Any]
     // MARK: - Status Requests
 
     private func requestBatteryStatus() {
+        // cs_batv is a K900 protocol command handled directly by BES2700
+        // It doesn't go through MTK Android, so it doesn't use ACK system
+        guard let peripheral = connectedPeripheral,
+              let txChar = txCharacteristic
+        else {
+            Core.log("Cannot send battery request - not connected")
+            return
+        }
+
         let json: [String: Any] = [
             "C": "cs_batv",
             "V": 1,
             "B": "",
-            "mId": globalMessageId,
         ]
-        globalMessageId += 1
 
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: json)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) ?? Data()
-                queueSend(packedData, id: String(globalMessageId - 1))
+                Core.log("Sending battery request: \(jsonString)")
+                if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
+                    // Send directly without ACK tracking (like Android's queueData)
+                    // BES will respond with sr_batv, not msg_ack
+                    peripheral.writeValue(packedData, for: txChar, type: .withResponse)
+                    Core.log("Sent cs_batv without ACK tracking (BES-handled command)")
+                }
             }
         } catch {
             Core.log("Error creating K900 battery request: \(error)")
@@ -2197,9 +2209,18 @@ typealias JSONObject = [String: Any]
     }
 
     private func requestReadyK900() {
+        // cs_hrt is a K900 protocol command handled directly by BES2700
+        // It doesn't go through MTK Android, so it doesn't use ACK system
+        guard let peripheral = connectedPeripheral,
+              let txChar = txCharacteristic
+        else {
+            Core.log("Cannot send readiness check - not connected")
+            return
+        }
+
         let cmdObject: [String: Any] = [
-            "C": "cs_hrt", // Video command
-            "B": "", // Add the body
+            "C": "cs_hrt", // Heartbeat command for BES2700
+            "B": "", // Empty body
         ]
 
         do {
@@ -2208,12 +2229,14 @@ typealias JSONObject = [String: Any]
                 Core.log("Sending hrt command: \(jsonStr)")
 
                 if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
-                    queueSend(packedData, id: String(globalMessageId))
-                    globalMessageId += 1
+                    // Send directly without ACK tracking (like Android's queueData)
+                    // BES will respond with sr_hrt, not msg_ack
+                    peripheral.writeValue(packedData, for: txChar, type: .withResponse)
+                    Core.log("Sent cs_hrt without ACK tracking (BES-handled command)")
                 }
             }
         } catch {
-            Core.log("Error creating video command: \(error)")
+            Core.log("Error creating readiness check command: \(error)")
         }
     }
 
@@ -2669,13 +2692,13 @@ extension MentraLiveManager {
 
         let json: [String: Any] = [
             "type": "button_video_recording_setting",
-            "settings": [
+            "params": [
                 "width": finalWidth,
                 "height": finalHeight,
                 "fps": finalFps,
             ],
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonPhotoSettings() {
@@ -2692,7 +2715,7 @@ extension MentraLiveManager {
             "type": "button_photo_setting",
             "size": size,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonCameraLedSetting() {
@@ -2709,7 +2732,7 @@ extension MentraLiveManager {
             "type": "button_camera_led",
             "enabled": enabled,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func startVideoRecording(requestId: String, save: Bool) {
