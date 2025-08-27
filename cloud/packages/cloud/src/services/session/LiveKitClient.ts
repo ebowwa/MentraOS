@@ -38,15 +38,16 @@ export class LiveKitClient {
 
     await new Promise<void>((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('bridge ws timeout')), 8000);
-      this.ws!.once('open', () => { 
-        clearTimeout(to); 
+      this.ws!.once('open', () => {
+        clearTimeout(to);
         this.logger.debug({ feature: 'livekit', wsUrl }, 'Bridge WS open (server)');
-        resolve(); 
+        resolve();
       });
       this.ws!.once('error', (err) => { clearTimeout(to); reject(err as any); });
     });
 
     this.connected = true;
+    let i = 0;
 
     // Wire message handler before sending commands
     this.ws.on('message', (data: WebSocket.RawData) => {
@@ -55,18 +56,19 @@ export class LiveKitClient {
         try {
           // const ab = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
           // print first 10 bytes.
-          this.logger.debug({ feature: 'livekit', data: data.slice(0, 10) }, 'Received PCM16 frame');
+          i++;
+          if (i % 20 === 0) {
+            this.logger.debug({ feature: 'livekit', data: data.slice(0, 10) }, 'Received PCM16 frame');
+          }
           this.userSession.audioManager.processAudioData(data, /* isLC3 */ false);
         } catch (err) {
-          this.logger.warn(err , 'Failed to forward PCM16 frame');
+          this.logger.warn(err, 'Failed to forward PCM16 frame');
         }
       } else {
         try {
           const evt = JSON.parse((data as any).toString());
-          if (evt?.type && evt?.type !== 'connected') {
-            this.logger.debug({ evt }, 'Bridge event');
-          }
-        } catch {}
+          this.logger.debug({ evt }, '[LiveKitClient] Bridge event');
+        } catch { }
       }
     });
 
@@ -84,9 +86,9 @@ export class LiveKitClient {
   async close(): Promise<void> {
     if (!this.ws) return;
     try {
-      try { this.ws.send(JSON.stringify({ action: 'subscribe_disable' })); } catch {}
+      try { this.ws.send(JSON.stringify({ action: 'subscribe_disable' })); } catch { }
       this.ws.close();
-    } catch {}
+    } catch { }
     this.ws = null;
     this.connected = false;
   }

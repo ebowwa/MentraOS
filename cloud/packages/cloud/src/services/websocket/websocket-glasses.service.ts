@@ -127,12 +127,17 @@ export class GlassesWebSocketService {
       // Store LiveKit preference in the session
       userSession.livekitRequested = livekitRequested;
 
+      let i = 0;
       // Handle incoming messages
       ws.on("message", (data: WebSocket.Data, isBinary) => {
         try {
           // Handle binary message (audio data)
           if (isBinary) {
+            i++;
             // await this.handleBinaryMessage(userSession, data);
+            if (i % 10 === 0) {
+              logger.debug({service: "LiveKitManager"}, "[Websocket]Received binary message");
+            }
             userSession.audioManager.processAudioData(data);
             return;
           }

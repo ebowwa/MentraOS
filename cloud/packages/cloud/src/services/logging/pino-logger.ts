@@ -11,7 +11,7 @@ const PORTER_APP_NAME = process.env.PORTER_APP_NAME || 'cloud-local';
 
 // Determine log level based on environment
 // Use 'info' in development to reduce noise from debug logs
-const LOG_LEVEL = NODE_ENV === 'production' ? 'info' : 'info';
+const LOG_LEVEL = NODE_ENV === 'production' ? 'info' : 'debug';
 
 // Setup streams array for Pino multistream
 const streams: pino.StreamEntry[] = [];
