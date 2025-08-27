@@ -33,6 +33,7 @@ public class LiveKitManager: NSObject {
         Task {
             do {
                 Core.log("LiveKit: Attempting to connect to: \(url)")
+                livekit_connect()
 
                 Core.log("LiveKit: Successfully connected to LiveKit room")
 
