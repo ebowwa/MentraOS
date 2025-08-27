@@ -143,8 +143,8 @@ struct ViewState {
 
     func setup() {
         Core.log("AOS: setup()")
-        serverComms.locationManager.setup()
-        serverComms.mediaManager.setup()
+        LocationManager.shared.setup()
+        MediaManager.shared.setup()
 
         // Set up voice data handling
         setupVoiceDataHandling()
