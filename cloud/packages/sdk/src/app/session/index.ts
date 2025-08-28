@@ -784,8 +784,7 @@ export class AppSession {
           const isNormalClosure =
             code === 1000 || code === 1001 || code === 1008;
           const isManualStop = reason && reason.includes("App stopped");
-          const isUserSessionEnded =
-            reason && reason.includes("User session ended");
+          const isUserSessionEnded = reason && reason.includes("User session ended");
 
           // Log closure details for diagnostics
           this.logger.debug(
