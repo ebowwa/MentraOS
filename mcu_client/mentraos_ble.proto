@@ -243,13 +243,7 @@ message DisplayText {
   uint32 color = 2;      // RGB565 format (e.g., 0xF800 for red)
   uint32 x = 3;
   uint32 y = 4;
-
-  enum FontSize {
-    SMALL = 0;
-    MEDIUM = 1;
-    LARGE = 2;
-  }
-  FontSize size = 5;     // Font size enum
+  uint32 size = 5;       // Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
 }
 
 // Initiates bitmap transfer - actual data comes via binary protocol
@@ -301,14 +295,7 @@ message DisplayScrollingText {
 
   uint32 line_spacing = 8;   // pixels between lines
   uint32 speed = 9;          // pixels/sec scrolling up
-
-  enum FontSize {
-    SMALL = 0;
-    MEDIUM = 1;
-    LARGE = 2;
-  }
-  FontSize size = 10;        // Use enum for font size
-
+  uint32 size = 10;          // Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
   bool loop = 11;            // wrap to top when finished
   uint32 pause_ms = 12;      // delay before restart (if looping)
 }
