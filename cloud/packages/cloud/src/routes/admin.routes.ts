@@ -305,18 +305,15 @@ const approveApp = async (req: Request, res: Response) => {
         );
         if (result && result.error) {
           logger.warn(
-            { packageName, recipientEmail, error: result.error },
-            "Approval email send returned error",
+            result.error,
+            `Approval email send returned error.  Package name: ${packageName}, Recipient email: ${recipientEmail}, Error: ${result.error}`,
           );
         }
       } else {
         logger.warn({ packageName }, "No recipient email for approval email");
       }
     } catch (error) {
-      logger.error(
-        { error, packageName },
-        "Failed to send approval notification email",
-      );
+      logger.error(error, `Failed to send approval notification email`);
       // Non-critical error, approval succeeded
     }
 
@@ -383,18 +380,15 @@ const rejectApp = async (req: Request, res: Response) => {
         );
         if (result && result.error) {
           logger.warn(
-            { packageName, recipientEmail, error: result.error },
-            "Rejection email send returned error",
+            result.error,
+            `Rejection email send returned error.  Package name: ${packageName}, Recipient email: ${recipientEmail}, Error: ${result.error}`,
           );
         }
       } else {
         logger.warn({ packageName }, "No recipient email for rejection email");
       }
     } catch (error) {
-      logger.error(
-        { error, packageName },
-        "Failed to send rejection notification email",
-      );
+      logger.error(error, `Failed to send rejection notification email`);
       // Non-critical error, rejection succeeded
     }
 
