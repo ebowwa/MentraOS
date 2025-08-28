@@ -5,7 +5,6 @@ import {Image} from "expo-image"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
-import {SquircleView} from "expo-squircle-view"
 import {ThemedStyle} from "@/theme"
 
 interface AppIconProps {
@@ -27,36 +26,23 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      {Platform.OS === "ios" ? (
-        <SquircleView
-          cornerSmoothing={100}
-          preserveSmoothing={true}
-          style={{
-            // backgroundColor: "red",
-            overflow: "hidden", // use as a mask
-            alignItems: "center",
-            justifyContent: "center",
-            width: style?.width ?? 56,
-            height: style?.height ?? 56,
-            borderRadius: style?.borderRadius ?? theme.spacing.md,
-          }}>
-          <Image
-            source={{uri: app.logoURL}}
-            style={themed($icon)}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-          />
-        </SquircleView>
-      ) : (
+      <View
+        style={{
+          overflow: "hidden",
+          alignItems: "center",
+          justifyContent: "center",
+          width: style?.width ?? 56,
+          height: style?.height ?? 56,
+          borderRadius: (style?.width ?? 56) / 2, // Make it a perfect circle
+        }}>
         <Image
           source={{uri: app.logoURL}}
-          style={[themed($icon), {borderRadius: 60}]}
+          style={themed($icon)}
           contentFit="cover"
           transition={200}
           cachePolicy="memory-disk"
         />
-      )}
+      </View>
 
       {showLabel && <Text text={app.name} style={themed($appName)} numberOfLines={2} />}
     </WrapperComponent>
