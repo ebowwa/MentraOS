@@ -41,8 +41,8 @@ struct ViewState {
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
     @objc var frameManager: FrameManager?
-    var serverComms: ServerComms!
-    var micManager = OnboardMicrophoneManager()
+    var serverComms = ServerComms.shared
+    var micManager = OnboardMicrophoneManager.shared
 
     private var lastStatusObj: [String: Any] = [:]
 
@@ -123,49 +123,49 @@ struct ViewState {
     override init() {
         Core.log("Mentra: init()")
         vad = SileroVADStrategy()
-        serverComms = ServerComms.getInstance()
+        // serverComms = ServerComms.getInstance()
         super.init()
 
-        // Initialize SherpaOnnx Transcriber
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first,
-           let rootViewController = window.rootViewController
-        {
-            transcriber = SherpaOnnxTranscriber(context: rootViewController)
-        } else {
-            Core.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
-        }
+        // // Initialize SherpaOnnx Transcriber
+        // if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+        //    let window = windowScene.windows.first,
+        //    let rootViewController = window.rootViewController
+        // {
+        //     transcriber = SherpaOnnxTranscriber(context: rootViewController)
+        // } else {
+        //     Core.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+        // }
 
-        // Initialize the transcriber
-        if let transcriber = transcriber {
-            transcriber.initialize()
-            Core.log("SherpaOnnxTranscriber fully initialized")
-        }
+        // // Initialize the transcriber
+        // if let transcriber = transcriber {
+        //     transcriber.initialize()
+        //     Core.log("SherpaOnnxTranscriber fully initialized")
+        // }
 
-        Task {
-            await loadSettings()
-            self.vad?.setup(
-                sampleRate: .rate_16k,
-                frameSize: .size_1024,
-                quality: .normal,
-                silenceTriggerDurationMs: 4000,
-                speechTriggerDurationMs: 50
-            )
-        }
+        // Task {
+        //     await loadSettings()
+        //     self.vad?.setup(
+        //         sampleRate: .rate_16k,
+        //         frameSize: .size_1024,
+        //         quality: .normal,
+        //         silenceTriggerDurationMs: 4000,
+        //         speechTriggerDurationMs: 50
+        //     )
+        // }
     }
 
     // MARK: - Public Methods (for React Native)
 
     func setup() {
         Core.log("Mentra: setup()")
-        LocationManager.shared.setup()
+//        LocationManager.shared.setup()
         MediaManager.shared.setup()
 
         // Set up voice data handling
         setupVoiceDataHandling()
 
         // Subscribe to WebSocket status changes
-        serverComms.wsManager.status
+        WebSocketManager.shared.status
             .sink { [weak self] _ in
                 guard let self = self else { return }
                 handleRequestStatus()
@@ -424,7 +424,7 @@ struct ViewState {
     func updateHeadUp(_ isHeadUp: Bool) {
         self.isHeadUp = isHeadUp
         sendCurrentState(isHeadUp)
-        ServerComms.getInstance().sendHeadPosition(isUp: isHeadUp)
+        ServerComms.shared.sendHeadPosition(isUp: isHeadUp)
     }
 
     // MARK: - Audio Bridge Methods
@@ -467,7 +467,7 @@ struct ViewState {
         serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
     }
 
-    func onAppStateChange(_ apps: [ThirdPartyCloudApp] /* , _ whatToStream: [String] */ ) {
+    func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
         cachedThirdPartyAppList = apps
         handleRequestStatus()
     }
@@ -1089,11 +1089,6 @@ struct ViewState {
 
     // command functions:
 
-    func setServerUrl(url: String) {
-        Core.log("Mentra: Setting server URL to: \(url)")
-        serverComms.setServerUrl(url)
-    }
-
     // TODO: config: remove
     func setAuthSecretKey(secretKey: String, userId: String) {
         Core.log("Mentra: Setting auth secret key to: \(secretKey)")
@@ -1475,7 +1470,7 @@ struct ViewState {
                         Core.log("Mentra: set_server_url invalid params")
                         break
                     }
-                    setServerUrl(url: url)
+                    ServerComms.shared.setServerUrl(url)
                 case .setAuthSecretKey:
                     guard let params = params,
                           let userId = params["userId"] as? String,
@@ -1651,15 +1646,17 @@ struct ViewState {
                 case .queryGalleryStatus:
                     Core.log("Mentra: Querying gallery status")
                     queryGalleryStatus()
+                // TODO: config: remove
                 case .simulateHeadPosition:
                     guard let params = params, let position = params["position"] as? String else {
                         Core.log("Mentra: simulate_head_position invalid params")
                         break
                     }
                     // Send to server
-                    ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     sendCurrentState(position == "up")
+                // TODO: config: remove
                 case .simulateButtonPress:
                     guard let params = params,
                           let buttonId = params["buttonId"] as? String,
@@ -1669,7 +1666,7 @@ struct ViewState {
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(
+                    ServerComms.shared.sendButtonPress(
                         buttonId: buttonId, pressType: pressType
                     )
                 case .enforceLocalTranscription:
@@ -1999,7 +1996,7 @@ struct ViewState {
             }
 
             // send loaded settings to glasses:
-            self.g1Manager?.RN_getBatteryStatus()
+            self.g1Manager?.getBatteryStatus()
             try? await Task.sleep(nanoseconds: 400_000_000)
             self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
             try? await Task.sleep(nanoseconds: 400_000_000)

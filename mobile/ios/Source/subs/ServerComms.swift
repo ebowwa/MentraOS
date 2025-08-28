@@ -10,9 +10,8 @@ import Foundation
 
 // TODO: config: remove
 class ServerComms {
-    private static var instance: ServerComms?
+    static let shared = ServerComms()
 
-    let wsManager = WebSocketManager()
     private var coreToken: String = ""
     var userid: String = ""
     private var serverUrl: String = ""
@@ -27,12 +26,7 @@ class ServerComms {
     private var reconnecting: Bool = false
     private var reconnectionAttempts: Int = 0
 
-    static func getInstance() -> ServerComms {
-        if instance == nil {
-            instance = ServerComms()
-        }
-        return instance!
-    }
+    private let wsManager = WebSocketManager.shared
 
     private init() {
         // Subscribe to WebSocket messages
@@ -233,12 +227,12 @@ class ServerComms {
             return
         }
 
-        if let locationData = LocationManager.shared.getCurrentLocation() {
-            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
-            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
-        } else {
-            Core.log("ServerComms: Cannot send location update: No location data available")
-        }
+//        if let locationData = LocationManager.shared.getCurrentLocation() {
+//            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+//            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
+//        } else {
+//            Core.log("ServerComms: Cannot send location update: No location data available")
+//        }
     }
 
     func sendGlassesConnectionState(modelName: String, status: String) {
@@ -439,11 +433,11 @@ class ServerComms {
         switch type {
         case "connection_ack":
             startAudioSenderThread()
-            m.onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            m.onAppStateChange(parseAppList(msg))
             m.onConnectionAck()
 
         case "app_state_change":
-            m.onAppStateChange(parseAppList(msg) /* , parseWhatToStream(msg) */ )
+            m.onAppStateChange(parseAppList(msg))
 
         case "connection_error":
             let errorMsg = msg["message"] as? String ?? "Unknown error"
@@ -510,14 +504,14 @@ class ServerComms {
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
-                LocationManager.shared.setTier(tier: tier)
+//                LocationManager.shared.setTier(tier: tier)
             }
 
         case "request_single_location":
             if let accuracy = msg["accuracy"] as? String,
                let correlationId = msg["correlationId"] as? String
             {
-                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+//                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
 
         case "app_started":

@@ -16,6 +16,8 @@ enum WebSocketStatus {
 }
 
 class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
+    static var shared = WebSocketManager()
+
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
     private let statusSubject = PassthroughSubject<WebSocketStatus, Never>()
@@ -39,7 +41,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
         }
     }
 
-    override init() {
+    override private init() {
         super.init()
         session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
     }

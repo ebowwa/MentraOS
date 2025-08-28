@@ -98,7 +98,7 @@ import Foundation
                         Core.log("CommandBridge: set_server_url invalid params")
                         break
                     }
-                    m.setServerUrl(url: url)
+                    ServerComms.shared.setServerUrl(url)
                 // TODO: config: remove
                 case .set_auth_secret_key:
                     guard let params = params,
@@ -277,13 +277,13 @@ import Foundation
                 case .query_gallery_status:
                     Core.log("CommandBridge: Querying gallery status")
                     m.queryGalleryStatus()
+                // TODO: config: remove
                 case .simulate_head_position:
                     guard let params = params, let position = params["position"] as? String else {
                         Core.log("CommandBridge: simulate_head_position invalid params")
                         break
                     }
-                    // Send to server
-                    ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     m.sendCurrentState(position == "up")
                 case .simulate_button_press:
@@ -295,7 +295,7 @@ import Foundation
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
                 case .enforce_local_transcription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("CommandBridge: enforce_local_transcription invalid params")

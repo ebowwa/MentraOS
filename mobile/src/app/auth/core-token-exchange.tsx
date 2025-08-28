@@ -34,7 +34,7 @@ export default function CoreTokenExchange() {
   const [isLoading, setIsLoading] = useState(false)
   const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
   const [errorMessage, setErrorMessage] = useState(
-    "Connection to AugmentOS failed. Please check your connection and try again.",
+    "Connection to MentraOS failed. Please check your connection and try again.",
   )
   const hasAttemptedConnection = useRef(false)
   const loadingOverlayOpacity = useRef(new Animated.Value(1)).current
