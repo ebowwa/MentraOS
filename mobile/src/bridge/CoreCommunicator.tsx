@@ -13,6 +13,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/CoreStatusParser"
+import ServerComms from "@/services/ServerComms"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -186,7 +187,8 @@ export class CoreCommunicator extends EventEmitter {
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
-    await this.setServerUrl(backendServerUrl)
+    await this.setServerUrl(backendServerUrl) // todo: config: remove
+    await ServerComms.getInstance().setServerUrl(backendServerUrl) // todo: config: remove
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -789,6 +791,7 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setServerUrl(url: string) {
     return await this.sendData({
       command: "set_server_url",

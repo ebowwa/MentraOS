@@ -9,12 +9,13 @@ import CoreLocation
 import Foundation
 
 class LocationManager: NSObject, CLLocationManagerDelegate {
+    static let shared = LocationManager()
+
     private let locationManager = CLLocationManager()
-    private var locationChangedCallback: (() -> Void)?
     private var currentLocation: CLLocation?
     private var currentCorrelationId: String?
 
-    override init() {
+    override private init() {
         super.init()
         // delay setup until after login:
         // setup()
@@ -32,10 +33,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
         // Start location updates (will only work if permission is already granted)
         locationManager.startUpdatingLocation()
-    }
-
-    func setLocationChangedCallback(_ callback: @escaping () -> Void) {
-        locationChangedCallback = callback
     }
 
     // MARK: - CLLocationManagerDelegate Methods

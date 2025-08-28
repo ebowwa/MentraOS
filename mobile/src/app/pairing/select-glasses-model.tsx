@@ -15,7 +15,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -143,7 +143,7 @@ export default function SelectGlassesModelScreen() {
           <View
             style={[
               styles.onboardingBanner,
-              {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary},
+              {backgroundColor: theme.colors.palette.blue500, borderColor: theme.colors.buttonPrimary},
             ]}>
             <Icon name="info-circle" size={20} color={theme.colors.icon} style={{marginRight: 8}} />
 

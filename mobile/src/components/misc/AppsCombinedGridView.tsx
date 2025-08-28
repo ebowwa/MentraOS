@@ -102,10 +102,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       app => !app.is_running && app.compatibility && !app.compatibility.isCompatible,
     ).length
 
-    console.log(
-      `📊 Apps Status - Active: ${activeApps.length}, Inactive (compatible): ${filtered.length}, Incompatible: ${incompatibleCount}`,
-    )
-
     return filtered
   }, [appStatus, activeApps.length])
 

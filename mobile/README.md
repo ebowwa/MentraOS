@@ -37,7 +37,7 @@ bun install
 bun expo prebuild
 cd ios
 pod install
-cd .. && open ios/AOS.xcworkspace
+cd .. && open ios/MentraOS.xcworkspace
 (install a dev build on your phone using xcode)
 bun run start
 ```

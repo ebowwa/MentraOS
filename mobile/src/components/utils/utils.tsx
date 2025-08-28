@@ -85,7 +85,7 @@ export function OtaUpdateChecker() {
 }
 
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {AppState} from "react-native"
 
