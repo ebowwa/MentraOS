@@ -111,7 +111,7 @@ export default function AppSettings() {
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
   useEffect(() => {
-    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true") {
+    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true" && appInfo?.isOnline !== false) {
       console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
       replace("/applet/webview", {
         webviewURL: appInfo.webviewURL,
@@ -142,6 +142,31 @@ export default function AppSettings() {
       if (appInfo.is_running) {
         optimisticallyStopApp(packageName)
         return
+      }
+
+      // If the app appears offline, confirm before proceeding
+      if (appInfo.isOnline === false) {
+        const developerName = (
+          " " +
+          ((serverAppInfo as any)?.organization?.name ||
+            (appInfo as any).orgName ||
+            (appInfo as any).developerId ||
+            "") +
+          " "
+        ).replace("  ", " ")
+        const proceed = await new Promise<boolean>(resolve => {
+          // Use the shared alert utility
+          showAlert(
+            "App is down for maintenance",
+            `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+            [
+              {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
+              {text: "Try Anyway", onPress: () => resolve(true)},
+            ],
+            {iconName: "alert-circle-outline", iconColor: theme.colors.warning},
+          )
+        })
+        if (!proceed) return
       }
 
       if (!(await checkAppHealthStatus(appInfo.packageName))) {
@@ -590,15 +615,15 @@ export default function AppSettings() {
             pointerEvents: "none",
           }}>
           <Text
-            text={appInfo?.name || appName}
             style={{
               fontSize: 17,
               fontWeight: "600",
               color: theme.colors.text,
             }}
             numberOfLines={1}
-            ellipsizeMode="tail"
-          />
+            ellipsizeMode="tail">
+            {appInfo?.name || (appName as string)}
+          </Text>
         </Animated.View>
       </View>
 
@@ -633,6 +658,24 @@ export default function AppSettings() {
               </View>
             </View>
           </View>
+
+          {appInfo.isOnline === false && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.spacing.xs,
+                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                borderRadius: 8,
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+              }}>
+              <FontAwesome name="warning" size={16} color={theme.colors.error} />
+              <Text style={{color: theme.colors.error, flex: 1}}>
+                This app appears to be offline. Some actions may not work.
+              </Text>
+            </View>
+          )}
 
           <Divider variant="full" />
 
