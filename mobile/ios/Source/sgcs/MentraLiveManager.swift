@@ -2068,7 +2068,7 @@ typealias JSONObject = [String: Any]
                 "timestamp": Date().timeIntervalSince1970 * 1000,
             ],
         ]
-        emitEvent("ImuDataEvent", body: eventBody)
+        Core.sendTypedMessage("imu_data_event", body: eventBody)
     }
 
     private func handleStreamImuData(_ json: [String: Any]) {
@@ -2099,7 +2099,7 @@ typealias JSONObject = [String: Any]
                 "timestamp": timestamp,
             ],
         ]
-        emitEvent("ImuGestureEvent", body: eventBody)
+        Core.sendTypedMessage("imu_gesture_event", body: eventBody)
     }
 
     // MARK: - Update Methods
@@ -2143,7 +2143,7 @@ typealias JSONObject = [String: Any]
             "total_size": totalSize,
             "has_content": hasContent,
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_gallery_status", body: eventBody)
     }
 
     // MARK: - Timers
@@ -2287,7 +2287,7 @@ typealias JSONObject = [String: Any]
             ],
         ]
 
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("compatible_glasses_search_result", body: eventBody)
     }
 
     private func emitStopScanEvent() {
@@ -2295,8 +2295,6 @@ typealias JSONObject = [String: Any]
             "type": "glasses_bluetooth_search_stop",
             "device_model": "Mentra Live",
         ]
-
-        // emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
     }
 
     // private func emitBatteryLevelEvent(level: Int, charging: Bool) {
@@ -2304,7 +2302,6 @@ typealias JSONObject = [String: Any]
     //     "battery_level": level,
     //     "is_charging": charging
     //   ]
-
     //   emitEvent("BatteryLevelEvent", body: eventBody)
     // }
 
@@ -2314,7 +2311,7 @@ typealias JSONObject = [String: Any]
             "ssid": wifiSsid,
             "local_ip": wifiLocalIp,
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_wifi_status_change", body: eventBody)
     }
 
     private func emitHotspotStatusChange() {
@@ -2324,12 +2321,12 @@ typealias JSONObject = [String: Any]
             "password": hotspotPassword,
             "local_ip": hotspotGatewayIp, // Using gateway IP for consistency with Android
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_hotspot_status_change", body: eventBody)
     }
 
     private func emitWifiScanResult(_ networks: [String]) {
         let eventBody = ["wifi_scan_results": networks]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("wifi_scan_results", body: eventBody)
     }
 
     private func emitWifiScanResultEnhanced(_ enhancedNetworks: [[String: Any]], legacyNetworks: [String]) {
@@ -2337,11 +2334,11 @@ typealias JSONObject = [String: Any]
             "wifi_scan_results": legacyNetworks, // Backwards compatibility
             "wifi_scan_results_enhanced": enhancedNetworks, // Enhanced format with security info
         ]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("wifi_scan_results", body: eventBody)
     }
 
     private func emitRtmpStreamStatus(_ json: [String: Any]) {
-        emitEvent("RtmpStreamStatusEvent", body: json)
+        Core.sendTypedMessage("rtmp_stream_status", body: json)
     }
 
     private func emitButtonPress(buttonId: String, pressType: String, timestamp: Int64) {
@@ -2364,30 +2361,11 @@ typealias JSONObject = [String: Any]
             "ota_version_url": otaVersionUrl,
         ]
 
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("version_info", body: eventBody)
     }
 
     private func emitKeepAliveAck(_ json: [String: Any]) {
-        emitEvent("KeepAliveAckEvent", body: json)
-    }
-
-    private func emitEvent(_ eventName: String, body: [String: Any]) {
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                if eventName == "CoreMessageEvent" {
-                    Core.sendEvent(withName: eventName, body: jsonString)
-                    return
-                }
-                if eventName == "GlassesWifiScanResults" {
-                    Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                    return
-                }
-                Core.log("Would emit event: \(eventName) with body: \(jsonString)")
-            }
-        } catch {
-            Core.log("Error converting event to JSON: \(error)")
-        }
+        Core.sendTypedMessage("keep_alive_ack", body: json)
     }
 
     // MARK: - Cleanup

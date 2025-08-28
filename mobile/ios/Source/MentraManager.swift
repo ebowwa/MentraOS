@@ -79,10 +79,23 @@ struct ViewState {
     private var isHeadUp: Bool = false
 
     var viewStates: [ViewState] = [
-        ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: ""),
-        ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: ""),
-        ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "", eventStr: "", data: nil, animationData: nil),
-        ViewState(topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: "", data: nil, animationData: nil),
+        ViewState(
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
+            eventStr: ""
+        ),
+        ViewState(
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: ""
+        ),
+        ViewState(
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
+            eventStr: "", data: nil, animationData: nil
+        ),
+        ViewState(
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: "", data: nil,
+            animationData: nil
+        ),
     ]
 
     private var sendStateWorkItem: DispatchWorkItem?
@@ -131,11 +144,13 @@ struct ViewState {
 
         Task {
             await loadSettings()
-            self.vad?.setup(sampleRate: .rate_16k,
-                            frameSize: .size_1024,
-                            quality: .normal,
-                            silenceTriggerDurationMs: 4000,
-                            speechTriggerDurationMs: 50)
+            self.vad?.setup(
+                sampleRate: .rate_16k,
+                frameSize: .size_1024,
+                quality: .normal,
+                silenceTriggerDurationMs: 4000,
+                speechTriggerDurationMs: 50
+            )
         }
     }
 
@@ -166,7 +181,9 @@ struct ViewState {
             liveManager = MentraLiveManager()
         } else if wearable.contains("Mach1") && mach1Manager == nil {
             mach1Manager = Mach1Manager()
-        } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"), frameManager == nil {
+        } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"),
+                  frameManager == nil
+        {
             frameManager = FrameManager.shared
         }
         initManagerCallbacks()
@@ -178,7 +195,9 @@ struct ViewState {
         if g1Manager != nil {
             g1Manager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
+                Core.log(
+                    "G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")"
+                )
                 //      self.handleRequestStatus()
                 if self.g1Manager!.g1Ready {
                     handleDeviceReady()
@@ -248,7 +267,9 @@ struct ViewState {
                 }
 
                 if self.bypassVad || self.bypassVadForPCM {
-                    Core.log("Mentra: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)")
+                    Core.log(
+                        "Mentra: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)"
+                    )
                     checkSetVadStatus(speaking: true)
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
@@ -275,10 +296,11 @@ struct ViewState {
 
                 // convert audioData to Int16 array:
                 let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(UnsafeBufferPointer(
-                        start: pointer.bindMemory(to: Int16.self).baseAddress,
-                        count: pointer.count / MemoryLayout<Int16>.stride
-                    ))
+                    Array(
+                        UnsafeBufferPointer(
+                            start: pointer.bindMemory(to: Int16.self).baseAddress,
+                            count: pointer.count / MemoryLayout<Int16>.stride
+                        ))
                 }
 
                 vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
@@ -307,7 +329,9 @@ struct ViewState {
             frameManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
                 let isConnected = self.frameManager?.connectionState == "CONNECTED"
-                Core.log("Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")")
+                Core.log(
+                    "Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")"
+                )
                 if isConnected {
                     handleDeviceReady()
                 } else {
@@ -329,7 +353,9 @@ struct ViewState {
         if liveManager != nil {
             liveManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log("Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")")
+                Core.log(
+                    "Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")"
+                )
                 if self.liveManager!.ready {
                     handleDeviceReady()
                 } else {
@@ -369,7 +395,9 @@ struct ViewState {
         if mach1Manager != nil {
             mach1Manager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log("Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")")
+                Core.log(
+                    "Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")"
+                )
                 if self.mach1Manager!.ready {
                     handleDeviceReady()
                 } else {
@@ -508,10 +536,11 @@ struct ViewState {
 
                 // convert audioData to Int16 array:
                 let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(UnsafeBufferPointer(
-                        start: pointer.bindMemory(to: Int16.self).baseAddress,
-                        count: pointer.count / MemoryLayout<Int16>.stride
-                    ))
+                    Array(
+                        UnsafeBufferPointer(
+                            start: pointer.bindMemory(to: Int16.self).baseAddress,
+                            count: pointer.count / MemoryLayout<Int16>.stride
+                        ))
                 }
 
                 vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
@@ -550,8 +579,10 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func onMicrophoneStateChange(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        Core.log("Mentra: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@")
+    func handle_microphone_state_change(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+        Core.log(
+            "Mentra: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@"
+        )
 
         bypassVadForPCM = bypassVad
 
@@ -616,7 +647,9 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    Core.log("Mentra: no mic to use! falling back to glasses mic!!!!! (this should not happen)")
+                    Core.log(
+                        "Mentra: no mic to use! falling back to glasses mic!!!!! (this should not happen)"
+                    )
                     useGlassesMic = true
                 }
             }
@@ -666,7 +699,9 @@ struct ViewState {
 
     func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
         Core.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
-        liveManager?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size)
+        liveManager?.requestPhoto(
+            requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size
+        )
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -781,6 +816,7 @@ struct ViewState {
                 return
             }
 
+            // TODO: config: remove
             let eventStr = currentViewState.eventStr
             if eventStr != "" {
                 Core.sendEvent(withName: "CoreMessageEvent", body: eventStr)
@@ -861,7 +897,8 @@ struct ViewState {
             placeholders["$GBATT$"] = "\(batteryLevel)%"
         }
 
-        placeholders["$CONNECTION_STATUS$"] = serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
+        placeholders["$CONNECTION_STATUS$"] =
+            serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
 
         var result = text
         for (key, value) in placeholders {
@@ -871,7 +908,7 @@ struct ViewState {
         return result
     }
 
-    func handleDisplayEvent(_ event: [String: Any]) {
+    func handle_display_event(_ event: [String: Any]) {
         guard let view = event["view"] as? String else {
             Core.log("Mentra: invalid view")
             return
@@ -887,6 +924,7 @@ struct ViewState {
 
         // save the state string to forward to the mirror:
         // forward to the glasses mirror:
+        // TODO: config: remove
         let wrapperObj: [String: Any] = ["glasses_display_event": event]
         var eventStr = ""
         do {
@@ -909,7 +947,10 @@ struct ViewState {
         bottomText = parsePlaceholders(bottomText)
         title = parsePlaceholders(title)
 
-        var newViewState = ViewState(topText: topText, bottomText: bottomText, title: title, layoutType: layoutType, text: text, eventStr: eventStr, data: data, animationData: nil)
+        var newViewState = ViewState(
+            topText: topText, bottomText: bottomText, title: title, layoutType: layoutType,
+            text: text, eventStr: eventStr, data: data, animationData: nil
+        )
 
         if layoutType == "bitmap_animation" {
             if let frames = layout["frames"] as? [String],
@@ -921,7 +962,9 @@ struct ViewState {
                     "repeat": layout["repeat"] as? Bool ?? true,
                 ]
                 newViewState.animationData = animationData
-                Core.log("Mentra: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms")
+                Core.log(
+                    "Mentra: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms"
+                )
             } else {
                 Core.log("Mentra: ERROR: bitmap_animation missing frames or interval")
             }
@@ -929,15 +972,18 @@ struct ViewState {
 
         let cS = viewStates[stateIndex]
         let nS = newViewState
-        let currentState = cS.layoutType + cS.text + cS.topText + cS.bottomText + cS.title + (cS.data ?? "")
-        let newState = nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
+        let currentState =
+            cS.layoutType + cS.text + cS.topText + cS.bottomText + cS.title + (cS.data ?? "")
+        let newState =
+            nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
 
         if currentState == newState {
             // Core.log("Mentra: View state is the same, skipping update")
             return
         }
 
-        Core.log("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+        Core.log(
+            "Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
 
         viewStates[stateIndex] = newViewState
 
@@ -950,10 +996,6 @@ struct ViewState {
         }
     }
 
-    func onDisplayEvent(_ event: [String: Any]) {
-        handleDisplayEvent(event)
-    }
-
     func onRequestSingle(_ dataType: String) {
         // Handle single data request
         if dataType == "battery" {
@@ -963,7 +1005,9 @@ struct ViewState {
         handleRequestStatus()
     }
 
-    func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]) {
+    func onRouteChange(
+        reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]
+    ) {
         Core.log("Mentra: onRouteChange: reason: \(reason)")
         Core.log("Mentra: onRouteChange: inputs: \(availableInputs)")
 
@@ -975,7 +1019,7 @@ struct ViewState {
         // if availableInputs.isEmpty {
         //   self.onboardMicUnavailable = true
         //   self.setOnboardMicEnabled(false)
-        //   onMicrophoneStateChange(self.micEnabled)
+        //   handle_microphone_state_change([], false)
         //   return
         // } else {
         //   self.onboardMicUnavailable = false
@@ -992,14 +1036,14 @@ struct ViewState {
         //            break
         //        }
 
-        // onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
+        // handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
     }
 
     func onInterruption(began: Bool) {
         Core.log("Mentra: Interruption: \(began)")
 
         onboardMicUnavailable = began
-        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
     }
 
     private func clearDisplay() {
@@ -1121,7 +1165,7 @@ struct ViewState {
 
     func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1238,7 +1282,7 @@ struct ViewState {
     func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        onMicrophoneStateChange(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1411,7 +1455,9 @@ struct ViewState {
         }
 
         do {
-            if let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+            if let jsonDict = try JSONSerialization.jsonObject(with: data, options: [])
+                as? [String: Any]
+            {
                 // Extract command type
                 guard let commandString = jsonDict["command"] as? String else {
                     Core.log("Mentra: Invalid command format: missing 'command' field")
@@ -1442,7 +1488,9 @@ struct ViewState {
                 case .requestStatus:
                     handleRequestStatus()
                 case .connectWearable:
-                    guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
+                    guard let params = params, let modelName = params["model_name"] as? String,
+                          let deviceName = params["device_name"] as? String
+                    else {
                         Core.log("Mentra: connect_wearable invalid params")
                         handleConnectWearable("")
                         break
@@ -1453,7 +1501,8 @@ struct ViewState {
                 case .forgetSmartGlasses:
                     forgetSmartGlasses()
                 case .searchForCompatibleDeviceNames:
-                    guard let params = params, let modelName = params["model_name"] as? String else {
+                    guard let params = params, let modelName = params["model_name"] as? String
+                    else {
                         Core.log("Mentra: search_for_compatible_device_names invalid params")
                         break
                     }
@@ -1520,7 +1569,9 @@ struct ViewState {
                     }
                     updateGlassesHeadUpAngle(value)
                 case .updateGlassesBrightness:
-                    guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoBrightness"] as? Bool else {
+                    guard let params = params, let value = params["brightness"] as? Int,
+                          let autoBrightness = params["autoBrightness"] as? Bool
+                    else {
                         Core.log("Mentra: update_glasses_brightness invalid params")
                         break
                     }
@@ -1584,7 +1635,9 @@ struct ViewState {
                 case .requestWifiScan:
                     requestWifiScan()
                 case .sendWifiCredentials:
-                    guard let params = params, let ssid = params["ssid"] as? String, let password = params["password"] as? String else {
+                    guard let params = params, let ssid = params["ssid"] as? String,
+                          let password = params["password"] as? String
+                    else {
                         Core.log("Mentra: send_wifi_credentials invalid params")
                         break
                     }
@@ -1616,7 +1669,9 @@ struct ViewState {
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                    ServerComms.getInstance().sendButtonPress(
+                        buttonId: buttonId, pressType: pressType
+                    )
                 case .enforceLocalTranscription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("Mentra: enforce_local_transcription invalid params")
@@ -1637,8 +1692,12 @@ struct ViewState {
                         Core.log("Mentra: save_buffer_video invalid params")
                         break
                     }
-                    Core.log("Mentra: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
-                    liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+                    Core.log(
+                        "Mentra: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s"
+                    )
+                    liveManager?.saveBufferVideo(
+                        requestId: requestId, durationSeconds: durationSeconds
+                    )
                 case .startVideoRecording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
@@ -1647,7 +1706,8 @@ struct ViewState {
                         Core.log("Mentra: start_video_recording invalid params")
                         break
                     }
-                    Core.log("Mentra: Starting video recording: requestId=\(requestId), save=\(save)")
+                    Core.log(
+                        "Mentra: Starting video recording: requestId=\(requestId), save=\(save)")
                     liveManager?.startVideoRecording(requestId: requestId, save: save)
                 case .stopVideoRecording:
                     guard let params = params,
@@ -1694,7 +1754,8 @@ struct ViewState {
         let liveConnected = liveManager?.connectionState == .connected
         let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
-        let isGlassesConnected = g1Connected || liveConnected || mach1Connected || simulatedConnected
+        let isGlassesConnected =
+            g1Connected || liveConnected || mach1Connected || simulatedConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -1758,16 +1819,21 @@ struct ViewState {
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
-            "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium",
+            "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size")
+                ?? "medium",
             "button_video_settings": [
-                "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0 ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
-                "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0 ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
-                "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0 ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
+                "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0
+                    ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
+                "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0
+                    ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
+                "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0
+                    ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
             ],
             "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
         ]
 
-        let cloudConnectionStatus = serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
+        let cloudConnectionStatus =
+            serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
         // let cloudConnectionStatus = self.serverComms.wsManager.status
 
         let coreInfo: [String: Any] = [
@@ -1780,7 +1846,8 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && isSomethingConnected(),
+            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses")
+                && isSomethingConnected(),
             "sensing_enabled": sensingEnabled,
             "power_saving_mode": powerSavingMode,
             "always_on_status_bar": alwaysOnStatusBar,
@@ -1859,7 +1926,8 @@ struct ViewState {
             }
 
             // Display current animation frame
-            let frameText = "                    \(arrowFrames[frameIndex]) MentraOS Booting \(arrowFrames[frameIndex])"
+            let frameText =
+                "                    \(arrowFrames[frameIndex]) MentraOS Booting \(arrowFrames[frameIndex])"
             sendText(frameText)
 
             // Move to next frame
@@ -1977,20 +2045,24 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         Core.log("Mentra: Device disconnected")
-        onMicrophoneStateChange([], false)
+        handle_microphone_state_change([], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
 
     func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
-        Core.log("Mentra: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)")
+        Core.log(
+            "Mentra: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)"
+        )
 
         if modelName != nil {
             pendingWearable = modelName!
         }
 
         if pendingWearable.contains("Simulated") {
-            Core.log("Mentra: Pending wearable is simulated, setting default wearable to Simulated Glasses")
+            Core.log(
+                "Mentra: Pending wearable is simulated, setting default wearable to Simulated Glasses"
+            )
             defaultWearable = "Simulated Glasses"
             handleRequestStatus()
             return
@@ -2121,66 +2193,95 @@ struct ViewState {
         //   }
         // }
 
+        // get device
+    }
+
+    func handle_update_settings(_ settings: [String: Any]) {
+        Core.log("Mentra: Received update settings: \(settings)")
+        // saveSettings()
+
         // update our settings with the new values:
-        if let newPreferredMic = coreInfo?["preferred_mic"] as? String, newPreferredMic != preferredMic {
+        if let newPreferredMic = settings["preferred_mic"] as? String,
+           newPreferredMic != preferredMic
+        {
             setPreferredMic(newPreferredMic)
         }
 
-        if let newHeadUpAngle = coreInfo?["head_up_angle"] as? Int, newHeadUpAngle != headUpAngle {
+        if let newHeadUpAngle = settings["head_up_angle"] as? Int, newHeadUpAngle != headUpAngle {
             updateGlassesHeadUpAngle(newHeadUpAngle)
         }
 
-        if let newBrightness = glassesSettings?["brightness"] as? Int, newBrightness != brightness {
+        if let newBrightness = settings["brightness"] as? Int, newBrightness != brightness {
             updateGlassesBrightness(newBrightness, autoBrightness: false)
         }
 
-        if let newDashboardHeight = glassesSettings?["dashboard_height"] as? Int, newDashboardHeight != dashboardHeight {
+        if let newDashboardHeight = settings["dashboard_height"] as? Int,
+           newDashboardHeight != dashboardHeight
+        {
             updateGlassesHeight(newDashboardHeight)
         }
 
-        if let newDashboardDepth = glassesSettings?["dashboard_depth"] as? Int, newDashboardDepth != dashboardDepth {
+        if let newDashboardDepth = settings["dashboard_depth"] as? Int,
+           newDashboardDepth != dashboardDepth
+        {
             updateGlassesDepth(newDashboardDepth)
         }
 
-        if let newAutoBrightness = glassesSettings?["auto_brightness"] as? Bool, newAutoBrightness != autoBrightness {
+        if let newAutoBrightness = settings["auto_brightness"] as? Bool,
+           newAutoBrightness != autoBrightness
+        {
             updateGlassesBrightness(brightness, autoBrightness: newAutoBrightness)
         }
 
-        if let sensingEnabled = coreInfo?["sensing_enabled"] as? Bool, sensingEnabled != self.sensingEnabled {
+        if let sensingEnabled = settings["sensing_enabled"] as? Bool,
+           sensingEnabled != self.sensingEnabled
+        {
             enableSensing(sensingEnabled)
         }
 
-        if let powerSavingMode = coreInfo?["power_saving_mode"] as? Bool, powerSavingMode != self.powerSavingMode {
+        if let powerSavingMode = settings["power_saving_mode"] as? Bool,
+           powerSavingMode != self.powerSavingMode
+        {
             enablePowerSavingMode(powerSavingMode)
         }
 
-        if let newAlwaysOnStatusBar = coreInfo?["always_on_status_bar_enabled"] as? Bool, newAlwaysOnStatusBar != alwaysOnStatusBar {
+        if let newAlwaysOnStatusBar = settings["always_on_status_bar_enabled"] as? Bool,
+           newAlwaysOnStatusBar != alwaysOnStatusBar
+        {
             enableAlwaysOnStatusBar(newAlwaysOnStatusBar)
         }
 
-        if let newBypassVad = coreInfo?["bypass_vad_for_debugging"] as? Bool, newBypassVad != bypassVad {
+        if let newBypassVad = settings["bypass_vad_for_debugging"] as? Bool,
+           newBypassVad != bypassVad
+        {
             bypassVad(newBypassVad)
         }
 
-        if let newEnforceLocalTranscription = coreInfo?["enforce_local_transcription"] as? Bool, newEnforceLocalTranscription != enforceLocalTranscription {
+        if let newEnforceLocalTranscription = settings["enforce_local_transcription"] as? Bool,
+           newEnforceLocalTranscription != enforceLocalTranscription
+        {
             enforceLocalTranscription(newEnforceLocalTranscription)
         }
 
-        if let newMetricSystemEnabled = coreInfo?["metric_system_enabled"] as? Bool, newMetricSystemEnabled != metricSystemEnabled {
+        if let newMetricSystemEnabled = settings["metric_system_enabled"] as? Bool,
+           newMetricSystemEnabled != metricSystemEnabled
+        {
             setMetricSystemEnabled(newMetricSystemEnabled)
         }
 
-        if let newContextualDashboard = coreInfo?["contextual_dashboard_enabled"] as? Bool, newContextualDashboard != contextualDashboard {
+        if let newContextualDashboard = settings["contextual_dashboard_enabled"] as? Bool,
+           newContextualDashboard != contextualDashboard
+        {
             enableContextualDashboard(newContextualDashboard)
         }
 
         // get default wearable from core_info:
-        if let newDefaultWearable = coreInfo?["default_wearable"] as? String, newDefaultWearable != defaultWearable {
+        if let newDefaultWearable = settings["default_wearable"] as? String,
+           newDefaultWearable != defaultWearable
+        {
             defaultWearable = newDefaultWearable
             saveSettings()
         }
-
-        // get device
     }
 
     private func saveSettings() {
@@ -2272,8 +2373,10 @@ struct ViewState {
         settingsLoaded = true
         settingsLoadedSemaphore.signal()
 
-        Core.log("Mentra: Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
-            "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
+        Core.log(
+            "Mentra: Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), "
+                + "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)"
+        )
     }
 
     // MARK: - Helper Functions
@@ -2418,49 +2521,63 @@ struct ViewState {
             let fileManager = FileManager.default
 
             // Create destination directory if it doesn't exist
-            try fileManager.createDirectory(atPath: destinationPath,
-                                            withIntermediateDirectories: true,
-                                            attributes: nil)
+            try fileManager.createDirectory(
+                atPath: destinationPath,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
 
             // Try to read compressed file
-            guard let compressedData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath)) else {
+            guard let compressedData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath))
+            else {
                 Core.log("EXTRACTION_ERROR: Failed to read compressed file")
                 return false
             }
 
             // Create a temporary directory for extraction
             let tempExtractPath = NSTemporaryDirectory().appending("/\(UUID().uuidString)")
-            try fileManager.createDirectory(atPath: tempExtractPath,
-                                            withIntermediateDirectories: true,
-                                            attributes: nil)
+            try fileManager.createDirectory(
+                atPath: tempExtractPath,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
 
             // Use the Swift TarBz2Extractor with SWCompression
             var extractionError: NSError?
-            let success = TarBz2Extractor.extractTarBz2From(sourcePath,
-                                                            to: destinationPath,
-                                                            error: &extractionError)
+            let success = TarBz2Extractor.extractTarBz2From(
+                sourcePath,
+                to: destinationPath,
+                error: &extractionError
+            )
 
             if !success || extractionError != nil {
-                print("EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")")
+                print(
+                    "EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")"
+                )
                 return false
             }
 
             // Rename encoder
-            let oldEncoderPath = (destinationPath as NSString).appendingPathComponent("encoder-epoch-99-avg-1.onnx")
-            let newEncoderPath = (destinationPath as NSString).appendingPathComponent("encoder.onnx")
+            let oldEncoderPath = (destinationPath as NSString).appendingPathComponent(
+                "encoder-epoch-99-avg-1.onnx")
+            let newEncoderPath = (destinationPath as NSString).appendingPathComponent(
+                "encoder.onnx")
             if fileManager.fileExists(atPath: oldEncoderPath) {
                 try? fileManager.moveItem(atPath: oldEncoderPath, toPath: newEncoderPath)
             }
 
             // Rename decoder
-            let oldDecoderPath = (destinationPath as NSString).appendingPathComponent("decoder-epoch-99-avg-1.onnx")
-            let newDecoderPath = (destinationPath as NSString).appendingPathComponent("decoder.onnx")
+            let oldDecoderPath = (destinationPath as NSString).appendingPathComponent(
+                "decoder-epoch-99-avg-1.onnx")
+            let newDecoderPath = (destinationPath as NSString).appendingPathComponent(
+                "decoder.onnx")
             if fileManager.fileExists(atPath: oldDecoderPath) {
                 try? fileManager.moveItem(atPath: oldDecoderPath, toPath: newDecoderPath)
             }
 
             // Rename joiner
-            let oldJoinerPath = (destinationPath as NSString).appendingPathComponent("joiner-epoch-99-avg-1.int8.onnx")
+            let oldJoinerPath = (destinationPath as NSString).appendingPathComponent(
+                "joiner-epoch-99-avg-1.int8.onnx")
             let newJoinerPath = (destinationPath as NSString).appendingPathComponent("joiner.onnx")
             if fileManager.fileExists(atPath: oldJoinerPath) {
                 try? fileManager.moveItem(atPath: oldJoinerPath, toPath: newJoinerPath)

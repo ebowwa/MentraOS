@@ -67,7 +67,9 @@ import Foundation
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
-            case set_settings
+            case display_event
+            case update_settings
+            case microphone_state_change
             case unknown
         }
 
@@ -97,6 +99,7 @@ import Foundation
                         break
                     }
                     m.setServerUrl(url: url)
+                // TODO: config: remove
                 case .set_auth_secret_key:
                     guard let params = params,
                           let userId = params["userId"] as? String,
@@ -106,6 +109,12 @@ import Foundation
                         break
                     }
                     m.setAuthSecretKey(secretKey: authSecretKey, userId: userId)
+                case .display_event:
+                    guard let params else {
+                        Core.log("CommandBridge: display_event invalid params")
+                        break
+                    }
+                    m.handle_display_event(params)
                 case .request_status:
                     m.handleRequestStatus()
                 case .connect_wearable:
@@ -360,9 +369,29 @@ import Foundation
                         break
                     }
                     return m.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
-                case .set_settings:
-                    // m.setSettings(params)
-                    break
+                case .microphone_state_change:
+                    guard let msg = params else {
+                        Core.log("CommandBridge: microphone_state_change invalid params")
+                        break
+                    }
+                    let bypassVad = msg["bypassVad"] as? Bool ?? false
+                    var requiredDataStrings: [String] = []
+                    if let requiredDataArray = msg["requiredData"] as? [String] {
+                        requiredDataStrings = requiredDataArray
+                    } else if let requiredDataArray = msg["requiredData"] as? [Any] {
+                        // Handle case where it might come as mixed array
+                        requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
+                    }
+                    // Convert string array to enum array
+                    var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+                    Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+                    m.handle_microphone_state_change(requiredData, bypassVad)
+                case .update_settings:
+                    guard let params else {
+                        Core.log("CommandBridge: update_settings invalid params")
+                        break
+                    }
+                    m.handle_update_settings(params)
                 }
             }
         } catch {
