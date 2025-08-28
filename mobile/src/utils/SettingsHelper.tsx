@@ -33,6 +33,7 @@ export const SETTINGS_KEYS = {
   button_video_settings: "button_video_settings",
   button_camera_led: "button_camera_led",
   button_video_settings_width: "button_video_settings_width",
+  core_token: "core_token",
 }
 
 const DEFAULT_SETTINGS = {

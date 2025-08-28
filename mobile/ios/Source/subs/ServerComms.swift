@@ -237,10 +237,10 @@ class ServerComms {
         }
 
         if let locationData = LocationManager.shared.getCurrentLocation() {
-            Core.log("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
             sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
         } else {
-            Core.log("Cannot send location update: No location data available")
+            Core.log("ServerComms: Cannot send location update: No location data available")
         }
     }
 
@@ -263,7 +263,7 @@ class ServerComms {
 
     func updateAsrConfig(languages: [[String: Any]]) {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send ASR config: not connected.")
+            Core.log("ServerComms: Cannot send ASR config: not connected.")
             return
         }
 
@@ -278,7 +278,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building config message: \(error)")
+            Core.log("ServerComms: Error building config message: \(error)")
         }
     }
 
@@ -295,7 +295,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building core_status_update JSON: \(error)")
+            Core.log("ServerComms: Error building core_status_update JSON: \(error)")
         }
     }
 
@@ -335,7 +335,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building start_app JSON: \(error)")
+            Core.log("ServerComms: Error building start_app JSON: \(error)")
         }
     }
 
@@ -352,7 +352,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building stop_app JSON: \(error)")
+            Core.log("ServerComms: Error building stop_app JSON: \(error)")
         }
     }
 
@@ -390,7 +390,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building photo_response JSON: \(error)")
+            Core.log("ServerComms: Error building photo_response JSON: \(error)")
         }
     }
 
@@ -408,7 +408,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building video_stream_response JSON: \(error)")
+            Core.log("ServerComms: Error building video_stream_response JSON: \(error)")
         }
     }
 
@@ -425,7 +425,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error sending head position: \(error)")
+            Core.log("ServerComms: Error sending head position: \(error)")
         }
     }
 

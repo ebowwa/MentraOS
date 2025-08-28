@@ -16,6 +16,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {router} from "expo-router"
+import ServerComms from "@/services/ServerComms"
 
 export default function CoreTokenExchange() {
   const {status} = useCoreStatus()
@@ -64,11 +65,12 @@ export default function CoreTokenExchange() {
 
       // Exchange token with backend
       const backend = BackendServerComms.getInstance()
+      const server = ServerComms.getInstance()
       const coreToken = await backend.exchangeToken(supabaseToken)
 
       const uid = user.email || user.id
-      coreCommunicator.setAuthenticationSecretKey(uid, coreToken)
-      BackendServerComms.getInstance().setCoreToken(coreToken)
+      coreCommunicator.setAuthenticationSecretKey(uid, coreToken) // TODO: config: remove
+      // server.set_auth_credentials(uid, coreToken)
 
       // Navigate
       // Check if the user has completed onboarding

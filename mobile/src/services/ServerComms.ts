@@ -1,6 +1,8 @@
 import Config from "react-native-config"
 import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
 import coreCommunicator from "@/bridge/CoreCommunicator"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -76,8 +78,8 @@ class ServerComms {
   set_auth_credentials(userid: string, coreToken: string) {
     this.coreToken = coreToken
     this.userid = userid
-    // Store core token in storage if needed
-    // Note: React Native doesn't have UserDefaults, you might want to use AsyncStorage
+    saveSetting(SETTINGS_KEYS.core_token, coreToken)
+    this.connect_websocket()
   }
 
   set_server_url(url: string) {
@@ -97,7 +99,7 @@ class ServerComms {
   connect_websocket() {
     const url = this.get_server_url()
     if (!url) {
-      console.log("Invalid server URL")
+      console.error(`SCTS: Invalid server URL`)
       return
     }
     this.wsManager.connect(url, this.coreToken)
