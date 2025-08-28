@@ -83,6 +83,7 @@ class ServerComms {
         UserDefaults.standard.set(coreToken, forKey: "core_token")
     }
 
+    // TODO: config: remove
     func setServerUrl(_ url: String) {
         serverUrl = url
         Core.log("ServerComms: setServerUrl: \(url)")

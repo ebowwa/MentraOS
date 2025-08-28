@@ -17,8 +17,7 @@ interface ThirdPartyCloudApp {
 class ServerComms {
   private static instance: ServerComms | null = null
 
-  private wsManager = WebSocketManager.getInstance()
-  private speechRecCallback: ((data: any) => void) | null = null
+  private ws = WebSocketManager.getInstance()
   private coreToken: string = ""
   public userid: string = ""
   private serverUrl: string = ""
@@ -32,13 +31,13 @@ class ServerComms {
 
   private constructor() {
     // Subscribe to WebSocket messages
-    this.wsManager.on("message", message => {
+    this.ws.on("message", message => {
       this.handle_incoming_message(message)
     })
 
     // Subscribe to WebSocket status changes
-    this.wsManager.on("statusChange", status => {
-      this.handle_status_change(status)
+    this.ws.on("statusChange", status => {
+      this.handleStatusChange(status)
     })
 
     this.setup_periodic_tasks()
@@ -75,53 +74,124 @@ class ServerComms {
     // No need for event listeners here - native side will call methods directly
   }
 
-  set_auth_credentials(userid: string, coreToken: string) {
-    this.coreToken = coreToken
-    this.userid = userid
-    saveSetting(SETTINGS_KEYS.core_token, coreToken)
-    this.connect_websocket()
-  }
-
-  set_server_url(url: string) {
-    this.serverUrl = url
-    console.log(`ServerComms: setServerUrl: ${url}`)
-    if (this.wsManager.isConnected()) {
-      this.wsManager.disconnect()
-      this.connect_websocket()
-    }
-  }
-
-  set_speech_rec_callback(callback: (data: any) => void) {
-    this.speechRecCallback = callback
-  }
-
   // Connection Management
-  connect_websocket() {
-    const url = this.get_server_url()
+
+  private getServerUrlForRest(): string {
+    if (this.serverUrl) {
+      // Extract base URL from WebSocket URL
+      const url = new URL(this.serverUrl)
+      const secure = url.protocol === "https:"
+      return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
+    }
+
+    // Fallback to environment configuration
+    const host = Config.MENTRAOS_HOST
+    const port = Config.MENTRAOS_PORT
+    const secure = Config.MENTRAOS_SECURE === "true"
+    return `${secure ? "https" : "http"}://${host}:${port}`
+  }
+
+  private getServerUrl(): string {
+    if (this.serverUrl) {
+      const url = new URL(this.serverUrl)
+      const secure = url.protocol === "https:"
+      const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
+      return wsUrl
+    }
+
+    const host = Config.MENTRAOS_HOST
+    const port = Config.MENTRAOS_PORT
+    const secure = Config.MENTRAOS_SECURE === "true"
+    const url = `${secure ? "wss" : "ws"}://${host}:${port}/glasses-ws`
+    console.log(`ServerCommsTS: getServerUrl(): ${url}`)
+    return url
+  }
+
+  private connectWebsocket() {
+    console.log("ServerCommsTS: connectWebsocket()")
+    const url = this.getServerUrl()
     if (!url) {
-      console.error(`SCTS: Invalid server URL`)
+      console.error(`ServerCommsTS: Invalid server URL`)
       return
     }
-    this.wsManager.connect(url, this.coreToken)
+    this.ws.connect(url, this.coreToken)
   }
 
-  is_websocket_connected(): boolean {
-    return this.wsManager.isActuallyConnected()
-  }
+  private sendConnectionInit() {
+    console.log("ServerCommsTS: Sending connection_init message")
+    if (!this.coreToken) {
+      console.error("ServerCommsTS: No core token found")
+      return
+    }
 
-  private send_connection_init(coreToken: string) {
     try {
       const initMsg = {
         type: "connection_init",
-        coreToken: coreToken,
+        coreToken: this.coreToken,
       }
 
       const jsonString = JSON.stringify(initMsg)
-      this.wsManager.sendText(jsonString)
-      console.log("ServerComms: Sent connection_init message")
+      this.ws.sendText(jsonString)
+      console.log("ServerCommsTS: Sent connection_init message")
     } catch (error) {
-      console.log(`ServerComms: Error building connection_init JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building connection_init JSON: ${error}`)
     }
+  }
+
+  private attemptReconnect(override = false) {
+    if (this.reconnecting && !override) return
+    this.reconnecting = true
+
+    this.connectWebsocket()
+
+    // If after some time we're still not connected, run this function again
+    setTimeout(() => {
+      if (this.ws.isActuallyConnected()) {
+        this.reconnectionAttempts = 0
+        this.reconnecting = false
+        return
+      }
+      this.reconnectionAttempts++
+      this.attemptReconnect(true)
+    }, 10000)
+  }
+
+  private handleStatusChange(status: WebSocketStatus) {
+    console.log(`ServerCommsTS: handleStatusChange: ${status}`)
+
+    if (status === WebSocketStatus.DISCONNECTED || status === WebSocketStatus.ERROR) {
+      this.attemptReconnect()
+    }
+
+    if (status === WebSocketStatus.CONNECTED) {
+      // Wait a bit before sending connection_init
+      setTimeout(() => {
+        this.sendConnectionInit()
+        this.send_calendar_events()
+        this.send_location_updates()
+      }, 3000)
+    }
+  }
+
+  isWebSocketConnected(): boolean {
+    return this.ws.isActuallyConnected()
+  }
+
+  setServerUrl(url: string) {
+    this.serverUrl = url
+    console.log(`ServerCommsTS: setServerUrl: ${url}`)
+    if (this.ws.isConnected()) {
+      this.ws.disconnect()
+      this.connectWebsocket()
+    }
+  }
+
+  setAuthCredentials(userid: string, coreToken: string) {
+    console.log(`ServerCommsTS: setAuthCredentials: ${userid}, ${coreToken}`)
+    this.coreToken = coreToken
+    this.userid = userid
+    saveSetting(SETTINGS_KEYS.core_token, coreToken)
+    this.connectWebsocket()
   }
 
   send_vad_status(isSpeaking: boolean) {
@@ -131,7 +201,7 @@ class ServerComms {
     }
 
     const jsonString = JSON.stringify(vadMsg)
-    this.wsManager.sendText(jsonString)
+    this.ws.sendText(jsonString)
   }
 
   send_battery_status(level: number, charging: boolean) {
@@ -143,12 +213,12 @@ class ServerComms {
     }
 
     const jsonString = JSON.stringify(msg)
-    this.wsManager.sendText(jsonString)
+    this.ws.sendText(jsonString)
   }
 
   send_calendar_event(calendarItem: any) {
-    if (!this.wsManager.isConnected()) {
-      console.log("Cannot send calendar event: not connected.")
+    if (!this.ws.isConnected()) {
+      console.log("ServerCommsTS: Cannot send calendar event: not connected.")
       return
     }
 
@@ -164,14 +234,14 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building calendar_event JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building calendar_event JSON: ${error}`)
     }
   }
 
   async send_calendar_events() {
-    if (!this.wsManager.isConnected()) return
+    if (!this.ws.isConnected()) return
 
     // Request calendar events from native side
     // Native side will handle fetching and sending events
@@ -196,15 +266,15 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerComms: Error building location_update JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building location_update JSON: ${error}`)
     }
   }
 
   send_location_updates() {
-    if (!this.wsManager.isConnected()) {
-      console.log("Cannot send location updates: WebSocket not connected")
+    if (!this.ws.isConnected()) {
+      console.log("ServerCommsTS: Cannot send location updates: WebSocket not connected")
       return
     }
 
@@ -222,15 +292,15 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerComms: Error building glasses_connection_state JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building glasses_connection_state JSON: ${error}`)
     }
   }
 
   update_asr_config(languages: any[]) {
-    if (!this.wsManager.isConnected()) {
-      console.log("Cannot send ASR config: not connected.")
+    if (!this.ws.isConnected()) {
+      console.log("ServerCommsTS: Cannot send ASR config: not connected.")
       return
     }
 
@@ -241,9 +311,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(configMsg)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building config message: ${error}`)
+      console.log(`ServerCommsTS: Error building config message: ${error}`)
     }
   }
 
@@ -256,15 +326,15 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building core_status_update JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building core_status_update JSON: ${error}`)
     }
   }
 
   send_audio_play_response(requestId: string, success: boolean, error?: string, duration?: number) {
     console.log(
-      `ServerComms: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
+      `ServerCommsTS: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
     )
 
     const message: any = {
@@ -278,10 +348,10 @@ class ServerComms {
 
     try {
       const jsonString = JSON.stringify(message)
-      this.wsManager.sendText(jsonString)
-      console.log("ServerComms: Sent audio play response to server")
+      this.ws.sendText(jsonString)
+      console.log("ServerCommsTS: Sent audio play response to server")
     } catch (err) {
-      console.log(`ServerComms: Failed to serialize audio play response: ${err}`)
+      console.log(`ServerCommsTS: Failed to serialize audio play response: ${err}`)
     }
   }
 
@@ -295,9 +365,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(msg)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building start_app JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building start_app JSON: ${error}`)
     }
   }
 
@@ -310,9 +380,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(msg)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building stop_app JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building stop_app JSON: ${error}`)
     }
   }
 
@@ -327,9 +397,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerComms: Error building button_press JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building button_press JSON: ${error}`)
     }
   }
 
@@ -343,9 +413,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building photo_response JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building photo_response JSON: ${error}`)
     }
   }
 
@@ -359,9 +429,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error building video_stream_response JSON: ${error}`)
+      console.log(`ServerCommsTS: Error building video_stream_response JSON: ${error}`)
     }
   }
 
@@ -374,9 +444,9 @@ class ServerComms {
       }
 
       const jsonString = JSON.stringify(event)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`Error sending head position: ${error}`)
+      console.log(`ServerCommsTS: Error sending head position: ${error}`)
     }
   }
 
@@ -384,6 +454,8 @@ class ServerComms {
   private handle_incoming_message(msg: any) {
     const type = msg.type
     if (!type) return
+
+    console.log(`ServerCommsTS: handle_incoming_message: ${type}`)
 
     switch (type) {
       case "connection_ack":
@@ -409,7 +481,7 @@ class ServerComms {
       case "microphone_state_change":
         const bypassVad = msg.bypassVad || false
         const requiredDataStrings = msg.requiredData || []
-        console.log(`ServerComms: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
+        console.log(`ServerCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
         coreCommunicator.sendCommand("microphone_state_change", {
           requiredData: requiredDataStrings,
           bypassVad,
@@ -444,16 +516,16 @@ class ServerComms {
         if (this.speechRecCallback) {
           this.speechRecCallback(msg)
         } else {
-          console.log("ServerComms: Received speech message but speechRecCallback is null!")
+          console.log("ServerCommsTS: Received speech message but speechRecCallback is null!")
         }
         break
 
       case "reconnect":
-        console.log("ServerComms: Server is requesting a reconnect.")
+        console.log("ServerCommsTS: Server is requesting a reconnect.")
         break
 
       case "settings_update":
-        console.log("ServerComms: Received settings update from WebSocket")
+        console.log("ServerCommsTS: Received settings update from WebSocket")
         const status = msg.status
         if (status) {
           coreCommunicator.sendCommand("status_update", {status})
@@ -479,7 +551,7 @@ class ServerComms {
 
       case "app_started":
         if (msg.packageName) {
-          console.log(`ServerComms: Received app_started message for package: ${msg.packageName}`)
+          console.log(`ServerCommsTS: Received app_started message for package: ${msg.packageName}`)
           coreCommunicator.sendCommand("app_started", {
             packageName: msg.packageName,
           })
@@ -488,7 +560,7 @@ class ServerComms {
 
       case "app_stopped":
         if (msg.packageName) {
-          console.log(`ServerComms: Received app_stopped message for package: ${msg.packageName}`)
+          console.log(`ServerCommsTS: Received app_stopped message for package: ${msg.packageName}`)
           coreCommunicator.sendCommand("app_stopped", {
             packageName: msg.packageName,
           })
@@ -530,22 +602,22 @@ class ServerComms {
         break
 
       case "keep_rtmp_stream_alive":
-        console.log(`ServerComms: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
+        console.log(`ServerCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
         coreCommunicator.sendCommand("keep_rtmp_stream_alive", msg)
         break
 
       case "start_buffer_recording":
-        console.log("ServerComms: Received START_BUFFER_RECORDING")
+        console.log("ServerCommsTS: Received START_BUFFER_RECORDING")
         coreCommunicator.sendCommand("start_buffer_recording")
         break
 
       case "stop_buffer_recording":
-        console.log("ServerComms: Received STOP_BUFFER_RECORDING")
+        console.log("ServerCommsTS: Received STOP_BUFFER_RECORDING")
         coreCommunicator.sendCommand("stop_buffer_recording")
         break
 
       case "save_buffer_video":
-        console.log(`ServerComms: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
+        console.log(`ServerCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
         const bufferRequestId = msg.requestId || `buffer_${Date.now()}`
         const durationSeconds = msg.durationSeconds || 30
         coreCommunicator.sendCommand("save_buffer_video", {
@@ -555,7 +627,7 @@ class ServerComms {
         break
 
       case "start_video_recording":
-        console.log(`ServerComms: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+        console.log(`ServerCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
         const videoRequestId = msg.requestId || `video_${Date.now()}`
         const save = msg.save !== false
         coreCommunicator.sendCommand("start_video_recording", {
@@ -565,7 +637,7 @@ class ServerComms {
         break
 
       case "stop_video_recording":
-        console.log(`ServerComms: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+        console.log(`ServerCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
         const stopRequestId = msg.requestId || ""
         coreCommunicator.sendCommand("stop_video_recording", {
           requestId: stopRequestId,
@@ -573,16 +645,16 @@ class ServerComms {
         break
 
       default:
-        console.log(`ServerComms: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
+        console.log(`ServerCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
     }
   }
 
   private handle_audio_play_request(msg: any) {
-    console.log(`ServerComms: Handling audio play request: ${JSON.stringify(msg)}`)
+    console.log(`ServerCommsTS: Handling audio play request: ${JSON.stringify(msg)}`)
     const requestId = msg.requestId
     if (!requestId) return
 
-    console.log(`ServerComms: Handling audio play request for requestId: ${requestId}`)
+    console.log(`ServerCommsTS: Handling audio play request for requestId: ${requestId}`)
 
     const audioUrl = msg.audioUrl || ""
     const volume = msg.volume || 1.0
@@ -598,50 +670,14 @@ class ServerComms {
   }
 
   private handle_audio_stop_request() {
-    console.log("ServerComms: Handling audio stop request")
+    console.log("ServerCommsTS: Handling audio stop request")
     // Forward to native audio handling
     coreCommunicator.sendCommand("audio_stop_request")
   }
 
-  private attempt_reconnect(override = false) {
-    if (this.reconnecting && !override) return
-    this.reconnecting = true
-
-    this.connectWebSocket()
-
-    // If after some time we're still not connected, run this function again
-    setTimeout(() => {
-      if (this.wsManager.isActuallyConnected()) {
-        this.reconnectionAttempts = 0
-        this.reconnecting = false
-        return
-      }
-      this.reconnectionAttempts++
-      this.attemptReconnect(true)
-    }, 10000)
-  }
-
-  private handle_status_change(status: WebSocketStatus) {
-    console.log(`handleStatusChange: ${status}`)
-
-    if (status === WebSocketStatus.DISCONNECTED || status === WebSocketStatus.ERROR) {
-      this.stop_audio_sender_thread()
-      this.attempt_reconnect()
-    }
-
-    if (status === WebSocketStatus.CONNECTED) {
-      // Wait a bit before sending connection_init
-      setTimeout(() => {
-        this.send_connection_init(this.coreToken)
-        this.send_calendar_events()
-        this.send_location_updates()
-      }, 3000)
-    }
-  }
-
   // Helper methods
   async send_user_datetime_to_backend(isoDatetime: string) {
-    const url = `${this.get_server_url_for_rest()}/api/user-data/set-datetime`
+    const url = `${this.getServerUrlForRest()}/api/user-data/set-datetime`
 
     const body = {
       coreToken: this.coreToken,
@@ -649,7 +685,7 @@ class ServerComms {
     }
 
     try {
-      console.log(`ServerComms: Sending datetime to: ${url}`)
+      console.log(`ServerCommsTS: Sending datetime to: ${url}`)
 
       const response = await fetch(url, {
         method: "POST",
@@ -661,46 +697,15 @@ class ServerComms {
 
       if (response.ok) {
         const responseText = await response.text()
-        console.log(`ServerComms: Datetime transmission successful: ${responseText}`)
+        console.log(`ServerCommsTS: Datetime transmission successful: ${responseText}`)
       } else {
-        console.log(`ServerComms: Datetime transmission failed. Response code: ${response.status}`)
+        console.log(`ServerCommsTS: Datetime transmission failed. Response code: ${response.status}`)
         const errorText = await response.text()
-        console.log(`ServerComms: Error response: ${errorText}`)
+        console.log(`ServerCommsTS: Error response: ${errorText}`)
       }
     } catch (error) {
-      console.log(`ServerComms: Exception during datetime transmission: ${error}`)
+      console.log(`ServerCommsTS: Exception during datetime transmission: ${error}`)
     }
-  }
-
-  private get_server_url_for_rest(): string {
-    if (this.serverUrl) {
-      // Extract base URL from WebSocket URL
-      const url = new URL(this.serverUrl)
-      const secure = url.protocol === "https:"
-      return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
-    }
-
-    // Fallback to environment configuration
-    const host = Config.MENTRAOS_HOST
-    const port = Config.MENTRAOS_PORT
-    const secure = Config.MENTRAOS_SECURE === "true"
-    return `${secure ? "https" : "http"}://${host}:${port}`
-  }
-
-  private get_server_url(): string {
-    if (this.serverUrl) {
-      const url = new URL(this.serverUrl)
-      const secure = url.protocol === "https:"
-      const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
-      return wsUrl
-    }
-
-    const host = Config.MENTRAOS_HOST
-    const port = Config.MENTRAOS_PORT
-    const secure = Config.MENTRAOS_SECURE === "true"
-    const url = `${secure ? "wss" : "ws"}://${host}:${port}/glasses-ws`
-    console.log(`ServerComms: getServerUrl(): ${url}`)
-    return url
   }
 
   parse_app_list(msg: any): ThirdPartyCloudApp[] {
@@ -753,7 +758,7 @@ class ServerComms {
   }
 
   send_transcription_result(transcription: any) {
-    if (!this.wsManager.isConnected()) {
+    if (!this.ws.isConnected()) {
       console.log("Cannot send transcription result: WebSocket not connected")
       return
     }
@@ -766,7 +771,7 @@ class ServerComms {
 
     try {
       const jsonString = JSON.stringify(transcription)
-      this.wsManager.sendText(jsonString)
+      this.ws.sendText(jsonString)
 
       const isFinal = transcription.isFinal || false
       console.log(`Sent ${isFinal ? "final" : "partial"} transcription: '${text}'`)
@@ -788,7 +793,7 @@ class ServerComms {
     }
 
     // Cleanup WebSocket
-    this.wsManager.cleanup()
+    this.ws.cleanup()
 
     // Reset instance
     ServerComms.instance = null

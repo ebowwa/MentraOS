@@ -65,12 +65,12 @@ export default function CoreTokenExchange() {
 
       // Exchange token with backend
       const backend = BackendServerComms.getInstance()
-      const server = ServerComms.getInstance()
+      // const server = ServerComms.getInstance()
       const coreToken = await backend.exchangeToken(supabaseToken)
 
       const uid = user.email || user.id
       coreCommunicator.setAuthenticationSecretKey(uid, coreToken) // TODO: config: remove
-      // server.set_auth_credentials(uid, coreToken)
+      // server.setAuthCredentials(uid, coreToken)
 
       // Navigate
       // Check if the user has completed onboarding

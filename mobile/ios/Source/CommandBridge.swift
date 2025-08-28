@@ -90,6 +90,7 @@ import Foundation
 
                 // Process based on command type
                 switch commandType {
+                // TODO: config: remove
                 case .set_server_url:
                     guard let params = params, let url = params["url"] as? String else {
                         Core.log("CommandBridge: set_server_url invalid params")

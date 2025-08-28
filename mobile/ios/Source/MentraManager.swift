@@ -1423,6 +1423,7 @@ struct ViewState {
 
                 // Process based on command type
                 switch commandType {
+                // TODO: config: remove
                 case .setServerUrl:
                     guard let params = params, let url = params["url"] as? String else {
                         Core.log("Mentra: set_server_url invalid params")

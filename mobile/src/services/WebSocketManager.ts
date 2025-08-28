@@ -35,6 +35,7 @@ class WebSocketManager extends EventEmitter {
   }
 
   connect(url: string, coreToken: string) {
+    console.log(`WSManagerTS: connect: ${url}, ${coreToken}`)
     this.coreToken = coreToken
     this.url = url
 
@@ -49,13 +50,13 @@ class WebSocketManager extends EventEmitter {
 
     // Create new WebSocket with authorization header
     const wsUrl = new URL(url)
-    wsUrl.searchParams.append("token", coreToken)
+    wsUrl.searchParams.set("token", coreToken)
 
     this.webSocket = new WebSocket(wsUrl.toString())
 
     // Set up event handlers
     this.webSocket.onopen = () => {
-      console.log("WebSocket connection established")
+      console.log("WSManagerTS: WebSocket connection established")
       this.updateStatus(WebSocketStatus.CONNECTED)
     }
 
@@ -64,12 +65,12 @@ class WebSocketManager extends EventEmitter {
     }
 
     this.webSocket.onerror = error => {
-      console.error("WebSocket error:", error)
+      console.error("WSManagerTS: WebSocket error:", error)
       this.updateStatus(WebSocketStatus.ERROR)
     }
 
     this.webSocket.onclose = event => {
-      console.log("WebSocket connection closed with code:", event.code)
+      console.log("WSManagerTS: Connection closed with code:", event.code)
       this.updateStatus(WebSocketStatus.DISCONNECTED)
     }
   }
