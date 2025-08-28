@@ -9,7 +9,7 @@ podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties
 
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
-project 'AOS.xcodeproj'
+
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
   :deterministic_uuids => false
@@ -29,7 +29,7 @@ setup_permissions([
 ])
 # @generated end setup
 
-target 'AOS' do
+target 'MentraOS' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -59,10 +59,6 @@ target 'AOS' do
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
-
-  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
-  pod 'SWCompression', '~> 4.8'
-  pod 'SwiftProtobuf', '~> 1.25'
 
   post_install do |installer|
     react_native_post_install(

@@ -2205,11 +2205,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private byte[] createTextWallChunksForNex(String text) {
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
+                .setColor(10000)
                 .setText(text)
                 .setSize(48)
                 .setX(20)
                 .setY(260)
-                .setColor(10000).build();
+                .build();
 
         Log.d(TAG, "=== SENDING TEXT TO GLASSES ===");
         Log.d(TAG, "Text: \"" + text + "\"");
@@ -2228,11 +2229,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private byte[] createTextWallChunksForNex(DisplayTextEvent displayTextEvent) {
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
+                .setColor(10000)
                 .setText(displayTextEvent.text)
                 .setSize(displayTextEvent.size)
                 .setX(displayTextEvent.x)
-                .setY(displayTextEvent.y)
-                .setColor(10000).build();
+                .setY(displayTextEvent.y).build();
 
         Log.d(TAG, "createTextWallChunksForNex textNewBuilder:" + textNewBuilder.toString());
         // Create the PhoneToGlasses using its builder and set the DisplayText

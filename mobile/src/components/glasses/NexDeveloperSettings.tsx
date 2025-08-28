@@ -17,6 +17,9 @@ import {PillButton} from "@/components/ignite"
 import {MOCK_CONNECTION} from "@/consts"
 import {SvgXml} from "react-native-svg"
 
+// Nex Interface Version - Single source of truth
+export const NEX_INTERFACE_VERSION = "1.0.0"
+
 // Pattern Preview Component (copied from DeviceSettings)
 interface PatternPreviewProps {
   imageType: string
@@ -398,6 +401,9 @@ export default function NexDeveloperSettings() {
           <Text style={themed($subtitle)}>
             Advanced developer tools and debugging features for smart glasses development
           </Text>
+          <View style={themed($versionContainer)}>
+            <Text style={themed($versionBadge)}>Interface v{NEX_INTERFACE_VERSION}</Text>
+          </View>
         </View>
 
         {/* Screen Settings for binocular glasses */}
@@ -572,7 +578,9 @@ export default function NexDeveloperSettings() {
             {/* BLE Command Monitor */}
             <View style={themed($settingsGroup)}>
               <Text style={themed($sectionTitle)}>BLE Command Monitor</Text>
-              <Text style={themed($description)}>Monitor BLE commands sent and received</Text>
+              <Text style={themed($description)}>
+                Monitor BLE commands sent and received (Interface v{NEX_INTERFACE_VERSION})
+              </Text>
 
               <Text style={themed($label)}>Last Sent Command:</Text>
               {commandSender ? (
@@ -879,3 +887,21 @@ const $toggleContainer: ViewStyle = {
 const $spacer: ViewStyle = {
   height: 30,
 }
+
+const $versionContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: spacing.md,
+  alignItems: "center",
+})
+
+const $versionBadge: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.primary100,
+  color: colors.palette.primary600,
+  fontSize: 12,
+  fontWeight: "600",
+  paddingHorizontal: spacing.sm,
+  paddingVertical: spacing.xs,
+  borderRadius: spacing.xs,
+  borderWidth: 1,
+  borderColor: colors.palette.primary300,
+  overflow: "hidden",
+})

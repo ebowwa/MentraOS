@@ -14,6 +14,7 @@ import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser from "@/utils/CoreStatusParser"
 import ServerComms from "@/services/ServerComms"
+import {NEX_INTERFACE_VERSION} from "@/components/glasses/NexDeveloperSettings"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -1019,24 +1020,6 @@ export class CoreCommunicator extends EventEmitter {
     return await this.sendData({
       command: command,
       params: params || {},
-    })
-  }
-
-  /**
-   * Sends audio play response back to Core
-   */
-  private async sendAudioPlayResponse(response: AudioPlayResponse) {
-    console.log(
-      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
-    )
-    await this.sendData({
-      command: "audio_play_response",
-      params: {
-        requestId: response.requestId,
-        success: response.success,
-        error: response.error,
-        duration: response.duration,
-      },
     })
   }
 
