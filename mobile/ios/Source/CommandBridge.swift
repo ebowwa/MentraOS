@@ -108,7 +108,7 @@ import Foundation
                         Core.log("CommandBridge: set_auth_secret_key invalid params")
                         break
                     }
-                    m.setAuthSecretKey(secretKey: authSecretKey, userId: userId)
+                    m.setAuthCreds(authSecretKey, userId)
                 case .display_event:
                     guard let params else {
                         Core.log("CommandBridge: display_event invalid params")

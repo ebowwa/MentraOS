@@ -47,6 +47,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
 
     func connect(url: URL, coreToken: String) {
+        Core.log("WebSocketManager: connect()")
         self.coreToken = coreToken
 
         // Disconnect existing connection if any, but don't update the disconnect status since we're connecting and don't want to trigger the reconnect handler:

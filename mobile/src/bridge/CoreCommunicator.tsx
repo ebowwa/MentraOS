@@ -797,12 +797,13 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async setAuthenticationSecretKey(userId: string, authSecretKey: string) {
+  // TODO: config: remove
+  async setAuthCreds(coreToken: string, userId: string) {
     return await this.sendData({
       command: "set_auth_secret_key",
       params: {
         userId: userId,
-        authSecretKey: authSecretKey,
+        authSecretKey: coreToken,
       },
     })
   }

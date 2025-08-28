@@ -123,42 +123,41 @@ struct ViewState {
     override init() {
         Core.log("Mentra: init()")
         vad = SileroVADStrategy()
-        // serverComms = ServerComms.getInstance()
         super.init()
 
-        // // Initialize SherpaOnnx Transcriber
-        // if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-        //    let window = windowScene.windows.first,
-        //    let rootViewController = window.rootViewController
-        // {
-        //     transcriber = SherpaOnnxTranscriber(context: rootViewController)
-        // } else {
-        //     Core.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
-        // }
+        // Initialize SherpaOnnx Transcriber
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootViewController = window.rootViewController
+        {
+            transcriber = SherpaOnnxTranscriber(context: rootViewController)
+        } else {
+            Core.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+        }
 
-        // // Initialize the transcriber
-        // if let transcriber = transcriber {
-        //     transcriber.initialize()
-        //     Core.log("SherpaOnnxTranscriber fully initialized")
-        // }
+        // Initialize the transcriber
+        if let transcriber = transcriber {
+            transcriber.initialize()
+            Core.log("SherpaOnnxTranscriber fully initialized")
+        }
 
-        // Task {
-        //     await loadSettings()
-        //     self.vad?.setup(
-        //         sampleRate: .rate_16k,
-        //         frameSize: .size_1024,
-        //         quality: .normal,
-        //         silenceTriggerDurationMs: 4000,
-        //         speechTriggerDurationMs: 50
-        //     )
-        // }
+        Task {
+            await loadSettings()
+            self.vad?.setup(
+                sampleRate: .rate_16k,
+                frameSize: .size_1024,
+                quality: .normal,
+                silenceTriggerDurationMs: 4000,
+                speechTriggerDurationMs: 50
+            )
+        }
     }
 
     // MARK: - Public Methods (for React Native)
 
     func setup() {
         Core.log("Mentra: setup()")
-//        LocationManager.shared.setup()
+        LocationManager.shared.setup()
         MediaManager.shared.setup()
 
         // Set up voice data handling
@@ -1090,14 +1089,12 @@ struct ViewState {
     // command functions:
 
     // TODO: config: remove
-    func setAuthSecretKey(secretKey: String, userId: String) {
-        Core.log("Mentra: Setting auth secret key to: \(secretKey)")
+    func setAuthCreds(_ token: String, _ userId: String) {
+        Core.log("Mentra: Setting core token to: \(token) for user: \(userId)")
         setup() // finish init():
-        coreToken = secretKey
+        coreToken = token
         coreTokenOwner = userId
-        Core.log("Mentra: Setting auth secret key for user: \(userId)")
-        serverComms.setAuthCredentials(userId, secretKey)
-        Core.log("Mentra: Connecting to AugmentOS...")
+        serverComms.setAuthCreds(token, userId)
         serverComms.connectWebSocket()
         handleRequestStatus()
     }
@@ -1399,7 +1396,6 @@ struct ViewState {
 
         // Define command types enum
         enum CommandType: String {
-            case setAuthSecretKey = "set_auth_secret_key"
             case requestStatus = "request_status"
             case connectWearable = "connect_wearable"
             case disconnectWearable = "disconnect_wearable"
@@ -1425,7 +1421,6 @@ struct ViewState {
             case bypassVad = "bypass_vad_for_debugging"
             case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
             case enforceLocalTranscription = "enforce_local_transcription"
-            case setServerUrl = "set_server_url"
             case setMetricSystemEnabled = "set_metric_system_enabled"
             case toggleUpdatingScreen = "toggle_updating_screen"
             case showDashboard = "show_dashboard"
@@ -1464,22 +1459,6 @@ struct ViewState {
 
                 // Process based on command type
                 switch commandType {
-                // TODO: config: remove
-                case .setServerUrl:
-                    guard let params = params, let url = params["url"] as? String else {
-                        Core.log("Mentra: set_server_url invalid params")
-                        break
-                    }
-                    ServerComms.shared.setServerUrl(url)
-                case .setAuthSecretKey:
-                    guard let params = params,
-                          let userId = params["userId"] as? String,
-                          let authSecretKey = params["authSecretKey"] as? String
-                    else {
-                        Core.log("Mentra: set_auth_secret_key invalid params")
-                        break
-                    }
-                    setAuthSecretKey(secretKey: authSecretKey, userId: userId)
                 case .requestStatus:
                     handleRequestStatus()
                 case .connectWearable:

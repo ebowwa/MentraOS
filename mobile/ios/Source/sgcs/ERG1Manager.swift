@@ -490,10 +490,12 @@ enum GlassesError: Error {
         Core.log("RN_connectGlasses()")
 
         if let side = leftPeripheral {
+            Core.log("G1: connecting to left glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 
         if let side = rightPeripheral {
+            Core.log("G1: connecting to right glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 

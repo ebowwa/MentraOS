@@ -70,7 +70,7 @@ class ServerComms {
         //    }
     }
 
-    func setAuthCredentials(_ userid: String, _ coreToken: String) {
+    func setAuthCreds(_ coreToken: String, _ userid: String) {
         self.coreToken = coreToken
         self.userid = userid
         // set core token user pref:

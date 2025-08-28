@@ -180,8 +180,8 @@ class ServerComms {
     }
   }
 
-  setAuthCredentials(userid: string, coreToken: string) {
-    console.log(`ServerCommsTS: setAuthCredentials: ${userid}, ${coreToken}`)
+  setAuthCreds(coreToken: string, userid: string) {
+    console.log(`ServerCommsTS: setAuthCreds(): ${coreToken}, ${userid}`)
     this.coreToken = coreToken
     this.userid = userid
     saveSetting(SETTINGS_KEYS.core_token, coreToken)
