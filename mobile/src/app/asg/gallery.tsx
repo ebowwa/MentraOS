@@ -1,5 +1,5 @@
 import React, {useCallback} from "react"
-import {GalleryScreen} from "./components/Gallery/GalleryScreen"
+import {GalleryScreen} from "../../components/glasses/Gallery/GalleryScreen"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useFocusEffect} from "expo-router"
 import {BackHandler, View, ViewStyle} from "react-native"

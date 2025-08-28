@@ -16,30 +16,30 @@ import {
   ViewToken,
   Clipboard,
 } from "react-native"
-import {useLocalSearchParams, useFocusEffect} from "expo-router"
-import {useSafeAreaInsets} from "react-native-safe-area-context"
+import {useFocusEffect} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ImageStyle} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {PhotoInfo} from "../../types"
-import {asgCameraApi} from "../../services/asgCameraApi"
-import {localStorageService} from "../../services/localStorageService"
+import {PhotoInfo} from "../../../types/asg"
+import {asgCameraApi} from "../../../services/asg/asgCameraApi"
+import {localStorageService} from "../../../services/asg/localStorageService"
 import {PhotoImage} from "./PhotoImage"
 import {MediaViewer} from "./MediaViewer"
 import {createShimmerPlaceholder} from "react-native-shimmer-placeholder"
 import LinearGradient from "expo-linear-gradient"
 
+// @ts-ignore
 const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient)
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import {useNetworkConnectivity} from "@/contexts/NetworkConnectivityProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
 
 // Gallery state machine states
 enum GalleryState {
@@ -71,7 +71,6 @@ export function GalleryScreen() {
   const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
-  const insets = useSafeAreaInsets()
 
   // Responsive column calculation
   const screenWidth = Dimensions.get("window").width
@@ -86,6 +85,23 @@ export function GalleryScreen() {
 
   const numColumns = calculateColumns()
   const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
+
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
+
+  // Get glasses WiFi info from status
+  const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
+  const isWifiConnected = status.glasses_info?.glasses_wifi_connected
+
+  // Get glasses hotspot info from status
+  const isHotspotEnabled = status.glasses_info?.glasses_hotspot_enabled
+  const hotspotGatewayIp = status.glasses_info?.glasses_hotspot_gateway_ip
+  const hotspotSSID = status.glasses_info?.glasses_hotspot_ssid
+
+  // Determine the active IP - ONLY use hotspot gateway IP when phone is connected to hotspot
+  // Never use local WiFi IP - we only support hotspot mode for gallery
+  const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSSID && networkStatus.phoneSSID === hotspotSSID
+
+  // Only use hotspot IP when phone is actually connected to the hotspot
 
   // Memoize connection values to prevent unnecessary re-renders
   const connectionInfo = useMemo(() => {
@@ -106,30 +122,6 @@ export function GalleryScreen() {
     status.glasses_info?.glasses_hotspot_password,
     status.glasses_info?.glasses_hotspot_gateway_ip,
   ])
-
-  // Extract values from memoized object
-  const {glassesWifiIp, isWifiConnected, isHotspotEnabled, hotspotSsid, hotspotPassword, hotspotGatewayIp} =
-    connectionInfo
-
-  // DEBUG: Log hotspot status changes
-  useEffect(() => {
-    console.log("[GalleryScreen] HOTSPOT DEBUG:", {
-      isHotspotEnabled,
-      hotspotSsid,
-      hotspotPassword,
-      hotspotGatewayIp,
-      glassesInfo: status.glasses_info,
-    })
-  }, [
-    connectionInfo.isHotspotEnabled,
-    connectionInfo.hotspotSsid,
-    connectionInfo.hotspotPassword,
-    connectionInfo.hotspotGatewayIp,
-  ])
-
-  // Network connectivity
-  const {networkStatus, isGalleryReachable, shouldShowWarning, getStatusMessage, checkConnectivity} =
-    useNetworkConnectivity()
 
   // State machine for gallery flow
   const [galleryState, setGalleryState] = useState<GalleryState>(GalleryState.INITIALIZING)
@@ -450,37 +442,6 @@ export function GalleryScreen() {
   }
 
   // Take picture
-  const handleTakePicture = async () => {
-    // Only use hotspot for connection
-    const serverIp = hotspotGatewayIp
-    const hasConnection = isHotspotEnabled && hotspotGatewayIp
-
-    if (!hasConnection || !serverIp) {
-      showAlert("Cannot Take Picture", "Your glasses are not connected. Please connect them via WiFi or hotspot.", [
-        {text: translate("common:ok")},
-      ])
-      return
-    }
-
-    try {
-      // Set the server URL to the correct IP
-      asgCameraApi.setServer(serverIp, 8089)
-
-      await asgCameraApi.takePicture()
-      showAlert("Success", "Picture taken successfully!", [{text: translate("common:ok")}])
-      loadInitialPhotos() // Reload photos
-    } catch (err) {
-      let errorMessage = "Cannot connect to your glasses. Please check your network connection."
-      if (err instanceof Error) {
-        if (err.message.includes("Network request failed") || err.message.includes("fetch")) {
-          errorMessage = "Cannot connect to your glasses. Please ensure both devices are on the same WiFi network."
-        } else {
-          errorMessage = err.message
-        }
-      }
-      showAlert("Connection Error", errorMessage, [{text: translate("common:ok")}])
-    }
-  }
 
   // Handle photo selection
   const handlePhotoPress = (item: GalleryItem) => {
@@ -700,7 +661,6 @@ export function GalleryScreen() {
   }, []) // Only run on mount
 
   // Track if we're already loading to prevent duplicate requests
-  const isLoadingRef = useRef(false)
 
   // Handle back button
   useFocusEffect(
@@ -721,22 +681,6 @@ export function GalleryScreen() {
   // Auto-refresh connection check is now handled by NetworkConnectivityProvider
 
   // Helper functions for hotspot connection
-  const showManualAlert = (ssid: string, password: string) => {
-    showAlert(
-      "Gallery Hotspot Ready",
-      `Please connect your phone to this WiFi network:
-
-SSID: ${ssid}
-Password: ${password}
-
-The gallery will automatically reload once connected.`,
-      [
-        {text: "Copy SSID", onPress: () => Clipboard.setString(ssid)},
-        {text: "Copy Password", onPress: () => Clipboard.setString(password)},
-        {text: "OK"},
-      ],
-    )
-  }
 
   const connectToHotspot = async (ssid: string, password: string, ip: string) => {
     try {
@@ -821,12 +765,6 @@ The gallery will automatically reload once connected.`,
   }
 
   // Extract hotspot connection logic into reusable function
-  const triggerHotspotConnection = (ssid: string, password: string, ip: string) => {
-    console.log("[GalleryScreen] Triggering automatic hotspot connection for SSID:", ssid)
-
-    // Automatically attempt connection without debug alert
-    connectToHotspot(ssid, password, ip)
-  }
 
   // STEP 2: Listen for gallery status and start hotspot if needed
   useEffect(() => {
@@ -902,7 +840,7 @@ The gallery will automatically reload once connected.`,
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
     }
-  }, [galleryState, isGalleryReachable, networkStatus.phoneSSID, hotspotSsid])
+  }, [galleryState, networkStatus.phoneSSID, hotspotSSID])
 
   // Handle state transitions - request hotspot when media is available
   useEffect(() => {
@@ -940,9 +878,9 @@ The gallery will automatically reload once connected.`,
     const phoneSSID = networkStatus.phoneSSID
 
     // Check if phone is now connected to the glasses hotspot
-    if (phoneSSID && hotspotSsid && phoneSSID === hotspotSsid && hotspotGatewayIp) {
+    if (phoneSSID && hotspotSSID && phoneSSID === hotspotSSID && hotspotGatewayIp) {
       console.log("[GalleryScreen] Phone connected to glasses hotspot! SSID match confirmed")
-      console.log("[GalleryScreen] Phone SSID:", phoneSSID, "Hotspot SSID:", hotspotSsid)
+      console.log("[GalleryScreen] Phone SSID:", phoneSSID, "Hotspot SSID:", hotspotSSID)
 
       // Transition to connected state
       transitionToState(GalleryState.CONNECTED_LOADING)
@@ -956,30 +894,10 @@ The gallery will automatically reload once connected.`,
         loadInitialPhotos(hotspotGatewayIp) // Pass IP directly
       }, 500) // Brief delay for network stabilization
     }
-  }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
+  }, [networkStatus.phoneSSID, hotspotSSID, hotspotGatewayIp])
 
   // Track if sync has been triggered to prevent duplicates
   const syncTriggeredRef = useRef(false)
-
-  // Trigger sync when we're ready (we know we're connected if we reached READY_TO_SYNC)
-  useEffect(() => {
-    // Start sync automatically when we reach READY_TO_SYNC state with photos
-    // We know we're connected because we successfully loaded the photo list
-    if (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 && !syncTriggeredRef.current) {
-      console.log("[GalleryScreen] Ready to sync, auto-starting sync...")
-      syncTriggeredRef.current = true
-      setTimeout(() => {
-        handleSync().finally(() => {
-          syncTriggeredRef.current = false
-        })
-      }, 500) // Brief delay to ensure connection is stable
-    }
-
-    // Reset sync trigger when state changes away from READY_TO_SYNC
-    if (galleryState !== GalleryState.READY_TO_SYNC) {
-      syncTriggeredRef.current = false
-    }
-  }, [galleryState, serverPhotosToSync])
 
   // Monitor sync completion to auto-close hotspot
   useEffect(() => {
@@ -1113,13 +1031,155 @@ The gallery will automatically reload once connected.`,
     galleryState === GalleryState.CONNECTED_LOADING ||
     galleryState === GalleryState.INITIALIZING ||
     galleryState === GalleryState.QUERYING_GLASSES
-  const isInitialLoad = galleryState === GalleryState.INITIALIZING || galleryState === GalleryState.QUERYING_GLASSES
-  const isSyncing = galleryState === GalleryState.SYNCING
-  const userCancelledWifi = galleryState === GalleryState.USER_CANCELLED_WIFI
   const error = galleryState === GalleryState.ERROR ? errorMessage : null
 
   // Count server photos for sync button - use total count, not just loaded photos
   const serverPhotosToSync = totalServerCount
+
+  // Trigger sync when we're ready (we know we're connected if we reached READY_TO_SYNC)
+  useEffect(() => {
+    // Start sync automatically when we reach READY_TO_SYNC state with photos
+    // We know we're connected because we successfully loaded the photo list
+    if (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 && !syncTriggeredRef.current) {
+      console.log("[GalleryScreen] Ready to sync, auto-starting sync...")
+      syncTriggeredRef.current = true
+      setTimeout(() => {
+        handleSync().finally(() => {
+          syncTriggeredRef.current = false
+        })
+      }, 500) // Brief delay to ensure connection is stable
+    }
+
+    // Reset sync trigger when state changes away from READY_TO_SYNC
+    if (galleryState !== GalleryState.READY_TO_SYNC) {
+      syncTriggeredRef.current = false
+    }
+  }, [galleryState, serverPhotosToSync])
+
+  const renderStatusBar = () => {
+    const shouldShowSyncButton =
+      galleryState === GalleryState.CONNECTED_LOADING ||
+      galleryState === GalleryState.USER_CANCELLED_WIFI ||
+      galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ||
+      galleryState === GalleryState.CONNECTING_TO_HOTSPOT ||
+      galleryState === GalleryState.REQUESTING_HOTSPOT ||
+      galleryState === GalleryState.SYNCING ||
+      galleryState === GalleryState.SYNC_COMPLETE ||
+      galleryState === GalleryState.ERROR ||
+      (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0)
+
+    if (!shouldShowSyncButton) {
+      return null
+    }
+
+    return (
+      <TouchableOpacity
+        style={[themed($syncButtonFixed)]}
+        onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
+        activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
+        disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
+        <View style={themed($syncButtonContent)}>
+          {/* Initial loading states */}
+          {/* Requesting hotspot */}
+          {galleryState === GalleryState.REQUESTING_HOTSPOT ? (
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+              <Text style={themed($syncButtonText)}>Starting hotspot...</Text>
+            </View>
+          ) : /* Waiting for WiFi prompt */
+          galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ? (
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+              <Text style={themed($syncButtonText)}>Waiting for connection...</Text>
+            </View>
+          ) : /* Connecting to hotspot */
+          galleryState === GalleryState.CONNECTING_TO_HOTSPOT ? (
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+              <Text style={themed($syncButtonText)}>Connecting to hotspot...</Text>
+            </View>
+          ) : /* Connected, loading photos */
+          galleryState === GalleryState.CONNECTED_LOADING ? (
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+              <Text style={themed($syncButtonText)}>Loading photos...</Text>
+            </View>
+          ) : /* User cancelled WiFi - show retry */
+          galleryState === GalleryState.USER_CANCELLED_WIFI && hotspotSSID && glassesGalleryStatus?.has_content ? (
+            <View>
+              <View style={themed($syncButtonRow)}>
+                <MaterialCommunityIcons
+                  name="wifi-alert"
+                  size={20}
+                  color={theme.colors.text}
+                  style={{marginRight: spacing.xs}}
+                />
+                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus?.total || 0} items</Text>
+              </View>
+              <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
+                Tap to join "{hotspotSSID}" network
+              </Text>
+            </View>
+          ) : /* Ready to sync - show what will be synced */
+          galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 ? (
+            <View style={themed($syncButtonRow)}>
+              <Text style={themed($syncButtonText)}>Ready to sync</Text>
+            </View>
+          ) : /* Actively syncing with progress */
+          galleryState === GalleryState.SYNCING && syncProgress ? (
+            <>
+              {/* Overall sync status */}
+              <Text style={themed($syncButtonText)}>
+                Syncing {syncProgress.current} of {syncProgress.total} items
+              </Text>
+
+              {/* Individual file progress bar (changes quickly) */}
+              <View style={themed($syncButtonProgressBar)}>
+                <View
+                  style={[
+                    themed($syncButtonProgressFill),
+                    {
+                      width: `${syncProgress.fileProgress || 0}%`,
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* Overall sync progress bar (steady progress) */}
+              <View style={[themed($syncButtonProgressBar), {marginTop: 4, height: 4, opacity: 0.6}]}>
+                <View
+                  style={[
+                    themed($syncButtonProgressFill),
+                    {
+                      // Simple calculation: just show percentage of files completed
+                      width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
+                      opacity: 0.8,
+                    },
+                  ]}
+                />
+              </View>
+            </>
+          ) : /* Syncing without progress */
+          galleryState === GalleryState.SYNCING ? (
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+              <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
+            </View>
+          ) : /* Sync complete */
+          galleryState === GalleryState.SYNC_COMPLETE ? (
+            <View style={themed($syncButtonRow)}>
+              <Text style={themed($syncButtonText)}>Sync complete!</Text>
+            </View>
+          ) : /* Error state */
+          galleryState === GalleryState.ERROR ? (
+            <View style={themed($syncButtonRow)}>
+              <Text style={themed($syncButtonText)}>{errorMessage || "An error occurred"}</Text>
+            </View>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <View style={themed($screenContainer)}>
@@ -1219,131 +1279,7 @@ The gallery will automatically reload once connected.`,
       </View>
 
       {/* Unified Status Bar - Fixed at bottom */}
-      {galleryState === GalleryState.CONNECTED_LOADING ||
-      galleryState === GalleryState.USER_CANCELLED_WIFI ||
-      galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ||
-      galleryState === GalleryState.CONNECTING_TO_HOTSPOT ||
-      galleryState === GalleryState.REQUESTING_HOTSPOT ||
-      galleryState === GalleryState.SYNCING ||
-      galleryState === GalleryState.SYNC_COMPLETE ||
-      galleryState === GalleryState.ERROR ||
-      (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0) ? (
-        <TouchableOpacity
-          style={[
-            themed($syncButtonFixed),
-            galleryState === GalleryState.USER_CANCELLED_WIFI
-              ? themed($syncButtonActive)
-              : themed($syncButtonFixedDisabled),
-          ]}
-          onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
-          activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
-          disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
-          <View style={themed($syncButtonContent)}>
-            {/* Initial loading states */}
-            {false && (galleryState === GalleryState.INITIALIZING || galleryState === GalleryState.QUERYING_GLASSES) ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Checking for media...</Text>
-              </View>
-            ) : /* Requesting hotspot */
-            galleryState === GalleryState.REQUESTING_HOTSPOT ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Starting hotspot...</Text>
-              </View>
-            ) : /* Waiting for WiFi prompt */
-            galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Waiting for connection...</Text>
-              </View>
-            ) : /* Connecting to hotspot */
-            galleryState === GalleryState.CONNECTING_TO_HOTSPOT ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Connecting to hotspot...</Text>
-              </View>
-            ) : /* Connected, loading photos */
-            galleryState === GalleryState.CONNECTED_LOADING ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Loading photos...</Text>
-              </View>
-            ) : /* User cancelled WiFi - show retry */
-            galleryState === GalleryState.USER_CANCELLED_WIFI && hotspotSsid && glassesGalleryStatus?.has_content ? (
-              <View>
-                <View style={themed($syncButtonRow)}>
-                  <MaterialCommunityIcons
-                    name="wifi-alert"
-                    size={20}
-                    color={theme.colors.text}
-                    style={{marginRight: spacing.xs}}
-                  />
-                  <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus?.total || 0} items</Text>
-                </View>
-                <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
-                  Tap to join "{hotspotSsid}" network
-                </Text>
-              </View>
-            ) : /* Ready to sync - show what will be synced */
-            galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 ? (
-              <View style={themed($syncButtonRow)}>
-                <Text style={themed($syncButtonText)}>Ready to sync</Text>
-              </View>
-            ) : /* Actively syncing with progress */
-            galleryState === GalleryState.SYNCING && syncProgress ? (
-              <>
-                {/* Overall sync status */}
-                <Text style={themed($syncButtonText)}>
-                  Syncing {syncProgress.current} of {syncProgress.total} items
-                </Text>
-
-                {/* Individual file progress bar (changes quickly) */}
-                <View style={themed($syncButtonProgressBar)}>
-                  <View
-                    style={[
-                      themed($syncButtonProgressFill),
-                      {
-                        width: `${syncProgress.fileProgress || 0}%`,
-                      },
-                    ]}
-                  />
-                </View>
-
-                {/* Overall sync progress bar (steady progress) */}
-                <View style={[themed($syncButtonProgressBar), {marginTop: 4, height: 4, opacity: 0.6}]}>
-                  <View
-                    style={[
-                      themed($syncButtonProgressFill),
-                      {
-                        // Simple calculation: just show percentage of files completed
-                        width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
-                        opacity: 0.8,
-                      },
-                    ]}
-                  />
-                </View>
-              </>
-            ) : /* Syncing without progress */
-            galleryState === GalleryState.SYNCING ? (
-              <View style={themed($syncButtonRow)}>
-                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-                <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
-              </View>
-            ) : /* Sync complete */
-            galleryState === GalleryState.SYNC_COMPLETE ? (
-              <View style={themed($syncButtonRow)}>
-                <Text style={themed($syncButtonText)}>Sync complete!</Text>
-              </View>
-            ) : /* Error state */
-            galleryState === GalleryState.ERROR ? (
-              <View style={themed($syncButtonRow)}>
-                <Text style={themed($syncButtonText)}>{errorMessage || "An error occurred"}</Text>
-              </View>
-            ) : null}
-          </View>
-        </TouchableOpacity>
-      ) : null}
+      {renderStatusBar()}
 
       {/* Media Viewer */}
       <MediaViewer
@@ -1361,118 +1297,6 @@ const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
 })
 
-const $screenContentContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-})
-
-const $headerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingTop: spacing.md,
-  paddingBottom: spacing.sm,
-  paddingHorizontal: spacing.md,
-})
-
-const $headerTitle: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 24,
-  fontWeight: "bold",
-  color: colors.text,
-})
-
-const $tabContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  justifyContent: "space-around",
-  backgroundColor: "transparent",
-  marginBottom: spacing.sm,
-  paddingHorizontal: spacing.md,
-  paddingTop: spacing.sm,
-})
-
-const $activeTab: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingVertical: spacing.xs,
-  paddingHorizontal: spacing.md,
-  borderRadius: spacing.xs,
-  backgroundColor: colors.palette.primary100,
-})
-
-const $inactiveTab: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingVertical: spacing.xs,
-  paddingHorizontal: spacing.md,
-  borderRadius: spacing.xs,
-  backgroundColor: colors.background,
-})
-
-const $activeTabText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  fontWeight: "600",
-  color: colors.palette.primary500,
-})
-
-const $inactiveTabText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-})
-
-const $actionButtonsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  justifyContent: "center",
-  marginBottom: spacing.sm,
-  paddingHorizontal: spacing.md,
-})
-
-const $takePictureButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.primary100,
-  paddingVertical: spacing.xs,
-  paddingHorizontal: spacing.md,
-  borderRadius: spacing.xs,
-  alignItems: "center",
-  flex: 1,
-  maxWidth: 200,
-})
-
-const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.primary100,
-  paddingVertical: spacing.xs,
-  paddingHorizontal: spacing.md,
-  borderRadius: spacing.xs,
-  width: "45%",
-  alignItems: "center",
-})
-
-const $syncButtonDisabled: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral200,
-  opacity: 0.7,
-})
-
-const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  fontWeight: "600",
-  color: colors.palette.primary500,
-})
-
-const $syncProgressContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginTop: spacing.md,
-  marginBottom: spacing.md,
-  paddingHorizontal: spacing.md,
-})
-
-const $syncProgressText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-  textAlign: "center",
-})
-
-const $syncProgressBar: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: 8,
-  backgroundColor: colors.palette.neutral200,
-  borderRadius: 4,
-  overflow: "hidden",
-})
-
-const $syncProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: "100%",
-  backgroundColor: colors.palette.primary500,
-  borderRadius: 4,
-})
-
 const $errorContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.palette.angry100,
   padding: spacing.sm,
@@ -1488,12 +1312,6 @@ const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.sm,
 })
 
-const $photoGridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  paddingHorizontal: spacing.lg,
-  paddingTop: spacing.lg,
-})
-
 const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.lg,
   paddingTop: spacing.lg,
@@ -1501,19 +1319,6 @@ const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  padding: spacing.xl,
-})
-
-const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 16,
-  color: colors.textDim,
-  marginTop: spacing.sm,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -1537,7 +1342,7 @@ const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   backgroundColor: "rgba(0,0,0,0.05)",
 })
 
-const $photoImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
+const $photoImage: ThemedStyle<ImageStyle> = () => ({
   width: "100%",
   borderRadius: 8,
 })
@@ -1561,25 +1366,6 @@ const $videoIndicator: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 // Modal styles
-const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.9)",
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $modalContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  padding: spacing.lg,
-})
-
-const $modalImage: ThemedStyle<ImageStyle> = () => ({
-  width: Dimensions.get("window").width - 40,
-  height: Dimensions.get("window").height - 200,
-  borderRadius: 8,
-})
 
 // New styles for the fixed sync button
 const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
@@ -1587,76 +1373,14 @@ const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 // Warning banner styles
-const $warningBannerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.lg,
-  paddingTop: spacing.md,
-  paddingBottom: spacing.sm,
-})
-
-const $warningBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.warningBackground,
-  paddingVertical: spacing.sm,
-  paddingHorizontal: spacing.md,
-  flexDirection: "row",
-  alignItems: "center",
-  borderRadius: spacing.md,
-  borderWidth: 2,
-  borderColor: colors.border,
-  minHeight: 68,
-})
-
-const $loadingBanner: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  paddingVertical: spacing.sm,
-  paddingHorizontal: spacing.md,
-  flexDirection: "row",
-  alignItems: "center",
-  borderRadius: spacing.md,
-  borderWidth: 2,
-  borderColor: colors.border,
-  minHeight: 68, // Match the warning banner height
-})
-
-const $warningTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  marginLeft: spacing.sm,
-})
-
-const $warningTitle: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  fontWeight: "700", // Bold
-  color: colors.text,
-  marginBottom: 2,
-})
-
-const $warningMessage: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 13,
-  color: colors.textDim,
-})
-
-const $loadingTitle: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  fontWeight: "600",
-  color: colors.text,
-  marginBottom: 2,
-})
-
-const $loadingMessage: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 13,
-  color: colors.textDim,
-})
-
-const $infoButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  padding: spacing.xs,
-  marginLeft: spacing.xs,
-})
 
 const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   position: "absolute",
   bottom: spacing.xl,
   left: spacing.lg,
   right: spacing.lg,
-  backgroundColor: colors.buttonPrimary,
+  backgroundColor: colors.background,
+  color: colors.text,
   borderRadius: spacing.md,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
@@ -1672,21 +1396,7 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   elevation: 5,
 })
 
-const $syncButtonFixedDisabled: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.neutral100,
-  borderWidth: spacing.xxxs,
-  borderColor: colors.border,
-  opacity: 1,
-})
-
-const $syncButtonActive: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.neutral100,
-  borderWidth: spacing.xxxs,
-  borderColor: colors.palette.primary500,
-  opacity: 1,
-})
-
-const $syncButtonContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $syncButtonContent: ThemedStyle<ViewStyle> = () => ({
   alignItems: "center",
   justifyContent: "center",
 })
@@ -1745,18 +1455,4 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
-})
-
-const $loadingMoreContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  paddingVertical: spacing.md,
-  paddingBottom: spacing.xl,
-})
-
-const $loadingMoreText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-  marginLeft: spacing.sm,
 })
