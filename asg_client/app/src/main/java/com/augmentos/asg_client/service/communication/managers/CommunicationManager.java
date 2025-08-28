@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
+import com.augmentos.asg_client.io.network.models.NetworkInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -174,6 +175,69 @@ public class CommunicationManager implements ICommunicationManager {
             }
         } else {
             Log.w(TAG, "📡 ❌ Cannot send WiFi scan results - not connected to BLE device");
+            if (serviceManager == null) Log.w(TAG, "📡 ❌ Service manager is null");
+            if (serviceManager != null && serviceManager.getBluetoothManager() == null) Log.w(TAG, "📡 ❌ Bluetooth manager is null");
+            if (serviceManager != null && serviceManager.getBluetoothManager() != null && !serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "📡 ❌ Bluetooth not connected");
+            }
+        }
+    }
+    
+    @Override
+    public void sendWifiScanResultsOverBleEnhanced(List<NetworkInfo> networks) {
+        Log.d(TAG, "📡 =========================================");
+        Log.d(TAG, "📡 SEND ENHANCED WIFI SCAN RESULTS OVER BLE");
+        Log.d(TAG, "📡 =========================================");
+        Log.d(TAG, "📡 Enhanced networks found: " + (networks != null ? networks.size() : 0));
+        
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
+            serviceManager.getBluetoothManager().isConnected()) {
+            Log.d(TAG, "📡 ✅ Service manager and Bluetooth manager available");
+            
+            try {
+                if (networks == null || networks.isEmpty()) {
+                    return;
+                }
+                
+                // Send one network at a time to keep message size minimal
+                for (NetworkInfo network : networks) {
+                    JSONObject response = new JSONObject();
+                    response.put("type", "wifi_scan_result");
+                    response.put("timestamp", System.currentTimeMillis());
+                    
+                    // Legacy format for backwards compatibility
+                    org.json.JSONArray legacyArray = new org.json.JSONArray();
+                    legacyArray.put(network.getSsid());
+                    response.put("networks", legacyArray);
+                    
+                    // Enhanced format with security and signal info
+                    org.json.JSONArray enhancedArray = new org.json.JSONArray();
+                    enhancedArray.put(network.toJson());
+                    response.put("networks_neo", enhancedArray);
+
+                    String jsonString = response.toString();
+                    Log.d(TAG, "📡 📤 Sending enhanced WiFi scan result: " + jsonString);
+                    Log.d(TAG, "📡 📊 Message size: " + jsonString.getBytes(StandardCharsets.UTF_8).length + " bytes");
+                    Log.d(TAG, "📡 🔒 Network: " + network.getSsid() + " (secured=" + network.requiresPassword() + ", signal=" + network.getSignalStrength() + "dBm)");
+                    
+                    boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+                    Log.d(TAG, "📡 " + (sent ? "✅ Enhanced WiFi scan result sent successfully" : "❌ Failed to send enhanced WiFi scan result"));
+                    
+                    // Small delay between individual network messages
+                    if (networks.size() > 1) {
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException e) {
+                            Log.e(TAG, "Interrupted while sending individual networks", e);
+                        }
+                    }
+                }
+
+            } catch (JSONException e) {
+                Log.e(TAG, "📡 💥 Error creating enhanced WiFi scan results response", e);
+            }
+        } else {
+            Log.w(TAG, "📡 ❌ Cannot send enhanced WiFi scan results - not connected to BLE device");
             if (serviceManager == null) Log.w(TAG, "📡 ❌ Service manager is null");
             if (serviceManager != null && serviceManager.getBluetoothManager() == null) Log.w(TAG, "📡 ❌ Bluetooth manager is null");
             if (serviceManager != null && serviceManager.getBluetoothManager() != null && !serviceManager.getBluetoothManager().isConnected()) {

@@ -2,6 +2,8 @@ package com.augmentos.asg_client.service.core.handlers;
 
 import android.util.Log;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
+import com.augmentos.asg_client.io.network.interfaces.IWifiScanCallback;
+import com.augmentos.asg_client.io.network.models.NetworkInfo;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
@@ -111,11 +113,31 @@ public class WifiCommandHandler implements ICommandHandler {
             if (networkManager != null) {
                 new Thread(() -> {
                     try {
-                        List<String> networks = networkManager.scanWifiNetworks();
-                        communicationManager.sendWifiScanResultsOverBle(networks);
+                        // Use streaming WiFi scan with callback for immediate results
+                        networkManager.scanWifiNetworks(new IWifiScanCallback() {
+                            @Override
+                            public void onNetworksFoundEnhanced(List<NetworkInfo> networks) {
+                                Log.d(TAG, "📡 Streaming " + networks.size() + " enhanced WiFi networks to phone");
+                                // Send each batch of networks immediately as they're found
+                                communicationManager.sendWifiScanResultsOverBleEnhanced(networks);
+                            }
+                            
+                            @Override
+                            public void onScanComplete(int totalNetworksFound) {
+                                Log.d(TAG, "📡 WiFi scan completed, total networks found: " + totalNetworksFound);
+                                // Could optionally send a completion signal here if needed
+                            }
+                            
+                            @Override
+                            public void onScanError(String error) {
+                                Log.e(TAG, "📡 WiFi scan error: " + error);
+                                // Send empty list on error to indicate scan failure
+                                communicationManager.sendWifiScanResultsOverBleEnhanced(new ArrayList<>());
+                            }
+                        });
                     } catch (Exception e) {
                         Log.e(TAG, "Error scanning for WiFi networks", e);
-                        communicationManager.sendWifiScanResultsOverBle(new ArrayList<>());
+                        communicationManager.sendWifiScanResultsOverBleEnhanced(new ArrayList<>());
                     }
                 }).start();
                 return true;
@@ -134,20 +156,63 @@ public class WifiCommandHandler implements ICommandHandler {
      */
     public boolean handleSetHotspotState(JSONObject data) {
         try {
-            boolean hotspotEnabled = data.optBoolean("enabled", false);
+            boolean requestedState = data.optBoolean("enabled", false);
             INetworkManager networkManager = serviceManager.getNetworkManager();
             
-            if (hotspotEnabled) {
-                String hotspotSsid = data.optString("ssid", "");
-                String hotspotPassword = data.optString("password", "");
-                networkManager.startHotspot(hotspotSsid, hotspotPassword);
-            } else {
-                networkManager.stopHotspot();
+            if (networkManager == null) {
+                Log.e(TAG, "Network manager not available for hotspot command");
+                return false;
             }
+            
+            boolean currentState = networkManager.isHotspotEnabled();
+            
+            // Check if already in requested state
+            if (currentState == requestedState) {
+                Log.d(TAG, "🔥 Hotspot already in requested state (" + 
+                        (requestedState ? "ENABLED" : "DISABLED") + 
+                        "), sending current status");
+                
+                // Send current status immediately since there won't be a state change broadcast
+                sendHotspotStatusToPhone(networkManager);
+            } else {
+                // State needs to change
+                if (requestedState) {
+                    networkManager.startHotspot();
+                    Log.d(TAG, "🔥 Hotspot start requested - status will be sent via broadcast receiver");
+                } else {
+                    networkManager.stopHotspot();
+                    Log.d(TAG, "🔥 Hotspot stop requested - status will be sent via broadcast receiver");
+                }
+                // Broadcast receiver will handle sending the status when state actually changes
+            }
+            
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling hotspot state command", e);
             return false;
         }
     }
+    
+    /**
+     * Send hotspot status to phone via BLE
+     */
+    private void sendHotspotStatusToPhone(INetworkManager networkManager) {
+        try {
+            JSONObject hotspotStatus = new JSONObject();
+            hotspotStatus.put("type", "hotspot_status_update");
+            hotspotStatus.put("hotspot_enabled", networkManager.isHotspotEnabled());
+            
+            if (networkManager.isHotspotEnabled()) {
+                hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
+                hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
+                hotspotStatus.put("hotspot_gateway_ip", networkManager.getHotspotGatewayIp());
+            }
+            
+            boolean sent = communicationManager.sendBluetoothResponse(hotspotStatus);
+            Log.d(TAG, "🔥 " + (sent ? "✅ Hotspot status sent successfully" : "❌ Failed to send hotspot status") + ", enabled=" + networkManager.isHotspotEnabled());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending hotspot status to phone", e);
+        }
+    }
+    
 } 

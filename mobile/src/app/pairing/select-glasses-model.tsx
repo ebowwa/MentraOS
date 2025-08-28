@@ -15,7 +15,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -43,6 +43,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Nex", key: "mentra_nex"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
           // Android:
@@ -53,6 +54,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Nex", key: "mentra_nex"},
           {modelName: "Audio Wearable", key: "Audio Wearable"},
+          // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 
   // Check onboarding status when screen comes into focus

@@ -16,4 +16,10 @@ public interface ServiceCallbackInterface {
      * @return true if file transfer started successfully, false otherwise
      */
     boolean sendFileViaBluetooth(String filePath);
+    
+    /**
+     * Check if a BLE file transfer is currently in progress
+     * @return true if a transfer is active, false otherwise
+     */
+    boolean isBleTransferInProgress();
 } 

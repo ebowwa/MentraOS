@@ -2,7 +2,7 @@ import React from "react"
 import {View, Text} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {OtaProgress} from "@/utils/AugmentOSStatusParser"
+import {OtaProgress} from "@/utils/CoreStatusParser"
 
 interface OtaProgressSectionProps {
   otaProgress?: OtaProgress

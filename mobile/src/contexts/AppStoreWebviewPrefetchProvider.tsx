@@ -41,14 +41,12 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
       // Check if core token exists before trying to generate webview tokens
       if (!backendComms.getCoreToken()) {
-        console.log("AppStoreWebviewPrefetchProvider: No core token available, skipping token generation")
+        console.error("AppStoreWebviewPrefetchProvider: No core token available, skipping token generation")
         setAppStoreUrl(url.toString())
         return
       }
 
-      console.log("AppStoreWebviewPrefetchProvider: Generating webview tokens")
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME)
-      console.log("AppStoreWebviewPrefetchProvider: Temp token generated successfully")
 
       let signedUserToken: string | undefined
       try {
@@ -56,7 +54,6 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
           STORE_PACKAGE_NAME,
           "generate-webview-signed-user-token",
         )
-        console.log("AppStoreWebviewPrefetchProvider: Signed user token generated successfully")
       } catch (error) {
         console.warn("AppStoreWebviewPrefetchProvider: Failed to generate signed user token:", error)
         signedUserToken = undefined
@@ -67,7 +64,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
         url.searchParams.set("aos_signed_user_token", signedUserToken)
       }
 
-      console.log("AppStoreWebviewPrefetchProvider: Final URL ready with tokens")
+      // console.log("AppStoreWebviewPrefetchProvider: Final URL ready with tokens")
       setAppStoreUrl(url.toString())
     } catch (error) {
       console.error("AppStoreWebviewPrefetchProvider: Error during prefetch:", error)
@@ -92,7 +89,6 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
     // Listen for when core token is set
     const handleCoreTokenSet = () => {
-      console.log("AppStoreWebviewPrefetchProvider: Core token set, prefetching webview")
       prefetchWebview().catch(error => {
         console.error("AppStoreWebviewPrefetchProvider: Error during core token prefetch:", error)
       })
@@ -157,13 +153,8 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
             domStorageEnabled={true}
             startInLoadingState={false}
             scalesPageToFit={false}
-            injectedJavaScript={`
-              const meta = document.createElement('meta');
-              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-              meta.setAttribute('name', 'viewport');
-              document.getElementsByTagName('head')[0].appendChild(meta);
-              true;
-            `}
+            cacheEnabled={true}
+            cacheMode="LOAD_CACHE_ELSE_NETWORK"
           />
         </View>
       ) : null}

@@ -767,9 +767,10 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        const updatedUser = await this.userSession.subscriptionManager.removeSubscriptions(
-          packageName,
-        );
+        const updatedUser =
+          await this.userSession.subscriptionManager.removeSubscriptions(
+            packageName,
+          );
         if (updatedUser) {
           // After removing subscriptions, re-arbitrate the location tier.
           await locationService.handleSubscriptionChange(

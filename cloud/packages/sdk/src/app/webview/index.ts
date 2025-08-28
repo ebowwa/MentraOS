@@ -317,6 +317,8 @@ export function createAuthMiddleware(options: {
           const appSession = getAppSessionForUser(userId);
           if (appSession) {
             req.activeSession = appSession;
+          } else {
+            req.activeSession = null;
           }
         }
 

@@ -52,6 +52,7 @@ interface SystemEvents {
         reason: string; // Reason provided by server
         wasClean: boolean; // Whether this was a clean closure
         permanent?: boolean; // Whether this is a permanent disconnection (no more reconnection attempts)
+        sessionEnded?: boolean; // Whether this disconnection is due to user session ending
       };
   error: WebSocketError | Error;
   settings_update: AppSettings;

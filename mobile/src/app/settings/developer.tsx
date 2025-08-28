@@ -4,17 +4,19 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
+import RouteButton from "@/components/ui/RouteButton"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
+import {glassesFeatures} from "@/config/glassesFeatures"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
@@ -30,6 +32,7 @@ export default function DeveloperSettingsScreen() {
   const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const [showNewUi, setShowNewUi] = useState(false)
+  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -177,7 +180,7 @@ export default function DeveloperSettingsScreen() {
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
       const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
@@ -209,6 +212,13 @@ export default function DeveloperSettingsScreen() {
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
+        <RouteButton
+          label="🎥 Buffer Recording Debug"
+          subtitle="Control 30-second video buffer on glasses"
+          onPress={() => push("/settings/buffer-debug")}
+        />
+
+        <Spacer height={theme.spacing.md} />
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
@@ -226,6 +236,25 @@ export default function DeveloperSettingsScreen() {
         />
 
         <Spacer height={theme.spacing.md} />
+
+        {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
+        {status.core_info.default_wearable &&
+          glassesFeatures[status.core_info.default_wearable] &&
+          glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
+            <>
+              <Text style={[styles.sectionTitle, {color: theme.colors.textDim}]}>G1 Specific Settings</Text>
+              <ToggleSetting
+                label={translate("settings:powerSavingMode")}
+                subtitle={translate("settings:powerSavingModeSubtitle")}
+                value={powerSavingMode}
+                onValueChange={async value => {
+                  setPowerSavingMode(value)
+                  await coreCommunicator.sendTogglePowerSavingMode(value)
+                }}
+              />
+              <Spacer height={theme.spacing.md} />
+            </>
+          )}
 
         <View
           style={[
@@ -344,12 +373,21 @@ export default function DeveloperSettingsScreen() {
             ios_backgroundColor={switchColors.ios_backgroundColor}
           />
         </View> */}
+        <Spacer height={theme.spacing.xxl} />
       </ScrollView>
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   warningContainer: {
     borderRadius: spacing.sm,
     paddingHorizontal: spacing.md,

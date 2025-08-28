@@ -42,6 +42,8 @@ export interface PhotoRequest extends BaseMessage {
   requestId: string; // SDK-generated request ID to track the request
   saveToGallery?: boolean;
   customWebhookUrl?: string; // Custom webhook URL to override TPA's default
+  /** Desired photo size sent by App. Defaults to 'medium' if omitted. */
+  size?: "small" | "medium" | "large";
 }
 
 // Video, Audio and Stream configuration interfaces are imported from '../rtmp-stream'
@@ -111,6 +113,16 @@ export interface ManagedStreamStopRequest extends BaseMessage {
 }
 
 /**
+ * Stream status check request from App
+ * Checks if there are any existing streams (managed or unmanaged) for the current user
+ */
+export interface StreamStatusCheckRequest extends BaseMessage {
+  type: AppToCloudMessageType.STREAM_STATUS_CHECK;
+  packageName: string;
+  sessionId: string;
+}
+
+/**
  * Audio play request from App
  */
 export interface AudioPlayRequest extends BaseMessage {
@@ -145,6 +157,7 @@ export type AppToCloudMessage =
   | RtmpStreamStopRequest
   | ManagedStreamRequest
   | ManagedStreamStopRequest
+  | StreamStatusCheckRequest
   | DashboardContentUpdate
   | DashboardModeChange
   | DashboardSystemUpdate

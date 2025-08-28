@@ -84,6 +84,18 @@ public abstract class SmartGlassesCommunicator {
     public abstract void showHomeScreen();
 
     public abstract void setFontSize(SmartGlassesFontSize fontSize);
+    
+    public void sendButtonPhotoSettings(String size) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button photo settings: " + size);
+    }
+    
+    public void sendButtonVideoRecordingSettings(int width, int height, int fps) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button video settings: " + width + "x" + height + "@" + fps + "fps");
+    }
+
+    public void sendButtonCameraLedSetting(boolean enabled) {
+        Log.d("SmartGlassesCommunicator", "Default implementation - button camera LED: " + enabled);
+    }
 
     public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
 
@@ -202,9 +214,9 @@ public abstract class SmartGlassesCommunicator {
      * @param appId      The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
         // Default implementation does nothing
-        Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
+        Log.d("SmartGlassesCommunicator", "Photo request (with size) not implemented for this device");
     }
 
     /**
@@ -269,6 +281,26 @@ public abstract class SmartGlassesCommunicator {
     public void sendWifiCredentials(String ssid, String password) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
+    }
+    
+    /**
+     * Query gallery status from the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void queryGalleryStatus() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Gallery status query not implemented for this device");
+    }
+
+    /**
+     * Sends hotspot state command to the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param enabled Whether to enable or disable the hotspot
+     */
+    public void sendHotspotState(boolean enabled) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Hotspot state setting not implemented for this device");
     }
 
     /**

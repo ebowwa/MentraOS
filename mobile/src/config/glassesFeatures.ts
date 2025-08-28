@@ -122,6 +122,19 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     gallery: false,
     configurableButton: false,
   },
+  "Brilliant Labs Frame": {
+    camera: true,
+    speakers: false, // Uses phone for audio output
+    display: true,
+    binocular: false,
+    wifi: false,
+    wifiSelfOtaUpdate: false,
+    imu: true,
+    micTypes: ["custom"], // Uses BLE audio streaming
+    powerSavingMode: false,
+    gallery: false, // v1: No on-device gallery
+    configurableButton: false,
+  },
 }
 
 export const featureLabels: Record<GlassesFeature, string> = {

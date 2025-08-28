@@ -12,10 +12,11 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser from "@/utils/AugmentOSStatusParser"
+import AugmentOSParser from "@/utils/CoreStatusParser"
+import ServerComms from "@/services/ServerComms"
 
-const {CoreCommsService, AOSModule} = NativeModules
-const eventEmitter = new NativeEventEmitter(CoreCommsService)
+const {Core, BridgeModule, CoreCommsService} = NativeModules
+const eventEmitter = new NativeEventEmitter(Core)
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null
@@ -167,7 +168,7 @@ export class CoreCommunicator extends EventEmitter {
     if (Platform.OS === "ios") {
       setTimeout(async () => {
         // will fail silently if we don't have bt permissions (which is the intended behavior)
-        AOSModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
+        BridgeModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
       }, 3000)
     }
 
@@ -186,7 +187,8 @@ export class CoreCommunicator extends EventEmitter {
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
-    await this.setServerUrl(backendServerUrl)
+    await this.setServerUrl(backendServerUrl) // todo: config: remove
+    await ServerComms.getInstance().setServerUrl(backendServerUrl) // todo: config: remove
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -220,7 +222,7 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     if (jsonString.startsWith("SWIFT:")) {
-      console.log("SWIFT: ", jsonString.slice(6))
+      console.log("SWIFT:", jsonString.slice(6))
       return
     }
 
@@ -230,14 +232,17 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // console.log("RECEIVED MESSAGE FROM CORE")
-    if (this.lastMessage === jsonString) {
-      console.log("DUPLICATE MESSAGE FROM CORE")
-      return
-    }
-    this.lastMessage = jsonString
-
     try {
       const data = JSON.parse(jsonString)
+
+      // Only check for duplicates on status messages, not other event types
+      if ("status" in data) {
+        if (this.lastMessage === jsonString) {
+          console.log("DUPLICATE STATUS MESSAGE FROM CORE")
+          return
+        }
+        this.lastMessage = jsonString
+      }
 
       // Log if this is a WiFi scan result
       if ("wifi_scan_results" in data) {
@@ -245,6 +250,11 @@ export class CoreCommunicator extends EventEmitter {
         console.log("📡 Raw JSON string:", jsonString)
         console.log("📡 Parsed data:", data)
         console.log("📡 ========= END RAW MESSAGE =========")
+      }
+
+      // Log if this is a gallery status result
+      if ("glasses_gallery_status" in data) {
+        console.log("📸 Gallery status received from Core:", data.glasses_gallery_status)
       }
 
       this.isConnected = true
@@ -274,6 +284,23 @@ export class CoreCommunicator extends EventEmitter {
           connected: data.glasses_wifi_status_change.connected,
           ssid: data.glasses_wifi_status_change.ssid,
           local_ip: data.glasses_wifi_status_change.local_ip,
+        })
+      } else if ("glasses_hotspot_status_change" in data) {
+        // console.log("Received glasses_hotspot_status_change event from Core", data.glasses_hotspot_status_change)
+        GlobalEventEmitter.emit("GLASSES_HOTSPOT_STATUS_CHANGE", {
+          enabled: data.glasses_hotspot_status_change.enabled,
+          ssid: data.glasses_hotspot_status_change.ssid,
+          password: data.glasses_hotspot_status_change.password,
+          local_ip: data.glasses_hotspot_status_change.local_ip,
+        })
+      } else if ("glasses_gallery_status" in data) {
+        console.log("Received glasses_gallery_status event from Core", data.glasses_gallery_status)
+        GlobalEventEmitter.emit("GLASSES_GALLERY_STATUS", {
+          photos: data.glasses_gallery_status.photos,
+          videos: data.glasses_gallery_status.videos,
+          total: data.glasses_gallery_status.total,
+          has_content: data.glasses_gallery_status.has_content,
+          camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
       } else if ("glasses_display_event" in data) {
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
@@ -314,12 +341,24 @@ export class CoreCommunicator extends EventEmitter {
       } else if ("wifi_scan_results" in data) {
         console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
         console.log("🔍 Received WiFi scan results from Core:", data)
-        console.log("🔍 Networks array:", data.wifi_scan_results)
-        console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
-        GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
-          networks: data.wifi_scan_results,
-        })
-        console.log("🔍 Emitted WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+
+        // Check for enhanced format first (from iOS)
+        if ("wifi_scan_results_enhanced" in data) {
+          console.log("🔍 Enhanced networks array:", data.wifi_scan_results_enhanced)
+          console.log("🔍 Enhanced networks count:", data.wifi_scan_results_enhanced?.length || 0)
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
+            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
+          })
+          console.log("🔍 Emitted enhanced WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        } else {
+          console.log("🔍 Networks array:", data.wifi_scan_results)
+          console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results,
+          })
+          console.log("🔍 Emitted legacy WIFI_SCAN_RESULTS event to GlobalEventEmitter")
+        }
         console.log("🔍 ========= END WIFI SCAN RESULTS =========")
       }
 
@@ -419,7 +458,7 @@ export class CoreCommunicator extends EventEmitter {
   /**
    * Sends data to Core
    */
-  private async sendData(dataObj: any) {
+  private async sendData(dataObj: any): Promise<any> {
     try {
       if (INTENSE_LOGGING) {
         console.log("Sending data to Core:", JSON.stringify(dataObj))
@@ -430,9 +469,11 @@ export class CoreCommunicator extends EventEmitter {
         if (!(await CoreCommsService.isServiceRunning())) {
           CoreCommsService.startService()
         }
-        CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
-      } else {
-        AOSModule.sendCommand(JSON.stringify(dataObj))
+        return await CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
+      }
+
+      if (Platform.OS === "ios") {
+        return await BridgeModule.sendCommand(JSON.stringify(dataObj))
       }
     } catch (error) {
       console.error("Failed to send data to Core:", error)
@@ -558,31 +599,12 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async restartTranscription(isMicCurrentlyEnabled: boolean = true) {
-    if (!isMicCurrentlyEnabled) {
-      console.log("Mic is not enabled, skipping transcription restart")
-      return
-    }
-
+  async restartTranscription() {
     console.log("Restarting transcription with new model...")
 
-    // Toggle mic off
+    // Send restart command to native side
     await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: false,
-      },
-    })
-
-    // Wait for the change to take effect
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Toggle mic back on
-    await this.sendData({
-      command: "toggle_mic",
-      params: {
-        enabled: true,
-      },
+      command: "restart_transcriber",
     })
   }
 
@@ -600,6 +622,35 @@ export class CoreCommunicator extends EventEmitter {
       command: "set_button_mode",
       params: {
         mode: mode,
+      },
+    })
+  }
+
+  async sendSetButtonPhotoSize(size: string) {
+    return await this.sendData({
+      command: "set_button_photo_size",
+      params: {
+        size: size,
+      },
+    })
+  }
+
+  async sendSetButtonVideoSettings(width: number, height: number, fps: number) {
+    return await this.sendData({
+      command: "set_button_video_settings",
+      params: {
+        width: width,
+        height: height,
+        fps: fps,
+      },
+    })
+  }
+
+  async sendSetButtonCameraLed(enabled: boolean) {
+    return await this.sendData({
+      command: "set_button_camera_led",
+      params: {
+        enabled: enabled,
       },
     })
   }
@@ -767,6 +818,7 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setServerUrl(url: string) {
     return await this.sendData({
       command: "set_server_url",
@@ -920,7 +972,6 @@ export class CoreCommunicator extends EventEmitter {
       enabled: enabled,
     })
   }
-
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({
@@ -962,6 +1013,65 @@ export class CoreCommunicator extends EventEmitter {
         request_id: requestId,
       },
     })
+  }
+
+  async sendCommand(command: string, params?: any) {
+    return await this.sendData({
+      command: command,
+      params: params || {},
+    })
+  }
+
+  /**
+   * Sends audio play response back to Core
+   */
+  private async sendAudioPlayResponse(response: AudioPlayResponse) {
+    console.log(
+      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
+    )
+    await this.sendData({
+      command: "audio_play_response",
+      params: {
+        requestId: response.requestId,
+        success: response.success,
+        error: response.error,
+        duration: response.duration,
+      },
+    })
+  }
+
+  async setSttModelPath(path: string) {
+    return await this.sendData({
+      command: "set_stt_model_path",
+      params: {
+        path: path,
+      },
+    })
+  }
+
+  async validateSTTModel(path: string): Promise<boolean> {
+    return await this.sendData({
+      command: "validate_stt_model",
+      params: {
+        path: path,
+      },
+    })
+  }
+
+  async extractTarBz2(sourcePath: string, destinationPath: string) {
+    return await this.sendData({
+      command: "extract_tar_bz2",
+      params: {
+        source_path: sourcePath,
+        destination_path: destinationPath,
+      },
+    })
+  }
+
+  async queryGalleryStatus() {
+    console.log("[CoreCommunicator] Querying gallery status from glasses...")
+    // Just send the command, the response will come through the event system
+    return this.sendCommand("query_gallery_status")
   }
 }
 

@@ -32,6 +32,7 @@ export {
   StandardConnectionError,
   CustomMessage,
   ManagedStreamStatus,
+  StreamStatusCheckResponse,
   OutputStatus,
   MentraosSettingsUpdate,
   TranscriptionData,
@@ -49,6 +50,7 @@ export {
   isCapabilitiesUpdate,
   isDataStream,
   isAudioChunk,
+  isStreamStatusCheckResponse,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
   isManagedStreamStatus,
@@ -233,7 +235,4 @@ export interface WebSocketError {
   details?: unknown;
 }
 
-import { Request } from "express";
-export interface AuthenticatedRequest extends Request {
-  authUserId?: string;
-}
+export { AuthenticatedRequest } from "./types/index";

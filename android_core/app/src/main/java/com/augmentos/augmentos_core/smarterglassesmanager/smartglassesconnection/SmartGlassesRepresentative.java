@@ -33,6 +33,7 @@ import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AudioWearableSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraNexSGC;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.FrameSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraLiveSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.UltraliteSGC;
 import com.augmentos.augmentoslib.events.BulletPointListViewRequestEvent;
@@ -199,6 +200,10 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             case ANDROID_OS_GLASSES:
             case MENTRA_LIVE_OS:
                 communicator = new MentraLiveSGC(context, smartGlassesDevice, dataObservable);
+                break;
+                
+            case FRAME_OS_GLASSES:
+                communicator = new FrameSGC(context, smartGlassesDevice);
                 break;
                 
             default:
@@ -534,7 +539,6 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-
     @Subscribe
     public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
         Log.d(TAG, "onDisplayTextNotified called");
@@ -551,8 +555,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void changeMicrophoneState(boolean isMicrophoneEnabled) {
-    }
+    public void changeMicrophoneState(List<SpeechRequiredDataType> requiredData) {}
     
     /**
      * Sends WiFi credentials to the smart glasses

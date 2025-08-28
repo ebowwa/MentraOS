@@ -255,35 +255,23 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
 
     @Override
     public void onSerialRead(String serialPath, byte[] data, int size) {
-        Log.d(TAG, "📥 =========================================");
-        Log.d(TAG, "📥 K900 SERIAL READ");
-        Log.d(TAG, "📥 =========================================");
-        Log.d(TAG, "📥 Serial path: " + serialPath);
-        Log.d(TAG, "📥 Received " + size + " bytes");
+        // Suppress verbose serial read logging to prevent logcat overflow
+        // Log.d(TAG, "📥 K900 SERIAL READ - " + size + " bytes");
 
         if (data != null && size > 0) {
-            Log.d(TAG, "📥 ✅ Valid data received, processing...");
-
             // Copy the data to avoid issues with buffer reuse
             byte[] dataCopy = new byte[size];
             System.arraycopy(data, 0, dataCopy, 0, size);
-            Log.d(TAG, "📥 📋 Data copied successfully");
-
-            // Log first few bytes for debugging
-            if (size > 0) {
-                StringBuilder hexDump = new StringBuilder();
-                for (int i = 0; i < Math.min(size, 20); i++) {
-                    hexDump.append(String.format("%02X ", dataCopy[i]));
-                }
-                Log.d(TAG, "📥 📦 First 20 bytes: " + hexDump.toString());
-            }
+            
+            // Hex dump suppressed to prevent logcat overflow
+            // Enable only when debugging specific issues
 
             // Add the data to our message parser
             if (messageParser != null && messageParser.addData(dataCopy, size)) {
                 // Try to extract complete messages
                 List<byte[]> completeMessages = messageParser.parseMessages();
                 if (completeMessages != null && !completeMessages.isEmpty()) {
-                    Log.d(TAG, "📥 Extracted " + completeMessages.size() + " complete messages");
+                    // Log.d(TAG, "📥 Extracted " + completeMessages.size() + " complete messages");
                     // Process each complete message
                     for (byte[] message : completeMessages) {
                         // Check for file transfer acknowledgments first
@@ -299,7 +287,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                             
                             if (payload != null && payload.length > 0) {
                                 // Notify listeners with the clean payload (JSON data without markers)
-                                Log.d(TAG, "📥 Notifying listeners with extracted payload (" + payload.length + " bytes)");
+                                // Suppress verbose notification logging
                                 notifyDataReceived(payload);
                             } else {
                                 Log.w(TAG, "📥 Failed to extract payload from K900 message");
@@ -319,7 +307,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 Log.d(TAG, "📥 📤 Parser unavailable, notifying listeners of raw data...");
                 notifyDataReceived(dataCopy);
             }
-            Log.d(TAG, "📥 ✅ Data processing complete");
+            // Data processing complete
         } else {
             Log.w(TAG, "📥 ❌ Invalid data received - null or empty");
         }
@@ -366,6 +354,14 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             Log.d(TAG, "🔌 ❌ Failed to open serial port");
             notificationManager.showDebugNotification("Serial Error", "Failed to open serial port: " + serialPath + " - " + msg);
         }
+    }
+    
+    /**
+     * Check if a file transfer is currently in progress
+     * @return true if a transfer is active, false otherwise
+     */
+    public boolean isFileTransferInProgress() {
+        return currentFileTransfer != null && currentFileTransfer.isActive;
     }
     
     /**
@@ -513,8 +509,14 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         // Send the packet using sendFile (no logging)
         comManager.sendFile(packet);
         
-        // Track packet state for acknowledgment
-        pendingPackets.put(packetIndex, new FilePacketState());
+        // Track packet state for acknowledgment (preserve retry count if resending)
+        FilePacketState existingState = pendingPackets.get(packetIndex);
+        if (existingState == null) {
+            pendingPackets.put(packetIndex, new FilePacketState());
+        } else {
+            // Update timestamp but preserve retry count
+            existingState.lastSendTime = System.currentTimeMillis();
+        }
         
         Log.d(TAG, "Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
                    " (" + packSize + " bytes)");
@@ -562,7 +564,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 
                 // Resend the packet
                 currentFileTransfer.currentPacketIndex = packetIndex;
-                packetState.lastSendTime = System.currentTimeMillis();
                 sendNextFilePacket();
             }
         }

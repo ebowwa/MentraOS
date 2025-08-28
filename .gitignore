@@ -102,7 +102,7 @@ nosetests.xml
 parts
 pip-wheel-metadata
 pyvenv
-sources
+./sources
 var/*
 venv
 virtualenv.py

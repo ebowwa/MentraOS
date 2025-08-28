@@ -38,9 +38,14 @@ public interface AugmentOsActionsCallback {
     void updateGlassesHeight(int height);
     void updateGlassesDepth(int depth);
     void setGlassesWifiCredentials(String ssid, String password);
+    void setGlassesHotspotState(boolean enabled);
     void requestWifiScan();
+    void queryGalleryStatus();
     void setPreferredMic(String mic);
     void setButtonMode(String mode);
+    void setButtonPhotoSize(String size);
+    void setButtonVideoSettings(int width, int height, int fps);
+    void setButtonCameraLed(boolean enabled);
     void setServerUrl(String url);
     void onAudioPlayRequest(JSONObject audioRequest);
     void onAudioPlayResponse(JSONObject audioResponse);
@@ -62,4 +67,5 @@ public interface AugmentOsActionsCallback {
     void saveBufferVideo(String requestId, int durationSeconds);
     void startVideoRecording(String requestId, boolean save);
     void stopVideoRecording(String requestId);
+    void restartTranscriber();
 }
