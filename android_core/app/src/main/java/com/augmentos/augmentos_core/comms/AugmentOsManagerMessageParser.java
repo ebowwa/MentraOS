@@ -199,17 +199,51 @@ public class AugmentOsManagerMessageParser {
                     callback.setGlassesWifiCredentials(ssid, password);
                     break;
 
+                case "set_hotspot_state":
+                    boolean hotspotEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    Log.d(TAG, "🔥 GOT A COMMAND TO SET HOTSPOT STATE, enabled: " + hotspotEnabled);
+                    callback.setGlassesHotspotState(hotspotEnabled);
+                    break;
+
                 case "request_wifi_scan":
                     callback.requestWifiScan();
+                    break;
+                    
+                case "query_gallery_status":
+                    Log.d(TAG, "📸 GOT A COMMAND TO QUERY GALLERY STATUS");
+                    callback.queryGalleryStatus();
                     break;
 
                 case "set_preferred_mic":
                     String mic = commandObject.getJSONObject("params").getString("mic");
                     callback.setPreferredMic(mic);
                     break;
+
+                case "restart_transcriber":
+                    callback.restartTranscriber();
+                    break;
+
                 case "set_button_mode":
                     String mode = commandObject.getJSONObject("params").getString("mode");
                     callback.setButtonMode(mode);
+                    break;
+
+                case "set_button_photo_size":
+                    String photoSize = commandObject.getJSONObject("params").getString("size");
+                    callback.setButtonPhotoSize(photoSize);
+                    break;
+
+                case "set_button_video_settings":
+                    JSONObject videoParams = commandObject.getJSONObject("params");
+                    int videoWidth = videoParams.getInt("width");
+                    int videoHeight = videoParams.getInt("height");
+                    int videoFps = videoParams.getInt("fps");
+                    callback.setButtonVideoSettings(videoWidth, videoHeight, videoFps);
+                    break;
+
+                case "set_button_camera_led":
+                    boolean ledEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setButtonCameraLed(ledEnabled);
                     break;
 
                 case "audio_play_response":

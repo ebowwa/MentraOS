@@ -1,6 +1,6 @@
 import {NativeModules} from "react-native"
 
-const {AOSModule} = NativeModules
+const {BridgeModule} = NativeModules
 
 export const startExternalService = () => {
   // ServiceStarter.startService();

@@ -1,6 +1,8 @@
 package com.augmentos.asg_client.io.media.core;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -13,6 +15,9 @@ import com.augmentos.asg_client.io.media.upload.MediaUploadService;
 import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
 import com.augmentos.asg_client.camera.CameraNeo;
+import com.augmentos.asg_client.settings.VideoSettings;
+import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -52,26 +58,57 @@ public class MediaCaptureService {
     private MediaCaptureListener mMediaCaptureListener;
     private ServiceCallbackInterface mServiceCallback;
     private CircularVideoBuffer mVideoBuffer;
+    private final IHardwareManager hardwareManager;
 
     // Track current video recording
     private boolean isRecordingVideo = false;
     private String currentVideoId = null;
     private String currentVideoPath = null;
     private long recordingStartTime = 0;
+    private boolean currentVideoLedEnabled = false; // Track if LED was enabled for current recording
 
-    // Original very fast: 320x240, 30qual
+    // Default BLE params (used if size unspecified)
     public static final int bleImageTargetWidth = 480;
     public static final int bleImageTargetHeight = 480;
     public static final int bleImageAvifQuality = 40;
-    
+
+    private static class BleParams {
+        final int targetWidth;
+        final int targetHeight;
+        final int avifQuality;
+        final int jpegFallbackQuality;
+
+        BleParams(int targetWidth, int targetHeight, int avifQuality, int jpegFallbackQuality) {
+            this.targetWidth = targetWidth;
+            this.targetHeight = targetHeight;
+            this.avifQuality = avifQuality;
+            this.jpegFallbackQuality = jpegFallbackQuality;
+        }
+    }
+
+    private BleParams resolveBleParams(String requestedSize) {
+        // Conservative bandwidth for BLE; tune as needed
+        switch (requestedSize) {
+            case "small":
+                return new BleParams(400, 400, 35, 25);
+            case "large":
+                return new BleParams(1024, 1024, 45, 40);
+            case "medium":
+            default:
+                return new BleParams(720, 720, 42, 38);
+        }
+    }
+
     // Track which photos should be saved to gallery
     private Map<String, Boolean> photoSaveFlags = new HashMap<>();
-    
+
     // Track BLE IDs for auto fallback mode
     private Map<String, String> photoBleIds = new HashMap<>();
-    
+
     // Track original photo paths for BLE fallback
     private Map<String, String> photoOriginalPaths = new HashMap<>();
+    // Track requested photo size per request for proper fallback handling
+    private Map<String, String> photoRequestedSizes = new HashMap<>();
     private final FileManager fileManager;
 
     /**
@@ -111,6 +148,10 @@ public class MediaCaptureService {
         mMediaQueueManager = mediaQueueManager;
         this.fileManager = fileManager;
         
+        // Initialize hardware manager
+        hardwareManager = HardwareManagerFactory.getInstance(context);
+        Log.d(TAG, "Hardware manager initialized: " + hardwareManager.getDeviceModel());
+        
         // Initialize video buffer
         mVideoBuffer = new CircularVideoBuffer(context);
         mVideoBuffer.setCallback(new CircularVideoBuffer.BufferCallback() {
@@ -118,17 +159,17 @@ public class MediaCaptureService {
             public void onBufferingStarted() {
                 Log.d(TAG, "Video buffering started");
             }
-            
+
             @Override
             public void onBufferingStopped() {
                 Log.d(TAG, "Video buffering stopped");
             }
-            
+
             @Override
             public void onSegmentRecorded(int segmentIndex, String filePath) {
                 Log.d(TAG, "Buffer segment " + segmentIndex + " recorded: " + filePath);
             }
-            
+
             @Override
             public void onBufferSaved(String outputPath, int durationSeconds) {
                 Log.d(TAG, "Buffer saved: " + outputPath + " (" + durationSeconds + " seconds)");
@@ -138,10 +179,13 @@ public class MediaCaptureService {
                     mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
                 }
             }
-            
+
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
+                // Turn off LED on buffer error
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
@@ -245,9 +289,10 @@ public class MediaCaptureService {
                             Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
 
                             // Take photo and upload directly to server
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, save);
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+                            int randomSuffix = (int)(Math.random() * 1000);
+                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
+                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium", false);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -279,6 +324,26 @@ public class MediaCaptureService {
             startVideoRecording();
         }
     }
+    
+    /**
+     * Start video recording with specific settings
+     * @param settings Video settings (resolution, fps)
+     * @param enableLed Whether to enable recording LED
+     */
+    public void startVideoRecording(VideoSettings settings, boolean enableLed) {
+        if (isRecordingVideo) {
+            Log.d(TAG, "Stopping video recording");
+            stopVideoRecording();
+        } else {
+            Log.d(TAG, "Starting video recording with settings: " + settings);
+            // Generate IDs for local recording
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+            int randomSuffix = (int)(Math.random() * 1000);
+            String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
+            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
+            startVideoRecording(videoFilePath, requestId, settings, enableLed);
+        }
+    }
 
     /**
      * Handle start video recording command from phone
@@ -286,7 +351,17 @@ public class MediaCaptureService {
      * @param requestId Unique request ID for tracking
      * @param save Whether to keep the video on device after upload
      */
-    public void handleStartVideoCommand(String requestId, boolean save) {
+    public void handleStartVideoCommand(String requestId, boolean save, boolean enableLed) {
+        handleStartVideoCommand(requestId, save, null, enableLed);
+    }
+    
+    /**
+     * Handle start video recording command from phone with settings
+     * @param requestId Unique request ID for tracking
+     * @param save Whether to keep the video on device after upload
+     * @param settings Video settings (resolution, fps) or null for defaults
+     */
+    public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings, boolean enableLed) {
         // Check if already recording
         if (isRecordingVideo) {
             Log.w(TAG, "Already recording video, ignoring start command");
@@ -297,11 +372,12 @@ public class MediaCaptureService {
         }
 
                             // Generate filename with requestId
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-                            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+                            int randomSuffix = (int)(Math.random() * 1000);
+                            String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + "_" + requestId + ".mp4";
 
         // Start video recording with the provided requestId
-        startVideoRecording(videoFilePath, requestId);
+        startVideoRecording(videoFilePath, requestId, enableLed);
     }
 
     /**
@@ -334,35 +410,53 @@ public class MediaCaptureService {
      */
     private void startVideoRecording() {
         // Generate IDs for local recording
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String requestId = "local_video_" + timeStamp;
-        String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + ".mp4";
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+        int randomSuffix = (int)(Math.random() * 1000);
+        String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
+        String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
 
-        startVideoRecording(videoFilePath, requestId);
+        startVideoRecording(videoFilePath, requestId, false);
     }
 
     /**
      * Start video recording with specific parameters
      */
-    private void startVideoRecording(String videoFilePath, String requestId) {
+    private void startVideoRecording(String videoFilePath, String requestId, boolean enableLed) {
+        startVideoRecording(videoFilePath, requestId, null, enableLed);
+    }
+    
+    /**
+     * Start video recording with specific parameters and settings
+     */
+    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
             return;
         }
 
+        // Close kept-alive camera if it exists to free resources for video recording
+        CameraNeo.closeKeptAliveCamera();
+
         // Save info for the current recording session
         currentVideoId = requestId;
         currentVideoPath = videoFilePath;
+        currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
             // Start video recording using CameraNeo
-            CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, new CameraNeo.VideoRecordingCallback() {
+            CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
                 public void onRecordingStarted(String videoId) {
                     Log.d(TAG, "Video recording started with ID: " + videoId);
                     isRecordingVideo = true;
                     recordingStartTime = System.currentTimeMillis();
+                    
+                    // Turn on recording LED if enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOn();
+                        Log.d(TAG, "Recording LED turned ON");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -374,6 +468,12 @@ public class MediaCaptureService {
                 public void onRecordingStopped(String videoId, String filePath) {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
+                    
+                    // Turn off recording LED if it was enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOff();
+                        Log.d(TAG, "Recording LED turned OFF");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -392,6 +492,12 @@ public class MediaCaptureService {
                 public void onRecordingError(String videoId, String errorMessage) {
                     Log.e(TAG, "Video recording error: " + videoId + ", error: " + errorMessage);
                     isRecordingVideo = false;
+                    
+                    // Turn off recording LED on error if it was enabled
+                    if (enableLed && hardwareManager.supportsRecordingLed()) {
+                        hardwareManager.setRecordingLedOff();
+                        Log.d(TAG, "Recording LED turned OFF (due to error)");
+                    }
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -448,6 +554,12 @@ public class MediaCaptureService {
             isRecordingVideo = false;
             currentVideoId = null;
             currentVideoPath = null;
+            
+            // Ensure LED is turned off even if stop fails (if it was enabled)
+            if (currentVideoLedEnabled && hardwareManager.supportsRecordingLed()) {
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (stop error recovery)");
+            }
         }
     }
 
@@ -469,7 +581,7 @@ public class MediaCaptureService {
 
         return System.currentTimeMillis() - recordingStartTime;
     }
-    
+
     /**
      * Start buffer recording - continuously records last 30 seconds
      */
@@ -483,20 +595,29 @@ public class MediaCaptureService {
             return;
         }
         
+        // Close kept-alive camera if it exists to free resources for buffer recording
+        CameraNeo.closeKeptAliveCamera();
+
         Log.d(TAG, "Starting buffer recording via CameraNeo");
-        
+
         // Use CameraNeo's buffer mode instead of local CircularVideoBuffer
         CameraNeo.startBufferRecording(mContext, new CameraNeo.BufferCallback() {
             @Override
             public void onBufferStarted() {
                 Log.d(TAG, "Buffer recording started");
+                // Start blinking LED for buffer recording mode
+                hardwareManager.setRecordingLedBlinking(1000, 2000); // On for 1s, off for 2s
+                Log.d(TAG, "Recording LED set to BLINKING mode (buffer recording)");
             }
-            
+
             @Override
             public void onBufferStopped() {
                 Log.d(TAG, "Buffer recording stopped");
+                // Turn off LED when buffer recording stops
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer stopped)");
             }
-            
+
             @Override
             public void onBufferSaved(String filePath, int durationSeconds) {
                 Log.d(TAG, "Buffer saved: " + filePath + " (" + durationSeconds + " seconds)");
@@ -504,25 +625,31 @@ public class MediaCaptureService {
                     mMediaCaptureListener.onVideoUploaded("buffer_save", filePath);
                 }
             }
-            
+
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
+                // Turn off LED on buffer error
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
             }
         });
     }
-    
+
     /**
      * Stop buffer recording
      */
     public void stopBufferRecording() {
         Log.d(TAG, "Stopping buffer recording via CameraNeo");
         CameraNeo.stopBufferRecording(mContext);
+        // Ensure LED is turned off when manually stopping buffer
+        hardwareManager.setRecordingLedOff();
+        Log.d(TAG, "Recording LED turned OFF (manual buffer stop)");
     }
-    
+
     /**
      * Save the last N seconds from buffer
      * @param secondsToSave Number of seconds to save (max 30)
@@ -532,7 +659,7 @@ public class MediaCaptureService {
         Log.d(TAG, "Saving last " + secondsToSave + " seconds of buffer, requestId: " + requestId);
         CameraNeo.saveBufferVideo(mContext, secondsToSave, requestId);
     }
-    
+
     /**
      * Get buffer recording status
      * Note: This would need to be implemented via a callback or service binding
@@ -549,7 +676,7 @@ public class MediaCaptureService {
         }
         return status;
     }
-    
+
     /**
      * Check if buffer is currently recording
      */
@@ -559,33 +686,51 @@ public class MediaCaptureService {
 
     /**
      * Takes a photo locally when offline or when server communication fails
+     * Uses default medium size
      */
     public void takePhotoLocally() {
+        takePhotoLocally("medium", false);
+    }
+    
+    /**
+     * Takes a photo locally with specified size
+     * @param size Photo size ("small", "medium", or "large")
+     * @param enableLed Whether to enable camera LED flash
+     */
+    public void takePhotoLocally(String size, boolean enableLed) {
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
             return;
         }
 
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        // Add milliseconds and a random component to ensure uniqueness even in rapid capture
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+        int randomSuffix = (int)(Math.random() * 1000);
 
+        String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
 
-
-        String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + ".jpg";
-
-        Log.d(TAG, "Taking photo locally at: " + photoFilePath);
+        Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size + ", LED: " + enableLed);
 
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
-        // For offline mode, take photo and queue it for later upload
-        CameraNeo.takePictureWithCallback(
+        // LED control is now handled by CameraNeo tied to camera lifecycle
+        // This prevents LED flickering during rapid photo capture
+
+        // Use the new enqueuePhotoRequest for thread-safe rapid capture
+        CameraNeo.enqueuePhotoRequest(
                 mContext,
                 photoFilePath,
+                size,
+                enableLed,
                 new CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
+                        
+                        // LED is now managed by CameraNeo and will turn off when camera closes
+                        
                         // Notify through standard capture listener if set up
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
@@ -596,6 +741,8 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoError(String errorMessage) {
                         Log.e(TAG, "Failed to capture offline photo: " + errorMessage);
+
+                        // LED is now managed by CameraNeo and will turn off when camera closes
 
                         if (mMediaCaptureListener != null) {
                             mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -612,23 +759,31 @@ public class MediaCaptureService {
      * @param webhookUrl Optional webhook URL for direct upload to app
      * @param save Whether to keep the photo on device after upload
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
+        // Track requested size for potential fallbacks
+        photoRequestedSizes.put(requestId, size);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
+        // LED control is now handled by CameraNeo tied to camera lifecycle
+
         try {
-            // Use CameraNeo for photo capture
-            CameraNeo.takePictureWithCallback(
+            // Use the new enqueuePhotoRequest for thread-safe rapid capture
+            CameraNeo.enqueuePhotoRequest(
                     mContext,
                     photoFilePath,
+                    size,
+                    enableLed,
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
+
+                            // LED is now managed by CameraNeo and will turn off when camera closes
 
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
@@ -646,6 +801,9 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo: " + errorMessage);
+                            
+                            // LED is now managed by CameraNeo and will turn off when camera closes
+                            
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
                             if (mMediaCaptureListener != null) {
@@ -724,9 +882,10 @@ public class MediaCaptureService {
                     } else {
                         Log.d(TAG, "💾 Keeping photo file as requested: " + photoFilePath);
                     }
-                    
+
                     // Clean up the flag
                     photoSaveFlags.remove(requestId);
+                    photoRequestedSizes.remove(requestId);
 
                     // Notify success
                     if (mMediaCaptureListener != null) {
@@ -735,21 +894,26 @@ public class MediaCaptureService {
                 } else {
                     String errorMessage = "Upload failed with status: " + response.code();
                     Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
-                    
+
                     // Check if we can fallback to BLE
                     String bleImgId = photoBleIds.get(requestId);
                     if (bleImgId != null) {
                         Log.d(TAG, "📱 Webhook upload failed, attempting BLE fallback for " + requestId);
-                        
+
                         // Clean up tracking (will be re-added by BLE transfer)
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
-                        
-                        // Trigger BLE fallback
-                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+
+                        // Trigger BLE fallback - reuse the existing photo instead of taking a new one
+                        boolean shouldSave = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                        String requestedSize = photoRequestedSizes.get(requestId);
+                        if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
+                        // Reuse the existing photo file that was already captured
+                        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                        reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
-                    
+
                     // No BLE fallback available
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
@@ -767,11 +931,12 @@ public class MediaCaptureService {
                     } else {
                         Log.d(TAG, "💾 Keeping photo file despite failed upload as requested: " + photoFilePath);
                     }
-                    
+
                     // Clean up tracking
                     photoSaveFlags.remove(requestId);
                     photoBleIds.remove(requestId);
                     photoOriginalPaths.remove(requestId);
+                    photoRequestedSizes.remove(requestId);
 
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -782,21 +947,26 @@ public class MediaCaptureService {
 
             } catch (Exception e) {
                 Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
-                
+
                 // Check if we can fallback to BLE on exception
                 String bleImgId = photoBleIds.get(requestId);
                 if (bleImgId != null) {
                     Log.d(TAG, "📱 Webhook upload exception, attempting BLE fallback for " + requestId);
-                    
+
                     // Clean up tracking (will be re-added by BLE transfer)
                     photoBleIds.remove(requestId);
                     photoOriginalPaths.remove(requestId);
-                    
-                    // Trigger BLE fallback
-                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+
+                    // Trigger BLE fallback - reuse the existing photo instead of taking a new one
+                    boolean shouldSaveFallback1 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                    String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
+                    if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
+                    // Reuse the existing photo file that was already captured
+                    Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                    reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
-                
+
                 // No BLE fallback available
                 // Check if we should save the photo on exception
                 Boolean save = photoSaveFlags.get(requestId);
@@ -815,12 +985,13 @@ public class MediaCaptureService {
                 } else {
                     Log.d(TAG, "💾 Keeping photo file despite upload exception as requested: " + photoFilePath);
                 }
-                
+
                 // Clean up tracking
                 photoSaveFlags.remove(requestId);
                 photoBleIds.remove(requestId);
                 photoOriginalPaths.remove(requestId);
-                
+                photoRequestedSizes.remove(requestId);
+
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                 }
@@ -837,7 +1008,7 @@ public class MediaCaptureService {
         Log.d(TAG, "Video upload not implemented yet. Video saved locally: " + videoFilePath);
         // TODO: Implement WiFi upload when needed
         // For now, videos remain on device
-        
+
         if (mMediaCaptureListener != null) {
             // Notify that video is "uploaded" (actually just saved locally)
             mMediaCaptureListener.onVideoUploaded(requestId, videoFilePath);
@@ -881,7 +1052,7 @@ public class MediaCaptureService {
                         } else {
                             Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file as requested: " + mediaFilePath);
                         }
-                        
+
                         // Clean up all tracking
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
@@ -907,17 +1078,22 @@ public class MediaCaptureService {
                         String bleImgId = photoBleIds.get(requestId);
                         if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO && bleImgId != null) {
                             Log.d(TAG, "📱 WiFi upload failed, attempting BLE fallback for " + requestId);
-                            
+
                             // Don't delete the photo yet - we need it for BLE
                             // Clean up tracking (will be re-added by BLE transfer)
                             photoBleIds.remove(requestId);
                             photoOriginalPaths.remove(requestId);
-                            
-                            // Trigger BLE fallback
-                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, photoSaveFlags.get(requestId));
+
+                            // Trigger BLE fallback - reuse the existing photo instead of taking a new one
+                            boolean shouldSaveFallback2 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
+                            String requestedSizeFallback2 = photoRequestedSizes.get(requestId);
+                            if (requestedSizeFallback2 == null || requestedSizeFallback2.isEmpty()) requestedSizeFallback2 = "medium";
+                            // Reuse the existing photo file that was already captured
+                            Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + mediaFilePath);
+                            reusePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2);
                             return; // Exit early - BLE transfer will handle cleanup
                         }
-                        
+
                         // No BLE fallback available, handle as normal failure
                         // Check if we should save the photo
                         Boolean save = photoSaveFlags.get(requestId);
@@ -936,7 +1112,7 @@ public class MediaCaptureService {
                         } else {
                             Log.d(TAG, "💾 Keeping " + mediaTypeStr.toLowerCase() + " file despite failed upload as requested: " + mediaFilePath);
                         }
-                        
+
                         // Clean up tracking
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
@@ -1015,7 +1191,7 @@ public class MediaCaptureService {
         String state = android.os.Environment.getExternalStorageState();
         return android.os.Environment.MEDIA_MOUNTED.equals(state);
     }
-    
+
     /**
      * Check if WiFi is connected
      */
@@ -1029,7 +1205,7 @@ public class MediaCaptureService {
             return false;
         }
     }
-    
+
     /**
      * Take a photo with auto transfer (WiFi with BLE fallback)
      * @param photoFilePath Path to save the original photo
@@ -1038,24 +1214,25 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID for fallback
      * @param save Whether to keep the photo on device
      */
-    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save) {
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
         photoOriginalPaths.put(requestId, photoFilePath);
-        
+        photoRequestedSizes.put(requestId, size);
+
         // Check WiFi connectivity
         if (isWiFiConnected()) {
             Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
             // Try WiFi upload (with automatic BLE fallback on failure)
-            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save);
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
         } else {
             Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
             // No WiFi, go straight to BLE
-            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save);
+            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
         }
     }
-    
+
     /**
      * Take a photo for BLE transfer with compression
      * @param photoFilePath Path to save the original photo
@@ -1063,14 +1240,18 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID to use as filename
      * @param save Whether to keep the original photo on device
      */
-    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save) {
+    public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
+        // Track requested size for BLE compression
+        photoRequestedSizes.put(requestId, size);
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
-        
+
+        // LED control is now handled by CameraNeo tied to camera lifecycle
+
         try {
             // Use CameraNeo for photo capture
             CameraNeo.takePictureWithCallback(
@@ -1080,39 +1261,66 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
-                            
+
+                            // LED is now managed by CameraNeo and will turn off when camera closes
+
                             // Notify that we've captured the photo
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
                             }
-                            
+
                             // Compress and send via BLE
                             compressAndSendViaBle(filePath, requestId, bleImgId);
                         }
-                        
+
                         @Override
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo for BLE: " + errorMessage);
-                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                             
+                            // LED is now managed by CameraNeo and will turn off when camera closes
+                            
+                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                             }
                         }
-                    }
+                    },
+                    size
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo for BLE", e);
             sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-            
+
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
                         MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
             }
         }
     }
-    
-    
+
+
+    /**
+     * Reuse existing photo for BLE transfer (when webhook fails)
+     * This avoids taking a duplicate photo
+     */
+    private void reusePhotoForBleTransfer(String existingPhotoPath, String requestId, String bleImgId, boolean save, String size) {
+        // Store the save flag for this request
+        photoSaveFlags.put(requestId, save);
+        // Track requested size for BLE compression
+        photoRequestedSizes.put(requestId, size);
+        
+        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + existingPhotoPath);
+        
+        // Notify that we're using an existing photo
+        if (mMediaCaptureListener != null) {
+            mMediaCaptureListener.onPhotoCaptured(requestId, existingPhotoPath);
+        }
+        
+        // Compress and send via BLE using the existing photo
+        compressAndSendViaBle(existingPhotoPath, requestId, bleImgId);
+    }
+
     /**
      * Compress photo and send via BLE
      */
@@ -1120,29 +1328,37 @@ public class MediaCaptureService {
         new Thread(() -> {
             long startTime = System.currentTimeMillis();
             Log.d(TAG, "🚀 BLE photo transfer started for " + bleImgId);
-            
+
             try {
                 // 1. Load original image
                 android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
                 if (original == null) {
                     throw new Exception("Failed to decode image file");
                 }
-                
-                // 2. Calculate new dimensions maintaining aspect ratio
-                int targetWidth = bleImageTargetWidth;
-                int targetHeight = bleImageTargetHeight;
+
+                // 2. Resolve BLE resize and quality parameters based on requested size
+                String requestedSize = photoRequestedSizes.get(requestId);
+                if (requestedSize == null || requestedSize.isEmpty()) {
+                    requestedSize = "medium";
+                }
+
+                BleParams bleParams = resolveBleParams(requestedSize);
+
+                // Calculate new dimensions maintaining aspect ratio, constrained by requested target
+                int targetWidth = bleParams.targetWidth;
+                int targetHeight = bleParams.targetHeight;
                 float aspectRatio = (float) original.getWidth() / original.getHeight();
-                
+
                 if (aspectRatio > targetWidth / (float) targetHeight) {
                     targetHeight = (int) (targetWidth / aspectRatio);
                 } else {
                     targetWidth = (int) (targetHeight * aspectRatio);
                 }
-                
+
                 // 3. Resize bitmap
                 android.graphics.Bitmap resized = android.graphics.Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true);
                 original.recycle();
-                
+
                 // 4. Encode as AVIF with aggressive compression
                 byte[] compressedData;
                 try {
@@ -1150,7 +1366,7 @@ public class MediaCaptureService {
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
                         resized,
-                            bleImageAvifQuality,  // quality (0-100)
+                            bleParams.avifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
                     Log.d(TAG, "Successfully encoded as AVIF");
@@ -1158,25 +1374,25 @@ public class MediaCaptureService {
                     Log.w(TAG, "AVIF encoding failed, falling back to JPEG: " + e.getMessage());
                     // Fallback to JPEG if AVIF fails
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 30, baos);
+                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, bleParams.jpegFallbackQuality, baos);
                     compressedData = baos.toByteArray();
                 }
                 resized.recycle();
-                
+
                 long compressionTime = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "✅ Compressed photo for BLE: " + originalPath + " -> " + compressedData.length + " bytes");
                 Log.d(TAG, "⏱️ Compression took: " + compressionTime + "ms");
-                
+
                 // 5. Save compressed data to temporary file with bleImgId as name
                 // For BLE, we ALWAYS use AVIF (no extension in filename due to 16-char limit)
                 String compressedPath = fileManager.getDefaultMediaDirectory() + "/" + bleImgId;
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(compressedPath)) {
                     fos.write(compressedData);
                 }
-                
+
                 // 6. Send via BLE using K900BluetoothManager
                 sendCompressedPhotoViaBle(compressedPath, bleImgId, requestId, startTime);
-                
+
                 // 7. Delete original photo if not saving to gallery
                 Boolean save = photoSaveFlags.get(requestId);
                 if (save == null || !save) {
@@ -1193,42 +1409,74 @@ public class MediaCaptureService {
                 } else {
                     Log.d(TAG, "💾 Keeping original photo as requested: " + originalPath);
                 }
-                
+
                 // Clean up the flag
                 photoSaveFlags.remove(requestId);
-                
+                photoRequestedSizes.remove(requestId);
+
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
                 sendBleTransferError(requestId, e.getMessage());
-                
+
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
+                photoRequestedSizes.remove(requestId);
             }
         }).start();
     }
-    
+
     /**
      * Send compressed photo via BLE
      */
     private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
         Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
-        
-        // First, notify the phone that the photo is ready (include timing info)
-        sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
-        
-        // Then, trigger the actual file transfer
-        if (mServiceCallback != null) {
-            boolean started = mServiceCallback.sendFileViaBluetooth(compressedPath);
-            if (!started) {
-                Log.e(TAG, "Failed to start BLE file transfer");
-                sendBleTransferError(requestId, "Failed to start file transfer");
+
+        boolean transferStarted = false;
+        try {
+            if (mServiceCallback != null) {
+                // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
+                if (mServiceCallback.isBleTransferInProgress()) {
+                    Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
+                    sendBleTransferError(requestId, "BLE transfer busy - another transfer in progress");
+                    return;
+                }
+                
+                // BLE is available - send the ready message first (phone expects this for timing tracking)
+                sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
+                
+                // Then try to start the file transfer
+                transferStarted = mServiceCallback.sendFileViaBluetooth(compressedPath);
+                
+                if (transferStarted) {
+                    Log.i(TAG, "✅ BLE file transfer started for: " + bleImgId);
+                } else {
+                    // This shouldn't happen since we checked above, but handle it anyway
+                    Log.e(TAG, "Failed to start BLE file transfer despite availability check");
+                    sendBleTransferError(requestId, "BLE transfer failed to start");
+                }
+            } else {
+                Log.e(TAG, "Service callback not available for BLE file transfer");
+                sendBleTransferError(requestId, "Service callback not available");
             }
-        } else {
-            Log.e(TAG, "Service callback not available for BLE file transfer");
-            sendBleTransferError(requestId, "Service callback not available");
+        } finally {
+            // Critical: Clean up compressed file if transfer didn't start
+            if (!transferStarted) {
+                try {
+                    File compressedFile = new File(compressedPath);
+                    if (compressedFile.exists()) {
+                        if (compressedFile.delete()) {
+                            Log.d(TAG, "🗑️ Deleted compressed file after BLE transfer failure: " + compressedPath);
+                        } else {
+                            Log.w(TAG, "⚠️ Failed to delete compressed file: " + compressedPath);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error deleting compressed file: " + compressedPath, e);
+                }
+            }
         }
     }
-    
+
     /**
      * Request BLE file transfer through AsgClientService
      */
@@ -1236,14 +1484,14 @@ public class MediaCaptureService {
         try {
             // Calculate compression duration on glasses side
             long compressionDuration = System.currentTimeMillis() - transferStartTime;
-            
+
             JSONObject json = new JSONObject();
             json.put("type", "ble_photo_ready");
             json.put("requestId", requestId);
             json.put("bleImgId", bleImgId);
             json.put("filePath", filePath);
             json.put("compressionDurationMs", compressionDuration);  // Send duration, not timestamp
-            
+
             // Send through bluetooth if available
             if (mServiceCallback != null) {
                 mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
@@ -1252,7 +1500,7 @@ public class MediaCaptureService {
             Log.e(TAG, "Error creating BLE transfer request", e);
         }
     }
-    
+
     /**
      * Send BLE transfer error
      */
@@ -1262,7 +1510,7 @@ public class MediaCaptureService {
             json.put("type", "ble_photo_error");
             json.put("requestId", requestId);
             json.put("error", error);
-            
+
             if (mServiceCallback != null) {
                 mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
             }
@@ -1270,6 +1518,6 @@ public class MediaCaptureService {
             Log.e(TAG, "Error creating BLE transfer error", e);
         }
     }
-    
+
     // ========== CIRCULAR VIDEO BUFFER METHODS ==========
 }

@@ -4,7 +4,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"
@@ -219,9 +219,6 @@ export class LogoutUtils {
 
       // Emit a logout event for any components that need to reset
       GlobalEventEmitter.emit("USER_LOGGED_OUT")
-
-      // Emit an event to reset app status
-      GlobalEventEmitter.emit("RESET_APP_STATUS")
 
       // Emit event to clear WebView data and cache
       GlobalEventEmitter.emit("CLEAR_WEBVIEW_DATA")

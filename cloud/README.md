@@ -13,12 +13,14 @@ MentraOS Cloud is the backend infrastructure for MentraOS - an open-source opera
 ### Development Setup
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/Mentra-Community/MentraOS.git
    cd MentraOS/cloud
    ```
 
 2. **Start development environment:**
+
    ```bash
    bun install
 
@@ -26,6 +28,7 @@ MentraOS Cloud is the backend infrastructure for MentraOS - an open-source opera
    ```
 
 3. **View logs:**
+
    ```bash
    # All logs
    bun run logs
@@ -40,26 +43,31 @@ MentraOS Cloud is the backend infrastructure for MentraOS - an open-source opera
 ### Useful Commands
 
 - **Rebuild Docker containers:**
+
   ```bash
   bun run dev:rebuild
   ```
 
 - **Stop all services:**
+
   ```bash
   bun run dev:stop
   ```
 
 - **Clean environment (remove volumes and prune):**
+
   ```bash
   bun run dev:clean
   ```
 
 - **Build shared packages:**
+
   ```bash
   bun run build
   ```
 
 - **Run linting:**
+
   ```bash
   cd packages/cloud && bun run lint
   ```
@@ -111,33 +119,36 @@ cloud/
    - For contributors: See [documentation](https://cloud-docs.mentra.glass/development/local-setup) for service setup
 
 2. **Work on Cloud Core:**
+
    ```bash
    # Start development environment
    bun run dev
-   
+
    # View logs
    bun run logs:cloud
-   
+
    # Run tests
    bun test
    ```
 
 3. **Build Apps:**
+
    ```bash
    # Navigate to app directory
    cd packages/apps/your-app
-   
+
    # Start development
    bun run dev
-   
+
    # See SDK documentation for app development
    ```
 
 4. **Run Web Portals:**
+
    ```bash
    # App Store
    cd store/web && bun run dev
-   
+
    # Developer Portal
    cd developer-portal && bun run dev
    ```
@@ -163,7 +174,7 @@ graph TD
     C -->|WebSocket| A1[App 1]
     C -->|WebSocket| A2[App 2]
     C -->|WebSocket| A3[App 3]
-    
+
     C --> DB[(MongoDB)]
     C --> S3[S3 Storage]
     C --> AI[AI Services]

@@ -15,13 +15,11 @@ import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
-import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
-import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {AppListItem} from "./AppListItem"
@@ -44,15 +42,7 @@ export default function InactiveAppList({
   liveCaptionsRef?: React.RefObject<any>
   onClearSearch?: () => void
 }) {
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    isSensingEnabled,
-    checkAppHealthStatus,
-  } = useAppStatus()
+  const {appStatus, optimisticallyStartApp, checkAppHealthStatus} = useAppStatus()
   const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
@@ -78,11 +68,6 @@ export default function InactiveAppList({
   const numColumns = 4 // Desired number of columns
 
   // Calculate the item width based on container width and margins
-  const itemWidth = containerWidth > 0 ? (containerWidth - GRID_MARGIN * numColumns) / numColumns : 0
-
-  const textColor = theme.isDark ? "#FFFFFF" : "#000000"
-
-  const backendComms = BackendServerComms.getInstance()
 
   // console.log('%%% appStatus', appStatus);
 
@@ -263,92 +248,10 @@ export default function InactiveAppList({
 
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
-
-    // Check if it's a standard app
-    if (appInfo?.appType === "standard") {
-      console.log("% appToStart", appInfo)
-      // Find any running standard apps
-      const runningStandardApps = getRunningStandardApps(packageName)
-
-      console.log("%%% runningStandardApps", runningStandardApps)
-
-      // If there's any running standard app, stop it first
-      for (const runningApp of runningStandardApps) {
-        // Optimistically update UI
-        optimisticallyStopApp(runningApp.packageName)
-
-        try {
-          console.log("%%% stopping app", runningApp.packageName)
-          await backendComms.stopApp(runningApp.packageName)
-          clearPendingOperation(runningApp.packageName)
-        } catch (error) {
-          console.error("stop app error:", error)
-          refreshAppStatus()
-        }
-      }
-    }
-
-    // Start the operation in the background
-    setIsLoading(true)
-    try {
-      console.log("%%% starting app", packageName)
-      await backendComms.startApp(packageName)
-      // Clear the pending operation since it completed successfully
-      clearPendingOperation(packageName)
-
-      // Mark that the user has ever activated an app
-      await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
-
-      if (!onboardingCompleted && packageName === "com.augmentos.livecaptions") {
-        // If this is the Live Captions app, make sure we've hidden the tip
-        setShowOnboardingTip(false)
-
-        setTimeout(() => {
-          showAlert(
-            translate("home:tryLiveCaptionsTitle"),
-            translate("home:tryLiveCaptionsMessage"),
-            [{text: translate("common:ok")}],
-            {
-              iconName: "microphone",
-            },
-          )
-        }, 500)
-      }
-    } catch (error: any) {
-      // Revert the app state when there's an error starting the app
-      console.error("start app error:", error)
-
-      // Check if this is a hardware compatibility error
-      if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
-        showAlert(
-          translate("home:hardwareIncompatible"),
-          error.response.data.error.message ||
-            translate("home:hardwareIncompatibleMessage", {
-              app: appInfo.name,
-              missing: "required hardware",
-            }),
-          [{text: translate("common:ok")}],
-          {
-            iconName: "alert-circle-outline",
-            iconColor: theme.colors.error,
-          },
-        )
-      } else {
-        // Handle other types of errors with generic error handling
-        console.error("Generic app start error:", error)
-      }
-
-      // Clear the pending operation for this app
-      clearPendingOperation(packageName)
-      // Refresh the app status to move the app back to inactive
-      refreshAppStatus()
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running && app.type == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -444,11 +347,9 @@ export default function InactiveAppList({
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              // @ts-ignore
-              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard"
+                const isForegroundApp = app.type == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
@@ -508,13 +409,6 @@ export default function InactiveAppList({
   )
 }
 
-const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  marginTop: 50,
-})
-
 const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
@@ -522,7 +416,7 @@ const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingVertical: spacing.xxl,
 })
 
-const $noAppsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.textDim,
   textAlign: "center",
@@ -541,182 +435,4 @@ const $clearSearchButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "600",
   color: colors.textAlt,
   textAlign: "center",
-})
-
-const styles = StyleSheet.create({
-  // appsContainer: {
-  //   marginTop: -8,
-  //   marginBottom: 0,
-  //   width: "100%",
-  //   paddingHorizontal: 0,
-  //   paddingVertical: 10,
-  // },
-  // titleContainer: {
-  //   width: "100%",
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   marginLeft: 0,
-  //   paddingLeft: 0,
-  // },
-  // gridContainer: {
-  //   flexDirection: "row",
-  //   flexWrap: "wrap",
-  //   justifyContent: "flex-start",
-  // },
-  // listContainer: {
-  //   gap: 16,
-  // },
-  // appContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   minHeight: 40, // Match RunningAppsList minHeight
-  // },
-  // itemContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // emptyContainer: {
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
-  // tipButton: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   paddingHorizontal: 10,
-  //   paddingVertical: 5,
-  //   borderRadius: 15,
-  // },
-  // tipText: {
-  //   marginLeft: 5,
-  //   fontSize: 14,
-  // },
-  // appTextContainer: {
-  //   flex: 1,
-  //   marginLeft: 8,
-  //   justifyContent: "center",
-  // },
-  // settingsButton: {
-  //   padding: 50,
-  //   margin: -46,
-  // },
-  // appIconStyle: {
-  //   width: 50, // Match RunningAppsList icon size
-  //   height: 50, // Match RunningAppsList icon size
-  // },
-  // settingsHintContainer: {
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // hintContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // hintText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  // },
-  // sensingWarningContainer: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   justifyContent: "space-between",
-  //   padding: 12,
-  //   borderRadius: 8,
-  //   borderWidth: 1,
-  //   marginBottom: 12,
-  // },
-  // warningContent: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   flex: 1,
-  // },
-  // warningText: {
-  //   marginLeft: 10,
-  //   fontSize: 14,
-  //   fontWeight: "500",
-  //   color: "#E65100",
-  //   flex: 1,
-  // },
-  // settingsButtonText: {
-  //   color: "#FFFFFF",
-  //   fontSize: 13,
-  //   fontWeight: "bold",
-  // },
-  // settingsButtonBlue: {
-  //   backgroundColor: "#007AFF",
-  //   borderRadius: 5,
-  //   paddingVertical: 5,
-  //   paddingHorizontal: 10,
-  //   margin: 0,
-  // },
-  // settingsButtonTextBlue: {
-  //   color: "#007AFF",
-  //   fontSize: 14,
-  //   fontWeight: "bold",
-  // },
-  // scrollViewContent: {
-  //   paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
-  // },
-  // appIcon: {
-  //   width: 32,
-  //   height: 32,
-  // },
-  // toggle: {
-  //   width: 36,
-  //   height: 20,
-  // },
-  // toggleBarIcon: {
-  //   height: "80%",
-  //   width: "94.44%",
-  //   top: "15%",
-  //   right: "5.56%",
-  //   bottom: "15%",
-  //   left: "0%",
-  //   borderRadius: 8,
-  //   maxHeight: "100%",
-  // },
-  // toggleCircleIcon: {
-  //   width: "55.56%",
-  //   top: 0,
-  //   right: "47.22%",
-  //   left: "-2.78%",
-  //   borderRadius: 12,
-  //   height: 20,
-  // },
-  // toggleIconLayout: {
-  //   maxWidth: "100%",
-  //   position: "absolute",
-  //   overflow: "hidden",
-  // },
-  // everythingFlexBox: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  // },
-  // everything: {
-  //   justifyContent: "space-between",
-  //   gap: 0,
-  //   alignSelf: "stretch",
-  // },
-  // toggleParent: {
-  //   gap: 12,
-  // },
-  // appDescription: {
-  //   gap: 17,
-  //   justifyContent: "center",
-  // },
-  // appNameWrapper: {
-  //   justifyContent: "center",
-  // },
-  // appName: {
-  //   fontSize: 15,
-  //   letterSpacing: 0.6,
-  //   lineHeight: 20,
-  //   fontFamily: "SF Pro Rounded",
-  //   color: "#ced2ed",
-  //   textAlign: "left",
-  //   overflow: "hidden",
-  // },
 })

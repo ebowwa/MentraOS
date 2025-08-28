@@ -350,9 +350,10 @@ export class AudioManager {
   private relayAudioToApps(audioData: ArrayBuffer): void {
     try {
       // Get subscribers using subscriptionService instead of subscriptionManager
-      const subscribedPackageNames = this.userSession.subscriptionManager.getSubscribedApps(
-        StreamType.AUDIO_CHUNK,
-      );
+      const subscribedPackageNames =
+        this.userSession.subscriptionManager.getSubscribedApps(
+          StreamType.AUDIO_CHUNK,
+        );
 
       // Skip if no subscribers
       if (subscribedPackageNames.length === 0) {

@@ -20,6 +20,7 @@ const en = {
     update: "Update",
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
+    continueAnyways: "Continue Anyways",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
@@ -52,7 +53,7 @@ const en = {
     scanningForGlassesModel: "Scanning for {{model}}",
     scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
-    preorderNowShipMessage: "Ships September 2025",
+    preorderNowShipMessage: "Ships Q4 2025",
     goHome: "Go Home",
     tryAgain: "Try Again",
     pairingFailed: "Pairing Failed",
@@ -167,7 +168,7 @@ const en = {
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
     enforceLocalTranscription: "Enforce Local Transcription",
-    enforceLocalTranscriptionSubtitle: "Enforce the use of edge transcription.",
+    enforceLocalTranscriptionSubtitle: "Transcribe audio locally instead of in the cloud.",
     sensingLabel: "Enable Sensors",
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
@@ -185,6 +186,8 @@ const en = {
     transcriptionSettings: "Transcription Settings",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
+    cameraSettings: "Camera Settings",
+    cameraSettingsDescription: "Configure photo and video resolution for button capture",
     screenSettings: "Display Position Settings",
     screenDescription: "Adjust depth and height of the display content.",
     glassesWifiSettings: "Glasses WiFi Settings",
@@ -306,7 +309,8 @@ const en = {
   errors: {
     appNotOnlineTitle: "App Not Online",
     appNotOnlineMessage: "This app is not online. Please try again later.",
-    pairingBatteryTooLow: "The battery on your glasses is too low to pair. Please charge your glasses and try again.",
+    pairingBatteryTooLow:
+      "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} and try again.",
   },
   common: {
     ok: "OK",
@@ -325,7 +329,7 @@ const en = {
     stop: "Stop",
     settings: "Settings",
     openWebView: "Open Web View",
-    version: "Version {{number}}",
+    version: "MentraOS v{{number}}",
   },
   welcomeScreen: {
     postscript:

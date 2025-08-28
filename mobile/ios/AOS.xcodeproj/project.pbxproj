@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -12,32 +12,18 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
-		6D9355E72E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */; };
 		6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */; };
-		6DAA26502E2BF04E00B9AEC4 /* encoder.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */; };
-		6DAA26512E2BF04E00B9AEC4 /* decoder.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */; };
 		6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */; };
 		6DDF1F572E2BED9800EAD638 /* SherpaOnnx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */; };
-		6DFC99692E33FA9400611B81 /* SpeechRequiredDataType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFC99682E33FA9400611B81 /* SpeechRequiredDataType.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */; };
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5033C3B2E5668D6006A0718 /* CommandBridge.swift */; };
+		C5033F1F2E568874006A0718 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = C5033F1E2E568874006A0718 /* LiveKit */; };
 		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
-		C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */; };
-		C5D2C75E2E1DAB50004A983D /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D2C75D2E1DAB50004A983D /* AudioManager.swift */; };
-		C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* AOSModule.m */; };
-		C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* AOSManager.swift */; };
-		C5DE97A02DDD0EA80032FC99 /* ERG1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */; };
-		C5DE97A12DDD0EA80032FC99 /* ServerComms.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97982DDD0EA80032FC99 /* ServerComms.swift */; };
-		C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97952DDD0EA80032FC99 /* MediaManager.swift */; };
-		C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97942DDD0EA80032FC99 /* LocationManager.swift */; };
-		C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97972DDD0EA80032FC99 /* Models.swift */; };
-		C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978F2DDD0EA80032FC99 /* Enums.swift */; };
-		C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97932DDD0EA80032FC99 /* G1Text.swift */; };
-		C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */; };
-		C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */; };
-		C5DE97B02DDD0EA80032FC99 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */; };
+		C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */; };
+		C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* MentraManager.swift */; };
 		C5DE98442DDD0F420032FC99 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C5DE98202DDD0F420032FC99 /* meson.build */; };
 		C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */ = {isa = PBXBuildFile; fileRef = C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */; };
 		C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C5DE981C2DDD0F420032FC99 /* makefile.mk */; };
@@ -66,10 +52,8 @@
 		C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980E2DDD0F420032FC99 /* bwdet.c */; };
 		C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98302DDD0F420032FC99 /* VADState.swift */; };
 		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
-		C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* CoreCommsService.m */; };
-		C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */; };
-		C5EDFEEF2E319866000428A3 /* Mach1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */; };
-		CDD4E42B2E3DBFFB00329C8C /* TarBz2Extractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */; };
+		C5DE98972DE267CD0032FC99 /* Core.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* Core.m */; };
+		C5DE98982DE267CD0032FC99 /* Core.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* Core.swift */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
@@ -84,32 +68,19 @@
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
-		6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnxTranscriber.swift; sourceTree = "<group>"; };
 		6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = decoder.onnx; sourceTree = "<group>"; };
 		6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = encoder.onnx; sourceTree = "<group>"; };
 		6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */ = {isa = PBXFileReference; lastKnownFileType = text; path = joiner.onnx; sourceTree = "<group>"; };
 		6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = tokens.txt; sourceTree = "<group>"; };
 		6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "sherpa-onnx.xcframework"; sourceTree = "<group>"; };
-		6DFC99682E33FA9400611B81 /* SpeechRequiredDataType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRequiredDataType.swift; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-AOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.release.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraLiveManager.swift; sourceTree = "<group>"; };
-		C5D2C75D2E1DAB50004A983D /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
-		C5DE97882DDD0EA80032FC99 /* AOSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AOSManager.swift; sourceTree = "<group>"; };
-		C5DE97892DDD0EA80032FC99 /* AOSModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AOSModule.h; sourceTree = "<group>"; };
-		C5DE978A2DDD0EA80032FC99 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
-		C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
-		C5DE978F2DDD0EA80032FC99 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
-		C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ERG1Manager.swift; sourceTree = "<group>"; };
-		C5DE97932DDD0EA80032FC99 /* G1Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G1Text.swift; sourceTree = "<group>"; };
-		C5DE97942DDD0EA80032FC99 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
-		C5DE97952DDD0EA80032FC99 /* MediaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaManager.swift; sourceTree = "<group>"; };
-		C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneManager.swift; sourceTree = "<group>"; };
-		C5DE97972DDD0EA80032FC99 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		C5DE97982DDD0EA80032FC99 /* ServerComms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerComms.swift; sourceTree = "<group>"; };
-		C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManager.swift; sourceTree = "<group>"; };
+		C5033C3B2E5668D6006A0718 /* CommandBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandBridge.swift; sourceTree = "<group>"; };
+		C5DE97882DDD0EA80032FC99 /* MentraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraManager.swift; sourceTree = "<group>"; };
+		C5DE97892DDD0EA80032FC99 /* BridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeModule.h; sourceTree = "<group>"; };
+		C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BridgeModule.m; sourceTree = "<group>"; };
 		C5DE98092DDD0F420032FC99 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
 		C5DE980A2DDD0F420032FC99 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
 		C5DE980B2DDD0F420032FC99 /* bits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bits.h; sourceTree = "<group>"; };
@@ -160,14 +131,43 @@
 		C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = silero_vad.onnx; sourceTree = "<group>"; };
 		C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
 		C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
-		C5DE98672DDD1FB00032FC99 /* AOS-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AOS-Bridging-Header.h"; sourceTree = "<group>"; };
-		C5DE98952DE267CD0032FC99 /* CoreCommsService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreCommsService.m; sourceTree = "<group>"; };
-		C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCommsService.swift; sourceTree = "<group>"; };
-		C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mach1Manager.swift; sourceTree = "<group>"; };
-		CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TarBz2Extractor.swift; sourceTree = "<group>"; };
+		C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
+		C5DE98952DE267CD0032FC99 /* Core.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Core.m; sourceTree = "<group>"; };
+		C5DE98962DE267CD0032FC99 /* Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		C5033C232E56654E006A0718 /* sgcs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = sgcs;
+			sourceTree = "<group>";
+		};
+		C5033C242E56657F006A0718 /* subs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = subs;
+			sourceTree = "<group>";
+		};
+		C5033C332E5665D4006A0718 /* utils */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = utils;
+			sourceTree = "<group>";
+		};
+		C5033C3A2E56664B006A0718 /* stt */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = stt;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
@@ -177,6 +177,7 @@
 				C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */,
 				6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */,
+				C5033F1F2E568874006A0718 /* LiveKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,7 +187,7 @@
 		13B07FAE1A68108700A75B9A /* AOS */ = {
 			isa = PBXGroup;
 			children = (
-				C5DE979D2DDD0EA80032FC99 /* BleManager */,
+				C5DE979D2DDD0EA80032FC99 /* Source */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
@@ -281,33 +282,22 @@
 			path = AOS/Supporting;
 			sourceTree = "<group>";
 		};
-		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
+		C5DE979D2DDD0EA80032FC99 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				CDD4E42A2E3DBFFB00329C8C /* TarBz2Extractor.swift */,
-				6DFC99682E33FA9400611B81 /* SpeechRequiredDataType.swift */,
-				6D9355E62E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift */,
-				C5EDFEEE2E319866000428A3 /* Mach1Manager.swift */,
-				C5D2C75D2E1DAB50004A983D /* AudioManager.swift */,
-				C577E8A32E19C7CB00522AB8 /* MentraLiveManager.swift */,
-				C5DE98952DE267CD0032FC99 /* CoreCommsService.m */,
-				C5DE98962DE267CD0032FC99 /* CoreCommsService.swift */,
-				C5DE97882DDD0EA80032FC99 /* AOSManager.swift */,
-				C5DE97892DDD0EA80032FC99 /* AOSModule.h */,
-				C5DE978A2DDD0EA80032FC99 /* AOSModule.m */,
-				C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */,
-				C5DE978F2DDD0EA80032FC99 /* Enums.swift */,
-				C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */,
-				C5DE97932DDD0EA80032FC99 /* G1Text.swift */,
-				C5DE97942DDD0EA80032FC99 /* LocationManager.swift */,
-				C5DE97952DDD0EA80032FC99 /* MediaManager.swift */,
-				C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */,
-				C5DE97972DDD0EA80032FC99 /* Models.swift */,
-				C5DE97982DDD0EA80032FC99 /* ServerComms.swift */,
-				C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */,
-				C5DE98672DDD1FB00032FC99 /* AOS-Bridging-Header.h */,
+				C5033C3A2E56664B006A0718 /* stt */,
+				C5033C332E5665D4006A0718 /* utils */,
+				C5033C242E56657F006A0718 /* subs */,
+				C5033C232E56654E006A0718 /* sgcs */,
+				C5DE98952DE267CD0032FC99 /* Core.m */,
+				C5DE98962DE267CD0032FC99 /* Core.swift */,
+				C5DE97882DDD0EA80032FC99 /* MentraManager.swift */,
+				C5DE97892DDD0EA80032FC99 /* BridgeModule.h */,
+				C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */,
+				C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */,
+				C5033C3B2E5668D6006A0718 /* CommandBridge.swift */,
 			);
-			path = BleManager;
+			path = Source;
 			sourceTree = "<group>";
 		};
 		C5DE982E2DDD0F420032FC99 /* CoreObjC */ = {
@@ -461,6 +451,12 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				C5033C232E56654E006A0718 /* sgcs */,
+				C5033C242E56657F006A0718 /* subs */,
+				C5033C332E5665D4006A0718 /* utils */,
+				C5033C3A2E56664B006A0718 /* stt */,
+			);
 			name = AOS;
 			productName = AOS;
 			productReference = 13B07F961A680F5B00A75B9A /* MentraOS.app */;
@@ -480,7 +476,6 @@
 				};
 			};
 			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AOS" */;
-			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -490,7 +485,9 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			packageReferences = (
 				C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */,
+				C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */,
 			);
+			preferredProjectObjectVersion = 77;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -519,8 +516,6 @@
 				C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */,
 				A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */,
 				6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */,
-				6DAA26502E2BF04E00B9AEC4 /* encoder.onnx in Resources */,
-				6DAA26512E2BF04E00B9AEC4 /* decoder.onnx in Resources */,
 				6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -541,7 +536,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n/bin/sh `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('@sentry/react-native/package.json')) + '/scripts/sentry-xcode.sh'\"` `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
+			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# Disable Sentry if no auth token is present\nif [ -z \"$SENTRY_AUTH_TOKEN\" ]; then\n  export SENTRY_DISABLE_AUTO_UPLOAD=true\n  echo \"Sentry auth token not found. Disabling source map uploads.\"\nfi\n\n/bin/sh `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('@sentry/react-native/package.json')) + '/scripts/sentry-xcode.sh'\"` `\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
 		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -570,13 +565,12 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -607,47 +601,12 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources.sh",
-				"${PODS_CONFIGURATION_BUILD_DIR}/BitByteData/BitByteData.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoLocalization/ExpoLocalization_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoSystemUI/ExpoSystemUI_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/RNPermissions/RNPermissionsPrivacyInfo.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/SWCompression/SWCompression.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/Sentry/Sentry.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/glog/glog_privacy.bundle",
-				"${PODS_CONFIGURATION_BUILD_DIR}/react-native-image-picker/RNImagePickerPrivacyInfo.bundle",
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/BitByteData.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoApplication_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoLocalization_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoSystemUI_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNPermissionsPrivacyInfo.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SWCompression.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Sentry.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/boost_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/glog_privacy.bundle",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNImagePickerPrivacyInfo.bundle",
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -666,7 +625,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode-debug-files.sh";
+			shellScript = "# Check if Sentry auth token is available\nif [ -z \"$SENTRY_AUTH_TOKEN\" ]; then\n  echo \"warning: Sentry auth token not found. Skipping debug symbols upload.\"\n  echo \"To enable Sentry uploads, set SENTRY_AUTH_TOKEN environment variable.\"\n  exit 0\nfi\n\n# Run Sentry upload script only if auth token exists\n/bin/sh ../node_modules/@sentry/react-native/scripts/sentry-xcode-debug-files.sh\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -675,21 +634,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C5EDFEEF2E319866000428A3 /* Mach1Manager.swift in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
-				CDD4E42B2E3DBFFB00329C8C /* TarBz2Extractor.swift in Sources */,
-				C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */,
-				C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */,
-				C5DE97A02DDD0EA80032FC99 /* ERG1Manager.swift in Sources */,
-				C5DE97A12DDD0EA80032FC99 /* ServerComms.swift in Sources */,
-				C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */,
-				C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */,
-				C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */,
-				C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */,
+				C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */,
+				C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */,
 				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
 				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
-				C577E8A42E19C7CB00522AB8 /* MentraLiveManager.swift in Sources */,
 				C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */,
 				C5DE984A2DDD0F420032FC99 /* ltpf.c in Sources */,
 				C5DE984B2DDD0F420032FC99 /* tns.c in Sources */,
@@ -700,6 +650,7 @@
 				C5DE98502DDD0F420032FC99 /* VADType.swift in Sources */,
 				C5DE98512DDD0F420032FC99 /* spec.c in Sources */,
 				C5DE98522DDD0F420032FC99 /* tables.c in Sources */,
+				C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */,
 				C5DE98532DDD0F420032FC99 /* attdet.c in Sources */,
 				C5DE98542DDD0F420032FC99 /* mdct.c in Sources */,
 				C5DE98552DDD0F420032FC99 /* plc.c in Sources */,
@@ -709,21 +660,14 @@
 				C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */,
 				C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */,
 				C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */,
-				C5DE98972DE267CD0032FC99 /* CoreCommsService.m in Sources */,
-				C5DE98982DE267CD0032FC99 /* CoreCommsService.swift in Sources */,
+				C5DE98972DE267CD0032FC99 /* Core.m in Sources */,
+				C5DE98982DE267CD0032FC99 /* Core.swift in Sources */,
 				C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */,
 				C5DE985C2DDD0F420032FC99 /* bits.c in Sources */,
-				6D9355E72E2B9B2300A5A14A /* SherpaOnnxTranscriber.swift in Sources */,
 				C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */,
 				C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */,
 				C5DE985F2DDD0F420032FC99 /* sns.c in Sources */,
-				C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */,
-				C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */,
-				C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */,
-				C5DE97B02DDD0EA80032FC99 /* CalendarManager.swift in Sources */,
-				6DFC99692E33FA9400611B81 /* SpeechRequiredDataType.swift in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				C5D2C75E2E1DAB50004A983D /* AudioManager.swift in Sources */,
 				F314884EB5724196A394670E /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -886,7 +830,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1";
@@ -1044,7 +988,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -1201,6 +1145,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/livekit/client-sdk-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.1;
+			};
+		};
 		C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Vuzix/UltraliteSDK-releases-iOS";
@@ -1212,6 +1164,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		C5033F1E2E568874006A0718 /* LiveKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C5033F1D2E568874006A0718 /* XCRemoteSwiftPackageReference "client-sdk-swift" */;
+			productName = LiveKit;
+		};
 		C540BE3C2E31AAEE001A328F /* UltraliteSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C540BE3B2E31AAEE001A328F /* XCRemoteSwiftPackageReference "UltraliteSDK-releases-iOS" */;

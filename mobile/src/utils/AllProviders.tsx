@@ -4,7 +4,7 @@ import {withWrappers} from "@/utils/with-wrappers"
 import {Suspense} from "react"
 import {KeyboardProvider} from "react-native-keyboard-controller"
 import {CoreStatusProvider} from "@/contexts/CoreStatusProvider"
-import {AppStatusProvider} from "@/contexts/AppStatusProvider"
+import {AppStatusProvider} from "@/contexts/AppletStatusProvider"
 import {GestureHandlerRootView} from "react-native-gesture-handler"
 import {AuthProvider} from "@/contexts/AuthContext"
 import {SearchResultsProvider} from "@/contexts/SearchResultsContext"
@@ -13,7 +13,6 @@ import {ModalProvider} from "./AlertUtils"
 import {GlassesMirrorProvider} from "@/contexts/GlassesMirrorContext"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
-import {OtaUpdateProvider} from "@/contexts/OtaUpdateProvider"
 import {NetworkConnectivityProvider} from "@/contexts/NetworkConnectivityProvider"
 import {PostHogProvider} from "posthog-react-native"
 import Constants from "expo-constants"
@@ -30,7 +29,6 @@ export const AllProviders = withWrappers(
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
   AppStatusProvider,
-  OtaUpdateProvider,
   GlassesMirrorProvider,
   NavigationHistoryProvider,
   DeeplinkProvider,

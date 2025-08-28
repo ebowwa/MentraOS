@@ -7,6 +7,7 @@ import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilde
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.settings.AsgSettings;
+import com.augmentos.asg_client.settings.VideoSettings;
 import org.json.JSONObject;
 
 import java.util.Set;
@@ -32,7 +33,8 @@ public class SettingsCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_photo_mode", "button_mode_setting");
+        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting", 
+                      "button_photo_setting", "button_camera_led");
     }
 
     @Override
@@ -43,6 +45,12 @@ public class SettingsCommandHandler implements ICommandHandler {
                     return handleSetPhotoMode(data);
                 case "button_mode_setting":
                     return handleButtonModeSetting(data);
+                case "button_video_recording_setting":
+                    return handleButtonVideoRecordingSetting(data);
+                case "button_photo_setting":
+                    return handleButtonPhotoSetting(data);
+                case "button_camera_led":
+                    return handleButtonCameraLedSetting(data);
                 default:
                     Log.e(TAG, "Unsupported settings command: " + commandType);
                     return false;
@@ -85,6 +93,92 @@ public class SettingsCommandHandler implements ICommandHandler {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error handling button mode setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button video recording setting command
+     */
+    public boolean handleButtonVideoRecordingSetting(JSONObject data) {
+        try {
+            JSONObject params = data.optJSONObject("params");
+            if (params == null) {
+                Log.e(TAG, "Missing settings object in button_video_recording_setting");
+                return false;
+            }
+            
+            int width = params.optInt("width", 1280);
+            int height = params.optInt("height", 720);
+            int fps = params.optInt("fps", 30);
+            
+            Log.d(TAG, "📱 Received button video recording settings: " + width + "x" + height + "@" + fps + "fps");
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                VideoSettings videoSettings = new VideoSettings(width, height, fps);
+                if (videoSettings.isValid()) {
+                    asgSettings.setButtonVideoSettings(videoSettings);
+                    Log.d(TAG, "✅ Button video recording settings saved");
+                    return true;
+                } else {
+                    Log.e(TAG, "Invalid video settings: " + videoSettings);
+                    return false;
+                }
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button video recording setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button photo setting command
+     */
+    public boolean handleButtonPhotoSetting(JSONObject data) {
+        try {
+            String size = data.optString("size", "medium");
+            
+            Log.d(TAG, "📱 Received button photo setting: " + size);
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                asgSettings.setButtonPhotoSize(size);
+                Log.d(TAG, "✅ Button photo size saved: " + size);
+                return true;
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button photo setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button camera LED setting command
+     */
+    public boolean handleButtonCameraLedSetting(JSONObject data) {
+        try {
+            boolean enabled = data.optBoolean("enabled", true);
+            
+            Log.d(TAG, "📱 Received button camera LED setting: " + enabled);
+            
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                asgSettings.setButtonCameraLedEnabled(enabled);
+                Log.d(TAG, "✅ Button camera LED setting saved: " + enabled);
+                return true;
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button camera LED setting", e);
             return false;
         }
     }

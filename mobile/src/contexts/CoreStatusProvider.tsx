@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
 import {Platform} from "react-native"
-import {AugmentOSParser, AugmentOSMainStatus} from "@/utils/AugmentOSStatusParser"
+import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
 import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -9,20 +9,20 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 
 import {deepCompare} from "@/utils/debugging"
 
-interface AugmentOSStatusContextType {
-  status: AugmentOSMainStatus
+interface CoreStatusContextType {
+  status: CoreStatus
   initializeCoreConnection: () => void
   refreshStatus: (data: any) => void
   getCoreToken: () => string | null
 }
 
-const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined)
+const CoreStatusContext = createContext<CoreStatusContextType | undefined>(undefined)
 
-let lastStatus: AugmentOSMainStatus = AugmentOSParser.defaultStatus
+let lastStatus: CoreStatus = CoreStatusParser.defaultStatus
 
 export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
-  const [status, setStatus] = useState<AugmentOSMainStatus>(() => {
-    return AugmentOSParser.parseStatus({})
+  const [status, setStatus] = useState<CoreStatus>(() => {
+    return CoreStatusParser.parseStatus({})
   })
 
   const refreshStatus = (data: any) => {
@@ -30,17 +30,17 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
       return
     }
 
-    const parsedStatus = AugmentOSParser.parseStatus(data)
+    const parsedStatus = CoreStatusParser.parseStatus(data)
 
     if (INTENSE_LOGGING) console.log("Parsed status:", parsedStatus)
 
     const diff = deepCompare(lastStatus, parsedStatus)
     if (diff.length === 0) {
-      console.log("STATUS PROVIDER: Status did not change ###############################################")
+      console.log("CoreStatusProvider: Status did not change ###############################################")
       return
     }
 
-    console.log("STATUS PROVIDER: Status changed:", diff)
+    console.log("CoreStatusProvider: Status changed:", diff)
 
     lastStatus = parsedStatus
     setStatus(parsedStatus)
@@ -48,7 +48,7 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
-    console.log("STATUS PROVIDER: Initializing core connection @@@@@@@@@@@@@@@@@")
+    console.log("CoreStatusProvider: Initializing core connection @@@@@@@@@@@@@@@@@")
     coreCommunicator.initialize()
   }, [])
 
@@ -57,12 +57,12 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
     return BackendServerComms.getInstance().getCoreToken()
   }, [])
 
-  const handleStatusUpdateReceived = (data: any) => {
-    if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
-    refreshStatus(data)
-  }
-
   useEffect(() => {
+    const handleStatusUpdateReceived = (data: any) => {
+      if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
+      refreshStatus(data)
+    }
+
     coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
     coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
     return () => {
@@ -71,7 +71,7 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
   }, [])
 
   return (
-    <AugmentOSStatusContext.Provider
+    <CoreStatusContext.Provider
       value={{
         initializeCoreConnection,
         status,
@@ -79,12 +79,12 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
         getCoreToken,
       }}>
       {children}
-    </AugmentOSStatusContext.Provider>
+    </CoreStatusContext.Provider>
   )
 }
 
 export const useCoreStatus = () => {
-  const context = useContext(AugmentOSStatusContext)
+  const context = useContext(CoreStatusContext)
   if (!context) {
     throw new Error("useStatus must be used within a StatusProvider")
   }

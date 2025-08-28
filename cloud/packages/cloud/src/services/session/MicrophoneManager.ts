@@ -193,7 +193,7 @@ export class MicrophoneManager {
           isTranscribing: this.session.isTranscribing || false,
         },
         isMicrophoneEnabled: isEnabled,
-        requiredData: requiredData,
+        requiredData: isEnabled ? requiredData : [],
         bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag
         timestamp: new Date(),
       };
@@ -220,7 +220,8 @@ export class MicrophoneManager {
    * This is called when subscriptions change to avoid repeated expensive lookups
    */
   private updateCachedSubscriptionState(): void {
-    const state = this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
+    const state =
+      this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
     this.cachedSubscriptionState = {
       hasPCM: state.hasPCM,
       hasTranscription: state.hasTranscription,

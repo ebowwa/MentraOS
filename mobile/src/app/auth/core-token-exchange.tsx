@@ -8,7 +8,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Button from "@/components/misc/Button"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
@@ -16,6 +16,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {router} from "expo-router"
+import ServerComms from "@/services/ServerComms"
 
 export default function CoreTokenExchange() {
   const {status} = useCoreStatus()
@@ -64,16 +65,12 @@ export default function CoreTokenExchange() {
 
       // Exchange token with backend
       const backend = BackendServerComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken).catch(err => {
-        // Hide console.error output
-        // Log only if needed for debugging
-        // console.error('Token exchange failed:', err);
-        throw err
-      })
+      // const server = ServerComms.getInstance()
+      const coreToken = await backend.exchangeToken(supabaseToken)
 
       const uid = user.email || user.id
-      coreCommunicator.setAuthenticationSecretKey(uid, coreToken)
-      BackendServerComms.getInstance().setCoreToken(coreToken)
+      coreCommunicator.setAuthenticationSecretKey(uid, coreToken) // TODO: config: remove
+      // server.setAuthCredentials(uid, coreToken)
 
       // Navigate
       // Check if the user has completed onboarding
@@ -122,7 +119,7 @@ export default function CoreTokenExchange() {
     if (connectionError || hasAttemptedConnection.current) return
 
     // We only proceed once the core is connected, the user is loaded, etc.
-    if (/*TODO2.0: status.core_info.puck_connected && */ !authLoading && user) {
+    if (!authLoading && user) {
       // Track that we've attempted a connection
       hasAttemptedConnection.current = true
 
@@ -158,7 +155,7 @@ export default function CoreTokenExchange() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text style={themed($loadingText)}>{translate("login:connectingToServer")}</Text>
         </View>
       </Screen>
@@ -181,12 +178,7 @@ export default function CoreTokenExchange() {
 
         <View style={styles.setupContainer}>
           {isUsingCustomUrl && (
-            <Button
-              onPress={handleResetUrl}
-              isDarkTheme={theme.isDark}
-              disabled={isLoading}
-              iconName="refresh"
-              style={styles.resetButton}>
+            <Button onPress={handleResetUrl} disabled={isLoading} iconName="refresh" style={styles.resetButton}>
               Reset to Default URL
             </Button>
           )}

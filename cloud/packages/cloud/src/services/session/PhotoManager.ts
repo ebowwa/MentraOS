@@ -67,6 +67,7 @@ export class PhotoManager {
       requestId,
       saveToGallery = false,
       customWebhookUrl,
+      size = "medium",
     } = appRequest;
 
     this.logger.info(
@@ -74,6 +75,7 @@ export class PhotoManager {
         packageName,
         requestId,
         saveToGallery,
+        size,
         hasCustomWebhook: !!customWebhookUrl,
       },
       "Processing App photo request.",
@@ -127,6 +129,7 @@ export class PhotoManager {
       requestId,
       appId: packageName, // Glasses expect `appId`
       webhookUrl, // Use custom webhookUrl if provided, otherwise default
+      size, // Propagate desired size
       timestamp: new Date(),
     };
 

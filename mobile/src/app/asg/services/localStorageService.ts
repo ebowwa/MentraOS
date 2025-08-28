@@ -31,8 +31,8 @@ export class LocalStorageService {
   private readonly DOWNLOADED_FILES_KEY = "asg_downloaded_files"
   private readonly SYNC_STATE_KEY = "asg_sync_state"
   private readonly CLIENT_ID_KEY = "asg_client_id"
-  private readonly ASG_PHOTOS_DIR = `${RNFS.DocumentDirectoryPath}/ASGPhotos`
-  private readonly ASG_THUMBNAILS_DIR = `${RNFS.DocumentDirectoryPath}/ASGPhotos/thumbnails`
+  private readonly ASG_PHOTOS_DIR = `${RNFS.DocumentDirectoryPath}/MentraPhotos`
+  private readonly ASG_THUMBNAILS_DIR = `${RNFS.DocumentDirectoryPath}/MentraPhotos/thumbnails`
 
   private constructor() {
     this.initializeDirectories()
@@ -54,14 +54,14 @@ export class LocalStorageService {
       const photoDirExists = await RNFS.exists(this.ASG_PHOTOS_DIR)
       if (!photoDirExists) {
         await RNFS.mkdir(this.ASG_PHOTOS_DIR)
-        console.log(`[LocalStorage] Created ASG photos directory: ${this.ASG_PHOTOS_DIR}`)
+        console.log(`[LocalStorage] Created Mentra photos directory: ${this.ASG_PHOTOS_DIR}`)
       }
 
       // Create thumbnails directory if it doesn't exist
       const thumbDirExists = await RNFS.exists(this.ASG_THUMBNAILS_DIR)
       if (!thumbDirExists) {
         await RNFS.mkdir(this.ASG_THUMBNAILS_DIR)
-        console.log(`[LocalStorage] Created ASG thumbnails directory: ${this.ASG_THUMBNAILS_DIR}`)
+        console.log(`[LocalStorage] Created Mentra thumbnails directory: ${this.ASG_THUMBNAILS_DIR}`)
       }
     } catch (error) {
       console.error("[LocalStorage] Error initializing directories:", error)
@@ -150,15 +150,26 @@ export class LocalStorageService {
   async saveDownloadedFile(file: DownloadedFile): Promise<void> {
     try {
       const files = await this.getDownloadedFiles()
-      // Store only metadata, not the actual file data
+      // Store relative paths to handle iOS app container changes between launches
+      // Convert absolute paths to relative (remove DocumentDirectoryPath prefix)
+      const docPath = RNFS.DocumentDirectoryPath
+      const relativePath = file.filePath.startsWith(docPath)
+        ? file.filePath.substring(docPath.length + 1) // +1 for the slash
+        : file.filePath
+      const relativeThumbnailPath = file.thumbnailPath
+        ? file.thumbnailPath.startsWith(docPath)
+          ? file.thumbnailPath.substring(docPath.length + 1)
+          : file.thumbnailPath
+        : undefined
+
       files[file.name] = {
         ...file,
-        // Ensure we're storing paths, not data
-        filePath: file.filePath,
-        thumbnailPath: file.thumbnailPath,
+        // Store relative paths instead of absolute
+        filePath: relativePath,
+        thumbnailPath: relativeThumbnailPath,
       }
       await AsyncStorage.setItem(this.DOWNLOADED_FILES_KEY, JSON.stringify(files))
-      console.log(`[LocalStorage] Saved metadata for ${file.name}`)
+      console.log(`[LocalStorage] Saved metadata for ${file.name} with relative path: ${relativePath}`)
     } catch (error) {
       console.error("Error saving downloaded file metadata:", error)
       throw error
@@ -171,7 +182,33 @@ export class LocalStorageService {
   async getDownloadedFiles(): Promise<Record<string, DownloadedFile>> {
     try {
       const filesStr = await AsyncStorage.getItem(this.DOWNLOADED_FILES_KEY)
-      return filesStr ? JSON.parse(filesStr) : {}
+      if (!filesStr) return {}
+
+      const files = JSON.parse(filesStr)
+      const reconstructedFiles: Record<string, DownloadedFile> = {}
+      const docPath = RNFS.DocumentDirectoryPath
+
+      // Reconstruct absolute paths from relative paths
+      for (const [name, file] of Object.entries(files as Record<string, DownloadedFile>)) {
+        // Check if path is already absolute (legacy data) or relative
+        const absolutePath = file.filePath.startsWith("/")
+          ? file.filePath // Already absolute (legacy data)
+          : `${docPath}/${file.filePath}` // Relative path, prepend DocumentDirectoryPath
+
+        const absoluteThumbnailPath = file.thumbnailPath
+          ? file.thumbnailPath.startsWith("/")
+            ? file.thumbnailPath // Already absolute (legacy data)
+            : `${docPath}/${file.thumbnailPath}` // Relative path
+          : undefined
+
+        reconstructedFiles[name] = {
+          ...file,
+          filePath: absolutePath,
+          thumbnailPath: absoluteThumbnailPath,
+        }
+      }
+
+      return reconstructedFiles
     } catch (error) {
       console.error("Error getting downloaded files:", error)
       return {}
@@ -212,9 +249,11 @@ export class LocalStorageService {
           console.log(`[LocalStorage] Deleted thumbnail: ${file.thumbnailPath}`)
         }
 
-        // Delete metadata
-        delete files[fileName]
-        await AsyncStorage.setItem(this.DOWNLOADED_FILES_KEY, JSON.stringify(files))
+        // Delete metadata - need to get raw data to maintain relative paths
+        const filesStr = await AsyncStorage.getItem(this.DOWNLOADED_FILES_KEY)
+        const rawFiles = filesStr ? JSON.parse(filesStr) : {}
+        delete rawFiles[fileName]
+        await AsyncStorage.setItem(this.DOWNLOADED_FILES_KEY, JSON.stringify(rawFiles))
         return true
       }
       return false

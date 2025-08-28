@@ -59,7 +59,10 @@ export class MemoryTelemetryService {
   private interval?: NodeJS.Timeout;
   private readonly intervalMs: number;
 
-  constructor(logger: Logger = rootLogger.child({ service: "MemoryTelemetry" }), intervalMs = 10_000) {
+  constructor(
+    logger: Logger = rootLogger.child({ service: "MemoryTelemetry" }),
+    intervalMs = 10_000,
+  ) {
     this.logger = logger;
     this.intervalMs = intervalMs;
   }
@@ -69,7 +72,10 @@ export class MemoryTelemetryService {
     this.interval = setInterval(() => {
       try {
         const snapshot = this.getCurrentStats();
-        this.logger.info({ telemetry: "memory", snapshot }, "Memory telemetry snapshot");
+        this.logger.info(
+          { telemetry: "memory", snapshot },
+          "Memory telemetry snapshot",
+        );
       } catch (error) {
         this.logger.warn({ error }, "Failed to emit memory telemetry snapshot");
       }
@@ -94,10 +100,22 @@ export class MemoryTelemetryService {
         pid: process.pid,
         memory: {
           rss: { bytes: mem.rss, human: this.formatBytes(mem.rss) },
-          heapTotal: { bytes: mem.heapTotal, human: this.formatBytes(mem.heapTotal) },
-          heapUsed: { bytes: mem.heapUsed, human: this.formatBytes(mem.heapUsed) },
-          external: { bytes: mem.external, human: this.formatBytes(mem.external) },
-          arrayBuffers: { bytes: mem.arrayBuffers, human: this.formatBytes(mem.arrayBuffers) },
+          heapTotal: {
+            bytes: mem.heapTotal,
+            human: this.formatBytes(mem.heapTotal),
+          },
+          heapUsed: {
+            bytes: mem.heapUsed,
+            human: this.formatBytes(mem.heapUsed),
+          },
+          external: {
+            bytes: mem.external,
+            human: this.formatBytes(mem.external),
+          },
+          arrayBuffers: {
+            bytes: mem.arrayBuffers,
+            human: this.formatBytes(mem.arrayBuffers),
+          },
         },
         loadavg: os.loadavg(),
         uptime: process.uptime(),
@@ -118,11 +136,13 @@ export class MemoryTelemetryService {
     let orderedBufferChunks = 0;
     let orderedBufferBytes = 0;
     if ((session.audioManager as any).orderedBuffer?.chunks) {
-      const chunks = (session.audioManager as any).orderedBuffer.chunks as Array<{
+      const chunks = (session.audioManager as any).orderedBuffer
+        .chunks as Array<{
         data: ArrayBufferLike;
       }>;
       orderedBufferChunks = chunks.length;
-      for (const c of chunks) orderedBufferBytes += this.estimateBytes(c.data as any);
+      for (const c of chunks)
+        orderedBufferBytes += this.estimateBytes(c.data as any);
     }
 
     // Transcription stats via helper method
@@ -130,7 +150,9 @@ export class MemoryTelemetryService {
     let vadBufferBytes = 0;
     let transcriptLanguages = 0;
     let transcriptSegments = 0;
-    if (typeof (session.transcriptionManager as any).getMemoryStats === "function") {
+    if (
+      typeof (session.transcriptionManager as any).getMemoryStats === "function"
+    ) {
       const t = (session.transcriptionManager as any).getMemoryStats();
       vadBufferChunks = t.vadBufferChunks ?? 0;
       vadBufferBytes = t.vadBufferBytes ?? 0;
@@ -139,8 +161,11 @@ export class MemoryTelemetryService {
     }
 
     // Microphone timers
-    const micEnabled = (session.microphoneManager as any).isEnabled?.() ?? false;
-    const keepAliveActive = Boolean((session.microphoneManager as any)["keepAliveTimer"]);
+    const micEnabled =
+      (session.microphoneManager as any).isEnabled?.() ?? false;
+    const keepAliveActive = Boolean(
+      (session.microphoneManager as any)["keepAliveTimer"],
+    );
 
     return {
       userId: session.userId,
@@ -170,7 +195,8 @@ export class MemoryTelemetryService {
 
   private estimateBytes(data: any): number {
     if (!data) return 0;
-    if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) return data.length;
+    if (typeof Buffer !== "undefined" && Buffer.isBuffer(data))
+      return data.length;
     if (data instanceof ArrayBuffer) return data.byteLength;
     if (ArrayBuffer.isView(data)) return (data as ArrayBufferView).byteLength;
     // Fallback unknown
@@ -179,7 +205,7 @@ export class MemoryTelemetryService {
 
   private formatBytes(bytes: number): string {
     if (!Number.isFinite(bytes) || bytes < 0) return `${bytes}`;
-    const units = ["B", "KB", "MB", "GB", "TB"]; 
+    const units = ["B", "KB", "MB", "GB", "TB"];
     let idx = 0;
     let val = bytes;
     while (val >= 1024 && idx < units.length - 1) {

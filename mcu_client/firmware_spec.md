@@ -293,7 +293,30 @@ Adjust VAD sensitivity threshold (0–100).
 *(none)*
 
 ---
+### 📡 Get VAD Status
 
+Request whether VAD is enabled and what the current sensitivity level is.
+
+#### 📲 Phone → Glasses
+
+```protobuf
+[0x02][PhoneToGlasses { request_vad_status {
+  msg_id: "vad_status_001"
+}}]
+```
+
+#### 👓 Glasses → Phone
+
+```protobuf
+[0x02][GlassesToPhone { vad_status {
+  msg_id: "vad_status_001"
+  enabled: true
+  sensitivity: 75
+}}]
+```
+
+* `enabled`: `true` if VAD is currently active, `false` otherwise
+* `sensitivity`: integer 0–100, current detection threshold
 ---
 
 ### VAD Event Notification

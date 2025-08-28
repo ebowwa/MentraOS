@@ -34,7 +34,7 @@ import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
@@ -98,7 +98,6 @@ export default function DeviceSettings() {
   const [connectedGlasses, setConnectedGlasses] = useState("")
   const {status} = useCoreStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
-  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
   const [buttonMode, setButtonMode] = useState(status.glasses_settings?.button_mode || "photo")
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
@@ -377,29 +376,6 @@ export default function DeviceSettings() {
         </View>
       )}
 
-      {/* Power Saving Mode - Only show for glasses that support it */}
-      {status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable] &&
-        glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
-          <View style={themed($settingsGroup)}>
-            <ToggleSetting
-              label={translate("settings:powerSavingMode")}
-              subtitle={translate("settings:powerSavingModeSubtitle")}
-              value={powerSavingMode}
-              onValueChange={async value => {
-                setPowerSavingMode(value)
-                await coreCommunicator.sendTogglePowerSavingMode(value)
-              }}
-              containerStyle={{
-                paddingHorizontal: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                borderWidth: 0,
-              }}
-            />
-          </View>
-        )}
-
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
@@ -510,6 +486,15 @@ export default function DeviceSettings() {
             />
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Camera Settings button for glasses with configurable button */}
+      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+        <RouteButton
+          label={translate("settings:cameraSettings")}
+          subtitle={translate("settings:cameraSettingsDescription")}
+          onPress={() => push("/settings/camera")}
+        />
       )}
 
       {/* Only show WiFi settings if connected glasses support WiFi */}

@@ -1,59 +1,34 @@
-import React, {useState, useCallback, useMemo, useEffect} from "react"
-import {View, ViewStyle, TextStyle, Dimensions, Platform, TouchableOpacity} from "react-native"
+import React, {useState, useCallback, useMemo, useEffect, useRef} from "react"
+import {View, ViewStyle, TextStyle, Dimensions, Platform} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
-// import { ScrollView } from "react-native-gesture-handler"
 import {ScrollView} from "react-native"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
-import {saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-
-interface AppModel {
-  name: string
-  packageName: string
-  is_running?: boolean
-  is_foreground?: boolean
-  appType?: string
-  webviewURL?: string
-  compatibility?: {
-    isCompatible: boolean
-    message?: string
-  }
-}
 
 interface AppsCombinedGridViewProps {}
 
-const initialLayout = {width: Dimensions.get("window").width}
-
 const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {themed, theme} = useAppTheme()
-  const {
-    appStatus,
-    checkAppHealthStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    refreshAppStatus,
-  } = useAppStatus()
-  const {push, replace} = useNavigationHistory()
-
-  const backendComms = BackendServerComms.getInstance()
+  const {appStatus, checkAppHealthStatus, optimisticallyStartApp, optimisticallyStopApp} = useAppStatus()
+  const {push} = useNavigationHistory()
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
   const [index, setIndex] = useState(0)
   const [routes] = useState([
     {key: "active", title: translate("home:activeApps")},
     {key: "inactive", title: translate("home:inactiveApps")},
   ])
+
+  const renderCount = useRef(0)
+  renderCount.current += 1
 
   const handleIndexChange = (index: number) => {
     // console.log("handleIndexChange", index)
@@ -85,78 +60,16 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       }
 
       // Optimistically update UI
-      optimisticallyStartApp(packageName)
-
-      // Handle foreground apps
-      if (appInfo?.appType === "standard") {
-        const runningStandardApps = appStatus.filter(
-          app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
-        )
-
-        for (const runningApp of runningStandardApps) {
-          optimisticallyStopApp(runningApp.packageName)
-          try {
-            await backendComms.stopApp(runningApp.packageName)
-            clearPendingOperation(runningApp.packageName)
-          } catch (error) {
-            console.error("Stop app error:", error)
-            refreshAppStatus()
-          }
-        }
-      }
-
-      try {
-        await backendComms.startApp(packageName)
-        clearPendingOperation(packageName)
-        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
-      } catch (error: any) {
-        console.error("Start app error:", error)
-
-        if (error?.response?.data?.error?.stage === "HARDWARE_CHECK") {
-          showAlert(
-            translate("home:hardwareIncompatible"),
-            error.response.data.error.message ||
-              translate("home:hardwareIncompatibleMessage", {
-                app: appInfo.name,
-                missing: "required hardware",
-              }),
-            [{text: translate("common:ok")}],
-            {
-              iconName: "alert-circle-outline",
-              iconColor: theme.colors.error,
-            },
-          )
-        }
-
-        clearPendingOperation(packageName)
-        refreshAppStatus()
-      }
+      optimisticallyStartApp(packageName, appInfo.type)
     },
-    [
-      appStatus,
-      checkAppHealthStatus,
-      optimisticallyStartApp,
-      optimisticallyStopApp,
-      clearPendingOperation,
-      refreshAppStatus,
-      backendComms,
-      theme,
-    ],
+    [appStatus],
   )
 
   const handleStopApp = useCallback(
     async (packageName: string) => {
       optimisticallyStopApp(packageName)
-
-      try {
-        await backendComms.stopApp(packageName)
-        clearPendingOperation(packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Stop app error:", error)
-      }
     },
-    [optimisticallyStopApp, clearPendingOperation, refreshAppStatus, backendComms],
+    [optimisticallyStopApp],
   )
 
   const handleOpenAppSettings = (app: any) => {
@@ -172,8 +85,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       })
     }
   }
-
-  console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
 
   // Memoize filtered arrays to prevent unnecessary re-renders
   const activeApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
@@ -191,10 +102,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       app => !app.is_running && app.compatibility && !app.compatibility.isCompatible,
     ).length
 
-    console.log(
-      `📊 Apps Status - Active: ${activeApps.length}, Inactive (compatible): ${filtered.length}, Incompatible: ${incompatibleCount}`,
-    )
-
     return filtered
   }, [appStatus, activeApps.length])
 
@@ -211,15 +118,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       }
     }
   }, [activeApps.length, inactiveApps.length, hasInitiallyLoaded])
-
-  // If no apps at all
-  // if (!hasActiveApps && !hasInactiveApps) {
-  //   return (
-  //     <View style={themed($emptyContainer)}>
-  //       <Text text={translate("home:noAppsInstalled")} style={themed($emptyText)} />
-  //     </View>
-  //   )
-  // }
 
   const ActiveRoute = () => (
     <ScrollView
@@ -261,92 +159,80 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     [ActiveRoute, InactiveRoute],
   )
 
-  const renderTabBar = useCallback(
-    (props: any) => {
-      // Check if we should disable tabs (only after initial load)
-      const shouldDisableActiveTab = hasInitiallyLoaded && activeApps.length === 0 && inactiveApps.length > 0
-      const shouldDisableInactiveTab = hasInitiallyLoaded && inactiveApps.length === 0 && activeApps.length > 0
-
-      return (
-        <TabBar
-          {...props}
-          indicatorStyle={themed($indicator)}
-          indicatorContainerStyle={{
-            width: "50%",
-          }}
-          style={themed($simpleTabBar)}
-          labelStyle={{
-            fontSize: 16,
-            fontWeight: "600",
-            textTransform: "none",
-          }}
-          activeColor={theme.colors.text}
-          inactiveColor={theme.colors.textDim}
-          onTabPress={({route, preventDefault}) => {
-            if (
-              (route.key === "active" && shouldDisableActiveTab) ||
-              (route.key === "inactive" && shouldDisableInactiveTab)
-            ) {
-              preventDefault()
-            }
-          }}
-          getLabelText={({route}: any) => {
-            const isDisabled =
-              (route.key === "active" && shouldDisableActiveTab) ||
-              (route.key === "inactive" && shouldDisableInactiveTab)
-            return route.title + (isDisabled ? "" : "")
-          }}
-        />
-      )
-    },
-    [theme.colors, hasInitiallyLoaded, activeApps.length, inactiveApps.length],
-  )
+  const renderTabBar = (props: any) => {
+    return (
+      <TabBar
+        {...props}
+        indicatorStyle={themed($indicator)}
+        indicatorContainerStyle={{
+          width: "50%",
+        }}
+        style={themed($simpleTabBar)}
+        labelStyle={{
+          fontSize: 16,
+          fontWeight: "600",
+          textTransform: "none",
+        }}
+        activeColor={theme.colors.text}
+        inactiveColor={theme.colors.textDim}
+        getLabelText={({route}: any) => {
+          return route.title
+        }}
+      />
+    )
+  }
 
   // console.log("APPSCOMBINEDGRIDVIEW RE-RENDER")
 
-  // Check if we should show the tooltip instead of tabs
-  const shouldShowTooltip = hasInitiallyLoaded && activeApps.length === 0 && inactiveApps.length > 0
-
-  // Single container approach with tooltip
-  if (shouldShowTooltip) {
+  // If no apps at all
+  if (appStatus.length === 0) {
     return (
-      <View style={[themed($container)]}>
-        <View style={themed($singleContainer)}>
-          <View style={themed($headerSection)}>
-            <Text text={translate("home:tapToActivate")} style={themed($tooltipText)} />
-          </View>
-          <ScrollView
-            showsVerticalScrollIndicator={true}
-            contentContainerStyle={{paddingBottom: theme.spacing.sm, paddingTop: theme.spacing.md}}
-            style={{flex: 1}}>
-            <AppsGridView
-              apps={inactiveApps}
-              onStartApp={handleStartApp}
-              onStopApp={handleStopApp}
-              onOpenSettings={handleOpenAppSettings}
-              onOpenWebView={handleOpenWebView}
-            />
-            <AppsIncompatibleList />
-          </ScrollView>
-        </View>
+      <View style={themed($emptyContainer)}>
+        {/* <Text text={translate("home:noAppsInstalled")} style={themed($emptyText)} /> */}
+        {/* TODO: skeleton loader */}
       </View>
     )
   }
 
-  // Use TabView for swipe gestures, but wrap it in single container
-  return (
-    <View style={[themed($container)]}>
-      <View style={themed($singleContainer)}>
-        <TabView
-          navigationState={{index, routes}}
-          renderScene={renderScene}
-          renderTabBar={renderTabBar}
-          onIndexChange={handleIndexChange}
-          initialLayout={initialLayout}
-          style={{flex: 1}}
-          lazy={false}
-        />
+  // Check if we should show the tooltip instead of tabs
+  const shouldShowTooltip = activeApps.length === 0 && inactiveApps.length > 0
+
+  // Single container approach with tooltip
+  if (shouldShowTooltip) {
+    return (
+      <View style={themed($container)}>
+        {/* <Text>Render Count: {renderCount.current}</Text> */}
+        <View style={themed($headerSection)}>
+          <Text text={translate("home:tapToActivate")} style={themed($tooltipText)} />
+        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={{paddingBottom: theme.spacing.sm, paddingTop: theme.spacing.md}}
+          style={{flex: 1}}>
+          <AppsGridView
+            apps={inactiveApps}
+            onStartApp={handleStartApp}
+            onStopApp={handleStopApp}
+            onOpenSettings={handleOpenAppSettings}
+            onOpenWebView={handleOpenWebView}
+          />
+          <AppsIncompatibleList />
+        </ScrollView>
       </View>
+    )
+  }
+
+  return (
+    <View style={themed($container)}>
+      {/* <Text>Render Count: {renderCount.current}</Text> */}
+      <TabView
+        navigationState={{index, routes}}
+        renderScene={renderScene}
+        renderTabBar={renderTabBar}
+        onIndexChange={handleIndexChange}
+        style={{flex: 1}}
+        lazy={false}
+      />
     </View>
   )
 }
@@ -354,13 +240,34 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
 // memoize the component to prevent unnecessary re-renders:
 export const AppsCombinedGridView = React.memo(AppsCombinedGridViewRoot)
 
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $container: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   flex: 1,
-  marginHorizontal: -spacing.lg,
+  backgroundColor: colors.background,
+  marginBottom: spacing.lg,
+  borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
+  overflow: "hidden",
 })
 
 const $scene: ThemedStyle<ViewStyle> = ({spacing}) => ({
   // paddingTop moved to ScrollView contentContainerStyle
+})
+
+const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  flex: 1,
+  backgroundColor: colors.background,
+  marginBottom: spacing.lg,
+  borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
+  overflow: "hidden",
+})
+
+const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 15,
+  color: colors.textDim,
+  fontWeight: "500",
 })
 
 const $indicator: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -400,17 +307,6 @@ const $tooltipText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   color: colors.textDim,
   fontWeight: "500",
-})
-
-const $singleContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flex: 1,
-  backgroundColor: colors.background,
-  marginHorizontal: spacing.lg,
-  marginBottom: spacing.lg, // Add space above navbar
-  borderRadius: spacing.sm,
-  borderWidth: spacing.xxxs,
-  borderColor: colors.border,
-  overflow: "hidden",
 })
 
 const $simpleTabBar: ThemedStyle<ViewStyle> = ({colors}) => ({

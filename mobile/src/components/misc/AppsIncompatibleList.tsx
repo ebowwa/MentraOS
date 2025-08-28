@@ -1,7 +1,7 @@
 import React from "react"
 import {View, ViewStyle, TextStyle, TouchableOpacity, Dimensions, FlatList} from "react-native"
 import {Text} from "@/components/ignite"
-import {AppInterface, useAppStatus} from "@/contexts/AppStatusProvider"
+import {AppInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Spacer} from "./Spacer"
@@ -26,13 +26,6 @@ export default function IncompatibleAppsList() {
 
     // Check if app has compatibility info and is marked as incompatible
     const isIncompatible = app.compatibility && !app.compatibility.isCompatible
-    if (isIncompatible) {
-      console.log("🚫 INCOMPATIBLE APP DETECTED:", app.name, {
-        packageName: app.packageName,
-        compatibility: app.compatibility,
-        missingRequired: app.compatibility?.missingRequired,
-      })
-    }
     return isIncompatible
   })
 

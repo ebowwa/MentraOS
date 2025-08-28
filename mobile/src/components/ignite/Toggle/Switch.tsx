@@ -48,10 +48,8 @@ function SwitchInput(props: SwitchInputProps) {
     detailStyle: $detailStyleOverride,
   } = props
 
-  const {
-    theme: {colors, isDark},
-    themed,
-  } = useAppTheme()
+  const {themed, theme} = useAppTheme()
+  const {colors, spacing} = theme
 
   const animate = useRef(new Animated.Value(on ? 1 : 0)) // Initial value is set based on isActive
   const opacity = useRef(new Animated.Value(0))
@@ -168,7 +166,7 @@ function SwitchInput(props: SwitchInputProps) {
           {
             backgroundColor: animatedTrackColor,
             borderColor: colors.switchBorder,
-            borderWidth: colors.switchBorderWidth,
+            borderWidth: spacing.xxxs,
           },
           $outerStyleOverride,
           // {transform: [{translateX: -12}]},

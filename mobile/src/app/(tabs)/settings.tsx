@@ -14,7 +14,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
@@ -159,12 +159,6 @@ export default function SettingsPage() {
                 label={translate("settings:developerSettings")}
                 // subtitle={translate("settings:developerSettingsSubtitle")}
                 onPress={() => push("/settings/developer")}
-              />
-
-              <RouteButton
-                label="🎥 Buffer Recording Debug"
-                subtitle="Control 30-second video buffer on glasses"
-                onPress={() => push("/settings/buffer-debug")}
               />
             </>
           )}

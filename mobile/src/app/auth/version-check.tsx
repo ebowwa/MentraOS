@@ -1,22 +1,19 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, ActivityIndicator, Platform} from "react-native"
-import {useNavigation} from "@react-navigation/native"
-import {NavigationProp} from "@react-navigation/native"
+import {View, Text, ActivityIndicator, Platform} from "react-native"
 import Constants from "expo-constants"
 import semver from "semver"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
-import {saveSetting} from "@/utils/SettingsHelper"
 import {Button, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import {router} from "expo-router"
 
 // Icon component - adjust import based on your icon library
 import Icon from "react-native-vector-icons/MaterialCommunityIcons" // or your preferred icon library
 import {Linking} from "react-native"
 import {translate} from "@/i18n"
+import {Spacer} from "@/components/misc/Spacer"
 
 export default function VersionUpdateScreen() {
   const [isLoading, setIsLoading] = useState(true)
@@ -122,7 +119,7 @@ export default function VersionUpdateScreen() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text style={themed($loadingText)}>{translate("versionCheck:checkingForUpdates")}</Text>
         </View>
       </Screen>
@@ -179,20 +176,17 @@ export default function VersionUpdateScreen() {
               text={connectionError ? translate("versionCheck:retryConnection") : translate("versionCheck:update")}
             />
 
-            {isVersionMismatch && (
-              <Button
-                style={themed($primaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
-                onPress={() => {
-                  // Save setting to ignore version checks until next app restart
-                  // saveSetting("ignoreVersionCheck", true)
-                  // console.log("Version check skipped until next app restart")
-                  // continue to core token exchange
-                  replace("/auth/core-token-exchange")
-                }}
-                tx="versionCheck:skipUpdate"
-              />
-            )}
+            <Spacer height={theme.spacing.md} />
+
+            <Button
+              style={themed($secondaryButton)}
+              // textStyle={{color: theme.colors.text}}
+              RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
+              onPress={() => {
+                replace("/auth/core-token-exchange")
+              }}
+              tx="versionCheck:continueAnyways"
+            />
           </View>
         )}
       </View>
@@ -269,7 +263,12 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $primaryButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
-  marginBottom: spacing.md,
+})
+
+const $secondaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  width: "100%",
+  backgroundColor: colors.palette.primary200,
+  color: colors.textAlt,
 })
 
 const $skipButtonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

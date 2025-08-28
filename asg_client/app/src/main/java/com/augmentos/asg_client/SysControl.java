@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
+import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 public class SysControl {
     private static final String TAG = "SysControl";
@@ -298,6 +300,47 @@ public class SysControl {
     
     public static void uninstallPackageViaAdb(Context context, String packageName) {
         injectAdbCommand(context, "pm uninstall " + packageName);
+    }
+    
+    // Hardware LED Control Methods (device-agnostic)
+    public static void setRecordingLedOn(Context context, boolean on) {
+        try {
+            IHardwareManager hardwareManager = HardwareManagerFactory.getInstance(context);
+            if (on) {
+                hardwareManager.setRecordingLedOn();
+                Log.d(TAG, "Recording LED turned ON via SysControl");
+            } else {
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF via SysControl");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to control recording LED", e);
+        }
+    }
+    
+    public static void setRecordingLedBlinking(Context context, boolean blink) {
+        try {
+            IHardwareManager hardwareManager = HardwareManagerFactory.getInstance(context);
+            if (blink) {
+                hardwareManager.setRecordingLedBlinking();
+                Log.d(TAG, "Recording LED set to BLINKING via SysControl");
+            } else {
+                hardwareManager.setRecordingLedOff();
+                Log.d(TAG, "Recording LED turned OFF via SysControl");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to control recording LED blinking", e);
+        }
+    }
+    
+    public static void flashRecordingLed(Context context, long durationMs) {
+        try {
+            IHardwareManager hardwareManager = HardwareManagerFactory.getInstance(context);
+            hardwareManager.flashRecordingLed(durationMs);
+            Log.d(TAG, "Recording LED flashed for " + durationMs + "ms via SysControl");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to flash recording LED", e);
+        }
     }
     
     private static void sendBroadcast(Context context, Intent nn) {
