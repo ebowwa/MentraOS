@@ -25,7 +25,8 @@ Stream live video from smart glasses with two powerful options:
 - Zero infrastructure required
 - Automatic HLS/DASH URL generation
 - Multi-app support - multiple apps can access the same stream
-- Perfect for social media integration
+- Optional low-latency WebRTC URL
+- Optional re-streaming fan-out to RTMP destinations (YouTube, X, Twitch, etc.)
 
 **Unmanaged Streaming**
 - Full control over RTMP endpoints
@@ -43,7 +44,7 @@ console.log(`Photo captured: ${photo.mimeType}, ${photo.size} bytes`);
 
 ### Starting a Managed Stream (Easy Mode)
 ```typescript
-// Start streaming with zero configuration!
+// Start streaming with zero configuration
 const result = await session.camera.startManagedStream();
 console.log('Share this URL with viewers:', result.hlsUrl);
 ```
@@ -51,10 +52,34 @@ console.log('Share this URL with viewers:', result.hlsUrl);
 ### Starting an Unmanaged Stream (Full Control)
 ```typescript
 await session.camera.startStream({
-  rtmpUrl: 'rtmp://your-server.com/live/stream-key',
-  video: { width: 1280, height: 720, bitrate: 2000000 }
+  rtmpUrl: 'rtmp://your-server.com/live/stream-key'
 });
 ```
+
+### Re-streaming to social platforms (YouTube, X, Twitch)
+
+Managed streaming can fan-out to RTMP destinations you specify. Provide one or more `restreamDestinations` with platform RTMP ingest URLs (including your stream keys).
+
+```typescript
+// Example: Start a managed stream and re-stream to YouTube and Twitch
+const result = await session.camera.startManagedStream({
+  restreamDestinations: [
+    { url: 'rtmp://a.rtmp.youtube.com/live2/YOUR_YOUTUBE_STREAM_KEY', name: 'YouTube' },
+    { url: 'rtmp://live.twitch.tv/app/YOUR_TWITCH_STREAM_KEY', name: 'Twitch' }
+  ]
+});
+
+// Wait for managed status 'active' before sharing URLs
+session.camera.onManagedStreamStatus((status) => {
+  if (status.status === 'active') {
+    console.log('Viewer URLs:', status.hlsUrl, status.dashUrl, status.webrtcUrl);
+  }
+});
+```
+
+Notes:
+- Each platform provides an RTMP ingest URL and stream key; combine them into the `url` value.
+- Managed playback URLs (HLS/DASH/WebRTC) are separate from platform destinations and should be shared only after the managed stream status is `active`.
 
 ## Documentation Structure
 
@@ -65,10 +90,13 @@ await session.camera.startStream({
 ## Common Use Cases
 
 ### Social Media Streaming
-Use managed streaming for easy integration with platforms like YouTube Live, X (Twitter), and TikTok:
+Use managed streaming for easy integration with platforms like YouTube Live, X (Twitter), and Twitch:
 ```typescript
-const stream = await session.camera.startManagedStream();
-// Share stream.hlsUrl with your viewers!
+const stream = await session.camera.startManagedStream({
+  restreamDestinations: [
+    { url: 'rtmp://a.rtmp.youtube.com/live2/YOUR_KEY' }
+  ]
+});
 ```
 
 ### Security Camera App
@@ -87,15 +115,6 @@ const photo = await session.camera.requestPhoto({
 });
 await uploadToCloudStorage(photo.buffer);
 ```
-
-## Key Differences: Managed vs Unmanaged Streaming
-
-| Feature | Managed Streaming | Unmanaged Streaming |
-|---------|------------------|---------------------|
-| **Infrastructure Required** | ❌ None | ✅ RTMP Server |
-| **Multiple Apps Can Stream** | ✅ Yes | ❌ No (Exclusive) |
-| **Setup Complexity** | 🟢 Easy | 🔴 Complex |
-| **Best For** | Social media, demos, prototypes | Custom servers, local networks |
 
 ## Important Notes
 

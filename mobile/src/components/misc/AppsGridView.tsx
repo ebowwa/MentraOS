@@ -19,8 +19,7 @@ interface AppModel {
   name: string
   packageName: string
   is_running?: boolean
-  is_foreground?: boolean
-  appType?: string
+  type?: string
   webviewURL?: string
   publicUrl?: string
   logoURL?: string
@@ -66,7 +65,7 @@ const AppPopover: React.FC<{
       arrowSize={{width: 16, height: 8}}>
       <View style={themed($popoverContent)}>
         <View style={themed($popoverHeader)}>
-          <AppIcon app={app} isForegroundApp={app.appType === "standard"} style={themed($popoverAppIcon)} />
+          <AppIcon app={app} isForegroundApp={app.type === "standard"} style={themed($popoverAppIcon)} />
           <Text text={app.name} style={themed($popoverAppName)} numberOfLines={1} />
         </View>
 
@@ -119,12 +118,12 @@ const GridItem: React.FC<{
     return <View style={themed($gridItem)} />
   }
 
-  const isForeground = item.appType === "standard" || item.is_foreground
+  const isForeground = item.type === "standard"
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
       <View style={themed($appContainer)}>
-        <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
+        <AppIcon app={item} style={themed($appIcon)} />
         {isForeground && (
           <View style={themed($foregroundIndicator)}>
             <TreeIcon size={theme.spacing.md} color={theme.colors.text} />

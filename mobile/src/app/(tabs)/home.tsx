@@ -20,17 +20,18 @@ import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
+import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
-
   const {themed, theme} = useAppTheme()
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   const [showNewUi, setShowNewUi] = useState(false)
 
@@ -38,6 +39,7 @@ export default function Homepage() {
     const check = async () => {
       const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
       setShowNewUi(newUiSetting)
+      setHasLoaded(true)
     }
     check()
   }, [])
@@ -47,6 +49,23 @@ export default function Homepage() {
       refreshAppStatus()
     }, []),
   )
+
+  if (!hasLoaded) {
+    return (
+      <Screen preset="fixed" style={themed($screen)}>
+        <Header
+          leftTx="home:title"
+          RightActionComponent={
+            <View style={themed($headerRight)}>
+              <PermissionsWarning />
+              <MicIcon width={24} height={24} />
+              <NonProdWarning />
+            </View>
+          }
+        />
+      </Screen>
+    )
+  }
 
   if (showNewUi) {
     return (
@@ -124,6 +143,9 @@ export default function Homepage() {
         <Spacer height={spacing.md} />
         <AppsIncompatibleListOld />
       </ScrollView>
+
+      <Reconnect />
+      <OtaUpdateChecker />
 
       <OnboardingSpotlight
         targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}

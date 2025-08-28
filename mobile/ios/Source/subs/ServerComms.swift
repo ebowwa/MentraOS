@@ -26,9 +26,6 @@ class ServerComms {
 
     private var reconnecting: Bool = false
     private var reconnectionAttempts: Int = 0
-    let calendarManager = CalendarManager()
-    let locationManager = LocationManager()
-    let mediaManager = MediaManager()
 
     static func getInstance() -> ServerComms {
         if instance == nil {
@@ -77,16 +74,6 @@ class ServerComms {
         //      CoreCommsService.log("Periodic location update")
         //      self?.sendLocationUpdates()
         //    }
-
-        // Setup calendar change notifications
-        calendarManager.setCalendarChangedCallback { [weak self] in
-            self?.sendCalendarEvents()
-        }
-
-        // setup location change notification:
-        locationManager.setLocationChangedCallback { [weak self] in
-            self?.sendLocationUpdates()
-        }
     }
 
     func setAuthCredentials(_ userid: String, _ coreToken: String) {
@@ -96,6 +83,7 @@ class ServerComms {
         UserDefaults.standard.set(coreToken, forKey: "core_token")
     }
 
+    // TODO: config: remove
     func setServerUrl(_ url: String) {
         serverUrl = url
         Core.log("ServerComms: setServerUrl: \(url)")
@@ -203,9 +191,8 @@ class ServerComms {
 
     func sendCalendarEvents() {
         guard wsManager.isConnected() else { return }
-        let calendarManager = CalendarManager()
         Task {
-            if let events = await calendarManager.fetchUpcomingEvents(days: 2) {
+            if let events = await CalendarManager.shared.fetchUpcomingEvents(days: 2) {
                 guard events.count > 0 else { return }
                 // Send up to 5 events
                 let eventsToSend = events.prefix(5)
@@ -250,11 +237,11 @@ class ServerComms {
             return
         }
 
-        if let locationData = locationManager.getCurrentLocation() {
-            Core.log("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+        if let locationData = LocationManager.shared.getCurrentLocation() {
+            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
             sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
         } else {
-            Core.log("Cannot send location update: No location data available")
+            Core.log("ServerComms: Cannot send location update: No location data available")
         }
     }
 
@@ -277,7 +264,7 @@ class ServerComms {
 
     func updateAsrConfig(languages: [[String: Any]]) {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send ASR config: not connected.")
+            Core.log("ServerComms: Cannot send ASR config: not connected.")
             return
         }
 
@@ -292,7 +279,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building config message: \(error)")
+            Core.log("ServerComms: Error building config message: \(error)")
         }
     }
 
@@ -309,7 +296,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building core_status_update JSON: \(error)")
+            Core.log("ServerComms: Error building core_status_update JSON: \(error)")
         }
     }
 
@@ -349,7 +336,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building start_app JSON: \(error)")
+            Core.log("ServerComms: Error building start_app JSON: \(error)")
         }
     }
 
@@ -366,7 +353,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building stop_app JSON: \(error)")
+            Core.log("ServerComms: Error building stop_app JSON: \(error)")
         }
     }
 
@@ -404,7 +391,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building photo_response JSON: \(error)")
+            Core.log("ServerComms: Error building photo_response JSON: \(error)")
         }
     }
 
@@ -422,7 +409,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building video_stream_response JSON: \(error)")
+            Core.log("ServerComms: Error building video_stream_response JSON: \(error)")
         }
     }
 
@@ -439,7 +426,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error sending head position: \(error)")
+            Core.log("ServerComms: Error sending head position: \(error)")
         }
     }
 
@@ -533,17 +520,15 @@ class ServerComms {
       // }
 
         case "set_location_tier":
-            print("DEBUG set_location_tier: \(msg)")
             if let tier = msg["tier"] as? String {
-                locationManager.setTier(tier: tier)
+                LocationManager.shared.setTier(tier: tier)
             }
 
         case "request_single_location":
-            print("DEBUG request_single_location: \(msg)")
             if let accuracy = msg["accuracy"] as? String,
                let correlationId = msg["correlationId"] as? String
             {
-                locationManager.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
 
         case "app_started":

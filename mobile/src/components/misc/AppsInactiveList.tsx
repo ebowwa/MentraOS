@@ -15,7 +15,7 @@ import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
@@ -251,7 +251,7 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running && app.type == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -347,11 +347,9 @@ export default function InactiveAppList({
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              // @ts-ignore
-              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard"
+                const isForegroundApp = app.type == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates

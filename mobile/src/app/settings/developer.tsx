@@ -4,7 +4,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -180,7 +180,7 @@ export default function DeveloperSettingsScreen() {
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
       const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)

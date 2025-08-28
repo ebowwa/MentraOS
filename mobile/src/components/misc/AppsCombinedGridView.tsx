@@ -16,8 +16,6 @@ import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 
 interface AppsCombinedGridViewProps {}
 
-const initialLayout = {width: Dimensions.get("window").width}
-
 const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {themed, theme} = useAppTheme()
   const {appStatus, checkAppHealthStatus, optimisticallyStartApp, optimisticallyStopApp} = useAppStatus()
@@ -62,7 +60,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
       }
 
       // Optimistically update UI
-      optimisticallyStartApp(packageName, appInfo.appType)
+      optimisticallyStartApp(packageName, appInfo.type)
     },
     [appStatus],
   )
@@ -103,10 +101,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     const incompatibleCount = appStatus.filter(
       app => !app.is_running && app.compatibility && !app.compatibility.isCompatible,
     ).length
-
-    console.log(
-      `📊 Apps Status - Active: ${activeApps.length}, Inactive (compatible): ${filtered.length}, Incompatible: ${incompatibleCount}`,
-    )
 
     return filtered
   }, [appStatus, activeApps.length])
@@ -236,7 +230,6 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
         renderScene={renderScene}
         renderTabBar={renderTabBar}
         onIndexChange={handleIndexChange}
-        initialLayout={initialLayout}
         style={{flex: 1}}
         lazy={false}
       />

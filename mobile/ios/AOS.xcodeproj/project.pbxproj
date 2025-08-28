@@ -13,8 +13,6 @@
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
 		6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */; };
-		6DAA26502E2BF04E00B9AEC4 /* encoder.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */; };
-		6DAA26512E2BF04E00B9AEC4 /* decoder.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */; };
 		6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */; };
 		6DDF1F572E2BED9800EAD638 /* SherpaOnnx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */; };
@@ -518,8 +516,6 @@
 				C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */,
 				A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */,
 				6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */,
-				6DAA26502E2BF04E00B9AEC4 /* encoder.onnx in Resources */,
-				6DAA26512E2BF04E00B9AEC4 /* decoder.onnx in Resources */,
 				6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
