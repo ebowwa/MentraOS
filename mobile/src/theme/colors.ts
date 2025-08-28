@@ -108,10 +108,6 @@ const palette = {
   overlay20: "rgba(25, 16, 21, 0.2)",
   overlay50: "rgba(25, 16, 21, 0.5)",
 
-  // iOS specific colors
-  iosSwitchTrack: "#D1D1D6", // iOS switch track color (off state)
-  iosBackground: "#f9f9f9", // Light gray background color
-
   // Tab bar gradient colors (light theme - subtle blue-tinted white, no gradient)
   tabBarGradientStart: "#F8FAFF", // Blue-tinted white for light theme
   tabBarGradientEnd: "#F8FAFF", // Blue-tinted white for light theme

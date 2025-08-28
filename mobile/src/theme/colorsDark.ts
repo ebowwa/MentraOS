@@ -32,6 +32,7 @@ const palette = {
 
   angry100: "#F2D6CD",
   angry500: "#C03403",
+  angry600: "#FE98EB",
 
   // Warning/danger colors
   red500: "#f00", // Bright red for warnings
@@ -41,10 +42,6 @@ const palette = {
 
   // Red error colors
   errorRed: "#FF3B30", // Error red
-
-  // Gallery background colors
-  darkGalleryBg: "#121212", // Very dark background for gallery
-  lightGalleryBg: "#f0f0f0", // Light background for gallery
 
   // Common blue colors found in hardcoded values (same as light theme)
   blue100: "#E3F2FD",
@@ -100,11 +97,9 @@ const palette = {
 
   overlay20: "rgba(25, 16, 21, 0.2)",
   overlay50: "rgba(25, 16, 21, 0.5)",
+} as const
 
-  // iOS specific colors
-  iosSwitchTrack: "#D1D1D6", // iOS switch track color (off state)
-  iosBackground: "#f9f9f9", // Light gray background color
-
+const semanticColors = {
   // Tab bar gradient colors (dark theme)
   tabBarGradientStart: "#090A14", // Dark blue for dark theme tab bar start
   tabBarGradientEnd: "#080D33", // Darker blue for dark theme tab bar end
@@ -131,7 +126,9 @@ const palette = {
   buttonPillPrimaryText: "#141434", // Dark text for light primary buttons
   buttonPillSecondaryText: "#F9F8FE", // Light text for secondary buttons
   buttonPillIconText: "#FFFFFF", // Light text for icon buttons
-} as const
+
+  galleryBg: "#121212", // Very dark background for gallery
+}
 
 export const colors = {
   palette,
@@ -175,7 +172,7 @@ export const colors = {
   switchBorderWidth: 0, // No border width in dark theme
 
   // Gallery specific colors
-  galleryBackground: palette.darkGalleryBg,
+  galleryBackground: semanticColors.galleryBg,
 
   // Status/alert colors
   warningOrange: palette.orange500,
@@ -192,14 +189,14 @@ export const colors = {
   buttonPressed: palette.neutral700, // Darker state for pressed buttons
 
   // Tab bar gradients
-  tabBarBackground1: palette.tabBarGradientStart,
-  tabBarBackground2: palette.tabBarGradientEnd,
+  tabBarBackground1: semanticColors.tabBarGradientStart,
+  tabBarBackground2: semanticColors.tabBarGradientEnd,
 
   // Tab bar solid background (for native tabs)
   tabBarBackground: palette.neutral200,
 
-  altTabBarBackground1: palette.altTabBarGradientStart,
-  altTabBarBackground2: palette.altTabBarGradientEnd,
+  altTabBarBackground1: semanticColors.altTabBarGradientStart,
+  altTabBarBackground2: semanticColors.altTabBarGradientEnd,
 
   // Fullscreen and modal backgrounds
   fullscreenBackground: "#000000", // Black for fullscreen camera
@@ -209,7 +206,7 @@ export const colors = {
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
-  destructiveAction: palette.warningPink, // Pink for destructive actions
+  destructiveAction: palette.angry600, // Pink for destructive actions
 
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
@@ -229,25 +226,25 @@ export const colors = {
   borderLight: palette.overlay10, // Very light border
 
   // Button gradient colors
-  buttonGradientStart: palette.buttonGradientStart,
-  buttonGradientEnd: palette.buttonGradientEnd,
+  buttonGradientStart: semanticColors.buttonGradientStart,
+  buttonGradientEnd: semanticColors.buttonGradientEnd,
 
   // Warning background
-  warningBackground: palette.warningBackground,
+  warningBackground: semanticColors.warningBackground,
   warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
   warningBorderDestructive: "rgba(254, 152, 235, 0.16)", // Faded pink border (40% of background opacity)
 
   // Input border highlight
-  inputBorderHighlight: palette.inputBorderHighlight,
+  inputBorderHighlight: semanticColors.inputBorderHighlight,
 
   // Pill button colors
-  buttonPillPrimary: palette.buttonPillPrimary,
-  buttonPillSecondary: palette.buttonPillSecondary,
-  buttonPillSecondaryBorder: palette.buttonPillSecondaryBorder,
-  buttonPillIcon: palette.buttonPillIcon,
-  buttonPillPrimaryText: palette.buttonPillPrimaryText,
-  buttonPillSecondaryText: palette.buttonPillSecondaryText,
-  buttonPillIconText: palette.buttonPillIconText,
+  buttonPillPrimary: semanticColors.buttonPillPrimary,
+  buttonPillSecondary: semanticColors.buttonPillSecondary,
+  buttonPillSecondaryBorder: semanticColors.buttonPillSecondaryBorder,
+  buttonPillIcon: semanticColors.buttonPillIcon,
+  buttonPillPrimaryText: semanticColors.buttonPillPrimaryText,
+  buttonPillSecondaryText: semanticColors.buttonPillSecondaryText,
+  buttonPillIconText: semanticColors.buttonPillIconText,
 
   // Checkmark color
   checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
