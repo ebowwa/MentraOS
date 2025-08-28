@@ -188,7 +188,10 @@ public class FrameSGC extends SmartGlassesCommunicator {
   }
   
   @Override
-  public void connectToSmartGlasses() {
+  public void connectToSmartGlasses(SmartGlassesDevice device) {
+    if (device != null) {
+      this.smartGlassesDevice = device;
+    }
     Log.d(TAG, "Connecting to Frame glasses");
     
     // Stop scanning if we're still scanning
@@ -346,7 +349,7 @@ public class FrameSGC extends SmartGlassesCommunicator {
           reconnectAttempts++;
           int delay = BASE_RECONNECT_DELAY_MS * reconnectAttempts;
           Log.d(TAG, "Attempting reconnect in " + delay + "ms (attempt " + reconnectAttempts + ")");
-          handler.postDelayed(() -> connectToSmartGlasses(), delay);
+          handler.postDelayed(() -> connectToSmartGlasses(smartGlassesDevice), delay);
         }
       }
     }
@@ -893,5 +896,11 @@ public class FrameSGC extends SmartGlassesCommunicator {
         .replace("\n", " ")  // Replace newlines with spaces
         .replace("\r", " ")  // Replace carriage returns with spaces
         .replace("\t", " ");  // Replace tabs with spaces
+  }
+
+  @Override
+  public void clearDisplay() {
+    // For Frame, emulate clear by drawing empty content and showing it
+    blankScreen();
   }
 }
