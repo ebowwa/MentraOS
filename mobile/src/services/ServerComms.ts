@@ -12,42 +12,6 @@ interface ThirdPartyCloudApp {
   isRunning: boolean
 }
 
-interface ArrayBlockingQueueItem<T> {
-  data: T
-  timestamp: number
-}
-
-class ArrayBlockingQueue<T> {
-  private queue: ArrayBlockingQueueItem<T>[] = []
-  private capacity: number
-
-  constructor(capacity: number) {
-    this.capacity = capacity
-  }
-
-  offer(element: T): boolean {
-    if (this.queue.length >= this.capacity) {
-      // Remove oldest item if queue is full
-      this.queue.shift()
-    }
-    this.queue.push({data: element, timestamp: Date.now()})
-    return true
-  }
-
-  poll(): T | null {
-    const item = this.queue.shift()
-    return item ? item.data : null
-  }
-
-  take(): T | null {
-    return this.poll()
-  }
-
-  size(): number {
-    return this.queue.length
-  }
-}
-
 class ServerComms {
   private static instance: ServerComms | null = null
 
@@ -75,7 +39,6 @@ class ServerComms {
       this.handle_status_change(status)
     })
 
-    this.start_audio_sender_thread()
     this.setup_periodic_tasks()
     this.setup_callbacks()
   }
@@ -142,11 +105,6 @@ class ServerComms {
 
   is_websocket_connected(): boolean {
     return this.wsManager.isActuallyConnected()
-  }
-
-  // Audio / VAD
-  send_audio_chunk(audioData: ArrayBuffer | Uint8Array) {
-    this.audioBuffer.offer(audioData)
   }
 
   private send_connection_init(coreToken: string) {
@@ -427,18 +385,12 @@ class ServerComms {
 
     switch (type) {
       case "connection_ack":
-        this.start_audio_sender_thread()
-        // Send app state to native side
-        coreCommunicator.sendCommand("update_app_state", {
-          apps: this.parse_app_list(msg),
-        })
-        coreCommunicator.sendCommand("connection_ack")
+        this.parse_app_list(msg)
+        // coreCommunicator.sendCommand("connection_ack")
         break
 
       case "app_state_change":
-        coreCommunicator.sendCommand("update_app_state", {
-          apps: this.parse_app_list(msg),
-        })
+        this.parse_app_list(msg)
         break
 
       case "connection_error":
