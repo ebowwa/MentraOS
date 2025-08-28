@@ -221,7 +221,7 @@ export default function AppSettings() {
       {
         iconName: "delete-forever",
         iconSize: 48,
-        iconColor: theme.colors.destructiveAction,
+        iconColor: theme.colors.palette.angry600,
       },
     )
   }

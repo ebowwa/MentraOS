@@ -91,7 +91,7 @@
           "image": "./assets/splash/splash.png",
           "imageWidth": 300,
           "resizeMode": "contain",
-          "backgroundColor": "#191015"
+          "backgroundColor": "#080D33"
         }
       ],
       "expo-router",

@@ -155,7 +155,7 @@ export default function CoreTokenExchange() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text style={themed($loadingText)}>{translate("login:connectingToServer")}</Text>
         </View>
       </Screen>
