@@ -64,6 +64,10 @@ export class AudioManager {
   private readonly DEBUG_AUDIO = false;
   private readonly IS_LC3 = false;
 
+  // Lightweight telemetry for PCM ingestion
+  private processedFrameCount = 0;
+  private lastLogAt = 0;
+
   constructor(userSession: UserSession) {
     this.userSession = userSession;
     this.logger = userSession.logger.child({ service: "AudioManager" });
@@ -115,6 +119,22 @@ export class AudioManager {
 
       // Send to transcription and translation services
       if (audioData) {
+        // Telemetry: log every 100 frames to avoid noise
+        this.processedFrameCount++;
+        if (this.processedFrameCount % 100 === 0) {
+          const now = Date.now();
+          const dt = this.lastLogAt ? now - this.lastLogAt : 0;
+          this.lastLogAt = now;
+          const buf = (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData)) ? audioData as Buffer : Buffer.from(audioData as ArrayBuffer);
+          this.logger.debug({
+            feature: 'livekit',
+            frames: this.processedFrameCount,
+            bytes: buf.length,
+            msSinceLast: dt,
+            head10: Array.from(buf.subarray(0, Math.min(10, buf.length)))
+          }, 'AudioManager received PCM chunk');
+        }
+
         // Relay to Apps if there are subscribers
         this.relayAudioToApps(audioData);
 

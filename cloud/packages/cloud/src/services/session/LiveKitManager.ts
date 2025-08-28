@@ -16,6 +16,7 @@ export class LiveKitManager {
   private readonly livekitUrl: string;
   private bridgeClient: LiveKitClientTS | null = null;
   private micEnabled = false;
+  private healthTimer: NodeJS.Timeout | null = null;
 
   constructor(session: UserSession) {
     this.session = session;
@@ -118,6 +119,20 @@ export class LiveKitManager {
     if (!subscribeToken) { this.logger.warn('Failed to mint subscribe token for bridge subscriber'); return; }
     await this.bridgeClient.connect({ url: info.url, roomName: info.roomName, token: subscribeToken, targetIdentity });
     this.logger.info({ feature: 'livekit', room: info.roomName }, 'Bridge subscriber connected');
+
+    // Start a light health log to keep an eye on connection status
+    if (!this.healthTimer) {
+      this.healthTimer = setInterval(() => {
+        const isConnected = this.bridgeClient?.isConnected() ?? false;
+        this.logger.debug({ feature: 'livekit', micEnabled: this.micEnabled, isConnected }, 'Bridge health');
+      }, 10000);
+    }
+  }
+
+  private async ensureBridgeConnected(): Promise<void> {
+    if (this.bridgeClient && this.bridgeClient.isConnected()) return;
+    this.logger.info({ feature: 'livekit' }, 'Ensuring bridge subscriber is connected');
+    await this.startBridgeSubscriber({ url: this.getUrl(), roomName: this.getRoomName() });
   }
 
   // Signal from MicrophoneManager
@@ -128,14 +143,21 @@ export class LiveKitManager {
 
   private applySubscribeState(): void {
     const shouldSubscribe = this.micEnabled;
-    if (!this.bridgeClient || !this.bridgeClient.isConnected()) return;
-    if (shouldSubscribe) {
-      this.logger.info('Enabling bridge subscribe');
-      this.bridgeClient.enableSubscribe(this.session.userId);
-    } else {
-      this.logger.info('Disabling bridge subscribe');
-      this.bridgeClient.disableSubscribe();
-    }
+    this.ensureBridgeConnected()
+      .then(() => {
+        if (!this.bridgeClient || !this.bridgeClient.isConnected()) {
+          this.logger.warn({ feature: 'livekit' }, 'Bridge not connected; cannot toggle subscribe');
+          return;
+        }
+        if (shouldSubscribe) {
+          this.logger.info({ feature: 'livekit', target: this.session.userId }, 'Enabling bridge subscribe');
+          this.bridgeClient.enableSubscribe(this.session.userId);
+        } else {
+          this.logger.info({ feature: 'livekit' }, 'Disabling bridge subscribe');
+          this.bridgeClient.disableSubscribe();
+        }
+      })
+      .catch((err) => this.logger.error({ feature: 'livekit', err }, 'Failed ensuring bridge connection'));
   }
 }
 

@@ -18,6 +18,11 @@ export class LiveKitClient {
   private readonly bridgeUrl: string;
   private ws: WebSocket | null = null;
   private connected = false;
+  private frameCount = 0;
+  private lastParams: { url: string; roomName: string; token: string; targetIdentity?: string } | null = null;
+  private reconnectAttempts = 0;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private manualClose = false;
 
   constructor(userSession: UserSession, opts?: BridgeOptions) {
     this.userSession = userSession;
@@ -35,6 +40,9 @@ export class LiveKitClient {
     this.logger.info({ wsUrl, room: params.roomName, target: params.targetIdentity }, 'Connecting to livekit-bridge');
 
     this.ws = new WebSocket(wsUrl);
+    this.manualClose = false;
+    this.lastParams = params;
+    this.frameCount = 0;
 
     await new Promise<void>((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('bridge ws timeout')), 8000);
@@ -57,6 +65,7 @@ export class LiveKitClient {
           // const ab = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
           // print first 10 bytes.
           i++;
+          this.frameCount++;
           if (i % 20 === 0) {
             this.logger.debug({ feature: 'livekit', data: data.slice(0, 10) }, 'Received PCM16 frame');
           }
@@ -67,9 +76,22 @@ export class LiveKitClient {
       } else {
         try {
           const evt = JSON.parse((data as any).toString());
-          this.logger.debug({ evt }, '[LiveKitClient] Bridge event');
+          if (evt?.type && evt?.type !== 'connected') {
+            this.logger.debug({ feature: 'livekit', evt }, '[LiveKitClient] Bridge event');
+          }
         } catch { }
       }
+    });
+
+    // Lifecycle: close/error
+    this.ws.on('close', (code: number, reason: Buffer) => {
+      this.logger.warn({ feature: 'livekit', code, reason: reason?.toString() }, 'Bridge WS closed (server)');
+      this.connected = false;
+      this.scheduleReconnect();
+    });
+    this.ws.on('error', (err) => {
+      this.logger.warn({ feature: 'livekit', err }, 'Bridge WS error (server)');
+      // keep connected flag; close will also trigger in most cases
     });
 
     // Join room via bridge
@@ -87,10 +109,16 @@ export class LiveKitClient {
     if (!this.ws) return;
     try {
       try { this.ws.send(JSON.stringify({ action: 'subscribe_disable' })); } catch { }
+      this.manualClose = true;
       this.ws.close();
     } catch { }
     this.ws = null;
     this.connected = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
   }
 
   isConnected(): boolean { return this.connected && !!this.ws && this.ws.readyState === WebSocket.OPEN; }
@@ -103,6 +131,21 @@ export class LiveKitClient {
   disableSubscribe(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.ws.send(JSON.stringify({ action: 'subscribe_disable' }));
+  }
+
+  private scheduleReconnect(): void {
+    if (this.manualClose) return;
+    if (!this.lastParams) return;
+    if (this.reconnectTimer) return;
+    const delay = Math.min(30000, 1000 * Math.pow(2, this.reconnectAttempts++));
+    this.logger.info({ feature: 'livekit', delayMs: delay }, 'Scheduling bridge reconnect');
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect(this.lastParams!).catch((err) => {
+        this.logger.error({ feature: 'livekit', err }, 'Bridge reconnect failed');
+        this.scheduleReconnect();
+      });
+    }, delay);
   }
 }
 

@@ -516,10 +516,18 @@ func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
         chunk := make([]byte, frameBytes)
         copy(chunk, c.subBuf16k[:frameBytes])
         c.subBuf16k = c.subBuf16k[frameBytes:]
-        _ = c.ws.WriteMessage(websocket.BinaryMessage, chunk)
-        c.subFrameCount++
-        if c.subFrameCount%100 == 0 {
-            log.Printf("Forwarded %d subscribed frames (16kHz)", c.subFrameCount)
+        if c.ws != nil {
+            _ = c.ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+            if err := c.ws.WriteMessage(websocket.BinaryMessage, chunk); err != nil {
+                log.Printf("WS binary write failed for user %s: %v", c.userId, err)
+                return
+            }
+            c.subFrameCount++
+            if c.subFrameCount%100 == 0 {
+                log.Printf("Forwarded %d subscribed frames (16kHz)", c.subFrameCount)
+            }
+        } else {
+            return
         }
     }
 }
