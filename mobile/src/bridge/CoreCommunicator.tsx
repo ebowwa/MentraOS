@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser from "@/utils/CoreStatusParser"
+import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
 import ServerComms from "@/services/ServerComms"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
@@ -354,6 +354,7 @@ export class CoreCommunicator extends EventEmitter {
       if (!("type" in data)) {
         return
       }
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -369,8 +370,23 @@ export class CoreCommunicator extends EventEmitter {
         case "audio_stop_request":
           await AudioPlayService.stopAllAudio()
           break
+        case "wifi_scan_results":
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
+            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
+          })
+          break
         case "pair_failure":
           GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+          break
+        case "show_banner":
+          GlobalEventEmitter.emit("SHOW_BANNER", {
+            message: data.message,
+            type: data.type,
+          })
+          break
+        case "ws_text":
+          ServerComms.getInstance().sendText(data.text)
           break
         default:
           console.log("Unknown event type:", data.type)

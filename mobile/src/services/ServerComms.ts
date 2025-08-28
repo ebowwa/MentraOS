@@ -40,8 +40,7 @@ class ServerComms {
       this.handleStatusChange(status)
     })
 
-    this.setup_periodic_tasks()
-    this.setup_callbacks()
+    this.setupPeriodicTasks()
   }
 
   public static getInstance(): ServerComms {
@@ -51,7 +50,7 @@ class ServerComms {
     return ServerComms.instance
   }
 
-  private setup_periodic_tasks() {
+  private setupPeriodicTasks() {
     // Calendar sync every hour
     this.calendarSyncTimer = setInterval(
       () => {
@@ -67,11 +66,6 @@ class ServerComms {
       const isoDatetime = ServerComms.get_current_iso_datetime()
       this.send_user_datetime_to_backend(isoDatetime)
     }, 60 * 1000) // 60 seconds
-  }
-
-  private setup_callbacks() {
-    // Calendar and location updates will be triggered through native commands
-    // No need for event listeners here - native side will call methods directly
   }
 
   // Connection Management
@@ -192,6 +186,14 @@ class ServerComms {
     this.userid = userid
     saveSetting(SETTINGS_KEYS.core_token, coreToken)
     this.connectWebsocket()
+  }
+
+  sendText(text: string) {
+    try {
+      this.ws.sendText(text)
+    } catch (error) {
+      console.log(`ServerCommsTS: Failed to send text: ${error}`)
+    }
   }
 
   send_vad_status(isSpeaking: boolean) {
@@ -507,16 +509,6 @@ class ServerComms {
           coreCommunicator.sendCommand("request_single", {
             data_type: msg.data_type,
           })
-        }
-        break
-
-      case "interim":
-      case "final":
-        // Pass speech messages to speech recognition callback
-        if (this.speechRecCallback) {
-          this.speechRecCallback(msg)
-        } else {
-          console.log("ServerCommsTS: Received speech message but speechRecCallback is null!")
         }
         break
 
