@@ -85,7 +85,7 @@ export function OtaUpdateChecker() {
 }
 
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {AppState} from "react-native"
 
@@ -98,7 +98,7 @@ export function Reconnect() {
       console.log("App state changed to:", nextAppState)
       // If app comes back to foreground, hide the loading overlay
       if (nextAppState === "active") {
-        if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
+        if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)) {
           console.log(
             "Attempt reconnect to glasses",
             status.core_info.default_wearable,

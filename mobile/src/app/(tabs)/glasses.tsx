@@ -19,7 +19,7 @@ import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
 import {loadSetting} from "@/utils/SettingsHelper"
 
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"

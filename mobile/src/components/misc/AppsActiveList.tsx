@@ -11,7 +11,7 @@ import Divider from "./Divider"
 import {Spacer} from "./Spacer"
 import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function AppsActiveList({
