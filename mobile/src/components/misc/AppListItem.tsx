@@ -10,11 +10,13 @@ import {translate} from "@/i18n"
 import {Switch, Text} from "@/components/ignite"
 import {TooltipIcon} from "assets/icons/component/TooltipIcon"
 import Toast from "react-native-toast-message"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface AppModel {
   name: string
   packageName: string
   type: string
+  isOnline?: boolean | null
   compatibility?: {
     isCompatible: boolean
     message?: string
@@ -68,7 +70,7 @@ export const AppListItem = ({
         onPress={onSettingsPress}
         disabled={isDisabled}
         activeOpacity={0.7}>
-        <AppIcon app={app} style={themed($appIcon)} />
+        <AppIcon app={app as any} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
@@ -76,10 +78,17 @@ export const AppListItem = ({
               themed($appName),
               isActive ? themed($activeApp) : themed($inactiveApp),
               isIncompatible && themed($incompatibleApp),
+              app.isOnline === false && themed($offlineApp),
             ]}
             numberOfLines={1}
             ellipsizeMode="tail"
           />
+          {app.isOnline === false && (
+            <View style={themed($offlineRow)}>
+              <MaterialCommunityIcons name="alert-circle" size={14} color={theme.colors.error} />
+              <Text text={"Offline"} style={themed($offlineRowText)} />
+            </View>
+          )}
           <Tag isActive={isActive} isForeground={app.type == "standard"} isIncompatible={isIncompatible} />
         </View>
       </TouchableOpacity>
@@ -109,6 +118,10 @@ const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
 const $incompatibleApp: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
   opacity: 0.7,
+})
+
+const $offlineApp: ThemedStyle<TextStyle> = () => ({
+  textDecorationLine: "line-through",
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
@@ -146,6 +159,18 @@ const $appName: ThemedStyle<TextStyle> = () => ({
   lineHeight: 20,
   textAlign: "left",
   overflow: "hidden",
+})
+
+const $offlineRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: 2,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+})
+
+const $offlineRowText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.error,
 })
 
 const $toggleParent: ThemedStyle<ViewStyle> = () => ({

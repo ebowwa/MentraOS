@@ -470,6 +470,41 @@ const AppDetails: React.FC = () => {
                   </div>
                 </div>
 
+                {app.isOnline === false && (
+                  <div className="mb-6">
+                    <div
+                      className="flex items-center gap-3 p-3 rounded-lg"
+                      style={{
+                        backgroundColor:
+                          theme === "light"
+                            ? "#FDECEA"
+                            : "rgba(255, 255, 255, 0.05)",
+                        border: `1px solid ${
+                          theme === "light"
+                            ? "#F5C6CB"
+                            : "rgba(255, 255, 255, 0.1)"
+                        }`,
+                      }}
+                    >
+                      <Info
+                        className="h-5 w-5"
+                        style={{
+                          color: theme === "light" ? "#B91C1C" : "#FCA5A5",
+                        }}
+                      />
+                      <span
+                        className="text-[14px]"
+                        style={{
+                          color: theme === "light" ? "#B91C1C" : "#FCA5A5",
+                        }}
+                      >
+                        This app appears to be offline. Some actions may not
+                        work.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Description */}
                 <div className="mb-8">
                   <p
