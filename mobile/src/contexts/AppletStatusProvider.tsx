@@ -30,7 +30,8 @@ export interface AppletPermission {
 export interface AppletInterface {
   packageName: string
   name: string
-  publicUrl: string
+  developerName?: string
+  publicUrl?: string
   isSystemApp?: boolean
   uninstallable?: boolean
   webviewURL?: string
@@ -67,6 +68,8 @@ export interface AppletInterface {
     }>
     message: string
   }
+  // New optional isOnline from backend
+  isOnline?: boolean | null
 }
 
 interface AppStatusContextType {
@@ -119,6 +122,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const applet: AppletInterface = {
           // @ts-ignore
           type: app.type || app["appType"],
+          developerName: app.developerName,
           packageName: app.packageName,
           name: app.name,
           publicUrl: app.publicUrl,
@@ -127,6 +131,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           webviewURL: app.webviewURL,
           is_running: app.is_running,
           is_loading: false,
+          // @ts-ignore include server-provided latest status if present
+          isOnline: (app as any).isOnline,
         }
 
         return applet
@@ -147,6 +153,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {
+    await doStartApp(packageName, appType)
+  }
+
+  // Extracted actual start logic
+  const doStartApp = async (packageName: string, appType?: string) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
@@ -299,6 +310,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     <AppStatusContext.Provider
       value={{
         appStatus,
+        // Expose renderableApps (currently same as appStatus; reserved for filters)
+        renderableApps: appStatus,
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,

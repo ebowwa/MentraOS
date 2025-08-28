@@ -49,6 +49,12 @@ export interface AppI {
   installedDate?: string;
   uninstallable?: boolean; // Whether the app can be uninstalled
 
+  /**
+   * Latest known online status of the app's backend.
+   * Provided by the server to indicate if the app appears reachable.
+   */
+  isOnline?: boolean;
+
   // Organization information
   organizationId?: string; // Reference to organization
   orgName?: string; // Name of the organization
