@@ -127,7 +127,11 @@ export default function SelectGlassesBluetoothScreen() {
       }
 
       setSearchResults(prevResults => {
-        if (!prevResults.some(device => device.deviceAddress === deviceAddress)) {
+        const isDuplicate = deviceAddress
+          ? prevResults.some(device => device.deviceAddress === deviceAddress)
+          : prevResults.some(device => device.deviceName === deviceName)
+
+        if (!isDuplicate) {
           const newDevice = new SearchResultDevice(modelName, deviceName, deviceAddress)
           return [...prevResults, newDevice]
         }
