@@ -172,9 +172,10 @@ public class LiveKitManager: NSObject {
             return
         }
 
+        Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
+
         LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
 //
-        Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
 //        injector.addBuffer(buffer)
     }
 
