@@ -1,7 +1,6 @@
 import Config from "react-native-config"
 import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 // Type definitions
@@ -32,12 +31,7 @@ class ServerComms {
   private constructor() {
     // Subscribe to WebSocket messages
     this.ws.on("message", message => {
-      this.handle_incoming_message(message)
-    })
-
-    // Subscribe to WebSocket status changes
-    this.ws.on("statusChange", status => {
-      this.handleStatusChange(status)
+      this.handle_message(message)
     })
 
     this.setupPeriodicTasks()
@@ -452,10 +446,35 @@ class ServerComms {
     }
   }
 
+  // message handlers:
+
+  private handle_connection_error(msg: any) {
+    console.error("ServerCommsTS: connection error", msg)
+  }
+
+  private handle_auth_error() {
+    console.error("ServerCommsTS: auth error")
+  }
+
+  private handle_microphone_state_change(msg: any) {
+    const bypassVad = msg.bypassVad || false
+    const requiredDataStrings = msg.requiredData || []
+    console.log(`ServerCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
+    coreCommunicator.sendCommand("microphone_state_change", {
+      requiredData: requiredDataStrings,
+      bypassVad,
+    })
+  }
+
+  private handle_display_event(msg: any) {
+    if (msg.view) {
+      coreCommunicator.sendCommand("display_event", msg)
+    }
+  }
+
   // Message Handling
-  private handle_incoming_message(msg: any) {
+  private handle_message(msg: any) {
     const type = msg.type
-    if (!type) return
 
     console.log(`ServerCommsTS: handle_incoming_message: ${type}`)
 
@@ -470,30 +489,19 @@ class ServerComms {
         break
 
       case "connection_error":
-        const errorMsg = msg.message || "Unknown error"
-        coreCommunicator.sendCommand("connection_error", {
-          message: errorMsg,
-        })
+        this.handle_connection_error(msg)
         break
 
       case "auth_error":
-        coreCommunicator.sendCommand("auth_error")
+        this.handle_auth_error()
         break
 
       case "microphone_state_change":
-        const bypassVad = msg.bypassVad || false
-        const requiredDataStrings = msg.requiredData || []
-        console.log(`ServerCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
-        coreCommunicator.sendCommand("microphone_state_change", {
-          requiredData: requiredDataStrings,
-          bypassVad,
-        })
+        this.handle_microphone_state_change(msg)
         break
 
       case "display_event":
-        if (msg.view) {
-          coreCommunicator.sendCommand("display_event", msg)
-        }
+        this.handle_display_event(msg)
         break
 
       case "audio_play_request":
