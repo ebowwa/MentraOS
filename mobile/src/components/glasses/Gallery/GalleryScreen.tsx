@@ -40,31 +40,31 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
+import {Header} from "@/components/ignite"
 
 // Gallery state machine states
 enum GalleryState {
-  // Initial states
-  INITIALIZING = "initializing", // Just opened gallery, loading local photos
-  QUERYING_GLASSES = "querying_glasses", // Sent BLE query for glasses media status
+  INITIALIZING = "initializing",
+  QUERYING_GLASSES = "querying_glasses",
+  NO_MEDIA_ON_GLASSES = "no_media_on_glasses",
+  MEDIA_AVAILABLE = "media_available",
+  REQUESTING_HOTSPOT = "requesting_hotspot",
+  WAITING_FOR_WIFI_PROMPT = "waiting_for_wifi_prompt",
+  USER_CANCELLED_WIFI = "user_cancelled_wifi",
+  CONNECTING_TO_HOTSPOT = "connecting_to_hotspot",
+  CONNECTED_LOADING = "connected_loading",
+  READY_TO_SYNC = "ready_to_sync",
+  SYNCING = "syncing",
+  SYNC_COMPLETE = "sync_complete",
+  ERROR = "error",
+}
 
-  // Decision states after query
-  NO_MEDIA_ON_GLASSES = "no_media_on_glasses", // Query returned, no media to sync
-  MEDIA_AVAILABLE = "media_available", // Query returned, media exists on glasses
-
-  // Connection states
-  REQUESTING_HOTSPOT = "requesting_hotspot", // Sent command to enable hotspot
-  WAITING_FOR_WIFI_PROMPT = "waiting_for_wifi_prompt", // Hotspot ready, waiting for user
-  USER_CANCELLED_WIFI = "user_cancelled_wifi", // User hit cancel on WiFi prompt
-  CONNECTING_TO_HOTSPOT = "connecting_to_hotspot", // User accepted, connecting...
-
-  // Connected states
-  CONNECTED_LOADING = "connected_loading", // Connected, loading photo list
-  READY_TO_SYNC = "ready_to_sync", // Photos loaded, can start sync
-  SYNCING = "syncing", // Actively downloading photos
-
-  // Final states
-  SYNC_COMPLETE = "sync_complete", // All photos synced
-  ERROR = "error", // Something went wrong
+interface GalleryItem {
+  id: string
+  type: "server" | "local" | "placeholder"
+  index: number
+  photo?: PhotoInfo
+  isOnServer?: boolean
 }
 
 export function GalleryScreen() {
@@ -74,66 +74,37 @@ export function GalleryScreen() {
 
   // Responsive column calculation
   const screenWidth = Dimensions.get("window").width
-  const MIN_ITEM_WIDTH = 150 // Minimum width for each photo
-
-  // Calculate columns: 2 for phones, 3-4 for tablets
-  const calculateColumns = () => {
-    const availableWidth = screenWidth - spacing.lg * 2
-    const columns = Math.floor(availableWidth / MIN_ITEM_WIDTH)
-    return Math.max(2, Math.min(columns, 4)) // Min 2, max 4 columns
-  }
-
-  const numColumns = calculateColumns()
+  const MIN_ITEM_WIDTH = 150
+  const numColumns = Math.max(2, Math.min(Math.floor((screenWidth - spacing.lg * 2) / MIN_ITEM_WIDTH), 4))
   const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
 
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
-  // Get glasses WiFi info from status
-  const glassesWifiIp = status.glasses_info?.glasses_wifi_local_ip
-  const isWifiConnected = status.glasses_info?.glasses_wifi_connected
-
-  // Get glasses hotspot info from status
-  const isHotspotEnabled = status.glasses_info?.glasses_hotspot_enabled
-  const hotspotGatewayIp = status.glasses_info?.glasses_hotspot_gateway_ip
-  const hotspotSSID = status.glasses_info?.glasses_hotspot_ssid
-
-  // Determine the active IP - ONLY use hotspot gateway IP when phone is connected to hotspot
-  // Never use local WiFi IP - we only support hotspot mode for gallery
-  const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSSID && networkStatus.phoneSSID === hotspotSSID
-
-  // Only use hotspot IP when phone is actually connected to the hotspot
-
-  // Memoize connection values to prevent unnecessary re-renders
+  // Memoize connection values
   const connectionInfo = useMemo(() => {
     const glassesInfo = status.glasses_info
-    return {
-      glassesWifiIp: glassesInfo?.glasses_wifi_local_ip,
-      isWifiConnected: glassesInfo?.glasses_wifi_connected,
-      isHotspotEnabled: glassesInfo?.glasses_hotspot_enabled,
-      hotspotSsid: glassesInfo?.glasses_hotspot_ssid,
-      hotspotPassword: glassesInfo?.glasses_hotspot_password,
-      hotspotGatewayIp: glassesInfo?.glasses_hotspot_gateway_ip,
-    }
-  }, [
-    status.glasses_info?.glasses_wifi_local_ip,
-    status.glasses_info?.glasses_wifi_connected,
-    status.glasses_info?.glasses_hotspot_enabled,
-    status.glasses_info?.glasses_hotspot_ssid,
-    status.glasses_info?.glasses_hotspot_password,
-    status.glasses_info?.glasses_hotspot_gateway_ip,
-  ])
+    if (!glassesInfo) return {}
 
-  // State machine for gallery flow
+    return {
+      isHotspotEnabled: glassesInfo.glasses_hotspot_enabled,
+      hotspotSsid: glassesInfo.glasses_hotspot_ssid,
+      hotspotPassword: glassesInfo.glasses_hotspot_password,
+      hotspotGatewayIp: glassesInfo.glasses_hotspot_gateway_ip,
+    }
+  }, [status.glasses_info])
+
+  const {hotspotSsid, hotspotPassword, hotspotGatewayIp, isHotspotEnabled} = connectionInfo
+
+  // State machine
   const [galleryState, setGalleryState] = useState<GalleryState>(GalleryState.INITIALIZING)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Helper function to log state transitions
   const transitionToState = (newState: GalleryState) => {
     console.log(`[GalleryScreen] State transition: ${galleryState} → ${newState}`)
     setGalleryState(newState)
   }
 
-  // Data state - these are data, not flow control
+  // Data state
   const [totalServerCount, setTotalServerCount] = useState(0)
   const [loadedServerPhotos, setLoadedServerPhotos] = useState<Map<number, PhotoInfo>>(new Map())
   const [downloadedPhotos, setDownloadedPhotos] = useState<PhotoInfo[]>([])
@@ -151,81 +122,80 @@ export function GalleryScreen() {
     has_content: boolean
   } | null>(null)
 
-  // Track if we opened the hotspot (for cleanup)
-  const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  // Track if gallery opened the hotspot
   const galleryOpenedHotspotRef = useRef(false)
+  const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
 
-  // Track loaded ranges to avoid duplicate requests
+  // Track loaded ranges
   const loadedRanges = useRef<Set<string>>(new Set())
   const loadingRanges = useRef<Set<string>>(new Set())
+  const syncTriggeredRef = useRef(false)
   const PAGE_SIZE = 20
+
+  // Load downloaded photos
+  const loadDownloadedPhotos = useCallback(async () => {
+    try {
+      const downloadedFiles = await localStorageService.getDownloadedFiles()
+      const photoInfos = Object.values(downloadedFiles).map(file => localStorageService.convertToPhotoInfo(file))
+      setDownloadedPhotos(photoInfos)
+    } catch (err) {
+      console.error("Error loading downloaded photos:", err)
+    }
+  }, [])
 
   // Initial load - get total count and first batch
   const loadInitialPhotos = useCallback(
     async (overrideServerIp?: string) => {
-      // Only use hotspot for connection
       const serverIp = overrideServerIp || hotspotGatewayIp
       const hasConnection = overrideServerIp || (isHotspotEnabled && hotspotGatewayIp)
 
       if (!hasConnection || !serverIp) {
-        console.log("[GalleryScreen] Glasses not connected (WiFi or hotspot)")
+        console.log("[GalleryScreen] Glasses not connected")
         setTotalServerCount(0)
-        // If we were trying to load, mark as no media
         if (galleryState === GalleryState.CONNECTED_LOADING) {
           transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
         }
         return
       }
 
-      // Transition to loading state if not already
       if (galleryState !== GalleryState.CONNECTED_LOADING) {
         transitionToState(GalleryState.CONNECTED_LOADING)
       }
 
       try {
         asgCameraApi.setServer(serverIp, 8089)
-
-        // Get first page to know total count
         const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, 0)
 
         setTotalServerCount(result.totalCount)
 
-        // If no photos, we're done loading
         if (result.totalCount === 0) {
           console.log("[GalleryScreen] No photos on glasses")
           transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
           return
         }
 
-        // Store loaded photos in map
         const newMap = new Map<number, PhotoInfo>()
         result.photos.forEach((photo, index) => {
           newMap.set(index, photo)
         })
         setLoadedServerPhotos(newMap)
-
-        // Mark this range as loaded
         loadedRanges.current.add("0-19")
-
-        // We have photos, ready to sync
         transitionToState(GalleryState.READY_TO_SYNC)
       } catch (err) {
         console.error("[GalleryScreen] Failed to load initial photos:", err)
         setTotalServerCount(0)
 
-        // Handle specific error types
         let errorMsg = "Failed to load photos"
         if (err instanceof Error) {
           if (err.message.includes("429")) {
             errorMsg = "Server is busy, please try again in a moment"
-            // Retry after a delay for rate limiting
             setTimeout(() => {
               if (galleryState === GalleryState.ERROR) {
                 console.log("[GalleryScreen] Retrying after rate limit...")
                 transitionToState(GalleryState.CONNECTED_LOADING)
                 loadInitialPhotos()
               }
-            }, 3000) // Wait 3 seconds before retry
+            }, 3000)
           } else if (err.message.includes("400")) {
             errorMsg = "Invalid request to server"
           } else {
@@ -237,43 +207,31 @@ export function GalleryScreen() {
         transitionToState(GalleryState.ERROR)
       }
     },
-    [connectionInfo, galleryState],
+    [galleryState, isHotspotEnabled, hotspotGatewayIp],
   )
 
-  // Load photos for specific indices (for lazy loading)
+  // Load photos for specific indices
   const loadPhotosForIndices = useCallback(
     async (indices: number[]) => {
       if (!isHotspotEnabled || !hotspotGatewayIp || indices.length === 0) return
 
-      // Filter out already loaded indices
       const unloadedIndices = indices.filter(i => !loadedServerPhotos.has(i))
       if (unloadedIndices.length === 0) return
 
-      // Find contiguous ranges to load
       const sortedIndices = [...unloadedIndices].sort((a, b) => a - b)
       const minIndex = sortedIndices[0]
       const maxIndex = sortedIndices[sortedIndices.length - 1]
-
-      // Create range key
       const rangeKey = `${minIndex}-${maxIndex}`
 
-      // Skip if already loading or loaded this range
-      if (loadingRanges.current.has(rangeKey) || loadedRanges.current.has(rangeKey)) {
-        return
-      }
+      if (loadingRanges.current.has(rangeKey) || loadedRanges.current.has(rangeKey)) return
 
       loadingRanges.current.add(rangeKey)
 
       try {
-        // Only use hotspot for connection
-        const serverIp = hotspotGatewayIp
-        asgCameraApi.setServer(serverIp, 8089)
-
-        // Load the range
+        asgCameraApi.setServer(hotspotGatewayIp, 8089)
         const limit = maxIndex - minIndex + 1
         const result = await asgCameraApi.getGalleryPhotos(limit, minIndex)
 
-        // Update loaded photos map
         setLoadedServerPhotos(prev => {
           const newMap = new Map(prev)
           result.photos.forEach((photo, i) => {
@@ -289,25 +247,13 @@ export function GalleryScreen() {
         loadingRanges.current.delete(rangeKey)
       }
     },
-    [connectionInfo.isHotspotEnabled, connectionInfo.hotspotGatewayIp, loadedServerPhotos],
+    [isHotspotEnabled, hotspotGatewayIp, loadedServerPhotos],
   )
 
-  // Load downloaded photos
-  const loadDownloadedPhotos = useCallback(async () => {
-    try {
-      const downloadedFiles = await localStorageService.getDownloadedFiles()
-      const photoInfos = Object.values(downloadedFiles).map(file => localStorageService.convertToPhotoInfo(file))
-      setDownloadedPhotos(photoInfos)
-    } catch (err) {
-      console.error("Error loading downloaded photos:", err)
-    }
-  }, [])
-
-  // Sync files from server to local storage
+  // Sync files from server
   const handleSync = async () => {
-    // Check for either WiFi or hotspot connection
-    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
-    const serverIp = isHotspotEnabled && hotspotGatewayIp ? hotspotGatewayIp : glassesWifiIp
+    const hasConnection = isHotspotEnabled && hotspotGatewayIp
+    const serverIp = hotspotGatewayIp
 
     if (!hasConnection || !serverIp) {
       showAlert("Cannot Sync", "Your glasses are not connected. Please connect them to WiFi or enable hotspot.", [
@@ -320,31 +266,16 @@ export function GalleryScreen() {
     setSyncProgress(null)
 
     try {
-      console.log(`[GalleryScreen] Starting sync process with server IP: ${serverIp}`)
-
-      // Set the server IP for the sync
+      console.log(`[GalleryScreen] Starting sync with server IP: ${serverIp}`)
       asgCameraApi.setServer(serverIp, 8089)
-      console.log(`[GalleryScreen] Set server URL to: ${serverIp}:8089`)
 
-      // Get sync state
       const syncState = await localStorageService.getSyncState()
-      console.log(`[GalleryScreen] Sync state:`, syncState)
+      const syncResponse = await asgCameraApi.syncWithServer(syncState.client_id, syncState.last_sync_time, true)
 
-      // Get changed files from server - this endpoint returns ALL changed files, not paginated
-      const syncResponse = await asgCameraApi.syncWithServer(
-        syncState.client_id,
-        syncState.last_sync_time,
-        true, // include thumbnails
-      )
-
-      console.log(`[GalleryScreen] Sync response:`, syncResponse)
-
-      // Access the data property of the response
       const syncData = syncResponse.data || syncResponse
 
       if (!syncData.changed_files || syncData.changed_files.length === 0) {
-        console.log("Sync Complete- no new files to download!!!")
-        //showAlert("Sync Complete", "No new files to download", [{text: translate("common:ok")}])
+        console.log("Sync Complete - no new files")
         return
       }
 
@@ -354,7 +285,6 @@ export function GalleryScreen() {
         message: "Downloading files...",
       })
 
-      // Download files sequentially with progress tracking
       const downloadResult = await asgCameraApi.batchSyncFiles(
         syncData.changed_files,
         true,
@@ -363,60 +293,43 @@ export function GalleryScreen() {
             current,
             total,
             message: `Downloading ${fileName}...`,
-            fileProgress, // Add individual file progress
+            fileProgress,
           })
         },
       )
 
-      console.log(`[GalleryScreen] Download result:`, downloadResult)
-
-      // Get glasses model from status
-      console.log(`[GalleryScreen] Status glasses_info:`, status.glasses_info)
       const glassesModel = status.glasses_info?.model_name || undefined
-      console.log(`[GalleryScreen] Using glasses model: ${glassesModel}`)
 
-      // Save downloaded files metadata to local storage (files are already saved to filesystem)
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
-          photoInfo.filePath, // File path from download
-          photoInfo.thumbnailPath, // Thumbnail path if exists
-          glassesModel, // Pass glasses model
+          photoInfo.filePath,
+          photoInfo.thumbnailPath,
+          glassesModel,
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
-        console.log(`[GalleryScreen] Saved metadata for ${photoInfo.name} with model: ${glassesModel}`)
       }
 
-      // Delete files from server after successful download
       if (downloadResult.downloaded.length > 0) {
         const deleteResult = await asgCameraApi.deleteFilesFromServer(downloadResult.downloaded.map(f => f.name))
         console.log(`[GalleryScreen] Delete result:`, deleteResult)
       }
 
-      // Update sync state
       await localStorageService.updateSyncState({
         last_sync_time: syncData.server_time,
         total_downloaded: syncState.total_downloaded + downloadResult.downloaded.length,
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      // Clear server photos since they've been deleted
       setLoadedServerPhotos(new Map())
       setTotalServerCount(0)
       loadedRanges.current.clear()
       loadingRanges.current.clear()
 
-      // Reload downloaded photos to show the newly synced items
       await loadDownloadedPhotos()
-
-      // Mark sync as complete
       transitionToState(GalleryState.SYNC_COMPLETE)
       setSyncProgress(null)
-
-      // After a delay, transition to no media state (since everything is synced)
-      //setTimeout(() => {
       transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
-      //}, 2000)
     } catch (err) {
       let errorMsg = "Sync failed"
       if (err instanceof Error) {
@@ -430,24 +343,18 @@ export function GalleryScreen() {
       }
 
       setErrorMessage(errorMsg)
-
-      // Only show alert for non-rate-limit errors
       if (!errorMsg.includes("busy")) {
         showAlert("Sync Error", errorMsg, [{text: translate("common:ok")}])
       }
-
       transitionToState(GalleryState.ERROR)
       setSyncProgress(null)
     }
   }
 
-  // Take picture
-
   // Handle photo selection
   const handlePhotoPress = (item: GalleryItem) => {
-    if (!item.photo) return // Skip placeholders
+    if (!item.photo) return
 
-    // Check if it's a video that's still on the glasses (not synced)
     if (item.photo.is_video && item.isOnServer) {
       showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
         {text: translate("common:ok")},
@@ -459,38 +366,22 @@ export function GalleryScreen() {
 
   // Handle photo sharing
   const handleSharePhoto = async (photo: PhotoInfo) => {
-    try {
-      if (!photo) {
-        console.error("No photo provided to share")
-        return
-      }
+    if (!photo) {
+      console.error("No photo provided to share")
+      return
+    }
 
+    try {
+      const shareUrl = photo.is_video && photo.download ? photo.download : photo.url
       let filePath = ""
 
-      console.log("Sharing photo:", {
-        name: photo.name,
-        url: photo.url,
-        download: photo.download,
-        filePath: photo.filePath,
-        mime_type: photo.mime_type,
-        is_video: photo.is_video,
-      })
-
-      // For videos, use download URL if available (actual video file), not thumbnail
-      const shareUrl = photo.is_video && photo.download ? photo.download : photo.url
-
-      // For file:// URLs, extract the path
-      if (shareUrl && shareUrl.startsWith("file://")) {
+      if (shareUrl?.startsWith("file://")) {
         filePath = shareUrl.replace("file://", "")
       } else if (photo.filePath) {
-        // If we have a local file path, use that
         filePath = photo.filePath.startsWith("file://") ? photo.filePath.replace("file://", "") : photo.filePath
       } else {
-        // For server photos/videos, we need to download first
         const mediaType = photo.is_video ? "video" : "photo"
-        // Close the media viewer first so the alert appears on top
         setSelectedPhoto(null)
-        // Small delay to ensure modal closes before showing alert
         setTimeout(() => {
           showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
         }, 100)
@@ -499,37 +390,25 @@ export function GalleryScreen() {
 
       if (!filePath) {
         console.error("No valid file path found")
-        // Close the media viewer first so the alert appears on top
         setSelectedPhoto(null)
-        // Small delay to ensure modal closes before showing alert
         setTimeout(() => {
           showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
         }, 100)
         return
       }
 
-      console.log("Final file path:", filePath)
-
-      // Create share message with glasses model if available
       let shareMessage = photo.is_video ? "Check out this video" : "Check out this photo"
       if (photo.glassesModel) {
         shareMessage += ` taken with ${photo.glassesModel}`
       }
       shareMessage += "!"
 
-      console.log("Share message:", shareMessage)
-
-      // Use the shareFile utility that handles platform-specific sharing
       const mimeType = photo.mime_type || (photo.is_video ? "video/mp4" : "image/jpeg")
       await shareFile(filePath, mimeType, "Share Photo", shareMessage)
-
       console.log("Share completed successfully")
     } catch (error) {
-      // Check if it's a file provider error
       if (error instanceof Error && error.message?.includes("FileProvider")) {
-        // Close the media viewer first so the alert appears on top
         setSelectedPhoto(null)
-        // Small delay to ensure modal closes before showing alert
         setTimeout(() => {
           showAlert(
             "Sharing Not Available",
@@ -539,9 +418,7 @@ export function GalleryScreen() {
         }, 100)
       } else {
         console.error("Error sharing photo:", error)
-        // Close the media viewer first so the alert appears on top
         setSelectedPhoto(null)
-        // Small delay to ensure modal closes before showing alert
         setTimeout(() => {
           showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
         }, 100)
@@ -553,15 +430,10 @@ export function GalleryScreen() {
   const handleRequestHotspot = async () => {
     transitionToState(GalleryState.REQUESTING_HOTSPOT)
     try {
-      // Send hotspot command using existing CoreCommunicator
       await coreCommunicator.sendCommand("set_hotspot_state", {enabled: true})
-
-      // Track that gallery opened this hotspot for lifecycle management
       setGalleryOpenedHotspot(true)
       galleryOpenedHotspotRef.current = true
-      console.log("[GalleryScreen] Gallery initiated hotspot - will auto-close when appropriate")
-
-      // Transition to waiting for hotspot to be ready
+      console.log("[GalleryScreen] Gallery initiated hotspot")
       transitionToState(GalleryState.WAITING_FOR_WIFI_PROMPT)
     } catch (error) {
       console.error("[GalleryScreen] Failed to start hotspot:", error)
@@ -576,8 +448,8 @@ export function GalleryScreen() {
     console.log("[GalleryScreen] Stopping hotspot...")
     try {
       const result = await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
-      console.log("[GalleryScreen] Hotspot stop command sent, result:", result)
-      setGalleryOpenedHotspot(false) // Reset tracking
+      console.log("[GalleryScreen] Hotspot stop command sent")
+      setGalleryOpenedHotspot(false)
       galleryOpenedHotspotRef.current = false
       return result
     } catch (error) {
@@ -588,8 +460,7 @@ export function GalleryScreen() {
 
   // Handle photo deletion
   const handleDeletePhoto = async (photo: PhotoInfo) => {
-    // Check for either WiFi or hotspot connection
-    const hasConnection = (isWifiConnected && glassesWifiIp) || (isHotspotEnabled && hotspotGatewayIp)
+    const hasConnection = isHotspotEnabled && hotspotGatewayIp
 
     if (!hasConnection) {
       showAlert("Error", "Glasses not connected", [{text: translate("common:ok")}])
@@ -605,7 +476,7 @@ export function GalleryScreen() {
           try {
             await asgCameraApi.deleteFilesFromServer([photo.name])
             showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
-            loadInitialPhotos() // Reload photos
+            loadInitialPhotos()
           } catch (err) {
             showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
               {text: translate("common:ok")},
@@ -626,8 +497,7 @@ export function GalleryScreen() {
         onPress: async () => {
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
-            await loadDownloadedPhotos() // Reload downloaded photos
-            //showAlert("Success", "Photo deleted from local storage!", [{text: translate("common:ok")}])
+            await loadDownloadedPhotos()
           } catch (err) {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
@@ -636,110 +506,33 @@ export function GalleryScreen() {
     ])
   }
 
-  // Query gallery status from glasses
-  const queryGlassesGalleryStatus = () => {
-    console.log("[GalleryScreen] Querying glasses gallery status...")
-    coreCommunicator
-      .queryGalleryStatus()
-      .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
-  }
-
-  // STEP 1: On mount - load local photos and query gallery status
-  useEffect(() => {
-    console.log("[GalleryScreen] Component mounted, starting smart gallery flow")
-
-    // Always load local photos first
-    loadDownloadedPhotos()
-
-    // Transition to querying state
-    transitionToState(GalleryState.QUERYING_GLASSES)
-
-    // Query gallery status via BLE - this starts the whole flow
-    queryGlassesGalleryStatus()
-
-    // We only use hotspot for gallery sync, no direct WiFi connection
-  }, []) // Only run on mount
-
-  // Track if we're already loading to prevent duplicate requests
-
-  // Handle back button
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        if (selectedPhoto) {
-          setSelectedPhoto(null)
-          return true
-        }
-        return false
-      }
-
-      BackHandler.addEventListener("hardwareBackPress", onBackPress)
-      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
-    }, [selectedPhoto]),
-  )
-
-  // Auto-refresh connection check is now handled by NetworkConnectivityProvider
-
-  // Helper functions for hotspot connection
-
+  // Connect to hotspot
   const connectToHotspot = async (ssid: string, password: string, ip: string) => {
     try {
       console.log(`[GalleryScreen] Connecting to ${ssid}...`)
-
-      // Transition to connecting state
       transitionToState(GalleryState.CONNECTING_TO_HOTSPOT)
 
-      // Attempt to connect to the hotspot automatically
-      await WifiManager.connectToProtectedSSID(
-        ssid,
-        password,
-        false, // isWEP
-        false, // isHidden
-      )
-
+      await WifiManager.connectToProtectedSSID(ssid, password, false, false)
       console.log("[GalleryScreen] Successfully connected to hotspot!")
 
-      // Update camera API to use hotspot IP
       if (ip) {
         asgCameraApi.setServer(ip, 8089)
-        // Transition to connected loading state
         transitionToState(GalleryState.CONNECTED_LOADING)
 
-        // Check what SSID the phone is actually connected to now
         try {
           const currentSSID = await WifiManager.getCurrentWifiSSID()
-          console.log("[GalleryScreen] Phone's current SSID after connection:", currentSSID)
-          console.log("[GalleryScreen] Expected hotspot SSID:", ssid)
-          console.log("[GalleryScreen] SSIDs match:", currentSSID === ssid)
-
-          // If we're connected to the hotspot, directly update the network service
-          // Don't rely on NetInfo which has stale data on Android
-          if (currentSSID === ssid) {
-            // // Import and use networkConnectivityService directly
-            // const {networkConnectivityService} = await import("../../services/networkConnectivityService")
-            // // Tell the service we're connected to the hotspot
-            // networkConnectivityService.updateGlassesStatus(true, ssid, ip)
-            // // Also manually update the phone's network status since NetInfo is stale
-            // // This is a workaround for Android's NetInfo timing issues
-            // ;(networkConnectivityService as any).currentStatus.phoneConnected = true
-            // ;(networkConnectivityService as any).currentStatus.phoneSSID = currentSSID
-            // ;(networkConnectivityService as any).notifyListeners()
-          }
+          console.log("[GalleryScreen] Phone's current SSID:", currentSSID)
         } catch (error) {
           console.log("[GalleryScreen] Failed to get current SSID:", error)
         }
 
-        // Reload gallery after connection - only server photos need reloading
-        // Pass the IP directly to avoid closure issues
         setTimeout(() => {
-          loadInitialPhotos(ip) // Pass IP directly to avoid stale closure values
-        }, 500) // Give more time for network to stabilization
+          loadInitialPhotos(ip)
+        }, 500)
       }
     } catch (error: any) {
       console.log("[GalleryScreen] Failed to connect:", error)
 
-      // Check if user cancelled vs other error
-      // Error codes 'userDenied' or 'unableToConnect' mean user cancelled
       if (
         error?.code === "userDenied" ||
         error?.code === "unableToConnect" ||
@@ -749,28 +542,54 @@ export function GalleryScreen() {
         console.log("[GalleryScreen] User cancelled WiFi connection")
         transitionToState(GalleryState.USER_CANCELLED_WIFI)
       } else {
-        // Other error
         setErrorMessage(error?.message || "Failed to connect to hotspot")
         transitionToState(GalleryState.ERROR)
       }
     }
   }
 
-  // Retry connecting to hotspot
+  // Retry hotspot connection
   const retryHotspotConnection = () => {
-    if (hotspotSsid && hotspotPassword && hotspotGatewayIp) {
-      transitionToState(GalleryState.WAITING_FOR_WIFI_PROMPT)
-      connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
-    }
+    if (!hotspotSsid || !hotspotPassword || !hotspotGatewayIp) return
+
+    transitionToState(GalleryState.WAITING_FOR_WIFI_PROMPT)
+    connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
   }
 
-  // Extract hotspot connection logic into reusable function
+  // Query gallery status
+  const queryGlassesGalleryStatus = () => {
+    console.log("[GalleryScreen] Querying glasses gallery status...")
+    coreCommunicator
+      .queryGalleryStatus()
+      .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
+  }
 
-  // STEP 2: Listen for gallery status and start hotspot if needed
+  // Initial mount
+  useEffect(() => {
+    console.log("[GalleryScreen] Component mounted")
+    loadDownloadedPhotos()
+    transitionToState(GalleryState.QUERYING_GLASSES)
+    queryGlassesGalleryStatus()
+  }, [])
+
+  // Handle back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (!selectedPhoto) return false
+        setSelectedPhoto(null)
+        return true
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+    }, [selectedPhoto]),
+  )
+
+  // Listen for gallery status
   useEffect(() => {
     const handleGalleryStatus = (data: any) => {
       console.log("[GalleryScreen] Received GLASSES_GALLERY_STATUS event:", data)
-      console.log("[GalleryScreen] Current gallery state:", galleryState)
 
       setGlassesGalleryStatus({
         photos: data.photos || 0,
@@ -779,7 +598,6 @@ export function GalleryScreen() {
         has_content: data.has_content || false,
       })
 
-      // Handle state transitions based on gallery status
       if (!data.has_content) {
         console.log("[GalleryScreen] No content on glasses")
         setTotalServerCount(0)
@@ -787,7 +605,6 @@ export function GalleryScreen() {
         return
       }
 
-      // Check if camera is busy (only matters if there's content to fetch)
       if (data.camera_busy) {
         const busyMessage =
           data.camera_busy === "stream"
@@ -795,204 +612,159 @@ export function GalleryScreen() {
             : data.camera_busy === "video"
               ? "recording video"
               : "using the camera"
-
         const itemText = data.total === 1 ? "item" : "items"
 
         showAlert(
           "Camera Busy",
           `Cannot fetch ${data.total || 0} ${itemText} from glasses while ${busyMessage}. Please stop ${busyMessage} first to sync.`,
           [{text: "OK"}],
-          {
-            iconName: "camera",
-            iconColor: "#FF9800",
-          },
+          {iconName: "camera", iconColor: "#FF9800"},
         )
 
-        // Don't proceed with hotspot/fetching
-        // TODO: Reconsider whether this is a good way to handle this case
         setTotalServerCount(0)
         transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
         return
       }
 
-      // We have content, need hotspot to sync
-
-      // Check if phone is connected to glasses hotspot
       const phoneConnectedToHotspot = networkStatus.phoneSSID && hotspotSsid && networkStatus.phoneSSID === hotspotSsid
 
       if (phoneConnectedToHotspot) {
         console.log("[GalleryScreen] Already connected to hotspot")
         transitionToState(GalleryState.CONNECTED_LOADING)
-        loadInitialPhotos(hotspotGatewayIp) // Pass IP directly
+        loadInitialPhotos(hotspotGatewayIp)
         return
       }
 
-      // We have content but not connected - need hotspot
       if (galleryState === GalleryState.QUERYING_GLASSES) {
         console.log("[GalleryScreen] Media available, requesting hotspot")
         transitionToState(GalleryState.MEDIA_AVAILABLE)
-        // Will trigger hotspot request in next effect
       }
     }
 
     GlobalEventEmitter.addListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
-
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
     }
-  }, [galleryState, networkStatus.phoneSSID, hotspotSSID])
+  }, [galleryState, networkStatus.phoneSSID, hotspotSsid])
 
-  // Handle state transitions - request hotspot when media is available
+  // Handle state transitions
   useEffect(() => {
     if (galleryState === GalleryState.MEDIA_AVAILABLE) {
       console.log("[GalleryScreen] Media available, requesting hotspot")
-      handleRequestHotspot()
+      // handleRequestHotspot()
+      transitionToState(GalleryState.USER_CANCELLED_WIFI)
     }
   }, [galleryState])
 
-  // STEP 3: Listen for hotspot ready and connect to it
+  // Listen for hotspot ready
   useEffect(() => {
     const handleHotspotStatusChange = (eventData: any) => {
       console.log("[GalleryScreen] Received GLASSES_HOTSPOT_STATUS_CHANGE event:", eventData)
-      console.log("[GalleryScreen] galleryOpenedHotspotRef.current:", galleryOpenedHotspotRef.current)
 
-      if (eventData.enabled && eventData.ssid && eventData.password && galleryOpenedHotspotRef.current) {
-        console.log("[GalleryScreen] Hotspot enabled, attempting to connect phone to WiFi...")
-
-        // Store hotspot info for SSID matching
-        // Attempt to connect phone to hotspot WiFi
-        connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
+      if (!eventData.enabled || !eventData.ssid || !eventData.password || !galleryOpenedHotspotRef.current) {
+        return
       }
+
+      console.log("[GalleryScreen] Hotspot enabled, attempting to connect...")
+      connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
     }
 
     GlobalEventEmitter.addListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
-
     return () => {
       GlobalEventEmitter.removeListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     }
-  }, []) // No dependencies - uses ref instead
+  }, [])
 
-  // STEP 4: Monitor phone SSID - when it matches hotspot SSID, we're connected
+  // Monitor phone SSID
   useEffect(() => {
-    // Get phone's current SSID from network status
     const phoneSSID = networkStatus.phoneSSID
 
-    // Check if phone is now connected to the glasses hotspot
-    if (phoneSSID && hotspotSSID && phoneSSID === hotspotSSID && hotspotGatewayIp) {
-      console.log("[GalleryScreen] Phone connected to glasses hotspot! SSID match confirmed")
-      console.log("[GalleryScreen] Phone SSID:", phoneSSID, "Hotspot SSID:", hotspotSSID)
+    if (!phoneSSID || !hotspotSsid || phoneSSID !== hotspotSsid || !hotspotGatewayIp) return
 
-      // Transition to connected state
-      transitionToState(GalleryState.CONNECTED_LOADING)
+    console.log("[GalleryScreen] Phone connected to glasses hotspot!")
+    transitionToState(GalleryState.CONNECTED_LOADING)
+    asgCameraApi.setServer(hotspotGatewayIp, 8089)
 
-      // Update API server to use hotspot gateway IP
-      asgCameraApi.setServer(hotspotGatewayIp, 8089)
+    setTimeout(() => {
+      console.log("[GalleryScreen] Loading photos via hotspot...")
+      loadInitialPhotos(hotspotGatewayIp)
+    }, 500)
+  }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
 
-      // Now that we're connected, load photos
-      setTimeout(() => {
-        console.log("[GalleryScreen] Loading photos via hotspot connection...")
-        loadInitialPhotos(hotspotGatewayIp) // Pass IP directly
-      }, 500) // Brief delay for network stabilization
-    }
-  }, [networkStatus.phoneSSID, hotspotSSID, hotspotGatewayIp])
-
-  // Track if sync has been triggered to prevent duplicates
-  const syncTriggeredRef = useRef(false)
-
-  // Monitor sync completion to auto-close hotspot
+  // Auto-trigger sync
   useEffect(() => {
-    console.log(
-      "[GalleryScreen] Sync completion monitor - galleryState:",
-      galleryState,
-      "galleryOpenedHotspot:",
-      galleryOpenedHotspot,
-      "isHotspotEnabled:",
-      isHotspotEnabled,
-    )
-
-    // Watch for sync completion - close hotspot if we opened it
-    if (galleryState === GalleryState.SYNC_COMPLETE && galleryOpenedHotspot && isHotspotEnabled) {
-      console.log("[GalleryScreen] Sync completed, auto-closing gallery-initiated hotspot...")
-
-      // Close hotspot immediately after sync completion
-      handleStopHotspot()
-        .then(() => {
-          console.log("[GalleryScreen] Hotspot closed after sync completion")
-        })
-        .catch(error => {
-          console.error("[GalleryScreen] Failed to close hotspot after sync:", error)
-        })
-
-      // No cleanup needed since we're not using setTimeout
+    if (galleryState !== GalleryState.READY_TO_SYNC || totalServerCount === 0 || syncTriggeredRef.current) {
+      return
     }
+
+    console.log("[GalleryScreen] Ready to sync, auto-starting...")
+    syncTriggeredRef.current = true
+    setTimeout(() => {
+      handleSync().finally(() => {
+        syncTriggeredRef.current = false
+      })
+    }, 500)
+  }, [galleryState, totalServerCount])
+
+  // Monitor sync completion
+  useEffect(() => {
+    if (galleryState !== GalleryState.SYNC_COMPLETE || !galleryOpenedHotspot || !isHotspotEnabled) {
+      return
+    }
+
+    console.log("[GalleryScreen] Sync completed, auto-closing hotspot...")
+    handleStopHotspot()
+      .then(() => console.log("[GalleryScreen] Hotspot closed after sync"))
+      .catch(error => console.error("[GalleryScreen] Failed to close hotspot:", error))
   }, [galleryState, galleryOpenedHotspot, isHotspotEnabled])
 
-  // Remove this effect - hotspot is now started from gallery status event handler
-
-  // Remove this effect - connection is now handled by hotspot status event
-
-  // Auto-close hotspot when leaving gallery (only if gallery opened it)
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (galleryOpenedHotspot) {
-        console.log("[GalleryScreen] Gallery unmounting - closing gallery-initiated hotspot")
-        // Close hotspot immediately when leaving gallery
-        coreCommunicator
-          .sendCommand("set_hotspot_state", {enabled: false})
-          .then(() => console.log("[GalleryScreen] Successfully closed hotspot on gallery exit"))
-          .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
-      }
+      if (!galleryOpenedHotspot) return
+
+      console.log("[GalleryScreen] Gallery unmounting - closing hotspot")
+      coreCommunicator
+        .sendCommand("set_hotspot_state", {enabled: false})
+        .then(() => console.log("[GalleryScreen] Closed hotspot on exit"))
+        .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
     }
-  }, [galleryOpenedHotspot]) // Track this dependency
+  }, [galleryOpenedHotspot])
 
-  // Gallery item type for mixed content
-  interface GalleryItem {
-    id: string
-    type: "server" | "local" | "placeholder"
-    index: number
-    photo?: PhotoInfo
-    isOnServer?: boolean
-  }
-
-  // Combine photos with placeholders - fixed size list!
+  // Combine photos with placeholders
   const allPhotos = useMemo(() => {
     const items: GalleryItem[] = []
 
-    // Create items for ALL server photos (loaded or placeholder)
-    // Server photos maintain their order from the API (should be newest first)
+    // Server photos
     for (let i = 0; i < totalServerCount; i++) {
       const photo = loadedServerPhotos.get(i)
       items.push({
         id: `server-${i}`,
         type: photo ? "server" : "placeholder",
         index: i,
-        photo: photo,
+        photo,
         isOnServer: true,
       })
     }
 
-    // Get names of all loaded server photos for deduplication
+    // Downloaded-only photos
     const serverPhotoNames = new Set<string>()
-    loadedServerPhotos.forEach(photo => {
-      serverPhotoNames.add(photo.name)
-    })
+    loadedServerPhotos.forEach(photo => serverPhotoNames.add(photo.name))
 
-    // Add downloaded-only photos at the end, sorted by newest first
-    const downloadedOnly = downloadedPhotos.filter(p => !serverPhotoNames.has(p.name))
-
-    // Sort downloaded photos by modified date (newest first)
-    downloadedOnly.sort((a, b) => {
-      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
-      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
-      return bTime - aTime
-    })
+    const downloadedOnly = downloadedPhotos
+      .filter(p => !serverPhotoNames.has(p.name))
+      .sort((a, b) => {
+        const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified
+        const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified
+        return bTime - aTime
+      })
 
     downloadedOnly.forEach((photo, i) => {
       items.push({
         id: `local-${photo.name}`,
         type: "local",
         index: totalServerCount + i,
-        photo: photo,
+        photo,
         isOnServer: false,
       })
     })
@@ -1000,25 +772,23 @@ export function GalleryScreen() {
     return items
   }, [totalServerCount, loadedServerPhotos, downloadedPhotos])
 
-  // Viewability tracking for lazy loading
+  // Viewability tracking
   const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: ViewToken[]}) => {
-    // Get indices of placeholder items that are visible
     const placeholderIndices = viewableItems
-      .filter(item => item.item && item.item.type === "placeholder")
+      .filter(item => item.item?.type === "placeholder")
       .map(item => item.item.index)
 
-    if (placeholderIndices.length > 0) {
-      // Add buffer of 5 items before and after
-      const minIndex = Math.max(0, Math.min(...placeholderIndices) - 5)
-      const maxIndex = Math.min(totalServerCount - 1, Math.max(...placeholderIndices) + 5)
+    if (placeholderIndices.length === 0) return
 
-      const indicesToLoad = []
-      for (let i = minIndex; i <= maxIndex; i++) {
-        indicesToLoad.push(i)
-      }
+    const minIndex = Math.max(0, Math.min(...placeholderIndices) - 5)
+    const maxIndex = Math.min(totalServerCount - 1, Math.max(...placeholderIndices) + 5)
 
-      loadPhotosForIndices(indicesToLoad)
+    const indicesToLoad = []
+    for (let i = minIndex; i <= maxIndex; i++) {
+      indicesToLoad.push(i)
     }
+
+    loadPhotosForIndices(indicesToLoad)
   }).current
 
   const viewabilityConfig = useRef({
@@ -1026,86 +796,69 @@ export function GalleryScreen() {
     minimumViewTime: 100,
   }).current
 
-  // Derive UI state from state machine
-  const isLoadingServerPhotos =
-    galleryState === GalleryState.CONNECTED_LOADING ||
-    galleryState === GalleryState.INITIALIZING ||
-    galleryState === GalleryState.QUERYING_GLASSES
-  const error = galleryState === GalleryState.ERROR ? errorMessage : null
+  // UI state
+  const isLoadingServerPhotos = [
+    GalleryState.CONNECTED_LOADING,
+    GalleryState.INITIALIZING,
+    GalleryState.QUERYING_GLASSES,
+  ].includes(galleryState)
 
-  // Count server photos for sync button - use total count, not just loaded photos
+  const error = galleryState === GalleryState.ERROR ? errorMessage : null
   const serverPhotosToSync = totalServerCount
 
-  // Trigger sync when we're ready (we know we're connected if we reached READY_TO_SYNC)
-  useEffect(() => {
-    // Start sync automatically when we reach READY_TO_SYNC state with photos
-    // We know we're connected because we successfully loaded the photo list
-    if (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 && !syncTriggeredRef.current) {
-      console.log("[GalleryScreen] Ready to sync, auto-starting sync...")
-      syncTriggeredRef.current = true
-      setTimeout(() => {
-        handleSync().finally(() => {
-          syncTriggeredRef.current = false
-        })
-      }, 500) // Brief delay to ensure connection is stable
-    }
-
-    // Reset sync trigger when state changes away from READY_TO_SYNC
-    if (galleryState !== GalleryState.READY_TO_SYNC) {
-      syncTriggeredRef.current = false
-    }
-  }, [galleryState, serverPhotosToSync])
+  const shouldShowSyncButton =
+    [
+      GalleryState.CONNECTED_LOADING,
+      GalleryState.USER_CANCELLED_WIFI,
+      GalleryState.WAITING_FOR_WIFI_PROMPT,
+      GalleryState.CONNECTING_TO_HOTSPOT,
+      GalleryState.REQUESTING_HOTSPOT,
+      GalleryState.SYNCING,
+      GalleryState.SYNC_COMPLETE,
+      GalleryState.ERROR,
+    ].includes(galleryState) ||
+    (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0)
 
   const renderStatusBar = () => {
-    const shouldShowSyncButton =
-      galleryState === GalleryState.CONNECTED_LOADING ||
-      galleryState === GalleryState.USER_CANCELLED_WIFI ||
-      galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ||
-      galleryState === GalleryState.CONNECTING_TO_HOTSPOT ||
-      galleryState === GalleryState.REQUESTING_HOTSPOT ||
-      galleryState === GalleryState.SYNCING ||
-      galleryState === GalleryState.SYNC_COMPLETE ||
-      galleryState === GalleryState.ERROR ||
-      (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0)
+    if (!shouldShowSyncButton) return null
 
-    if (!shouldShowSyncButton) {
-      return null
-    }
-
-    return (
-      <TouchableOpacity
-        style={[themed($syncButtonFixed)]}
-        onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
-        activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
-        disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
-        <View style={themed($syncButtonContent)}>
-          {/* Initial loading states */}
-          {/* Requesting hotspot */}
-          {galleryState === GalleryState.REQUESTING_HOTSPOT ? (
+    const statusContent = () => {
+      switch (galleryState) {
+        case GalleryState.REQUESTING_HOTSPOT:
+          return (
             <View style={themed($syncButtonRow)}>
               <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
               <Text style={themed($syncButtonText)}>Starting hotspot...</Text>
             </View>
-          ) : /* Waiting for WiFi prompt */
-          galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ? (
+          )
+
+        case GalleryState.WAITING_FOR_WIFI_PROMPT:
+          return (
             <View style={themed($syncButtonRow)}>
               <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
               <Text style={themed($syncButtonText)}>Waiting for connection...</Text>
             </View>
-          ) : /* Connecting to hotspot */
-          galleryState === GalleryState.CONNECTING_TO_HOTSPOT ? (
+          )
+
+        case GalleryState.CONNECTING_TO_HOTSPOT:
+          return (
             <View style={themed($syncButtonRow)}>
               <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
               <Text style={themed($syncButtonText)}>Connecting to hotspot...</Text>
             </View>
-          ) : /* Connected, loading photos */
-          galleryState === GalleryState.CONNECTED_LOADING ? (
+          )
+
+        case GalleryState.CONNECTED_LOADING:
+          return (
             <View style={themed($syncButtonRow)}>
               <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
               <Text style={themed($syncButtonText)}>Loading photos...</Text>
             </View>
-          ) : /* User cancelled WiFi - show retry */
-          galleryState === GalleryState.USER_CANCELLED_WIFI && hotspotSSID && glassesGalleryStatus?.has_content ? (
+          )
+
+        case GalleryState.USER_CANCELLED_WIFI:
+          if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
+          return (
             <View>
               <View style={themed($syncButtonRow)}>
                 <MaterialCommunityIcons
@@ -1114,44 +867,44 @@ export function GalleryScreen() {
                   color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
-                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus?.total || 0} items</Text>
+                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus.total} items</Text>
               </View>
               <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
-                Tap to join "{hotspotSSID}" network
+                Tap to join "{hotspotSsid}" network
               </Text>
             </View>
-          ) : /* Ready to sync - show what will be synced */
-          galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0 ? (
+          )
+
+        case GalleryState.READY_TO_SYNC:
+          if (serverPhotosToSync === 0) return null
+          return (
             <View style={themed($syncButtonRow)}>
-              <Text style={themed($syncButtonText)}>Ready to sync</Text>
+              <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
             </View>
-          ) : /* Actively syncing with progress */
-          galleryState === GalleryState.SYNCING && syncProgress ? (
+          )
+
+        case GalleryState.SYNCING:
+          if (!syncProgress) {
+            return (
+              <View style={themed($syncButtonRow)}>
+                <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+                <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
+              </View>
+            )
+          }
+          return (
             <>
-              {/* Overall sync status */}
               <Text style={themed($syncButtonText)}>
                 Syncing {syncProgress.current} of {syncProgress.total} items
               </Text>
-
-              {/* Individual file progress bar (changes quickly) */}
               <View style={themed($syncButtonProgressBar)}>
-                <View
-                  style={[
-                    themed($syncButtonProgressFill),
-                    {
-                      width: `${syncProgress.fileProgress || 0}%`,
-                    },
-                  ]}
-                />
+                <View style={[themed($syncButtonProgressFill), {width: `${syncProgress.fileProgress || 0}%`}]} />
               </View>
-
-              {/* Overall sync progress bar (steady progress) */}
               <View style={[themed($syncButtonProgressBar), {marginTop: 4, height: 4, opacity: 0.6}]}>
                 <View
                   style={[
                     themed($syncButtonProgressFill),
                     {
-                      // Simple calculation: just show percentage of files completed
                       width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
                       opacity: 0.8,
                     },
@@ -1159,142 +912,141 @@ export function GalleryScreen() {
                 />
               </View>
             </>
-          ) : /* Syncing without progress */
-          galleryState === GalleryState.SYNCING ? (
-            <View style={themed($syncButtonRow)}>
-              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
-              <Text style={themed($syncButtonText)}>Syncing {serverPhotosToSync} items...</Text>
-            </View>
-          ) : /* Sync complete */
-          galleryState === GalleryState.SYNC_COMPLETE ? (
+          )
+
+        case GalleryState.SYNC_COMPLETE:
+          return (
             <View style={themed($syncButtonRow)}>
               <Text style={themed($syncButtonText)}>Sync complete!</Text>
             </View>
-          ) : /* Error state */
-          galleryState === GalleryState.ERROR ? (
+          )
+
+        case GalleryState.ERROR:
+          return (
             <View style={themed($syncButtonRow)}>
               <Text style={themed($syncButtonText)}>{errorMessage || "An error occurred"}</Text>
             </View>
-          ) : null}
+          )
+
+        default:
+          return null
+      }
+    }
+
+    return (
+      <TouchableOpacity
+        style={[themed($syncButtonFixed)]}
+        onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
+        activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
+        disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
+        <View style={themed($syncButtonContent)}>{statusContent()}</View>
+      </TouchableOpacity>
+    )
+  }
+
+  const renderPhotoItem = ({item}: {item: GalleryItem}) => {
+    if (!item.photo) {
+      return (
+        <View style={[themed($photoItem), {width: itemWidth}]}>
+          <ShimmerPlaceholder
+            shimmerColors={[theme.colors.border, theme.colors.background, theme.colors.border]}
+            shimmerStyle={{
+              width: itemWidth,
+              height: itemWidth * 0.8,
+              borderRadius: 8,
+            }}
+            duration={1500}
+          />
         </View>
+      )
+    }
+
+    return (
+      <TouchableOpacity
+        style={[themed($photoItem), {width: itemWidth}]}
+        onPress={() => handlePhotoPress(item)}
+        onLongPress={() => (item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo))}>
+        <PhotoImage photo={item.photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+        {item.isOnServer && (
+          <View style={themed($serverBadge)}>
+            <MaterialCommunityIcons name="glasses" size={14} color="white" />
+          </View>
+        )}
+        {item.photo.is_video && (
+          <View style={themed($videoIndicator)}>
+            <MaterialCommunityIcons name="video" size={14} color="white" />
+          </View>
+        )}
       </TouchableOpacity>
     )
   }
 
   return (
-    <View style={themed($screenContainer)}>
-      {/* Removed top banners - moved to bottom status bar */}
-
-      {/* Photo Grid */}
-      <View style={themed($galleryContainer)}>
-        {error ? (
-          <View style={themed($errorContainer)}>
-            <Text style={themed($errorText)}>{error}</Text>
-          </View>
-        ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
-          <View style={themed($emptyContainer)}>
-            <Text style={themed($emptyText)}>No photos</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={allPhotos}
-            numColumns={numColumns}
-            key={numColumns} // Force re-render when columns change
-            renderItem={({item}) => {
-              if (item.photo) {
-                // Render actual photo
-                return (
-                  <TouchableOpacity
-                    style={[themed($photoItem), {width: itemWidth}]}
-                    onPress={() => handlePhotoPress(item)}
-                    onLongPress={() =>
-                      item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo)
-                    }>
-                    <PhotoImage
-                      photo={item.photo}
-                      style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]}
-                    />
-                    {item.isOnServer && (
-                      <View style={themed($serverBadge)}>
-                        <MaterialCommunityIcons name="glasses" size={14} color="white" />
-                      </View>
-                    )}
-                    {item.photo.is_video && (
-                      <View style={themed($videoIndicator)}>
-                        <MaterialCommunityIcons name="video" size={14} color="white" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )
-              } else {
-                // Render skeleton placeholder
-                return (
-                  <View style={[themed($photoItem), {width: itemWidth}]}>
-                    <ShimmerPlaceholder
-                      shimmerColors={[theme.colors.border, theme.colors.background, theme.colors.border]}
-                      shimmerStyle={{
-                        width: itemWidth,
-                        height: itemWidth * 0.8,
-                        borderRadius: 8,
-                      }}
-                      duration={1500}
-                    />
-                  </View>
-                )
-              }
-            }}
-            keyExtractor={item => item.id}
-            contentContainerStyle={[
-              themed($photoGridContent),
-              {
-                paddingBottom:
-                  galleryState === GalleryState.INITIALIZING ||
-                  galleryState === GalleryState.QUERYING_GLASSES ||
-                  galleryState === GalleryState.CONNECTED_LOADING ||
-                  galleryState === GalleryState.USER_CANCELLED_WIFI ||
-                  galleryState === GalleryState.WAITING_FOR_WIFI_PROMPT ||
-                  galleryState === GalleryState.CONNECTING_TO_HOTSPOT ||
-                  galleryState === GalleryState.REQUESTING_HOTSPOT ||
-                  galleryState === GalleryState.SYNCING ||
-                  galleryState === GalleryState.SYNC_COMPLETE ||
-                  galleryState === GalleryState.ERROR ||
-                  (galleryState === GalleryState.READY_TO_SYNC && serverPhotosToSync > 0)
-                    ? 100
-                    : spacing.lg,
-              },
-            ]} // Extra padding when sync button is shown
-            columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-            ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
-            // Performance optimizations
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            removeClippedSubviews={true}
-            updateCellsBatchingPeriod={50}
-            // Viewability for lazy loading
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-          />
-        )}
-      </View>
-
-      {/* Unified Status Bar - Fixed at bottom */}
-      {renderStatusBar()}
-
-      {/* Media Viewer */}
-      <MediaViewer
-        visible={!!selectedPhoto}
-        photo={selectedPhoto}
-        onClose={() => setSelectedPhoto(null)}
-        onShare={() => selectedPhoto && handleSharePhoto(selectedPhoto)}
+    <>
+      <Header
+        title="Glasses Gallery"
+        leftIcon="caretLeft"
+        onLeftPress={() => goBack()}
+        // RightActionComponent={
+        //   <TouchableOpacity onPress={handleSync} style={themed($syncButton)}>
+        //     {/* number of photos to sync */}
+        //     <MaterialCommunityIcons name="download" size={20} color={theme.colors.text} />
+        //     <Text style={themed($syncButtonText)}>{totalServerCount}</Text>
+        //   </TouchableOpacity>
+        // }
       />
-    </View>
+      <View style={themed($screenContainer)}>
+        <View style={themed($galleryContainer)}>
+          {error ? (
+            <View style={themed($errorContainer)}>
+              <Text style={themed($errorText)}>{error}</Text>
+            </View>
+          ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
+            <View style={themed($emptyContainer)}>
+              <Text style={themed($emptyText)}>No photos</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={allPhotos}
+              numColumns={numColumns}
+              key={numColumns}
+              renderItem={renderPhotoItem}
+              keyExtractor={item => item.id}
+              contentContainerStyle={[
+                themed($photoGridContent),
+                {paddingBottom: shouldShowSyncButton ? 100 : spacing.lg},
+              ]}
+              columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
+              ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              removeClippedSubviews={true}
+              updateCellsBatchingPeriod={50}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+            />
+          )}
+        </View>
+
+        {renderStatusBar()}
+
+        <MediaViewer
+          visible={!!selectedPhoto}
+          photo={selectedPhoto}
+          onClose={() => setSelectedPhoto(null)}
+          onShare={() => selectedPhoto && handleSharePhoto(selectedPhoto)}
+        />
+      </View>
+    </>
   )
 }
 
-const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+// Styles remain the same
+const $screenContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flex: 1,
-  backgroundColor: colors.background,
+  // backgroundColor: colors.background,
+  marginHorizontal: -spacing.lg,
 })
 
 const $errorContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -1334,8 +1086,6 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xs,
 })
 
-// Removed - using FlatList now
-
 const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   borderRadius: spacing.xs,
   overflow: "hidden",
@@ -1356,23 +1106,26 @@ const $videoIndicator: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: 6,
   paddingVertical: 3,
   shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 1,
-  },
+  shadowOffset: {width: 0, height: 1},
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
 })
 
-// Modal styles
-
-// New styles for the fixed sync button
 const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-// Warning banner styles
+const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  gap: spacing.sm,
+  backgroundColor: colors.palette.primary500,
+  borderRadius: spacing.md,
+  paddingVertical: spacing.sm,
+  paddingHorizontal: spacing.md,
+  color: colors.text,
+})
 
 const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   position: "absolute",
@@ -1387,10 +1140,7 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
   shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 2,
-  },
+  shadowOffset: {width: 0, height: 2},
   shadowOpacity: 0.15,
   shadowRadius: 3.84,
   elevation: 5,
@@ -1411,7 +1161,7 @@ const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   fontWeight: "600",
   color: colors.text,
-  marginBottom: 2,
+  // marginBottom: 2,
 })
 
 const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -1422,7 +1172,7 @@ const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  height: 6, // Make it slightly taller for better visibility
+  height: 6,
   backgroundColor: colors.border,
   borderRadius: 3,
   overflow: "hidden",
@@ -1436,7 +1186,6 @@ const $syncButtonProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
   borderRadius: 2,
 })
 
-// Server badge styles
 const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   position: "absolute",
   top: spacing.xs,
@@ -1448,10 +1197,7 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   justifyContent: "center",
   alignItems: "center",
   shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 1,
-  },
+  shadowOffset: {width: 0, height: 1},
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
