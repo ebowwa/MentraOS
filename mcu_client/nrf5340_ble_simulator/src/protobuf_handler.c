@@ -305,10 +305,10 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 			break;
 			
 		case 20: // mic_state_tag
-			// LOG_INF("Processing Microphone State Configuration...");
-			// if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_mic_state_tag) {
-			// 	protobuf_process_mic_state_config(&phone_msg.payload.mic_state);
-			// }
+			LOG_INF("Processing Microphone State Configuration...");
+			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_mic_state_tag) {
+				protobuf_process_mic_state_config(&phone_msg.payload.mic_state);
+			}
 			break;
 			
 		case 37: // brightness_tag
@@ -1263,8 +1263,8 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	}
 	
 	LOG_INF("=== MICROPHONE STATE CONFIG MESSAGE (Tag 20) ===");
-	
 	bool enabled = mic_state->enabled;
+
 	pdm_audio_state_t current_state = pdm_audio_stream_get_state();
 	bool was_streaming = (current_state == PDM_AUDIO_STATE_STREAMING);
 	

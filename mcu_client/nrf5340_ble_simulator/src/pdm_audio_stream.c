@@ -9,13 +9,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include "bspal_audio_i2s.h"
 #include "mentra_ble_service.h"
 #include "mos_pdm.h"
 #include "sw_codec_lc3.h"
-#include "bspal_audio_i2s.h"
+static bool audio_system_enabled = false;
 
 LOG_MODULE_REGISTER(pdm_audio_stream, LOG_LEVEL_INF);
-extern int ble_send_data(const uint8_t *data, uint16_t len);
+extern int      ble_send_data(const uint8_t *data, uint16_t len);
 extern uint16_t get_ble_payload_mtu(void);
 // Simple audio streaming state
 static bool     pdm_enabled        = false;
@@ -68,25 +69,51 @@ void send_lc3_multi_frame_packet(const uint8_t *frames, uint8_t num_frames, uint
 
 int user_sw_codec_lc3_init(void)
 {
-    int ret;
     sw_codec_lc3_init(NULL, NULL, LC3_FRAME_DURATION_US);
-    ret = sw_codec_lc3_enc_init(PDM_SAMPLE_RATE, PDM_BIT_DEPTH, LC3_FRAME_DURATION_US, LC3_BITRATE_DEFAULT,
-                                PDM_CHANNELS, &pcm_bytes_req_enc);
+}
+int lc3_encoder_start(void)
+{
+    int ret = sw_codec_lc3_enc_init(PDM_SAMPLE_RATE, PDM_BIT_DEPTH, LC3_FRAME_DURATION_US, LC3_BITRATE_DEFAULT,
+                                    PDM_CHANNELS, &pcm_bytes_req_enc);
     if (ret < 0)
     {
         LOG_ERR("LC3 encoder initialization failed with error: %d", ret);
         return -1;
     }
-    else
-    {
-        LOG_INF("LC3 encoder pcm_bytes_req_enc:%d", pcm_bytes_req_enc);
-    }
-    ret = sw_codec_lc3_dec_init(PDM_SAMPLE_RATE, PDM_BIT_DEPTH, LC3_FRAME_DURATION_US, PDM_CHANNELS);
+    LOG_INF("LC3 encoder pcm_bytes_req_enc:%d", pcm_bytes_req_enc);
+    return 0;
+}
+int lc3_decoder_start(void)
+{
+    int ret = sw_codec_lc3_dec_init(PDM_SAMPLE_RATE, PDM_BIT_DEPTH, LC3_FRAME_DURATION_US, PDM_CHANNELS);
     if (ret < 0)
     {
-        LOG_ERR("LC3 decoder initialization failed with error: %d", ret);
+        LOG_ERR("LC3 encoder initialization failed with error: %d", ret);
         return -1;
     }
+    LOG_INF("LC3 decoder initialized successfully");
+    return 0;
+}
+int lc3_encoder_stop(void)
+{
+    int ret = sw_codec_lc3_enc_uninit_all();
+    if (ret < 0)
+    {
+        LOG_ERR("LC3 encoder uninitialization failed with error: %d", ret);
+        return -1;
+    }
+    LOG_INF("LC3 encoder uninitialized successfully");
+    return 0;
+}
+int lc3_decoder_stop(void)
+{
+    int ret = sw_codec_lc3_dec_uninit_all();
+    if (ret < 0)
+    {
+        LOG_ERR("LC3 decoder uninitialization failed with error: %d", ret);
+        return -1;
+    }
+    LOG_INF("LC3 decoder uninitialized successfully");
     return 0;
 }
 // Simple audio processing function
@@ -105,44 +132,42 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
     uint8_t         lc3_frame_buffer[MAX_FRAMES_PER_PACKET][LC3_FRAME_LEN];
     uint8_t         frame_count = 0;
     uint8_t         max_frames_per_packet;
-    audio_i2s_init();
-
-    user_sw_codec_lc3_init();
-
     pdm_init();
-
-    
+    audio_i2s_init();
+    user_sw_codec_lc3_init();
     while (1)
     {
-        if (pdm_enabled)
+        if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))
         {
-            if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))
+            if (pdm_enabled)
             {
                 ret = sw_codec_lc3_enc_run(pcm_req_buffer, sizeof(pcm_req_buffer), LC3_USE_BITRATE_FROM_INIT, 0,
                                            LC3_FRAME_LEN, lc3_frame_buffer[frame_count], &encoded_bytes_written_l);
                 if (ret < 0)
                 {
                     LOG_ERR("LC3 encoding failed with error: %d", ret);
+                    continue;
                 }
                 else
                 {
-                LOG_INF("LC3 encoding successful, bytes written: %d", encoded_bytes_written_l);
-                // LOG_HEXDUMP_INF(lc3_frame_buffer[frame_count], encoded_bytes_written_l,"Hexdump");
-#if 1  // test lc3 decode 
-                ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count], encoded_bytes_written_l,
-                                           PDM_PCM_REQ_BUFFER_SIZE * 2, 0, pcm_req_buffer1,
-                                           &decoded_bytes_written_l, false);
-                if (ret < 0)
-                {
-                    LOG_ERR("LC3 decoding failed with error: %d", ret);
-                }
-                else
-                {
-                    LOG_INF("LC3 decoding successful, bytes written: %d", decoded_bytes_written_l);
+                    LOG_INF("LC3 encoding successful, bytes written: %d", encoded_bytes_written_l);
+                    // LOG_HEXDUMP_INF(lc3_frame_buffer[frame_count], encoded_bytes_written_l,"Hexdump");
+#if 1  // test lc3 decode
+                    ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count], encoded_bytes_written_l,
+                                               PDM_PCM_REQ_BUFFER_SIZE * 2, 0, pcm_req_buffer1,
+                                               &decoded_bytes_written_l, false);
+                    if (ret < 0)
                     {
-                        i2s_pcm_player((void *)pcm_req_buffer1, decoded_bytes_written_l / 2, 0);
+                        LOG_ERR("LC3 decoding failed with error: %d", ret);
+                        continue;
                     }
-                }
+                    else
+                    {
+                        LOG_INF("LC3 decoding successful, bytes written: %d", decoded_bytes_written_l);
+                        {
+                            i2s_pcm_player((void *)pcm_req_buffer1, decoded_bytes_written_l / 2, 0);
+                        }
+                    }
 #endif
                     if (get_ble_payload_mtu() < 202)
                     {
@@ -157,11 +182,6 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                     }
                 }
             }
-        }
-        else
-        {
-           // Sleep when disabled
-            k_sleep(K_MSEC(500)); 
         }
     }
 }
@@ -178,8 +198,7 @@ int pdm_audio_stream_init(void)
 
     // Create audio processing thread
     audio_thread_tid = k_thread_create(&audio_thread_data, audio_thread_stack,
-                                       K_THREAD_STACK_SIZEOF(audio_thread_stack), 
-                                       audio_processing_thread, NULL, NULL,
+                                       K_THREAD_STACK_SIZEOF(audio_thread_stack), audio_processing_thread, NULL, NULL,
                                        NULL, 3, 0, K_NO_WAIT);
 
     if (audio_thread_tid)
@@ -195,7 +214,28 @@ int pdm_audio_stream_init(void)
         return -1;
     }
 }
-
+int enable_audio_system(bool enable)
+{
+    if (enable && !audio_system_enabled)  // Start audio system
+    {
+        pdm_start();
+        audio_i2s_start();
+        lc3_encoder_start();
+        lc3_decoder_start();
+        audio_system_enabled = true;
+        LOG_INF("▶️ Started test audio streaming");
+    }
+    else if (!enable && audio_system_enabled)  // Stop audio system
+    {
+        audio_i2s_stop();
+        pdm_stop();
+        lc3_encoder_stop();
+        lc3_decoder_stop();
+        audio_system_enabled = false;
+        LOG_INF("⏹️ Stopped test audio streaming");
+    }
+    return 0;
+}
 int pdm_audio_stream_set_enabled(bool enabled)
 {
     if (!pdm_initialized)
@@ -212,20 +252,16 @@ int pdm_audio_stream_set_enabled(bool enabled)
 
     pdm_enabled = enabled;
     LOG_INF("🎤 PDM audio streaming %s", enabled ? "enabled" : "disabled");
-
+    enable_audio_system(enabled);
     if (enabled)
     {
-        pdm_start();
-        audio_i2s_start();
         // Reset counters when enabling
-        // frames_transmitted = 0;
-        // streaming_errors   = 0;
-        // LOG_INF("📡 Starting test audio streaming (1 packet/sec to avoid BLE overload)");
+        frames_transmitted = 0;
+        streaming_errors   = 0;
+        LOG_INF("📡 Starting test audio streaming (1 packet/sec to avoid BLE overload)");
     }
     else
     {
-        audio_i2s_stop();
-        pdm_stop();
         LOG_INF("⏹️ Stopped test audio streaming");
     }
 

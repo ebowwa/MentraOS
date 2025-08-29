@@ -447,7 +447,6 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	LOG_INF("Connected %s", addr);
 	set_ble_connected_status(true);
 	current_conn = bt_conn_ref(conn);
-	pdm_audio_stream_set_enabled(true);// test 
 	dk_set_led_on(CON_STATUS_LED);
 }
 
@@ -459,7 +458,6 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	
 	LOG_INF("Disconnected: %s, reason 0x%02x %s", addr, reason, bt_hci_err_to_str(reason));
 	set_ble_connected_status(false);
-	pdm_audio_stream_set_enabled(false);// test 
 	if (auth_conn) {
 		bt_conn_unref(auth_conn);
 		auth_conn = NULL;
@@ -792,7 +790,7 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **DISABLED: Buttons 3 & 4 are ignored due to SPI4 conflicts**
 	if (has_changed & (DK_BTN3_MSK | DK_BTN4_MSK)) {
-		LOG_WRN("⚠️  Buttons 3/4 disabled (SPI4 conflict on P0.08/P0.09)");
+		// LOG_WRN("⚠️  Buttons 3/4 disabled (SPI4 conflict on P0.08/P0.09)");
 	}
 }
 
