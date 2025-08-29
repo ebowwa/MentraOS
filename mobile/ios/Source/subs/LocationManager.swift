@@ -17,8 +17,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
     override private init() {
         super.init()
-        // delay setup until after login:
-        // setup()
     }
 
     // porter test

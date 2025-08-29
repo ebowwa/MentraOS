@@ -357,9 +357,9 @@ Enable or disable the glasses Voice Activity Detection.
 #### 👓 Glasses → Phone
 
 ```
-[0x02][PhoneToGlasses { set_vad_enabled {
+[0x02][GlassesToPhone { vad_configured {
   msg_id: "vad_001"
-  enabled: true
+  success: true
 }}]
 ```
 

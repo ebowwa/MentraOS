@@ -159,7 +159,8 @@ class AudioManager: NSObject {
         Core.log("AudioManager: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
 
         // Send response back through ServerComms which will forward to React Native
-        ServerComms.shared.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
+        let serverComms = ServerComms.shared
+        serverComms.sendAudioPlayResponse(requestId: requestId, success: success, error: error, duration: duration)
     }
 
     // Clean up method to remove observers when stopping audio

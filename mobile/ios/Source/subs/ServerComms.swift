@@ -8,11 +8,10 @@
 import Combine
 import Foundation
 
+// TODO: config: remove
 class ServerComms {
     static let shared = ServerComms()
 
-    let wsManager = WebSocketManager.shared
-    private var speechRecCallback: (([String: Any]) -> Void)?
     private var coreToken: String = ""
     var userid: String = ""
     private var serverUrl: String = ""
@@ -26,6 +25,8 @@ class ServerComms {
 
     private var reconnecting: Bool = false
     private var reconnectionAttempts: Int = 0
+
+    private let wsManager = WebSocketManager.shared
 
     private init() {
         // Subscribe to WebSocket messages
@@ -69,13 +70,14 @@ class ServerComms {
         //    }
     }
 
-    func setAuthCredentials(_ userid: String, _ coreToken: String) {
+    func setAuthCreds(_ coreToken: String, _ userid: String) {
         self.coreToken = coreToken
         self.userid = userid
         // set core token user pref:
         UserDefaults.standard.set(coreToken, forKey: "core_token")
     }
 
+    // TODO: config: remove
     func setServerUrl(_ url: String) {
         serverUrl = url
         Core.log("ServerComms: setServerUrl: \(url)")
@@ -83,10 +85,6 @@ class ServerComms {
             wsManager.disconnect()
             connectWebSocket()
         }
-    }
-
-    func setSpeechRecCallback(_ callback: @escaping ([String: Any]) -> Void) {
-        speechRecCallback = callback
     }
 
     // MARK: - Connection Management
@@ -229,12 +227,12 @@ class ServerComms {
             return
         }
 
-        if let locationData = LocationManager.shared.getCurrentLocation() {
-            Core.log("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
-            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
-        } else {
-            Core.log("Cannot send location update: No location data available")
-        }
+//        if let locationData = LocationManager.shared.getCurrentLocation() {
+//            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+//            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
+//        } else {
+//            Core.log("ServerComms: Cannot send location update: No location data available")
+//        }
     }
 
     func sendGlassesConnectionState(modelName: String, status: String) {
@@ -256,7 +254,7 @@ class ServerComms {
 
     func updateAsrConfig(languages: [[String: Any]]) {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send ASR config: not connected.")
+            Core.log("ServerComms: Cannot send ASR config: not connected.")
             return
         }
 
@@ -271,7 +269,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building config message: \(error)")
+            Core.log("ServerComms: Error building config message: \(error)")
         }
     }
 
@@ -288,7 +286,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building core_status_update JSON: \(error)")
+            Core.log("ServerComms: Error building core_status_update JSON: \(error)")
         }
     }
 
@@ -328,7 +326,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building start_app JSON: \(error)")
+            Core.log("ServerComms: Error building start_app JSON: \(error)")
         }
     }
 
@@ -345,7 +343,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building stop_app JSON: \(error)")
+            Core.log("ServerComms: Error building stop_app JSON: \(error)")
         }
     }
 
@@ -383,7 +381,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building photo_response JSON: \(error)")
+            Core.log("ServerComms: Error building photo_response JSON: \(error)")
         }
     }
 
@@ -401,7 +399,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building video_stream_response JSON: \(error)")
+            Core.log("ServerComms: Error building video_stream_response JSON: \(error)")
         }
     }
 
@@ -418,7 +416,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error sending head position: \(error)")
+            Core.log("ServerComms: Error sending head position: \(error)")
         }
     }
 
@@ -428,6 +426,7 @@ class ServerComms {
 
     private func handleIncomingMessage(_ msg: [String: Any]) {
         guard let type = msg["type"] as? String else { return }
+        let m = MentraManager.getInstance()
 
         // CoreCommsService.log("Received message of type: \(type)")
 
@@ -445,15 +444,15 @@ class ServerComms {
             }
 
         case "app_state_change":
-            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
+            m.onAppStateChange(parseAppList(msg))
 
         case "connection_error":
             let errorMsg = msg["message"] as? String ?? "Unknown error"
 
-            MentraManager.getInstance().onConnectionError(errorMsg)
+            m.onConnectionError(errorMsg)
 
         case "auth_error":
-            MentraManager.getInstance().onAuthError()
+            m.onAuthError()
 
         case "microphone_state_change":
             let bypassVad = msg["bypassVad"] as? Bool ?? false
@@ -471,11 +470,11 @@ class ServerComms {
 
             // Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            MentraManager.getInstance().onMicrophoneStateChange(requiredData, bypassVad)
+            m.handle_microphone_state_change(requiredData, bypassVad)
 
         case "display_event":
             if let view = msg["view"] as? String {
-                MentraManager.getInstance().onDisplayEvent(msg)
+                m.handle_display_event(msg)
             }
 
         case "audio_play_request":
@@ -486,15 +485,7 @@ class ServerComms {
 
         case "request_single":
             if let dataType = msg["data_type"] as? String {
-                MentraManager.getInstance().onRequestSingle(dataType)
-            }
-
-        case "interim", "final":
-            // Pass speech messages to speech recognition callback
-            if let callback = speechRecCallback {
-                callback(msg)
-            } else {
-                Core.log("ServerComms: Received speech message but speechRecCallback is null!")
+                m.onRequestSingle(dataType)
             }
 
         case "reconnect":
@@ -506,7 +497,7 @@ class ServerComms {
                 Core.log("ServerComms: Received settings update but no status")
                 return
             }
-            MentraManager.getInstance().onStatusUpdate(status)
+            m.onStatusUpdate(status)
 
       // Log.d(TAG, "Received settings update from WebSocket");
       // try {
@@ -520,26 +511,26 @@ class ServerComms {
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
-                LocationManager.shared.setTier(tier: tier)
+//                LocationManager.shared.setTier(tier: tier)
             }
 
         case "request_single_location":
             if let accuracy = msg["accuracy"] as? String,
                let correlationId = msg["correlationId"] as? String
             {
-                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+//                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
 
         case "app_started":
             if let packageName = msg["packageName"] as? String {
                 Core.log("ServerComms: Received app_started message for package: \(packageName)")
-                MentraManager.getInstance().onAppStarted(packageName)
+                m.onAppStarted(packageName)
             }
 
         case "app_stopped":
             if let packageName = msg["packageName"] as? String {
                 Core.log("ServerComms: Received app_stopped message for package: \(packageName)")
-                MentraManager.getInstance().onAppStopped(packageName)
+                m.onAppStopped(packageName)
             }
 
         case "photo_request":
@@ -549,7 +540,7 @@ class ServerComms {
             let size = (msg["size"] as? String) ?? "medium"
             Core.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
-                MentraManager.getInstance().onPhotoRequest(requestId, appId, webhookUrl, size)
+                m.onPhotoRequest(requestId, appId, webhookUrl, size)
             } else {
                 Core.log("Invalid photo request: missing requestId or appId")
             }
@@ -557,43 +548,43 @@ class ServerComms {
         case "start_rtmp_stream":
             let rtmpUrl = msg["rtmpUrl"] as? String ?? ""
             if !rtmpUrl.isEmpty {
-                MentraManager.getInstance().onRtmpStreamStartRequest(msg)
+                m.onRtmpStreamStartRequest(msg)
             } else {
                 Core.log("Invalid RTMP stream request: missing rtmpUrl or callback")
             }
 
         case "stop_rtmp_stream":
             Core.log("Received STOP_RTMP_STREAM")
-            MentraManager.getInstance().onRtmpStreamStop()
+            m.onRtmpStreamStop()
 
         case "keep_rtmp_stream_alive":
             Core.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
-            MentraManager.getInstance().onRtmpStreamKeepAlive(msg)
+            m.onRtmpStreamKeepAlive(msg)
 
         case "start_buffer_recording":
             Core.log("ServerComms: Received START_BUFFER_RECORDING")
-            MentraManager.getInstance().onStartBufferRecording()
+            m.onStartBufferRecording()
 
         case "stop_buffer_recording":
             Core.log("ServerComms: Received STOP_BUFFER_RECORDING")
-            MentraManager.getInstance().onStopBufferRecording()
+            m.onStopBufferRecording()
 
         case "save_buffer_video":
             Core.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
             let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
             let durationSeconds = msg["durationSeconds"] as? Int ?? 30
-            MentraManager.getInstance().onSaveBufferVideo(requestId, durationSeconds)
+            m.onSaveBufferVideo(requestId, durationSeconds)
 
         case "start_video_recording":
             Core.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
             let save = msg["save"] as? Bool ?? true
-            MentraManager.getInstance().onStartVideoRecording(requestId, save)
+            m.onStartVideoRecording(requestId, save)
 
         case "stop_video_recording":
             Core.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? ""
-            MentraManager.getInstance().onStopVideoRecording(requestId)
+            m.onStopVideoRecording(requestId)
 
         default:
             Core.log("ServerComms: Unknown message type: \(type) / full: \(msg)")

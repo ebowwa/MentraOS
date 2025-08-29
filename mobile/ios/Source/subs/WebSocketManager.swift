@@ -16,9 +16,8 @@ enum WebSocketStatus {
 }
 
 class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
+    static var shared = WebSocketManager()
 
-    static let shared = WebSocketManager()
-    
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
     private let statusSubject = PassthroughSubject<WebSocketStatus, Never>()
@@ -42,12 +41,13 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
         }
     }
 
-    override init() {
+    override private init() {
         super.init()
         session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
     }
 
     func connect(url: URL, coreToken: String) {
+        Core.log("WebSocketManager: connect()")
         self.coreToken = coreToken
 
         // Disconnect existing connection if any, but don't update the disconnect status since we're connecting and don't want to trigger the reconnect handler:

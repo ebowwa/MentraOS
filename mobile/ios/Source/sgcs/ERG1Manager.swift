@@ -490,10 +490,12 @@ enum GlassesError: Error {
         Core.log("RN_connectGlasses()")
 
         if let side = leftPeripheral {
+            Core.log("G1: connecting to left glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 
         if let side = rightPeripheral {
+            Core.log("G1: connecting to right glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 
@@ -503,8 +505,12 @@ enum GlassesError: Error {
         }
 
         Core.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
+        // setReadiness(left: true, right: true)
         //    startHeartbeatTimer();
         RN_stopScan()
+
+        // get battery status:
+        // getBatteryStatus()
         return true
     }
 
@@ -1523,13 +1529,7 @@ extension ERG1Manager {
         return true
     }
 
-    @objc func RN_getBatteryStatus() {
-        Task {
-            await getBatteryStatus()
-        }
-    }
-
-    func getBatteryStatus() async {
+    func getBatteryStatus() {
         Core.log("G1: getBatteryStatus()")
         let command: [UInt8] = [Commands.BLE_REQ_BATTERY.rawValue, 0x01]
         queueChunks([command])
@@ -2209,7 +2209,6 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
 
         reconnectionAttempts += 1
-        Core.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
 
         // Start a new scan
         startScan()

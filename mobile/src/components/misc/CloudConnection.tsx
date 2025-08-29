@@ -68,7 +68,7 @@ export default function CloudConnection() {
   const {name: iconName, color: iconColor, label: statusLabel} = getIcon(status.core_info.cloud_connection_status)
 
   useEffect(() => {
-    console.log("Cloud Connection Status:", status.core_info.cloud_connection_status)
+    console.log("CloudConnection: Status:", status.core_info.cloud_connection_status)
     // if it changes to CONNECTED, fade out the cloud connection status
     if (status.core_info.cloud_connection_status === "CONNECTED") {
       cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
