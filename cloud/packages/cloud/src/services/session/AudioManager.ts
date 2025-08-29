@@ -57,7 +57,7 @@ export class AudioManager {
     [];
 
   // Ordered buffer for sequenced audio chunks
-  private orderedBuffer: OrderedAudioBuffer;
+  // private orderedBuffer: OrderedAudioBuffer;
 
   // Configuration
   private readonly LOG_AUDIO = false;
@@ -71,39 +71,10 @@ export class AudioManager {
   constructor(userSession: UserSession) {
     this.userSession = userSession;
     this.logger = userSession.logger.child({ service: "AudioManager" });
-
-    // Initialize ordered buffer
-    this.orderedBuffer = {
-      chunks: [],
-      lastProcessedSequence: -1,
-      processingInProgress: false,
-      expectedNextSequence: 0,
-      bufferSizeLimit: 100,
-      bufferTimeWindowMs: 500,
-      bufferProcessingInterval: null,
-    };
-
-    // Initialize LC3 service if needed
-    this.initializeLc3Service();
-
     this.logger.info("AudioManager initialized");
   }
 
-  /**
-   * Initialize the LC3 service
-   */
-  private async initializeLc3Service(): Promise<void> {
-    try {
-      if (this.IS_LC3) {
-        const lc3ServiceInstance = createLC3Service(this.userSession.sessionId);
-        await lc3ServiceInstance.initialize();
-        this.lc3Service = lc3ServiceInstance;
-        this.logger.info(`✅ LC3 Service initialized`);
-      }
-    } catch (error) {
-      this.logger.error(`❌ Failed to initialize LC3 service:`, error);
-    }
-  }
+
 
   /**
    * Process incoming audio data
@@ -154,73 +125,7 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Process audio data internally
-   *
-   * @param audioData The audio data to process
-   * @param isLC3 Whether the audio is LC3 encoded
-   * @returns Processed audio data
-   */
-  private async processAudioInternal(
-    audioData: ArrayBuffer | any,
-    isLC3: boolean,
-  ): Promise<ArrayBuffer | void> {
-    // Return early if no data
-    if (!audioData) return undefined;
 
-    // Process LC3 if needed
-    if (isLC3 && this.lc3Service) {
-      try {
-        // Decode the LC3 audio
-        const decodedData = await this.lc3Service.decodeAudioChunk(audioData);
-
-        if (!decodedData) {
-          if (this.LOG_AUDIO) this.logger.warn(`⚠️ LC3 decode returned null`);
-          return undefined;
-        }
-
-        // Write decoded PCM for debugging
-        if (this.DEBUG_AUDIO) {
-          await this.audioWriter?.writePCM(decodedData);
-        }
-
-        return decodedData;
-      } catch (error) {
-        this.logger.error(`❌ Error decoding LC3 audio:`, error);
-        await this.reinitializeLc3Service();
-        return undefined;
-      }
-    } else {
-      // Non-LC3 audio
-      if (this.DEBUG_AUDIO) {
-        await this.audioWriter?.writePCM(audioData);
-      }
-      return audioData;
-    }
-  }
-
-  /**
-   * Add audio data to recent buffer
-   *
-   * @param audioData Audio data to add
-   */
-  private addToRecentBuffer(audioData: ArrayBufferLike): void {
-    if (!audioData) return;
-
-    const now = Date.now();
-
-    // Add to buffer
-    this.recentAudioBuffer.push({
-      data: audioData,
-      timestamp: now,
-    });
-
-    // Prune old data (keep only last 10 seconds)
-    const tenSecondsAgo = now - 10_000;
-    this.recentAudioBuffer = this.recentAudioBuffer.filter(
-      (chunk) => chunk.timestamp >= tenSecondsAgo,
-    );
-  }
 
   /**
    * Initialize audio writer if needed
@@ -231,136 +136,6 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Reinitialize the LC3 service after an error
-   */
-  private async reinitializeLc3Service(): Promise<void> {
-    try {
-      if (this.lc3Service) {
-        this.logger.warn(`⚠️ Attempting to reinitialize LC3 service`);
-
-        // Clean up existing service
-        this.lc3Service.cleanup();
-        this.lc3Service = undefined;
-
-        // Create and initialize new service
-        const newLc3Service = createLC3Service(this.userSession.sessionId);
-        await newLc3Service.initialize();
-        this.lc3Service = newLc3Service;
-
-        this.logger.info(`✅ Successfully reinitialized LC3 service`);
-      }
-    } catch (reinitError) {
-      this.logger.error(`❌ Failed to reinitialize LC3 service:`, reinitError);
-    }
-  }
-
-  /**
-   * Add a sequenced audio chunk to the ordered buffer
-   *
-   * @param chunk Sequenced audio chunk
-   */
-  addToOrderedBuffer(chunk: SequencedAudioChunk): void {
-    try {
-      if (!this.orderedBuffer) return;
-
-      // Add to buffer
-      this.orderedBuffer.chunks.push(chunk);
-
-      // Sort by sequence number (in case chunks arrive out of order)
-      this.orderedBuffer.chunks.sort(
-        (a, b) => a.sequenceNumber - b.sequenceNumber,
-      );
-
-      // Enforce buffer size limit
-      if (
-        this.orderedBuffer.chunks.length > this.orderedBuffer.bufferSizeLimit
-      ) {
-        // Remove oldest chunks
-        this.orderedBuffer.chunks = this.orderedBuffer.chunks.slice(
-          this.orderedBuffer.chunks.length - this.orderedBuffer.bufferSizeLimit,
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Error adding to ordered buffer:`, error);
-    }
-  }
-
-  /**
-   * Process chunks in the ordered buffer
-   */
-  async processOrderedBuffer(): Promise<void> {
-    if (this.orderedBuffer.processingInProgress) {
-      return; // Already processing
-    }
-
-    try {
-      this.orderedBuffer.processingInProgress = true;
-
-      // Skip if buffer is empty
-      if (this.orderedBuffer.chunks.length === 0) {
-        return;
-      }
-
-      // Process chunks in order
-      for (const chunk of this.orderedBuffer.chunks) {
-        // Skip already processed chunks
-        if (chunk.sequenceNumber <= this.orderedBuffer.lastProcessedSequence) {
-          continue;
-        }
-
-        // Process the chunk
-        await this.processAudioData(chunk.data, chunk.isLC3);
-
-        // Update last processed sequence
-        this.orderedBuffer.lastProcessedSequence = chunk.sequenceNumber;
-
-        // Update expected next sequence
-        this.orderedBuffer.expectedNextSequence = chunk.sequenceNumber + 1;
-      }
-
-      // Remove processed chunks
-      this.orderedBuffer.chunks = this.orderedBuffer.chunks.filter(
-        (chunk) =>
-          chunk.sequenceNumber > this.orderedBuffer.lastProcessedSequence,
-      );
-    } catch (error) {
-      this.logger.error(`Error processing ordered buffer:`, error);
-    } finally {
-      this.orderedBuffer.processingInProgress = false;
-    }
-  }
-
-  /**
-   * Start the ordered buffer processing interval
-   *
-   * @param intervalMs Interval in milliseconds
-   */
-  startOrderedBufferProcessing(intervalMs: number = 100): void {
-    // Clear any existing interval
-    this.stopOrderedBufferProcessing();
-
-    // Start new interval
-    this.orderedBuffer.bufferProcessingInterval = setInterval(
-      () => this.processOrderedBuffer(),
-      intervalMs,
-    );
-
-    this.logger.info(
-      `Started ordered buffer processing with interval ${intervalMs}ms`,
-    );
-  }
-
-  /**
-   * Stop the ordered buffer processing interval
-   */
-  stopOrderedBufferProcessing(): void {
-    if (this.orderedBuffer.bufferProcessingInterval) {
-      clearInterval(this.orderedBuffer.bufferProcessingInterval);
-      this.orderedBuffer.bufferProcessingInterval = null;
-      this.logger.info(`Stopped ordered buffer processing`);
-    }
-  }
 
   /**
    * Relay audio data to Apps
@@ -377,8 +152,13 @@ export class AudioManager {
 
       // Skip if no subscribers
       if (subscribedPackageNames.length === 0) {
+        this.logger.debug({ feature: 'livekit' }, 'AUDIO_CHUNK: no subscribed apps');
         return;
       }
+      const bytes = (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData))
+        ? (audioData as unknown as Buffer).length
+        : (audioData as ArrayBuffer).byteLength;
+      this.logger.debug({ feature: 'livekit', bytes, subscribers: subscribedPackageNames }, 'AUDIO_CHUNK: relaying to apps');
 
       // Send to each subscriber
       for (const packageName of subscribedPackageNames) {
@@ -386,7 +166,11 @@ export class AudioManager {
 
         if (connection && connection.readyState === WebSocket.OPEN) {
           try {
+            this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sending to app');
+
             connection.send(audioData);
+            this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sent to app');
+
           } catch (sendError) {
             this.logger.error(
               `Error sending audio to ${packageName}:`,
@@ -410,26 +194,11 @@ export class AudioManager {
   }
 
   /**
-   * Get audio service info for debugging
-   *
-   * @returns Audio service info
-   */
-  getAudioServiceInfo(): object | null {
-    if (this.lc3Service) {
-      return this.lc3Service.getInfo();
-    }
-    return null;
-  }
-
-  /**
    * Clean up all resources
    */
   dispose(): void {
     try {
       this.logger.info("Disposing AudioManager");
-
-      // Stop buffer processing
-      this.stopOrderedBufferProcessing();
 
       // Clean up LC3 service
       if (this.lc3Service) {
@@ -440,9 +209,6 @@ export class AudioManager {
 
       // Clear buffers
       this.recentAudioBuffer = [];
-      if (this.orderedBuffer) {
-        this.orderedBuffer.chunks = [];
-      }
 
       // Clean up audio writer
       if (this.audioWriter) {

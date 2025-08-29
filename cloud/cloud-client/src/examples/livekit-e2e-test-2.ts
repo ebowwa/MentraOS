@@ -21,14 +21,12 @@ async function main() {
     email,
     serverUrl: `${wsServer}`,
     coreToken: token,
-    behavior: { 
+    behavior: {
       disableStatusUpdates: true,
       useLiveKitAudio: true  // Enable LiveKit audio transport
     },
     debug: { logLevel: 'info', logWebSocketMessages: false },
   });
-
-  let transcriptionReceived = false;
 
   client.on('connection_ack', (data) => {
     console.log('✅ CONNECTION_ACK received');
@@ -42,17 +40,7 @@ async function main() {
     console.log('✅ LiveKit connected to Go bridge');
   });
 
-  // Listen for transcription events
-  client.on('display_event', (event) => {
-    console.log('📝 DISPLAY_EVENT received', event);
-    if (event.packageName === APP_PACKAGE_NAME) {
-      const text = event.layout.topText || event.layout.bottomText || event.layout.text ||'';
-      if (text && text.trim()) {
-        console.log('📝 TRANSCRIPTION:', text);
-        transcriptionReceived = true;
-      }
-    }
-  });
+  // No transcription wait in this test (Recorder app saves audio only)
 
   client.on('error', (error) => {
     console.error('❌ Error:', error);
@@ -69,22 +57,28 @@ async function main() {
 
   // Install and start transcription app
   console.log('3️⃣  Setting up Live Captions app...');
-  try { 
-    await client.installApp(APP_PACKAGE_NAME); 
+  try {
+    await client.installApp(APP_PACKAGE_NAME);
     console.log('   App installed');
   } catch (e) {
     console.log('   App already installed');
   }
-  
-  try { 
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  try {
     await client.stopApp(APP_PACKAGE_NAME);
-  } catch {}
+  } catch { }
+
+  await new Promise(resolve => setTimeout(resolve, 2000));
   
   await client.startApp(APP_PACKAGE_NAME);
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
   console.log('   ✅ App started');
 
   // Send audio file with VAD signaling (lets cloud authorize and process speech)
   console.log('4️⃣  Sending audio file via LiveKit bridge...');
+  // const wavPath = resolve(__dirname, '../audio/long-test-audio.wav');
   const wavPath = resolve(__dirname, '../audio/short-test-16khz.wav');
 
   if (!fs.existsSync(wavPath)) {
@@ -97,34 +91,21 @@ async function main() {
   await client.startSpeakingFromFile(wavPath, true);
   console.log('   ✅ Audio streaming triggered');
 
-  // Wait for transcriptions
-  console.log('5️⃣  Waiting up to 60s for transcriptions...');
-  // Keep the session active for a minute to allow server to process and apps to emit events
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    if (transcriptionReceived) break;
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  // Optional brief settle
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Stop the Recorder app now to force immediate finalize of recording
+  try {
+    console.log('6️⃣  Stopping Recorder app to finalize recording...');
+    await client.stopApp(APP_PACKAGE_NAME);
+    console.log('   ✅ Recorder app stopped');
+  } catch (e) {
+    console.log('   ⚠️  Failed to stop Recorder app (may already be stopped)');
   }
 
-  // Results
-  console.log();
-  console.log('📊 Results');
-  console.log('==========');
-  if (transcriptionReceived) {
-    console.log('✅ Transcription received successfully!');
-    console.log('✅ End-to-end LiveKit audio flow is working!');
-  } else {
-    console.log('⚠️  No transcriptions received');
-    console.log('   This could mean:');
-    console.log('   - The transcription service is not running');
-    console.log('   - Audio is not flowing through LiveKit properly');
-    console.log('   - The app is not subscribed to audio events');
-  }
-
-  // Keep connection briefly to flush any final events, then disconnect
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Disconnect
   await client.disconnect();
-  process.exit(transcriptionReceived ? 0 : 1);
+  process.exit(0);
 }
 
 main().catch((err) => {

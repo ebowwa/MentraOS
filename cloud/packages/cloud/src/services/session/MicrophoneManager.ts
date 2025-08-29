@@ -24,12 +24,12 @@ export class MicrophoneManager {
   private logger: Logger;
 
   // Track the current microphone state
-  private enabled: boolean = false;
+  private enabled = false;
 
   // Debounce mechanism for state changes
   private debounceTimer: NodeJS.Timeout | null = null;
   private pendingState: boolean | null = null;
-  private lastSentState: boolean = false;
+  private lastSentState = false;
   private lastSentRequiredData: Array<
     "pcm" | "transcription" | "pcm_or_transcription"
   > = [];
@@ -83,7 +83,7 @@ export class MicrophoneManager {
   updateState(
     isEnabled: boolean,
     requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">,
-    delay: number = 1000,
+    delay = 1000,
   ): void {
     this.logger.debug(
       `Updating microphone state: ${isEnabled}, delay: ${delay}ms`,
@@ -128,14 +128,16 @@ export class MicrophoneManager {
         this.lastSentState = this.pendingState!;
         this.lastSentRequiredData = this.pendingRequiredData!;
         this.enabled = this.pendingState!;
+
+        this.session.liveKitManager.onMicStateChange(this.enabled);
       }
 
       // Update transcription service state
       this.updateTranscriptionState();
 
       // Inform LiveKitManager about mic state and media need
-      const hasMedia = this.cachedSubscriptionState.hasMedia;
-      this.session.liveKitManager.onMicStateChange(this.enabled);
+      // const hasMedia = this.cachedSubscriptionState.hasMedia;
+      // this.session.liveKitManager.onMicStateChange(this.enabled);
       // this.session.liveKitManager.onMediaNeeded(hasMedia);
 
       // Update keep-alive timer based on final state
@@ -165,7 +167,7 @@ export class MicrophoneManager {
   private sendStateChangeToGlasses(
     isEnabled: boolean,
     requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">,
-    isKeepAlive: boolean = false,
+    isKeepAlive = false,
   ): void {
     if (
       !this.session.websocket ||

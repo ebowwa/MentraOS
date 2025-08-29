@@ -41,8 +41,8 @@ export class SubscriptionManager {
   private updateChainsByApp: Map<string, Promise<unknown>> = new Map();
 
   // Cached aggregates for O(1) reads
-  private pcmSubscriptionCount: number = 0;
-  private transcriptionLikeSubscriptionCount: number = 0; // transcription/translation incl. language streams
+  private pcmSubscriptionCount = 0;
+  private transcriptionLikeSubscriptionCount = 0; // transcription/translation incl. language streams
   private languageStreamCounts: Map<ExtendedStreamType, number> = new Map();
 
   constructor(userSession: UserSession) {

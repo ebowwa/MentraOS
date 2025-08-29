@@ -15,7 +15,7 @@ export class LiveKitManager {
   private readonly apiSecret: string;
   private readonly livekitUrl: string;
   private bridgeClient: LiveKitClientTS | null = null;
-  private micEnabled = false;
+  // private micEnabled = false;
   private healthTimer: NodeJS.Timeout | null = null;
 
   constructor(session: UserSession) {
@@ -124,7 +124,7 @@ export class LiveKitManager {
     if (!this.healthTimer) {
       this.healthTimer = setInterval(() => {
         const isConnected = this.bridgeClient?.isConnected() ?? false;
-        this.logger.debug({ feature: 'livekit', micEnabled: this.micEnabled, isConnected }, 'Bridge health');
+        this.logger.debug({ feature: 'livekit', micEnabled: this.session.microphoneManager.isEnabled(), isConnected }, 'Bridge health');
       }, 10000);
     }
   }
@@ -137,12 +137,12 @@ export class LiveKitManager {
 
   // Signal from MicrophoneManager
   public onMicStateChange(isOn: boolean): void {
-    this.micEnabled = isOn;
+    // this.micEnabled = isOn;
     this.applySubscribeState();
   }
 
   private applySubscribeState(): void {
-    const shouldSubscribe = this.micEnabled;
+    const shouldSubscribe = this.session.microphoneManager.isEnabled();
     this.ensureBridgeConnected()
       .then(() => {
         if (!this.bridgeClient || !this.bridgeClient.isConnected()) {
