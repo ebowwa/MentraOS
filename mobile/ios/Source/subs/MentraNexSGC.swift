@@ -8,6 +8,7 @@
 import CoreBluetooth
 import Foundation
 import SwiftProtobuf
+import UIKit
 
 // MARK: - Connection State Management
 
@@ -44,6 +45,25 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private let maxReconnectionAttempts = -1 // -1 for unlimited
     private let reconnectionInterval: TimeInterval = 5.0 // 5 seconds
     private var peripheralToConnectName: String?
+
+    // Heartbeat tracking (like Java implementation)
+    private var heartbeatCount = 0
+    private var lastHeartbeatSentTime: TimeInterval = 0
+    private var lastHeartbeatReceivedTime: TimeInterval = 0
+
+    // Microphone beat system (like Java implementation)
+    private var micBeatTimer: Timer?
+    private var micBeatCount = 0
+    private let MICBEAT_INTERVAL_MS: TimeInterval = 30 * 60 // 30 minutes like Java
+    private var shouldUseGlassesMic = true
+    private var microphoneStateBeforeDisconnection = false
+
+    // Whitelist system (like Java implementation)
+    private var whiteListedAlready = false
+    private let WHITELIST_CMD: UInt8 = 0x04
+
+    // Protobuf version tracking (like Java implementation)
+    private var protobufVersionPosted = false
 
     // Device discovery cache (like MentraLive)
     private var discoveredPeripherals = [String: CBPeripheral]() // name -> peripheral
@@ -98,7 +118,16 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // Custom Bluetooth queue for better performance (like G1)
     private static let _bluetoothQueue = DispatchQueue(label: "com.mentra.nex.bluetooth", qos: .background)
 
-    static let shared = MentraNexSGC()
+    static var instance: MentraNexSGC?
+
+    // MARK: - Singleton Access
+
+    @objc static func getInstance() -> MentraNexSGC {
+        if instance == nil {
+            instance = MentraNexSGC()
+        }
+        return instance!
+    }
 
     // UUIDs from MentraNexSGC.java
     private let MAIN_SERVICE_UUID = CBUUID(string: "00004860-0000-1000-8000-00805f9b34fb")
@@ -223,6 +252,14 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 📦 Created \(chunks.count) MTU-optimized chunks (max size: \(effectiveChunkSize) bytes)")
         queueChunks(chunks, waitTimeMs: waitTimeMs)
+    }
+
+    // Helper method for queueing chunks with optional wait time
+    private func queueChunks(_ chunks: [[UInt8]], waitTimeMs: Int = 0) {
+        let cmd = BufferedCommand(chunks: chunks, waitTimeMs: waitTimeMs, chunkDelayMs: 8)
+        Task { [weak self] in
+            await self?.commandQueue.enqueue(cmd)
+        }
     }
 
     private func processCommand(_ command: BufferedCommand) async {
@@ -1665,6 +1702,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc func disconnect() {
         Core.log("NEX: 🔌 User-initiated disconnect")
         if let peripheral = peripheral {
+            // Save microphone state before disconnection (like Java implementation)
+            saveMicrophoneStateBeforeDisconnection()
+
+            // Stop mic beat system
+            stopMicBeat()
+
             isDisconnecting = true
             connectionState = .disconnected
             centralManager?.cancelPeripheralConnection(peripheral)
@@ -1681,6 +1724,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         isDisconnecting = true
 
         // Stop all timers
+        // Save microphone state before destruction (like Java implementation)
+        saveMicrophoneStateBeforeDisconnection()
+
+        // Stop mic beat system (like Java implementation)
+        stopMicBeat()
+
         stopReconnectionTimer()
 
         // Disconnect from peripheral
@@ -1704,6 +1753,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         discoveredPeripherals.removeAll()
 
         Core.log("NEX: ✅ MentraNexSGC destroyed successfully")
+        // Reset initialization flags
+        whiteListedAlready = false
+        protobufVersionPosted = false
     }
 
     @objc func reset() {
@@ -1726,6 +1778,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         peripheralToConnectName = nil
 
         Core.log("NEX: ✅ Reset complete - ready for fresh pairing")
+        // Reset initialization flags (like Java implementation)
+        whiteListedAlready = false
+        protobufVersionPosted = false
+        heartbeatCount = 0
+        micBeatCount = 0
+        shouldUseGlassesMic = true
+        microphoneStateBeforeDisconnection = false
     }
 
     // MARK: - Helper Methods (like G1)
@@ -1828,10 +1887,10 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             return
         }
 
-        guard isCompatibleNexDevice(deviceName) else {
-            // Core.log("NEX-CONN: 🚫 Ignoring incompatible device: \(deviceName)")
-            return
-        }
+        // guard isCompatibleNexDevice(deviceName) else {
+        //     // Core.log("NEX-CONN: 🚫 Ignoring incompatible device: \(deviceName)")
+        //     return
+        // }
 
         Core.log("NEX-CONN: 🎯 === Compatible Nex Device Found ===")
         Core.log("NEX-CONN: 📱 Device Name: \(deviceName)")
@@ -1949,6 +2008,15 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         }
 
         // Reset connection state
+        // Save microphone state before disconnection (like Java implementation)
+        saveMicrophoneStateBeforeDisconnection()
+
+        // Reset protobuf version posted flag for next connection (like Java implementation)
+        protobufVersionPosted = false
+
+        // Stop mic beat system (like Java implementation)
+        stopMicBeat()
+
         nexReady = false
         peripheral = nil
         writeCharacteristic = nil
@@ -2058,9 +2126,49 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Device Initialization (ported from Java MentraNexSGC)
 
     private func initializeNexDevice() {
-        Core.log("NEX-CONN: 🚀 Starting basic Nex device initialization")
-        // Basic initialization - complex commands removed for now
-        Core.log("NEX-CONN: ✅ Basic initialization completed")
+        Core.log("NEX-CONN: 🚀 Starting Nex device initialization (matching Java sequence)")
+
+        // Exact Java initialization sequence from lines 648-691:
+
+        // 1. Do first battery status query (Java line 650)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { // 10ms delay like Java
+            Core.log("NEX: 🔋 Sending first battery status query")
+            self.queryBatteryStatus()
+        }
+
+        // 2. Restore previous microphone state (Java lines 657-665)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { // 20ms delay
+            let shouldRestoreMic = UserDefaults.standard.bool(forKey: "microphoneStateBeforeDisconnection")
+            Core.log("NEX: 🎤 Restoring microphone state to: \(shouldRestoreMic)")
+
+            if shouldRestoreMic {
+                self.startMicBeat()
+            } else {
+                self.stopMicBeat()
+            }
+        }
+
+        // 3. Enable AugmentOS notification key (Java line 668)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { // 30ms delay
+            self.sendWhiteListCommand()
+        }
+
+        // 4. Show home screen to turn on the NexGlasses display (Java line 673)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { // 50ms delay
+            self.showHomeScreen()
+        }
+
+        // 5. Post protobuf schema version information (Java lines 684-687)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { // 100ms delay
+            self.postProtobufSchemaVersionInfo()
+        }
+
+        // 6. Query glasses protobuf version from firmware (Java line 690)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { // 150ms delay
+            self.queryGlassesInfo()
+        }
+
+        Core.log("NEX-CONN: ✅ Java-compatible initialization sequence started")
     }
 
     private func emitDeviceReady() {
@@ -2144,7 +2252,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             return
         }
         Core.log("NEX-CONN: 📥 Received data (\(data.count) bytes): \(data.toHexString())")
-        // Simple data logging for now - complex processing removed
+
+        // Process the received data based on packet type
+        processReceivedData(data)
     }
 
     func peripheral(_: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
