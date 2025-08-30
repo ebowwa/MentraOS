@@ -124,6 +124,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtobufSchemaVersionEvent;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -339,6 +340,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final Gson gson = new Gson();
 
     private Lc3Player lc3AudioPlayer;
+    
+    // Track if protobuf version has been posted to avoid duplicates
+    private boolean protobufVersionPosted = false;
 
     public MentraNexSGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
@@ -414,6 +418,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         // Save current microphone state before disconnection
                         microphoneStateBeforeDisconnection = isMicrophoneEnabled;
                         Log.d(TAG, "Saved microphone state before disconnection: " + microphoneStateBeforeDisconnection);
+                        
+                        // Reset protobuf version posted flag for next connection
+                        protobufVersionPosted = false;
                         
                         // Mark both sides as not ready (you could also clear both if one disconnects)
                         MAX_CHUNK_SIZE = MAX_CHUNK_SIZE_DEFAULT;
@@ -669,6 +676,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // start sending debug notifications
                 //just for test
                 //startPeriodicTextWall(302);
+                
+                // Post protobuf schema version information (only once)
+                if (!protobufVersionPosted) {
+                    postProtobufSchemaVersionInfo();
+                    protobufVersionPosted = true;
+                }
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -2012,6 +2025,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     // microphone stuff
     public void setMicEnabled(boolean enable, int delay) {
+        Log.d(TAG, "setMicEnabled called with enable: " + enable + " and delay: " + delay);
         Log.d(TAG, "Running set mic enabled: " + enable);
         isMicrophoneEnabled = enable; // Update the state tracker
         EventBus.getDefault().post(new isMicEnabledForFrontendEvent(enable));
@@ -3535,5 +3549,206 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
      */
     public long getLastHeartbeatReceivedTime() {
         return lastHeartbeatReceivedTime;
+    }
+    
+        /**
+     * Gets the current protobuf schema version from the compiled protobuf descriptor
+     */
+    public int getProtobufSchemaVersion() {
+        try {
+            // Get the protobuf descriptor and extract the schema version
+            com.google.protobuf.Descriptors.FileDescriptor fileDescriptor = 
+                mentraos.ble.MentraosBle.getDescriptor().getFile();
+            
+            Log.d(TAG, "Proto file descriptor: " + fileDescriptor.getName());
+            
+            // Method 1: Try to access the custom mentra_schema_version option
+            try {
+                // Get the file options from the descriptor
+                com.google.protobuf.DescriptorProtos.FileOptions options = fileDescriptor.getOptions();
+                Log.d(TAG, "Got file options: " + options.toString());
+                
+                // Try to access the custom option using the extension registry
+                // First, check if the extension is available in the generated code
+                try {
+                    // Look for the generated extension in the MentraosBle class
+                    java.lang.reflect.Field[] fields = mentraos.ble.MentraosBle.class.getDeclaredFields();
+                    for (java.lang.reflect.Field field : fields) {
+                        if (field.getName().toLowerCase().contains("schema") || 
+                            field.getName().toLowerCase().contains("version")) {
+                            Log.d(TAG, "Found potential version field: " + field.getName());
+                            field.setAccessible(true);
+                            try {
+                                Object value = field.get(null);
+                                                        if (value instanceof com.google.protobuf.Extension) {
+                                com.google.protobuf.Extension<com.google.protobuf.DescriptorProtos.FileOptions, Integer> ext = 
+                                    (com.google.protobuf.Extension<com.google.protobuf.DescriptorProtos.FileOptions, Integer>) value;
+                                if (options.hasExtension(ext)) {
+                                    int version = options.getExtension(ext);
+                                    Log.d(TAG, "Found schema version via extension: " + version);
+                                    return version;
+                                }
+                            }
+                            } catch (Exception fieldException) {
+                                Log.d(TAG, "Field access failed for " + field.getName() + ": " + fieldException.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception extensionException) {
+                    Log.d(TAG, "Extension search failed: " + extensionException.getMessage());
+                }
+                
+            } catch (Exception optionsException) {
+                Log.d(TAG, "Options access failed: " + optionsException.getMessage());
+            }
+            
+            // Method 2: Try to read from the actual proto file content
+            try {
+                String protoVersion = readProtoVersionFromProject();
+                if (protoVersion != null) {
+                    Log.d(TAG, "Read proto version from project: " + protoVersion);
+                    return Integer.parseInt(protoVersion);
+                }
+            } catch (Exception projectException) {
+                Log.d(TAG, "Project file reading failed: " + projectException.getMessage());
+            }
+            
+
+            
+            Log.w(TAG, "Could not extract protobuf schema version dynamically, using fallback");
+            return 1; // Fallback to version 1
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting protobuf schema version: " + e.getMessage(), e);
+            return 1; // Fallback to version 1
+        }
+    }
+    
+    /**
+     * Gets detailed protobuf build information
+     */
+    public String getProtobufBuildInfo() {
+        try {
+            int schemaVersion = getProtobufSchemaVersion();
+            String fileDescriptorName = mentraos.ble.MentraosBle.getDescriptor().getFile().getName();
+            
+            return String.format("Schema v%d | %s", schemaVersion, fileDescriptorName);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting protobuf build info: " + e.getMessage(), e);
+            return "Schema v1 | Unknown";
+        }
+    }
+    
+    @Override
+    public String getProtobufSchemaVersionInfo() {
+        return getProtobufBuildInfo();
+    }
+    
+    /**
+     * Posts protobuf schema version information to EventBus for React Native consumption
+     */
+    public void postProtobufSchemaVersionInfo() {
+        try {
+            // Call the version method only once
+            int schemaVersion = getProtobufSchemaVersion();
+            
+            // Build the info string directly instead of calling getProtobufBuildInfo()
+            String fileDescriptorName = mentraos.ble.MentraosBle.getDescriptor().getFile().getName();
+            String buildInfo = String.format("Schema v%d | %s", schemaVersion, fileDescriptorName);
+            
+            ProtobufSchemaVersionEvent event = new ProtobufSchemaVersionEvent(
+                schemaVersion, 
+                buildInfo, 
+                smartGlassesDevice != null ? smartGlassesDevice.deviceModelName : "Unknown"
+            );
+            
+            EventBus.getDefault().post(event);
+            Log.d(TAG, "Posted protobuf schema version event: " + buildInfo);
+        } catch (Exception e) {
+            Log.e(TAG, "Error posting protobuf schema version event: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Attempts to read the protobuf schema version from the proto file in the project
+     */
+    private String readProtoVersionFromProject() {
+        try {
+            // Try to read from assets first
+            try (InputStream is = context.getAssets().open("mentraos_ble.proto")) {
+                String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                return extractVersionFromProtoContent(content);
+            }
+        } catch (Exception assetsException) {
+            Log.d(TAG, "Could not read from assets: " + assetsException.getMessage());
+        }
+        
+        try {
+            // Try to read from resources
+            try (InputStream is = context.getResources().openRawResource(
+                    context.getResources().getIdentifier("mentraos_ble", "raw", context.getPackageName()))) {
+                String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                return extractVersionFromProtoContent(content);
+            }
+        } catch (Exception resourcesException) {
+            Log.d(TAG, "Could not read from resources: " + resourcesException.getMessage());
+        }
+        
+        // Try to read from the project directory structure
+        try {
+            // Look for the proto file in common project locations relative to Android app
+            String[] projectPaths = {
+                // Relative to Android project root
+                "../../mcu_client/mentraos_ble.proto",
+                "../../../mcu_client/mentraos_ble.proto", 
+                "../../../../mcu_client/mentraos_ble.proto",
+                // Absolute paths from common Android locations
+                "/data/data/" + context.getPackageName() + "/../../mcu_client/mentraos_ble.proto",
+                // Try external storage
+                android.os.Environment.getExternalStorageDirectory() + "/MentraOS/mcu_client/mentraos_ble.proto"
+            };
+            
+            for (String path : projectPaths) {
+                try {
+                    java.io.File protoFile = new java.io.File(path);
+                    Log.d(TAG, "Checking path: " + protoFile.getAbsolutePath());
+                    if (protoFile.exists() && protoFile.canRead()) {
+                        Log.d(TAG, "Found proto file at: " + protoFile.getAbsolutePath());
+                        String content = new String(java.nio.file.Files.readAllBytes(protoFile.toPath()), StandardCharsets.UTF_8);
+                        return extractVersionFromProtoContent(content);
+                    }
+                } catch (Exception pathException) {
+                    Log.d(TAG, "Path check failed for " + path + ": " + pathException.getMessage());
+                }
+            }
+        } catch (Exception projectException) {
+            Log.d(TAG, "Project file reading failed: " + projectException.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Extracts version number from proto file content
+     */
+    private String extractVersionFromProtoContent(String content) {
+        try {
+            // Look for the mentra_schema_version option
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "option\\s*\\(\\s*mentra_schema_version\\s*\\)\\s*=\\s*(\\d+)\\s*;");
+            java.util.regex.Matcher matcher = pattern.matcher(content);
+            
+            if (matcher.find()) {
+                String version = matcher.group(1);
+                Log.d(TAG, "Extracted version from proto content: " + version);
+                return version;
+            }
+            
+            Log.d(TAG, "No mentra_schema_version found in proto content");
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting version from proto content: " + e.getMessage());
+            return null;
+        }
     }
 }
