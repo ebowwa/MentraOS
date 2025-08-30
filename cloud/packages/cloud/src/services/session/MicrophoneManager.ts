@@ -184,18 +184,14 @@ export class MicrophoneManager {
       const shouldBypassVad = this.shouldBypassVadForPCM();
 
       // TODO: Remove this type extension once the SDK is updated
-      const message: MicrophoneStateChange & {
-        requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">;
-      } = {
+      const message: MicrophoneStateChange = {
         type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
         sessionId: this.session.sessionId,
         userSession: {
           sessionId: this.session.sessionId,
           userId: this.session.userId,
           startTime: this.session.startTime,
-          // activeAppSessions: this.session.activeAppSessions || [],
           activeAppSessions: Array.from(this.session.runningApps),
-          // loadingApps: Array.from(this.session.loadingApps),
           loadingApps: this.session.loadingApps,
           isTranscribing: this.session.isTranscribing || false,
         },

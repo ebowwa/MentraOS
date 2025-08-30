@@ -267,7 +267,10 @@ export class SubscriptionManager {
     // Store chain and return when this link finishes
     this.updateChainsByApp.set(
       packageName,
-      chained.catch(() => {}),
+      chained.catch((error) => {
+        const _logger = this.logger.child({ packageName });
+        _logger.error(error , 'Error in subscription update chain');
+      }),
     );
     await chained;
     return resultUser;

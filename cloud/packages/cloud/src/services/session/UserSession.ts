@@ -59,7 +59,7 @@ export class UserSession {
   public appWebsockets: Map<string, WebSocket> = new Map();
 
   // Transcription
-  public isTranscribing: boolean = false;
+  public isTranscribing = false; // TODO(isaiah): Sync with frontend to see if we can remove this property.
   public lastAudioTimestamp?: number;
 
   // Audio
