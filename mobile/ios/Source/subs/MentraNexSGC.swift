@@ -556,26 +556,1110 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         }
     }
 
-    @objc func sendText(_ text: String) {
-        guard let peripheral = peripheral, let writeCharacteristic = writeCharacteristic else {
-            Core.log("NEX: Not ready to send text. Peripheral or characteristic is nil.")
+    func sendTextWall(_ text: String) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to display text. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Sending text: '\(text)' (simple implementation)")
+        Core.log("NEX: Displaying text wall: '\(text)'")
 
-        // Simple text transmission for testing - will implement proper protocol later
-        guard let textData = text.data(using: .utf8) else {
-            Core.log("NEX: Failed to convert text to data")
+        let displayText = Mentraos_Ble_DisplayText.with {
+            $0.text = text
+            $0.size = 48
+            $0.x = 20
+            $0.y = 260
+            $0.color = 10000
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.displayText = displayText
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func displayTextLine(_ text: String) {
+        sendTextWall(text)
+    }
+
+    @objc func displayDoubleTextWall(_ textTop: String, textBottom: String) {
+        let combinedText = "\(textTop)\n\n\(textBottom)"
+        sendTextWall(combinedText)
+    }
+
+    @objc func displayReferenceCardSimple(_ title: String, body: String) {
+        let combinedText = "\(title)\n\n\(body)"
+        sendTextWall(combinedText)
+    }
+
+    @objc func displayRowsCard(_ rowStrings: [String]) {
+        let combinedText = rowStrings.joined(separator: "\n")
+        sendTextWall(combinedText)
+    }
+
+    @objc func displayBulletList(_ title: String, bullets: [String]) {
+        var text = title
+        if !title.isEmpty {
+            text += "\n"
+        }
+        text += bullets.map { "• \($0)" }.joined(separator: "\n")
+        sendTextWall(text)
+    }
+
+    @objc func displayScrollingText(_ text: String) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to display scrolling text. Device not initialized.")
             return
         }
 
-        // Send as simple packet with JSON packet type
-        var packet = Data([PACKET_TYPE_JSON])
-        packet.append(textData)
+        Core.log("NEX: Displaying scrolling text: '\(text)'")
 
-        Core.log("NEX: Sending simple packet (\(packet.count) bytes): \(packet.toHexString())")
-        peripheral.writeValue(packet, for: writeCharacteristic, type: .withResponse)
+        let displayScrollingText = Mentraos_Ble_DisplayScrollingText.with {
+            $0.text = text
+            $0.size = 48
+            $0.x = 20
+            $0.y = 50
+            $0.width = 200
+            $0.height = 100
+            $0.speed = 50
+            $0.pauseMs = 10
+            $0.loop = true
+            $0.align = .center
+            $0.lineSpacing = 2
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.displayScrollingText = displayScrollingText
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    // MARK: - Display Image Commands
+
+    @objc func displayBitmap(_ bitmap: UIImage) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to display bitmap. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Displaying bitmap image")
+
+        // Convert UIImage to raw bitmap data
+        guard let bmpData = convertUIImageToBmpData(bitmap) else {
+            Core.log("NEX: Failed to convert UIImage to BMP data")
+            return
+        }
+
+        displayBitmapData(bmpData, width: Int(bitmap.size.width), height: Int(bitmap.size.height))
+    }
+
+    @objc func displayBitmapFromData(_ bmpData: Data, width: Int, height: Int) {
+        displayBitmapData(bmpData, width: width, height: height)
+    }
+
+    private func displayBitmapData(_ bmpData: Data, width: Int, height: Int) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to display bitmap data. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Displaying bitmap data (\(bmpData.count) bytes, \(width)x\(height))")
+
+        // Generate stream ID for image transfer
+        let streamId = String(format: "%04X", Int.random(in: 0 ... 0xFFFF))
+        let totalChunks = Int(ceil(Double(bmpData.count) / Double(bmpChunkSize)))
+
+        // Send display image command first
+        let displayImage = Mentraos_Ble_DisplayImage.with {
+            $0.streamID = streamId
+            $0.totalChunks = UInt32(totalChunks)
+            $0.x = 0
+            $0.y = 0
+            $0.width = UInt32(width)
+            $0.height = UInt32(height)
+            $0.encoding = "raw"
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.msgID = "img_start_1"
+            $0.displayImage = displayImage
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF, waitTimeMs: 100)
+
+        // Send image chunks
+        sendImageChunks(streamId: streamId, imageData: bmpData)
+    }
+
+    private func sendImageChunks(streamId: String, imageData: Data) {
+        let streamIdInt = Int(streamId, radix: 16) ?? 0
+        let totalChunks = Int(ceil(Double(imageData.count) / Double(bmpChunkSize)))
+
+        var chunks: [[UInt8]] = []
+
+        for i in 0 ..< totalChunks {
+            let start = i * bmpChunkSize
+            let end = min(start + bmpChunkSize, imageData.count)
+            let chunkData = imageData.subdata(in: start ..< end)
+
+            var header: [UInt8] = [
+                PACKET_TYPE_IMAGE, // 0xB0
+                UInt8((streamIdInt >> 8) & 0xFF), // Stream ID high byte
+                UInt8(streamIdInt & 0xFF), // Stream ID low byte
+                UInt8(i & 0xFF), // Chunk index
+            ]
+            header.append(contentsOf: chunkData)
+            chunks.append(header)
+        }
+
+        Core.log("NEX: Sending \(chunks.count) image chunks")
+        queueChunks(chunks, waitTimeMs: 50)
+    }
+
+    private func convertUIImageToBmpData(_ image: UIImage) -> Data? {
+        // This is a simplified conversion - in production you'd want proper BMP encoding
+        guard let cgImage = image.cgImage else { return nil }
+
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        let bitsPerComponent = 8
+
+        var pixelData = Data(count: width * height * bytesPerPixel)
+
+        pixelData.withUnsafeMutableBytes { bytes in
+            guard let context = CGContext(
+                data: bytes.bindMemory(to: UInt8.self).baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: bitsPerComponent,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return }
+
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+
+        return pixelData
+    }
+
+    // MARK: - Display Control Commands
+
+    @objc func clearDisplay() {
+        guard nexReady else {
+            Core.log("NEX: Not ready to clear display. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Clearing display")
+
+        let clearDisplay = Mentraos_Ble_ClearDisplay()
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.msgID = "clear_disp_001"
+            $0.clearDisplay_p = clearDisplay
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func blankScreen() {
+        clearDisplay()
+    }
+
+    @objc func showHomeScreen() {
+        Core.log("NEX: Showing home screen")
+        clearDisplay()
+
+        // Send a simple home screen text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.sendTextWall("MentraOS Ready")
+        }
+    }
+
+    @objc func exitAllFunctions() {
+        guard nexReady else {
+            Core.log("NEX: Not ready to exit functions. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Exiting all functions")
+
+        // Send exit command (0x18 from Android implementation)
+        let exitCommand: [UInt8] = [0x18]
+        queueChunks([exitCommand], waitTimeMs: 100)
+    }
+
+    // MARK: - Configuration Commands
+
+    @objc func updateGlassesBrightness(_ brightness: Int) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to update brightness. Device not initialized.")
+            return
+        }
+
+        // Validate brightness range (0-100)
+        let validBrightness = max(0, min(100, brightness))
+        Core.log("NEX: Setting brightness to \(validBrightness)%")
+
+        let brightnessConfig = Mentraos_Ble_BrightnessConfig.with {
+            $0.value = UInt32(validBrightness)
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.brightness = brightnessConfig
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func updateGlassesAutoBrightness(_ enabled: Bool) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to update auto brightness. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Setting auto brightness to \(enabled)")
+
+        let autoBrightnessConfig = Mentraos_Ble_AutoBrightnessConfig.with {
+            $0.enabled = enabled
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.autoBrightness = autoBrightnessConfig
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func updateGlassesHeadUpAngle(_ angle: Int) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to update head-up angle. Device not initialized.")
+            return
+        }
+
+        // Validate angle range (0-60 degrees)
+        let validAngle = max(0, min(60, angle))
+        Core.log("NEX: Setting head-up angle to \(validAngle) degrees")
+
+        let headUpAngleConfig = Mentraos_Ble_HeadUpAngleConfig.with {
+            $0.angle = UInt32(validAngle)
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.headUpAngle = headUpAngleConfig
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func updateGlassesDisplayHeight(_ height: Int) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to update display height. Device not initialized.")
+            return
+        }
+
+        // Validate height range (0-8)
+        let validHeight = max(0, min(8, height))
+        Core.log("NEX: Setting display height to \(validHeight)")
+
+        let displayHeightConfig = Mentraos_Ble_DisplayHeightConfig.with {
+            $0.height = UInt32(validHeight)
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.displayHeight = displayHeightConfig
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func setMicrophoneEnabled(_ enabled: Bool) {
+        guard nexReady else {
+            Core.log("NEX: Not ready to set microphone state. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Setting microphone enabled: \(enabled)")
+
+        let micStateConfig = Mentraos_Ble_MicStateConfig.with {
+            $0.enabled = enabled
+        }
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.micState = micStateConfig
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    // MARK: - Status Query Commands
+
+    @objc func queryBatteryStatus() {
+        guard nexReady else {
+            Core.log("NEX: Not ready to query battery status. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Querying battery status")
+
+        let batteryStateRequest = Mentraos_Ble_BatteryStateRequest()
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.batteryState = batteryStateRequest
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    @objc func queryGlassesInfo() {
+        guard nexReady else {
+            Core.log("NEX: Not ready to query glasses info. Device not initialized.")
+            return
+        }
+
+        Core.log("NEX: Querying glasses information")
+
+        let glassesInfoRequest = Mentraos_Ble_GlassesInfoRequest()
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.glassesInfo = glassesInfoRequest
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+    }
+
+    // MARK: - Utility Methods
+
+    @objc func sendPongResponse() {
+        guard nexReady else {
+            Core.log("NEX: Not ready to send pong. Device not initialized.")
+            return
+        }
+
+        let timestamp = Date().timeIntervalSince1970 * 1000
+        Core.log("NEX: Sending pong response (Time: \(timestamp))")
+
+        let pongResponse = Mentraos_Ble_PongResponse()
+
+        let phoneToGlasses = Mentraos_Ble_PhoneToGlasses.with {
+            $0.pong = pongResponse
+        }
+
+        let protobufData = try! phoneToGlasses.serializedData()
+        queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+
+        // Notify about heartbeat sent (pong response)
+        notifyHeartbeatSent(timestamp)
+    }
+
+    @objc func isDeviceReady() -> Bool {
+        return nexReady && connectionState == .connected
+    }
+
+    @objc func getDeviceInfo() -> [String: Any] {
+        return [
+            "device_ready": nexReady,
+            "connection_state": getConnectionState(),
+            "current_mtu": currentMTU,
+            "device_max_mtu": deviceMaxMTU,
+            "max_chunk_size": maxChunkSize,
+            "bmp_chunk_size": bmpChunkSize,
+            "device_name": peripheral?.name ?? "Unknown",
+            "device_id": peripheral?.identifier.uuidString ?? "Unknown",
+        ]
+    }
+
+    // MARK: - Advanced Display Methods
+
+    @objc func displayCustomContent(_ content: String) {
+        // For now, treat custom content as regular text
+        sendTextWall(content)
+    }
+
+    @objc func setUpdatingScreen(_ updating: Bool) {
+        Core.log("NEX: Set updating screen: \(updating)")
+        // This could be used to prevent display updates during certain operations
+        // Implementation depends on specific requirements
+    }
+
+    // MARK: - Data Processing and Event Listeners
+
+    private func processReceivedData(_ data: Data) {
+        guard data.count > 0 else { return }
+
+        let packetType = data[0]
+        Core.log("NEX: Processing packet type: 0x\(String(format: "%02X", packetType))")
+
+        switch packetType {
+        case PACKET_TYPE_JSON:
+            if data.count > 1 {
+                let jsonData = data.subdata(in: 1 ..< data.count)
+                processJsonData(jsonData)
+            }
+
+        case PACKET_TYPE_PROTOBUF:
+            if data.count > 1 {
+                let protobufData = data.subdata(in: 1 ..< data.count)
+                processProtobufData(protobufData)
+            }
+
+        case PACKET_TYPE_AUDIO:
+            if data.count > 2 {
+                let sequenceNumber = data[1]
+                let audioData = data.subdata(in: 2 ..< data.count)
+                processAudioData(audioData, sequenceNumber: sequenceNumber)
+            }
+
+        case PACKET_TYPE_IMAGE:
+            processImageData(data)
+
+        default:
+            Core.log("NEX: Unknown packet type: 0x\(String(format: "%02X", packetType))")
+        }
+    }
+
+    private func processJsonData(_ jsonData: Data) {
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            Core.log("NEX: Failed to decode JSON data")
+            return
+        }
+
+        Core.log("NEX: Processing JSON: \(jsonString)")
+
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let type = json["type"] as? String
+            else {
+                return
+            }
+
+            switch type {
+            case "battery_status":
+                handleBatteryStatusJson(json)
+            case "device_info":
+                handleDeviceInfoJson(json)
+            case "button_event":
+                handleButtonEventJson(json)
+            case "ping":
+                handlePingJson(json)
+            case "vad_event":
+                handleVadEventJson(json)
+            case "imu_data":
+                handleImuDataJson(json)
+            case "head_gesture":
+                handleHeadGestureJson(json)
+            default:
+                Core.log("NEX: Unhandled JSON type: \(type)")
+            }
+        } catch {
+            Core.log("NEX: Error parsing JSON: \(error)")
+        }
+    }
+
+    private func processProtobufData(_ protobufData: Data) {
+        do {
+            let glassesToPhone = try Mentraos_Ble_GlassesToPhone(serializedData: protobufData)
+            Core.log("NEX: Processing protobuf payload case: \(glassesToPhone.payload)")
+
+            switch glassesToPhone.payload {
+            case let .batteryStatus(batteryStatus):
+                handleBatteryStatusProtobuf(batteryStatus)
+
+            case let .chargingState(chargingState):
+                handleChargingStateProtobuf(chargingState)
+
+            case let .deviceInfo(deviceInfo):
+                handleDeviceInfoProtobuf(deviceInfo)
+
+            case let .headPosition(headPosition):
+                handleHeadPositionProtobuf(headPosition)
+
+            case let .headUpAngleSet(headUpAngleResponse):
+                handleHeadUpAngleResponseProtobuf(headUpAngleResponse)
+
+            case let .ping(pingRequest):
+                handlePingProtobuf(pingRequest)
+
+            case let .vadEvent(vadEvent):
+                handleVadEventProtobuf(vadEvent)
+
+            case let .imageTransferComplete(transferComplete):
+                handleImageTransferCompleteProtobuf(transferComplete)
+
+            case let .imuData(imuData):
+                handleImuDataProtobuf(imuData)
+
+            case let .buttonEvent(buttonEvent):
+                handleButtonEventProtobuf(buttonEvent)
+
+            case let .headGesture(headGesture):
+                handleHeadGestureProtobuf(headGesture)
+
+            // Note: VersionResponse not available in current protobuf structure
+
+            case .none:
+                Core.log("NEX: Protobuf payload not set")
+
+            default:
+                Core.log("NEX: Unhandled protobuf payload type")
+            }
+
+        } catch {
+            Core.log("NEX: Error parsing protobuf data: \(error)")
+        }
+    }
+
+    private func processAudioData(_ audioData: Data, sequenceNumber: UInt8) {
+        Core.log("NEX: Received audio data - sequence: \(sequenceNumber), size: \(audioData.count) bytes")
+
+        // Emit audio data event for React Native
+        let eventBody: [String: Any] = [
+            "audio_data": [
+                "sequence": sequenceNumber,
+                "data": audioData.base64EncodedString(),
+                "size": audioData.count,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("AudioDataEvent", body: eventBody)
+    }
+
+    private func processImageData(_ imageData: Data) {
+        Core.log("NEX: Received image data: \(imageData.count) bytes")
+        // Image data processing can be implemented based on specific requirements
+    }
+
+    // MARK: - Protobuf Event Handlers
+
+    private func handleBatteryStatusProtobuf(_ batteryStatus: Mentraos_Ble_BatteryStatus) {
+        let level = Int(batteryStatus.level)
+        let charging = batteryStatus.charging
+
+        Core.log("NEX: 🔋 Battery Status - Level: \(level)%, Charging: \(charging)")
+
+        // Emit battery level event to React Native
+        let eventBody: [String: Any] = [
+            "battery_level": level,
+            "is_charging": charging,
+            "device_model": "Mentra Nex",
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("BatteryLevelEvent", body: eventBody)
+    }
+
+    private func handleChargingStateProtobuf(_ chargingState: Mentraos_Ble_ChargingState) {
+        let isCharging = chargingState.state == .charging
+
+        Core.log("NEX: 🔌 Charging State: \(isCharging ? "CHARGING" : "NOT_CHARGING")")
+
+        // Emit charging state event
+        let eventBody: [String: Any] = [
+            "charging_state": isCharging,
+            "device_model": "Mentra Nex",
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("ChargingStateEvent", body: eventBody)
+    }
+
+    private func handleDeviceInfoProtobuf(_ deviceInfo: Mentraos_Ble_DeviceInfo) {
+        Core.log("NEX: 📱 Device Info: \(deviceInfo)")
+
+        // Emit device info event using correct property names
+        let eventBody: [String: Any] = [
+            "device_info": [
+                "model": "Mentra Nex",
+                "fw_version": deviceInfo.fwVersion,
+                "hw_model": deviceInfo.hwModel,
+                "features": [
+                    "camera": deviceInfo.features.camera,
+                    "display": deviceInfo.features.display,
+                    "audio_tx": deviceInfo.features.audioTx,
+                    "audio_rx": deviceInfo.features.audioRx,
+                    "imu": deviceInfo.features.imu,
+                    "vad": deviceInfo.features.vad,
+                ],
+            ],
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("DeviceInfoEvent", body: eventBody)
+    }
+
+    private func handleHeadPositionProtobuf(_ headPosition: Mentraos_Ble_HeadPosition) {
+        let angle = Int(headPosition.angle)
+
+        Core.log("NEX: 📐 Head Position - Angle: \(angle)°")
+
+        // Emit head up angle event
+        let eventBody: [String: Any] = [
+            "head_up_angle": angle,
+            "device_model": "Mentra Nex",
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("HeadUpAngleEvent", body: eventBody)
+    }
+
+    private func handleHeadUpAngleResponseProtobuf(_ response: Mentraos_Ble_HeadUpAngleResponse) {
+        let success = response.success
+
+        Core.log("NEX: 📐 Head Up Angle Set Response - Success: \(success)")
+
+        // Emit response event
+        let eventBody: [String: Any] = [
+            "head_up_angle_set_result": success,
+            "device_model": "Mentra Nex",
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("HeadUpAngleResponseEvent", body: eventBody)
+    }
+
+    private func handlePingProtobuf(_: Mentraos_Ble_PingRequest) {
+        let timestamp = Date().timeIntervalSince1970 * 1000
+
+        Core.log("NEX: 💓 Received PING from glasses (Time: \(timestamp))")
+
+        // Automatically send pong response
+        sendPongResponse()
+
+        // Emit heartbeat received event
+        let eventBody: [String: Any] = [
+            "heartbeat_received": [
+                "timestamp": timestamp,
+                "device_model": "Mentra Nex",
+            ],
+        ]
+
+        emitEvent("HeartbeatReceivedEvent", body: eventBody)
+
+        // Query battery status periodically (every 10 pings like Java implementation)
+        heartbeatCount += 1
+        if heartbeatCount % 10 == 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.queryBatteryStatus()
+            }
+        }
+    }
+
+    private func handleVadEventProtobuf(_ vadEvent: Mentraos_Ble_VadEvent) {
+        let vadActive = vadEvent.state == .active
+
+        Core.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActive)")
+
+        // Emit VAD event
+        let eventBody: [String: Any] = [
+            "vad_event": [
+                "vad_active": vadActive,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("VadEvent", body: eventBody)
+    }
+
+    private func handleImageTransferCompleteProtobuf(_ transferComplete: Mentraos_Ble_ImageTransferComplete) {
+        let status = transferComplete.status
+        let missingChunks = transferComplete.missingChunks
+
+        Core.log("NEX: 🖼️ Image Transfer Complete - Status: \(status)")
+
+        switch status {
+        case .ok:
+            Core.log("NEX: Image transfer completed successfully")
+            // Clear any pending image chunks
+
+        case .incomplete:
+            Core.log("NEX: Image transfer incomplete - Missing chunks: \(missingChunks)")
+            // Could implement chunk retransmission here
+
+        default:
+            Core.log("NEX: Unknown image transfer status")
+        }
+
+        // Emit image transfer complete event
+        let eventBody: [String: Any] = [
+            "image_transfer_complete": [
+                "status": status == .ok ? "success" : "incomplete",
+                "missing_chunks": missingChunks,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("ImageTransferCompleteEvent", body: eventBody)
+    }
+
+    private func handleImuDataProtobuf(_ imuData: Mentraos_Ble_ImuData) {
+        Core.log("NEX: 📊 IMU Data: \(imuData)")
+
+        // Emit IMU data event using correct Vector3 structure
+        let eventBody: [String: Any] = [
+            "imu_data": [
+                "accelerometer": [imuData.accel.x, imuData.accel.y, imuData.accel.z],
+                "gyroscope": [imuData.gyro.x, imuData.gyro.y, imuData.gyro.z],
+                "magnetometer": [imuData.mag.x, imuData.mag.y, imuData.mag.z],
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("ImuDataEvent", body: eventBody)
+    }
+
+    private func handleButtonEventProtobuf(_ buttonEvent: Mentraos_Ble_ButtonEvent) {
+        let buttonNumber = Int(buttonEvent.button.rawValue)
+        let buttonState = buttonEvent.state
+
+        Core.log("NEX: 🔘 Button Event - Button: \(buttonNumber), State: \(buttonState)")
+
+        // Emit button press event
+        let eventBody: [String: Any] = [
+            "button_press": [
+                "device_model": "Mentra Nex",
+                "button_id": buttonNumber,
+                "button_state": buttonState.rawValue,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("ButtonPressEvent", body: eventBody)
+    }
+
+    private func handleHeadGestureProtobuf(_ headGesture: Mentraos_Ble_HeadGesture) {
+        let gestureType = headGesture.gesture
+
+        Core.log("NEX: 👤 Head Gesture: \(gestureType)")
+
+        // Emit head gesture events based on type
+        switch gestureType {
+        case .headUp:
+            emitEvent("GlassesHeadUpEvent", body: ["timestamp": Date().timeIntervalSince1970 * 1000])
+        case .nod:
+            let eventBody: [String: Any] = [
+                "head_gesture": [
+                    "gesture": "nod",
+                    "timestamp": Date().timeIntervalSince1970 * 1000,
+                ],
+            ]
+            emitEvent("HeadGestureEvent", body: eventBody)
+        case .shake:
+            let eventBody: [String: Any] = [
+                "head_gesture": [
+                    "gesture": "shake",
+                    "timestamp": Date().timeIntervalSince1970 * 1000,
+                ],
+            ]
+            emitEvent("HeadGestureEvent", body: eventBody)
+        default:
+            Core.log("NEX: Unknown head gesture type: \(gestureType)")
+        }
+    }
+
+    // MARK: - JSON Event Handlers
+
+    private func handleBatteryStatusJson(_ json: [String: Any]) {
+        let level = json["level"] as? Int ?? -1
+        let charging = json["charging"] as? Bool ?? false
+
+        Core.log("NEX: 🔋 JSON Battery Status - Level: \(level)%, Charging: \(charging)")
+
+        let eventBody: [String: Any] = [
+            "battery_level": level,
+            "is_charging": charging,
+            "device_model": "Mentra Nex",
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("BatteryLevelEvent", body: eventBody)
+    }
+
+    private func handleDeviceInfoJson(_ json: [String: Any]) {
+        Core.log("NEX: 📱 JSON Device Info: \(json)")
+
+        let eventBody: [String: Any] = [
+            "device_info": json,
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("DeviceInfoEvent", body: eventBody)
+    }
+
+    private func handleButtonEventJson(_ json: [String: Any]) {
+        let buttonId = json["button_id"] as? String ?? "unknown"
+        let pressType = json["press_type"] as? String ?? "short"
+
+        Core.log("NEX: 🔘 JSON Button Event - Button: \(buttonId), Type: \(pressType)")
+
+        let eventBody: [String: Any] = [
+            "button_press": [
+                "device_model": "Mentra Nex",
+                "button_id": buttonId,
+                "press_type": pressType,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("ButtonPressEvent", body: eventBody)
+    }
+
+    private func handlePingJson(_: [String: Any]) {
+        let timestamp = Date().timeIntervalSince1970 * 1000
+
+        Core.log("NEX: 💓 JSON PING received (Time: \(timestamp))")
+
+        // Send pong response
+        sendPongResponse()
+
+        // Emit heartbeat received event
+        let eventBody: [String: Any] = [
+            "heartbeat_received": [
+                "timestamp": timestamp,
+                "device_model": "Mentra Nex",
+            ],
+        ]
+
+        emitEvent("HeartbeatReceivedEvent", body: eventBody)
+    }
+
+    private func handleVadEventJson(_ json: [String: Any]) {
+        let vadActive = json["vad"] as? Bool ?? false
+
+        Core.log("NEX: 🎤 JSON VAD Event - Voice Activity: \(vadActive)")
+
+        let eventBody: [String: Any] = [
+            "vad_event": [
+                "vad_active": vadActive,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("VadEvent", body: eventBody)
+    }
+
+    private func handleImuDataJson(_ json: [String: Any]) {
+        Core.log("NEX: 📊 JSON IMU Data: \(json)")
+
+        let eventBody: [String: Any] = [
+            "imu_data": json,
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+        ]
+
+        emitEvent("ImuDataEvent", body: eventBody)
+    }
+
+    private func handleHeadGestureJson(_ json: [String: Any]) {
+        let gesture = json["gesture"] as? String ?? "unknown"
+
+        Core.log("NEX: 👤 JSON Head Gesture: \(gesture)")
+
+        let eventBody: [String: Any] = [
+            "head_gesture": [
+                "gesture": gesture,
+                "timestamp": Date().timeIntervalSince1970 * 1000,
+            ],
+        ]
+
+        emitEvent("HeadGestureEvent", body: eventBody)
+    }
+
+    // MARK: - Event Emission Helper
+
+    private func emitEvent(_ eventName: String, body: [String: Any]) {
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Core.emitter.sendEvent(withName: eventName, body: jsonString)
+                Core.log("NEX: 📡 Emitted \(eventName): \(jsonString)")
+            }
+        } catch {
+            Core.log("NEX: ❌ Error emitting \(eventName): \(error)")
+        }
+    }
+
+    // MARK: - Heartbeat Management
+
+    private func notifyHeartbeatSent(_ timestamp: TimeInterval) {
+        lastHeartbeatSentTime = timestamp
+
+        let eventBody: [String: Any] = [
+            "heartbeat_sent": [
+                "timestamp": timestamp,
+                "device_model": "Mentra Nex",
+            ],
+        ]
+
+        emitEvent("HeartbeatSentEvent", body: eventBody)
+    }
+
+    private func notifyHeartbeatReceived(_ timestamp: TimeInterval) {
+        lastHeartbeatReceivedTime = timestamp
+
+        let eventBody: [String: Any] = [
+            "heartbeat_received": [
+                "timestamp": timestamp,
+                "device_model": "Mentra Nex",
+            ],
+        ]
+
+        emitEvent("HeartbeatReceivedEvent", body: eventBody)
+    }
+
+    @objc func getLastHeartbeatSentTime() -> TimeInterval {
+        return lastHeartbeatSentTime
+    }
+
+    @objc func getLastHeartbeatReceivedTime() -> TimeInterval {
+        return lastHeartbeatReceivedTime
+    }
+
+    // MARK: - Java-Compatible Initialization Methods
+
+    private func startMicBeat() {
+        Core.log("NEX: Starting micbeat (30 min interval)")
+
+        if micBeatCount > 0 {
+            stopMicBeat()
+        }
+
+        // Set mic enabled first (like Java line 1751)
+        setMicrophoneEnabled(true)
+        micBeatCount += 1
+
+        // Schedule periodic mic beat (like Java lines 1753-1762)
+        micBeatTimer = Timer.scheduledTimer(withTimeInterval: MICBEAT_INTERVAL_MS, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Core.log("NEX: SENDING MIC BEAT")
+            self.setMicrophoneEnabled(self.shouldUseGlassesMic)
+        }
+    }
+
+    private func stopMicBeat() {
+        setMicrophoneEnabled(false)
+        micBeatTimer?.invalidate()
+        micBeatTimer = nil
+        micBeatCount = 0
+        Core.log("NEX: Stopped mic beat")
+    }
+
+    private func sendWhiteListCommand() {
+        guard !whiteListedAlready else {
+            Core.log("NEX: Whitelist already sent, skipping")
+            return
+        }
+        whiteListedAlready = true
+
+        Core.log("NEX: Sending whitelist command")
+
+        // Create whitelist JSON exactly like Java (lines 2642-2680)
+        let whitelistJson = createWhitelistJson()
+        let chunks = createWhitelistChunks(json: whitelistJson)
+
+        // Send chunks with delay like Java
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { // 10ms delay
+            self.queueChunks(chunks)
+        }
+    }
+
+    private func createWhitelistJson() -> String {
+        // Exact JSON structure from Java implementation (lines 2653-2680)
+        let whitelistDict: [String: Any] = [
+            "calendar_enable": false,
+            "call_enable": false,
+            "msg_enable": false,
+            "ios_mail_enable": false,
+            "app": [
+                "list": [
+                    ["id": "com.augment.os", "name": "AugmentOS"],
+                ],
+                "enable": true,
+            ],
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: whitelistDict)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Core.log("NEX: Created whitelist JSON: \(jsonString)")
+                return jsonString
+            }
+        } catch {
+            Core.log("NEX: Error creating whitelist JSON: \(error)")
+        }
+
+        return "{}"
+    }
+
+    private func createWhitelistChunks(json: String) -> [[UInt8]] {
+        // Exact chunking logic from Java (lines 2703-2728)
+        guard let jsonData = json.data(using: .utf8) else { return [] }
+
+        let totalChunks = Int(ceil(Double(jsonData.count) / Double(maxChunkSize)))
+        var chunks: [[UInt8]] = []
+
+        for i in 0 ..< totalChunks {
+            let start = i * maxChunkSize
+            let end = min(start + maxChunkSize, jsonData.count)
+            let payloadChunk = jsonData.subdata(in: start ..< end)
+
+            // Create header: [WHITELIST_CMD, total_chunks, chunk_index] (Java lines 2714-2717)
+            var header: [UInt8] = [
+                WHITELIST_CMD, // Command ID (0x04)
+                UInt8(totalChunks), // Total number of chunks
+                UInt8(i), // Current chunk index
+            ]
+
+            // Combine header and payload (Java lines 2720-2725)
+            header.append(contentsOf: payloadChunk)
+            chunks.append(header)
+        }
+
+        Core.log("NEX: Created \(chunks.count) whitelist chunks")
+        return chunks
+    }
+
+    private func postProtobufSchemaVersionInfo() {
+        guard !protobufVersionPosted else {
+            Core.log("NEX: Protobuf version already posted, skipping")
+            return
+        }
+        protobufVersionPosted = true
+
+        Core.log("NEX: 📋 Posting protobuf schema version info")
+
+        // Emit protobuf schema version event like Java (lines 3709-3728)
+        let eventBody: [String: Any] = [
+            "protobuf_schema_version": [
+                "schema_version": 1, // Default version
+                "build_info": "Schema v1 | mentraos_ble.proto",
+                "device_model": "Mentra Nex",
+            ],
+        ]
+
+        // emitEvent("ProtobufSchemaVersionEvent", body: eventBody)
+    }
+
+    // Save microphone state before disconnection (like Java implementation)
+    private func saveMicrophoneStateBeforeDisconnection() {
+        UserDefaults.standard.set(shouldUseGlassesMic, forKey: "microphoneStateBeforeDisconnection")
+        microphoneStateBeforeDisconnection = shouldUseGlassesMic
+        Core.log("NEX: Saved microphone state before disconnection: \(shouldUseGlassesMic)")
     }
 
     @objc func disconnect() {
