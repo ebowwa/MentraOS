@@ -276,8 +276,9 @@ export default function NexDeveloperSettings() {
   // LC3 Audio Control state
   const [lc3AudioEnabled, setLc3AudioEnabled] = useState(true)
 
-  // Get protobuf version from core status
-  const protobufVersion = status.core_info.protobuf_schema_version || "Unknown"
+  // Get both protobuf versions from core status
+  const protobufSchemaVersion = status.core_info.protobuf_schema_version || "Unknown"
+  const glassesProtobufVersion = status.core_info.glasses_protobuf_version || "Unknown"
 
   // BLE Command display state variables
   const [showFullSenderCommand, setShowFullSenderCommand] = useState(false)
@@ -406,7 +407,10 @@ export default function NexDeveloperSettings() {
           </Text>
           <View style={themed($versionContainer)}>
             <Text style={themed($versionBadge)}>Interface v{NEX_INTERFACE_VERSION}</Text>
-            <Text style={themed($protobufVersionBadge)}>Protobuf {protobufVersion.split(" | ")[0]}</Text>
+            <Text style={themed($protobufVersionBadge)}>App Protobuf {protobufSchemaVersion.split(" | ")[0]}</Text>
+            <Text style={themed($glassesProtobufVersionBadge)}>
+              Glasses Protobuf {glassesProtobufVersion.split(" | ")[0]}
+            </Text>
           </View>
         </View>
 
@@ -921,6 +925,20 @@ const $protobufVersionBadge: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.xs,
   borderWidth: 1,
   borderColor: colors.palette.neutral300,
+  overflow: "hidden",
+  fontFamily: "monospace",
+})
+
+const $glassesProtobufVersionBadge: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.palette.accent100,
+  color: colors.palette.accent500,
+  fontSize: 12,
+  fontWeight: "600",
+  paddingHorizontal: spacing.sm,
+  paddingVertical: spacing.xs,
+  borderRadius: spacing.xs,
+  borderWidth: 1,
+  borderColor: colors.palette.accent300,
   overflow: "hidden",
   fontFamily: "monospace",
 })
