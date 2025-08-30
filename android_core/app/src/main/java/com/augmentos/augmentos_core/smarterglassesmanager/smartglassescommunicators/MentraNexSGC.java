@@ -32,6 +32,8 @@ import mentraos.ble.MentraosBle.BrightnessConfig;
 import mentraos.ble.MentraosBle.AutoBrightnessConfig;
 import mentraos.ble.MentraosBle.HeadUpAngleConfig;
 import mentraos.ble.MentraosBle.DisplayHeightConfig;
+import mentraos.ble.MentraosBle.VersionRequest;
+import mentraos.ble.MentraosBle.VersionResponse;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -125,6 +127,7 @@ import java.util.HashMap;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtobufSchemaVersionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtocolVersionResponseEvent;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -682,6 +685,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     postProtobufSchemaVersionInfo();
                     protobufVersionPosted = true;
                 }
+                
+                // Query glasses protobuf version from firmware
+                queryGlassesProtobufVersionFromFirmware();
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -1386,9 +1392,14 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
 
         if (lc3AudioPlayer != null) {
-            lc3AudioPlayer.stopPlay();
-            lc3AudioPlayer = null;
-            Log.d(TAG, "LC3 audio player stopped and cleaned up");
+            try {
+                lc3AudioPlayer.stopPlay();
+                Log.d(TAG, "LC3 audio player stopped and cleaned up");
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping LC3 audio player during destroy", e);
+            } finally {
+                lc3AudioPlayer = null;
+            }
         }
 
         if (mainTaskHandler != null) {
@@ -1702,6 +1713,30 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         return generateProtobufCommandBytes(phoneToGlasses);
 
+    }
+    
+    /**
+     * Queries the protobuf schema version from the glasses firmware
+     */
+    private void queryGlassesProtobufVersionFromFirmware() {
+        Log.d(TAG, "=== SENDING GLASSES PROTOBUF VERSION REQUEST ===");
+        
+        // Generate unique message ID for this request
+        String msgId = "ver_req_" + System.currentTimeMillis();
+        
+        VersionRequest versionRequest = VersionRequest.newBuilder()
+                .setMsgId(msgId)
+                .build();
+
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+                .setMsgId(msgId)
+                .setVersionRequest(versionRequest)
+                .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+        
+        Log.d(TAG, "Sent glasses protobuf version request with msg_id: " + msgId);
     }
 
     // periodically send a mic ON request so it never turns off
@@ -3256,6 +3291,27 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     // EventBus.getDefault().post(new GlassesHeadDownEvent());
                     // EventBus.getDefault().post(new GlassesTapOutputEvent(2, isRight,
                     // System.currentTimeMillis()));
+                }
+                break;
+                case VERSION_RESPONSE: {
+                    final VersionResponse versionResponse = glassesToPhone.getVersionResponse();
+                    Log.d(TAG, "=== RECEIVED GLASSES PROTOBUF VERSION RESPONSE ===");
+                    Log.d(TAG, "Glasses Protobuf Version: " + versionResponse.getVersion());
+                    Log.d(TAG, "Message ID: " + versionResponse.getMsgId());
+                    if (!versionResponse.getCommit().isEmpty()) {
+                        Log.d(TAG, "Commit: " + versionResponse.getCommit());
+                    }
+                    if (!versionResponse.getBuildDate().isEmpty()) {
+                        Log.d(TAG, "Build Date: " + versionResponse.getBuildDate());
+                    }
+                    
+                    // Post glasses protobuf version event to update UI
+                    EventBus.getDefault().post(new ProtocolVersionResponseEvent(
+                        versionResponse.getVersion(),
+                        versionResponse.getCommit(),
+                        versionResponse.getBuildDate(),
+                        versionResponse.getMsgId()
+                    ));
                 }
                 break;
                 case PAYLOAD_NOT_SET: {
