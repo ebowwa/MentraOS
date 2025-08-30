@@ -2336,8 +2336,8 @@ struct ViewState {
 
     @objc func cleanup() {
         // Clean up transcriber resources - DISABLED
-        // transcriber?.shutdown()
-        // transcriber = nil
+        transcriber?.shutdown()
+        transcriber = nil
 
         cancellables.removeAll()
         saveSettings()
