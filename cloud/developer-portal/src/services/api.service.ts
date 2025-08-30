@@ -4,19 +4,20 @@ import { Permission, App } from "@/types/app";
 import { AppI } from "@mentra/sdk";
 
 // Set default config
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8002";
+axios.defaults.baseURL =
+  import.meta.env.VITE_API_URL || "http://localhost:8002";
 axios.defaults.withCredentials = true;
 console.log("API URL", axios.defaults.baseURL);
 
 // Helper function to wait a specified time
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Helper function to retry a function with exponential backoff
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   retries = 3,
   initialDelay = 300,
-  maxDelay = 2000
+  maxDelay = 2000,
 ): Promise<T> {
   let currentDelay = initialDelay;
 
@@ -27,8 +28,13 @@ async function retryWithBackoff<T>(
       if (i === retries - 1) throw error;
 
       // Check if this is an auth error, and if auth token might not be ready
-      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
-        console.log(`Auth error on attempt ${i+1}, retrying after ${currentDelay}ms...`);
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 401 || error.response?.status === 403)
+      ) {
+        console.log(
+          `Auth error on attempt ${i + 1}, retrying after ${currentDelay}ms...`,
+        );
         await delay(currentDelay);
         currentDelay = Math.min(currentDelay * 2, maxDelay);
       } else {
@@ -37,7 +43,7 @@ async function retryWithBackoff<T>(
     }
   }
 
-  throw new Error('Max retries reached');
+  throw new Error("Max retries reached");
 }
 
 // Extended App interface for API responses
@@ -46,7 +52,7 @@ export interface AppResponse extends AppI {
   createdAt: string;
   updatedAt: string;
   publicUrl: string;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
+  appStoreStatus?: "DEVELOPMENT" | "SUBMITTED" | "REJECTED" | "PUBLISHED";
   reviewNotes?: string;
   reviewedBy?: string;
   reviewedAt?: string;
@@ -80,7 +86,7 @@ export interface DeveloperUser {
 /**
  * Organization member role
  */
-export type OrgRole = 'admin' | 'member';
+export type OrgRole = "admin" | "member";
 
 /**
  * Organization member interface
@@ -183,7 +189,10 @@ const api = {
      * @param orgId - The organization ID
      * @param data - The updated organization data
      */
-    update: async (orgId: string, data: Partial<Organization>): Promise<Organization> => {
+    update: async (
+      orgId: string,
+      data: Partial<Organization>,
+    ): Promise<Organization> => {
       const response = await axios.put(`/api/orgs/${orgId}`, data);
       return response.data.data;
     },
@@ -194,8 +203,15 @@ const api = {
      * @param email - The invitee's email address
      * @param role - The role to assign to the invitee (default: 'member')
      */
-    invite: async (orgId: string, email: string, role: OrgRole = 'member'): Promise<{ inviteToken: string }> => {
-      const response = await axios.post(`/api/orgs/${orgId}/members`, { email, role });
+    invite: async (
+      orgId: string,
+      email: string,
+      role: OrgRole = "member",
+    ): Promise<{ inviteToken: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/members`, {
+        email,
+        role,
+      });
       return response.data.data;
     },
 
@@ -214,8 +230,15 @@ const api = {
      * @param memberId - The member's user ID
      * @param role - The new role
      */
-    changeRole: async (orgId: string, memberId: string, role: OrgRole): Promise<Organization> => {
-      const response = await axios.patch(`/api/orgs/${orgId}/members/${memberId}`, { role });
+    changeRole: async (
+      orgId: string,
+      memberId: string,
+      role: OrgRole,
+    ): Promise<Organization> => {
+      const response = await axios.patch(
+        `/api/orgs/${orgId}/members/${memberId}`,
+        { role },
+      );
       return response.data.data;
     },
 
@@ -224,8 +247,13 @@ const api = {
      * @param orgId - The organization ID
      * @param memberId - The member's user ID
      */
-    removeMember: async (orgId: string, memberId: string): Promise<{ success: boolean }> => {
-      const response = await axios.delete(`/api/orgs/${orgId}/members/${memberId}`);
+    removeMember: async (
+      orgId: string,
+      memberId: string,
+    ): Promise<{ success: boolean }> => {
+      const response = await axios.delete(
+        `/api/orgs/${orgId}/members/${memberId}`,
+      );
       return response.data;
     },
 
@@ -243,8 +271,13 @@ const api = {
      * @param orgId - The organization ID
      * @param email - The email address of the pending invite
      */
-    resendInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
-      const response = await axios.post(`/api/orgs/${orgId}/invites/resend`, { email });
+    resendInvite: async (
+      orgId: string,
+      email: string,
+    ): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/resend`, {
+        email,
+      });
       return response.data;
     },
 
@@ -253,8 +286,13 @@ const api = {
      * @param orgId - The organization ID
      * @param email - The email address of the pending invite
      */
-    rescindInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
-      const response = await axios.post(`/api/orgs/${orgId}/invites/rescind`, { email });
+    rescindInvite: async (
+      orgId: string,
+      email: string,
+    ): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/rescind`, {
+        email,
+      });
       return response.data;
     },
 
@@ -262,7 +300,9 @@ const api = {
      * Delete an organization
      * @param orgId - The organization ID
      */
-    delete: async (orgId: string): Promise<{ success: boolean; message: string }> => {
+    delete: async (
+      orgId: string,
+    ): Promise<{ success: boolean; message: string }> => {
       const response = await axios.delete(`/api/orgs/${orgId}`);
       return response.data;
     },
@@ -273,53 +313,78 @@ const api = {
     // Get all Apps for the current organization
     getAll: async (orgId?: string): Promise<AppResponse[]> => {
       return retryWithBackoff(async () => {
-        const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
+        const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
         const response = await axios.get("/api/dev/apps", config);
         return response.data;
       });
     },
 
     // Get a specific App by package name
-    getByPackageName: async (packageName: string, orgId?: string): Promise<AppResponse> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
+    getByPackageName: async (
+      packageName: string,
+      orgId?: string,
+    ): Promise<AppResponse> => {
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
       const response = await axios.get(`/api/dev/apps/${packageName}`, config);
       return response.data;
     },
 
     // Create a new App
-    create: async (orgId: string, appData: AppI): Promise<{ app: AppResponse; apiKey: string }> => {
+    create: async (
+      orgId: string,
+      appData: AppI,
+    ): Promise<{ app: AppResponse; apiKey: string }> => {
       const response = await axios.post("/api/dev/apps/register", appData, {
-        headers: { 'x-org-id': orgId }
+        headers: { "x-org-id": orgId },
       });
       return response.data;
     },
 
     // Update an existing App
-    update: async (packageName: string, appData: Partial<App>, orgId?: string): Promise<AppResponse> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
-      const response = await axios.put(`/api/dev/apps/${packageName}`, appData, config);
+    update: async (
+      packageName: string,
+      appData: Partial<App>,
+      orgId?: string,
+    ): Promise<AppResponse> => {
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
+      const response = await axios.put(
+        `/api/dev/apps/${packageName}`,
+        appData,
+        config,
+      );
       return response.data;
     },
 
     // Delete a App
     delete: async (packageName: string, orgId?: string): Promise<void> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
       await axios.delete(`/api/dev/apps/${packageName}`, config);
     },
 
     // Publish an app to the app store
-    publish: async (packageName: string, orgId?: string): Promise<AppResponse> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
-      const response = await axios.post(`/api/dev/apps/${packageName}/publish`, {}, config);
+    publish: async (
+      packageName: string,
+      orgId?: string,
+    ): Promise<AppResponse> => {
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
+      const response = await axios.post(
+        `/api/dev/apps/${packageName}/publish`,
+        {},
+        config,
+      );
       return response.data;
     },
 
     // Move a App to a different organization
-    moveToOrg: async (packageName: string, targetOrgId: string, sourceOrgId: string): Promise<AppResponse> => {
+    moveToOrg: async (
+      packageName: string,
+      targetOrgId: string,
+      sourceOrgId: string,
+    ): Promise<AppResponse> => {
       const response = await axios.post(
         `/api/dev/apps/${packageName}/move-org`,
         { targetOrgId },
-        { headers: { 'x-org-id': sourceOrgId } }
+        { headers: { "x-org-id": sourceOrgId } },
       );
       return response.data;
     },
@@ -327,9 +392,16 @@ const api = {
     // API key management
     apiKey: {
       // Generate a new API key for a App
-      regenerate: async (packageName: string, orgId?: string): Promise<ApiKeyResponse> => {
-        const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
-        const response = await axios.post(`/api/dev/apps/${packageName}/api-key`, {}, config);
+      regenerate: async (
+        packageName: string,
+        orgId?: string,
+      ): Promise<ApiKeyResponse> => {
+        const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
+        const response = await axios.post(
+          `/api/dev/apps/${packageName}/api-key`,
+          {},
+          config,
+        );
         return response.data;
       },
     },
@@ -337,27 +409,46 @@ const api = {
     // Permissions management
     permissions: {
       // Get permissions for a App
-      get: async (packageName: string): Promise<{permissions: Permission[]}> => {
+      get: async (
+        packageName: string,
+      ): Promise<{ permissions: Permission[] }> => {
         const response = await axios.get(`/api/permissions/${packageName}`);
         return response.data;
       },
 
       // Update permissions for a App
-      update: async (packageName: string, permissions: Permission[]): Promise<{permissions: Permission[]}> => {
-        const response = await axios.patch(`/api/permissions/${packageName}`, { permissions });
+      update: async (
+        packageName: string,
+        permissions: Permission[],
+      ): Promise<{ permissions: Permission[] }> => {
+        const response = await axios.patch(`/api/permissions/${packageName}`, {
+          permissions,
+        });
         return response.data;
       },
     },
 
     // These are deprecated but kept for backwards compatibility during transition
-    updateVisibility: async (packageName: string, sharedWithOrganization: boolean): Promise<AppResponse> => {
-      const response = await axios.patch(`/api/dev/apps/${packageName}/visibility`, { sharedWithOrganization });
+    updateVisibility: async (
+      packageName: string,
+      sharedWithOrganization: boolean,
+    ): Promise<AppResponse> => {
+      const response = await axios.patch(
+        `/api/dev/apps/${packageName}/visibility`,
+        { sharedWithOrganization },
+      );
       return response.data;
     },
 
     // Update sharedWithEmails
-    updateSharedEmails: async (packageName: string, emails: string[]): Promise<AppResponse> => {
-      const response = await axios.patch(`/api/dev/apps/${packageName}/share-emails`, { emails });
+    updateSharedEmails: async (
+      packageName: string,
+      emails: string[],
+    ): Promise<AppResponse> => {
+      const response = await axios.patch(
+        `/api/dev/apps/${packageName}/share-emails`,
+        { emails },
+      );
       return response.data;
     },
   },
@@ -370,17 +461,23 @@ const api = {
      * @param metadata - Optional metadata for the image
      * @returns The Cloudflare image URL
      */
-    upload: async (file: File, metadata?: { appPackageName?: string }): Promise<{ url: string; imageId: string }> => {
+    upload: async (
+      file: File,
+      metadata?: { appPackageName?: string },
+    ): Promise<{ url: string; imageId: string }> => {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
       if (metadata?.appPackageName) {
-        formData.append('metadata', JSON.stringify({ appPackageName: metadata.appPackageName }));
+        formData.append(
+          "metadata",
+          JSON.stringify({ appPackageName: metadata.appPackageName }),
+        );
       }
 
-      const response = await axios.post('/api/dev/images/upload', formData, {
+      const response = await axios.post("/api/dev/images/upload", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -393,14 +490,17 @@ const api = {
      * @param file - The new image file
      * @returns The new Cloudflare image URL
      */
-    replace: async (imageId: string, file: File): Promise<{ url: string; imageId: string }> => {
+    replace: async (
+      imageId: string,
+      file: File,
+    ): Promise<{ url: string; imageId: string }> => {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('replaceImageId', imageId);
+      formData.append("file", file);
+      formData.append("replaceImageId", imageId);
 
-      const response = await axios.post('/api/dev/images/upload', formData, {
+      const response = await axios.post("/api/dev/images/upload", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -419,36 +519,86 @@ const api = {
   // Installation sharing endpoints
   sharing: {
     // Get a shareable installation link for a App
-    getInstallLink: async (packageName: string, orgId?: string): Promise<string> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
-      const response = await axios.get(`/api/dev/apps/${packageName}/share`, config);
+    getInstallLink: async (
+      packageName: string,
+      orgId?: string,
+    ): Promise<string> => {
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
+      const response = await axios.get(
+        `/api/dev/apps/${packageName}/share`,
+        config,
+      );
       return response.data.installUrl;
     },
 
     // Track that a App has been shared with a specific email
-    trackSharing: async (packageName: string, emails: string[], orgId?: string): Promise<void> => {
-      const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
-      await axios.post(`/api/dev/apps/${packageName}/share`, { emails }, config);
+    trackSharing: async (
+      packageName: string,
+      emails: string[],
+      orgId?: string,
+    ): Promise<void> => {
+      const config = orgId ? { headers: { "x-org-id": orgId } } : undefined;
+      await axios.post(
+        `/api/dev/apps/${packageName}/share`,
+        { emails },
+        config,
+      );
+    },
+  },
+
+  /**
+   * End-user app management endpoints (install/uninstall for the logged-in user)
+   */
+  userApps: {
+    /**
+     * Fetch the list of apps installed for the currently authenticated user.
+     * Returns an array of app objects. If none are installed, returns an empty array.
+     */
+    getInstalledApps: async (): Promise<any[]> => {
+      const response = await axios.get("/api/apps/installed");
+      return response.data?.data || [];
+    },
+
+    /**
+     * Install an app for the current user by package name.
+     * Returns true on success.
+     */
+    installApp: async (packageName: string): Promise<boolean> => {
+      const response = await axios.post(`/api/apps/install/${packageName}`);
+      return Boolean(response.data?.success);
+    },
+
+    /**
+     * Uninstall an app for the current user by package name.
+     * Returns true on success.
+     */
+    uninstallApp: async (packageName: string): Promise<boolean> => {
+      const response = await axios.post(`/api/apps/uninstall/${packageName}`);
+      return Boolean(response.data?.success);
     },
   },
 
   // Admin panel endpoints
   admin: {
     // Check if user is an admin
-    checkAdmin: async (): Promise<{ isAdmin: boolean, role: string, email: string }> => {
-      const response = await axios.get('/api/admin/check');
+    checkAdmin: async (): Promise<{
+      isAdmin: boolean;
+      role: string;
+      email: string;
+    }> => {
+      const response = await axios.get("/api/admin/check");
       return response.data;
     },
 
     // Get admin dashboard stats
     getStats: async () => {
-      const response = await axios.get('/api/admin/apps/stats');
+      const response = await axios.get("/api/admin/apps/stats");
       return response.data;
     },
 
     // Get submitted apps
     getSubmittedApps: async () => {
-      const response = await axios.get('/api/admin/apps/submitted');
+      const response = await axios.get("/api/admin/apps/submitted");
       return response.data;
     },
 
@@ -460,13 +610,19 @@ const api = {
 
     // Approve an app
     approveApp: async (packageName: string, notes: string) => {
-      const response = await axios.post(`/api/admin/apps/${packageName}/approve`, { notes });
+      const response = await axios.post(
+        `/api/admin/apps/${packageName}/approve`,
+        { notes },
+      );
       return response.data;
     },
 
     // Reject an app
     rejectApp: async (packageName: string, notes: string) => {
-      const response = await axios.post(`/api/admin/apps/${packageName}/reject`, { notes });
+      const response = await axios.post(
+        `/api/admin/apps/${packageName}/reject`,
+        { notes },
+      );
       return response.data;
     },
 
@@ -474,13 +630,13 @@ const api = {
     users: {
       // Get all admin users
       getAll: async () => {
-        const response = await axios.get('/api/admin/users');
+        const response = await axios.get("/api/admin/users");
         return response.data;
       },
 
       // Add a new admin user
       add: async (email: string, role: string) => {
-        const response = await axios.post('/api/admin/users', { email, role });
+        const response = await axios.post("/api/admin/users", { email, role });
         return response.data;
       },
 
@@ -488,27 +644,27 @@ const api = {
       remove: async (email: string) => {
         const response = await axios.delete(`/api/admin/users/${email}`);
         return response.data;
-      }
+      },
     },
 
     // Debug route that doesn't require authentication
     debug: async () => {
-      const response = await axios.get('/api/admin/debug');
+      const response = await axios.get("/api/admin/debug");
       return response.data;
     },
 
     // Fix app status issues
     fixAppStatuses: async () => {
-      const response = await axios.post('/api/admin/fix-app-statuses');
+      const response = await axios.post("/api/admin/fix-app-statuses");
       return response.data;
     },
 
     // Create a test submission (development only)
     createTestSubmission: async () => {
-      const response = await axios.post('/api/admin/create-test-submission');
+      const response = await axios.post("/api/admin/create-test-submission");
       return response.data;
-    }
-  }
+    },
+  },
 };
 
 export default api;

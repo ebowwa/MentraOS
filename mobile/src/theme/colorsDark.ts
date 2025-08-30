@@ -1,62 +1,51 @@
 const palette = {
+  // Neutrals
   neutral900: "#FFFFFF",
   neutral800: "#F4F2F1",
   neutral700: "#D7CEC9",
   neutral600: "#B6ACA6",
   neutral500: "#978F8A",
-  // neutral400: "#564E4A",
   neutral400: "#202761",
   neutral300: "#3C3836",
   neutral200: "#161C47",
   neutral100: "#FFFFFF",
 
+  // Primary
   primary600: "#F4E0D9",
   primary500: "#B0B9FF",
   primary400: "#565E8C",
   primary300: "#4240D1",
-  // primary200: "#C76542",
   primary200: "#6274EE",
   primary100: "#A54F31",
 
+  // Secondary
   secondary500: "#DCDDE9",
   secondary400: "#BCC0D6",
   secondary300: "#9196B9",
   secondary200: "#626894",
   secondary100: "#41476E",
 
+  // Accent
   accent500: "#FFEED4",
   accent400: "#FFE1B2",
   accent300: "#FDD495",
   accent200: "#FBC878",
   accent100: "#FFBB50",
 
+  // Angry/Error
   angry100: "#F2D6CD",
   angry500: "#C03403",
   angry600: "#FE98EB",
 
-  // Warning/danger colors
-  red500: "#f00", // Bright red for warnings
-
-  // Orange colors
-  orange500: "#FF9500", // Warning orange
-
-  // Red error colors
-  errorRed: "#FF3B30", // Error red
-
-  // Common blue colors found in hardcoded values (same as light theme)
+  // Blues
   blue100: "#E3F2FD",
   blue200: "#BBDEFB",
   blue300: "#90CAF9",
   blue400: "#42A5F5",
-  blue500: "#2196F3", // Material Design Blue - most common hardcoded blue
-  blue600: "#1976D2", // Darker blue variant
-  blue700: "#1565C0",
-  blue800: "#0D47A1",
+  blue500: "#2196F3",
+  blue600: "#1976D2",
 
-  // iOS system blue
-  iosBlue: "#007AFF",
-
-  // Common gray colors found in hardcoded values (same as light theme)
+  // Grays
   gray100: "#F5F5F5",
   gray200: "#EEEEEE",
   gray300: "#E0E0E0",
@@ -66,211 +55,246 @@ const palette = {
   gray700: "#616161",
   gray800: "#424242",
   gray900: "#212121",
-
-  // Additional grays from hardcoded values
   lightGray: "#CCCCCC",
   mediumGray: "#999999",
-  darkGray: "#666666",
-  charcoal: "#333333",
 
-  // Success colors
+  // Success
   success100: "#E8F5E8",
   success500: "#4CAF50",
 
-  // Warning colors
-  warning100: "#FFF3E0",
-  warning500: "#FF9500",
-
-  // Facebook brand color
-  facebookBlue: "#4267B2",
-
-  // Common overlay colors
+  // Overlays
   overlay90: "rgba(0, 0, 0, 0.9)",
   overlay70: "rgba(0, 0, 0, 0.7)",
   overlay60: "rgba(0, 0, 0, 0.6)",
   overlay40: "rgba(0, 0, 0, 0.4)",
   overlay30: "rgba(0, 0, 0, 0.3)",
+  overlay20: "rgba(25, 16, 21, 0.2)",
   overlay10: "rgba(0, 0, 0, 0.1)",
+  overlay50: "rgba(25, 16, 21, 0.5)",
   whiteOverlay90: "rgba(255, 255, 255, 0.9)",
   whiteOverlay85: "rgba(255, 255, 255, 0.85)",
   whiteOverlay70: "rgba(255, 255, 255, 0.7)",
 
-  overlay20: "rgba(25, 16, 21, 0.2)",
-  overlay50: "rgba(25, 16, 21, 0.5)",
+  // Pure colors
+  black: "#000000",
+  white: "#FFFFFF",
+  transparent: "rgba(0, 0, 0, 0)",
+
+  // Additional unique colors
+  darkBlue1: "#090A14",
+  darkBlue2: "#080D33",
+  darkBlue3: "#030514",
+  darkBlue4: "#1D1D45",
+  darkBlue5: "#0F1861",
+  purpleBlue1: "#4340D3",
+  purpleBlue2: "#06114D",
+  purpleBlue3: "#7B79FF",
+  purpleBlue4: "#7674FB",
+  purpleGray1: "#565E8C",
+  purpleGray2: "#747CAB",
+  purpleGray3: "#898FB2",
+  lightPurple1: "#D5D8F5",
+  lightPurple2: "#ABAAFF",
+  darkPurple1: "#474794",
+  darkPurple2: "#141434",
+  lightText: "#F9F8FE",
+  darkGray: "#121212",
+  modalDark: "#1c1c1c",
+  warningPink: "rgba(254, 152, 235, 0.2)",
+  warningPinkStrong: "rgba(254, 152, 235, 0.4)",
+  warningPinkBorder: "rgba(254, 152, 235, 0.16)",
 } as const
 
-const semanticColors = {
-  // Tab bar gradient colors (dark theme)
-  tabBarGradientStart: "#090A14", // Dark blue for dark theme tab bar start
-  tabBarGradientEnd: "#080D33", // Darker blue for dark theme tab bar end
+const semantic = {
+  // Tab bar gradients
+  tabBarGradientStart: palette.darkBlue1,
+  tabBarGradientEnd: palette.darkBlue2,
+  altTabBarGradientStart: palette.darkBlue3,
+  altTabBarGradientEnd: palette.darkBlue4,
 
-  altTabBarGradientStart: "#030514",
-  altTabBarGradientEnd: "#1D1D45",
+  // Button gradients
+  buttonGradientStart: palette.purpleBlue1,
+  buttonGradientEnd: palette.purpleBlue2,
 
-  // Button gradient colors (same for both themes)
-  buttonGradientStart: "#4340D3", // Purple-blue for button gradient start
-  buttonGradientEnd: "#06114D", // Dark blue for button gradient end
+  // Warning colors
+  warningBackground: palette.warningPink,
+  warningBackgroundDestructive: palette.warningPinkStrong,
+  warningBorderDestructive: palette.warningPinkBorder,
+  warningPink: palette.angry600,
 
-  // Warning background colors
-  warningBackground: "rgba(254, 152, 235, 0.2)", // Light pink/magenta warning background with 20% opacity
-  warningPink: "#FE98EB", // Solid pink/magenta for destructive actions
+  // Input states
+  inputBorderHighlight: palette.primary500,
 
-  // Input border colors
-  inputBorderHighlight: "#B0B9FF", // Light blue border for input fields
+  // Button pill variants
+  buttonPillPrimary: palette.primary500,
+  buttonPillSecondary: palette.transparent,
+  buttonPillSecondaryBorder: palette.purpleGray2,
+  buttonPillIcon: palette.darkPurple1,
+  buttonPillPrimaryText: palette.darkPurple2,
+  buttonPillSecondaryText: palette.lightText,
+  buttonPillIconText: palette.white,
 
-  // Button colors for pill-shaped buttons
-  buttonPillPrimary: "#B0B9FF", // Light blue for primary pill buttons
-  buttonPillSecondary: "transparent", // Transparent background for secondary pill buttons
-  buttonPillSecondaryBorder: "#747CAB", // Light purple border for secondary pill buttons
-  buttonPillIcon: "#474794", // Dark blue for icon pill buttons (was secondary)
-  buttonPillPrimaryText: "#141434", // Dark text for light primary buttons
-  buttonPillSecondaryText: "#F9F8FE", // Light text for secondary buttons
-  buttonPillIconText: "#FFFFFF", // Light text for icon buttons
+  // Gallery
+  galleryBg: palette.darkGray,
 
-  galleryBg: "#121212", // Very dark background for gallery
-}
+  // Switch/toggle states
+  switchTrackOff: palette.purpleGray1,
+  switchTrackOn: palette.purpleBlue4,
+  switchThumb: palette.neutral100,
+  switchThumbOn: palette.white,
+  switchThumbOff: palette.lightPurple1,
+  switchBorder: palette.transparent,
+  switchBorderWidth: 0,
+
+  // Slider states
+  sliderThumb: palette.white,
+  sliderTrackActive: palette.purpleBlue4,
+  sliderTrackInactive: palette.purpleGray1,
+
+  // Tab bar states
+  tabBarIconActive: palette.white,
+  tabBarTextActive: palette.white,
+  tabBarIconInactive: palette.neutral600,
+  tabBarTextInactive: palette.neutral600,
+
+  // List items
+  chevron: palette.purpleGray3,
+
+  // Tags
+  foregroundTagBackground: palette.darkBlue5,
+  foregroundTagText: palette.lightPurple2,
+
+  // Status indicators
+  statusIcon: palette.lightPurple1,
+  statusText: palette.lightPurple1,
+
+  // Checkmark
+  checkmark: palette.purpleBlue3,
+
+  // Search
+  searchIcon: palette.neutral800,
+} as const
 
 export const colors = {
   palette,
-  transparent: "rgba(0, 0, 0, 0)",
+  transparent: palette.transparent,
+
+  // Text colors
   text: palette.neutral800,
   textDim: palette.neutral600,
   textAlt: palette.neutral200,
+
+  // Backgrounds
   background: palette.neutral200,
+  modalBackground: palette.modalDark,
+  galleryBackground: semantic.galleryBg,
+  fullscreenBackground: palette.black,
+
+  // Borders
   border: palette.neutral400,
+  borderLight: palette.overlay10,
+
+  // Primary colors
   tint: palette.primary500,
   tintInactive: palette.neutral300,
   separator: palette.neutral300,
+
+  // Error states
   error: palette.angry500,
   errorBackground: palette.angry100,
 
-  // Login screen gradient (no gradient in dark theme, just background)
-  loginGradientStart: palette.neutral200, // Dark background
-  loginGradientEnd: palette.neutral200, // Same dark background
+  // Login screen (no gradient in dark theme)
+  loginGradientStart: palette.neutral200,
+  loginGradientEnd: palette.neutral200,
 
-  // Semantic color mappings for common UI elements
+  // Buttons
   buttonPrimary: palette.primary500,
   buttonSecondary: palette.blue500,
   buttonDisabled: palette.lightGray,
   buttonDanger: palette.angry500,
+  buttonPressed: palette.neutral700,
 
-  // Modal and overlay colors
+  // Button gradients
+  buttonGradientStart: semantic.buttonGradientStart,
+  buttonGradientEnd: semantic.buttonGradientEnd,
+
+  // Pill buttons
+  buttonPillPrimary: semantic.buttonPillPrimary,
+  buttonPillSecondary: semantic.buttonPillSecondary,
+  buttonPillSecondaryBorder: semantic.buttonPillSecondaryBorder,
+  buttonPillIcon: semantic.buttonPillIcon,
+  buttonPillPrimaryText: semantic.buttonPillPrimaryText,
+  buttonPillSecondaryText: semantic.buttonPillSecondaryText,
+  buttonPillIconText: semantic.buttonPillIconText,
+
+  // Overlays
   modalOverlay: palette.overlay70,
-  modalBackground: "#1c1c1c", // Dark theme modal background
+  fullscreenOverlay: palette.overlay60,
+  pickerBackground: palette.overlay70,
 
-  // Success and warning states
+  // Status colors
   success: palette.success500,
-  warning: palette.warning500,
+  statusSuccess: palette.success500,
+  statusInfo: palette.blue500,
 
-  // Switch/toggle colors
-  switchTrackOff: "#565E8C", // Purple-gray track for OFF state
-  switchTrackOn: "#7674FB", // Purple track for ON state
-  switchThumb: palette.neutral100,
-  switchThumbOn: "#FFFFFF", // White thumb for ON state
-  switchThumbOff: "#D5D8F5", // Light purple thumb for OFF state
-  switchBorder: "transparent", // No border in dark theme
-  switchBorderWidth: 0, // No border width in dark theme
+  // Switch/toggle
+  switchTrackOff: semantic.switchTrackOff,
+  switchTrackOn: semantic.switchTrackOn,
+  switchThumb: semantic.switchThumb,
+  switchThumbOn: semantic.switchThumbOn,
+  switchThumbOff: semantic.switchThumbOff,
+  switchBorder: semantic.switchBorder,
+  switchBorderWidth: semantic.switchBorderWidth,
 
-  // Gallery specific colors
-  galleryBackground: semanticColors.galleryBg,
+  // Icons
+  icon: palette.neutral100,
+  iconSecondary: palette.neutral500,
 
-  // Status/alert colors
-  warningOrange: palette.orange500,
-  errorRed: palette.errorRed,
-
-  // Loading and activity indicators
-  loadingIndicator: palette.blue500,
-
-  // Icon colors
-  icon: palette.neutral100, // white icons
-  iconSecondary: palette.neutral500, // lighter gray for dark theme
-
-  // Button states
-  buttonPressed: palette.neutral700, // Darker state for pressed buttons
-
-  // Tab bar gradients
-  tabBarBackground1: semanticColors.tabBarGradientStart,
-  tabBarBackground2: semanticColors.tabBarGradientEnd,
-
-  // Tab bar solid background (for native tabs)
+  // Tab bar
+  tabBarBackground1: semantic.tabBarGradientStart,
+  tabBarBackground2: semantic.tabBarGradientEnd,
   tabBarBackground: palette.neutral200,
+  altTabBarBackground1: semantic.altTabBarGradientStart,
+  altTabBarBackground2: semantic.altTabBarGradientEnd,
+  tabBarIconActive: semantic.tabBarIconActive,
+  tabBarTextActive: semantic.tabBarTextActive,
+  tabBarIconInactive: semantic.tabBarIconInactive,
+  tabBarTextInactive: semantic.tabBarTextInactive,
 
-  altTabBarBackground1: semanticColors.altTabBarGradientStart,
-  altTabBarBackground2: semanticColors.altTabBarGradientEnd,
+  // Actions
+  shareButton: palette.blue500,
+  destructiveAction: palette.angry600,
 
-  // Fullscreen and modal backgrounds
-  fullscreenBackground: "#000000", // Black for fullscreen camera
-  fullscreenOverlay: palette.overlay60, // Semi-transparent overlay
+  // Gallery
+  galleryLoadingIndicator: palette.blue500,
 
-  // Permission and action buttons
-  permissionButton: palette.iosBlue, // iOS blue for permission requests
-  shareButton: palette.blue500, // Blue for share actions
-  deleteButton: palette.angry500, // Red for delete actions
-  destructiveAction: palette.angry600, // Pink for destructive actions
+  // Warning states
+  warningBackground: semantic.warningBackground,
+  warningBackgroundDestructive: semantic.warningBackgroundDestructive,
+  warningBorderDestructive: semantic.warningBorderDestructive,
 
-  // Badge and notification colors
-  badgeBackground: palette.red500, // Red for notification badges
+  // Input states
+  inputBorderHighlight: semantic.inputBorderHighlight,
 
-  // Gallery specific
-  galleryLoadingIndicator: palette.blue500, // Blue for loading spinners
+  // Checkmark
+  checkmark: semantic.checkmark,
 
-  // Status and notification colors
-  statusSuccess: palette.success500, // Green for success messages
-  statusWarning: palette.warning500, // Orange for warning messages
-  statusInfo: palette.blue500, // Blue for info messages
+  // Slider
+  sliderThumb: semantic.sliderThumb,
+  sliderTrackActive: semantic.sliderTrackActive,
+  sliderTrackInactive: semantic.sliderTrackInactive,
 
-  // Modal and picker backgrounds
-  pickerBackground: palette.overlay70, // Dark semi-transparent for dark theme pickers
+  // Chevron
+  chevron: semantic.chevron,
 
-  // Border variations
-  borderLight: palette.overlay10, // Very light border
+  // Tags
+  foregroundTagBackground: semantic.foregroundTagBackground,
+  foregroundTagText: semantic.foregroundTagText,
 
-  // Button gradient colors
-  buttonGradientStart: semanticColors.buttonGradientStart,
-  buttonGradientEnd: semanticColors.buttonGradientEnd,
+  // Status indicators
+  statusIcon: semantic.statusIcon,
+  statusText: semantic.statusText,
 
-  // Warning background
-  warningBackground: semanticColors.warningBackground,
-  warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
-  warningBorderDestructive: "rgba(254, 152, 235, 0.16)", // Faded pink border (40% of background opacity)
-
-  // Input border highlight
-  inputBorderHighlight: semanticColors.inputBorderHighlight,
-
-  // Pill button colors
-  buttonPillPrimary: semanticColors.buttonPillPrimary,
-  buttonPillSecondary: semanticColors.buttonPillSecondary,
-  buttonPillSecondaryBorder: semanticColors.buttonPillSecondaryBorder,
-  buttonPillIcon: semanticColors.buttonPillIcon,
-  buttonPillPrimaryText: semanticColors.buttonPillPrimaryText,
-  buttonPillSecondaryText: semanticColors.buttonPillSecondaryText,
-  buttonPillIconText: semanticColors.buttonPillIconText,
-
-  // Checkmark color
-  checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
-
-  // Slider colors
-  sliderThumb: "#FFFFFF", // White handle for dark theme
-  sliderTrackActive: "#7674FB", // Purple track for active/filled portion (matches switch ON)
-  sliderTrackInactive: "#565E8C", // Purple-gray for inactive portion (matches switch OFF)
-
-  // Tab bar icon and text colors
-  tabBarIconActive: "#FFFFFF", // White for active tab icon in dark theme
-  tabBarTextActive: "#FFFFFF", // White for active tab text in dark theme
-  tabBarIconInactive: palette.neutral600, // Use existing textDim color for inactive
-  tabBarTextInactive: palette.neutral600, // Use existing textDim color for inactive
-
-  // Chevron color for app list items
-  chevron: "#898FB2", // Same purple-gray for both themes
-
-  // Foreground tag colors
-  foregroundTagBackground: "#0F1861", // Dark blue background
-  foregroundTagText: "#ABAAFF", // Light purple text
-
-  // Status icons on home screen
-  statusIcon: "#D5D8F5", // Light purple-gray for battery, brightness, bluetooth, wifi icons
-  statusText: "#D5D8F5", // Same as statusIcon to keep dark theme unchanged
-
-  // Search icon color
-  searchIcon: palette.neutral800, // Keep using text color in dark theme
+  // Search
+  searchIcon: semantic.searchIcon,
 } as const

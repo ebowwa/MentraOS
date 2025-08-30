@@ -7,7 +7,7 @@ import {View, TouchableOpacity, Text, Modal, StyleSheet, Dimensions, StatusBar} 
 import {Image} from "expo-image"
 import {GestureDetector, Gesture, GestureHandlerRootView} from "react-native-gesture-handler"
 import Animated, {useAnimatedStyle, useSharedValue, withSpring, runOnJS} from "react-native-reanimated"
-import {PhotoInfo} from "../../types"
+import {PhotoInfo} from "../../../types/asg"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {spacing} from "@/theme"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"

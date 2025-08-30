@@ -10,6 +10,8 @@ import Combine
 import Foundation
 
 class OnboardMicrophoneManager {
+    static let shared = OnboardMicrophoneManager()
+
     // MARK: - Properties
 
     /// Publisher for voice data

@@ -904,11 +904,13 @@ public class MediaCaptureService {
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
 
-                        // Trigger BLE fallback
+                        // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                         boolean shouldSave = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                         String requestedSize = photoRequestedSizes.get(requestId);
                         if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
-                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize, false);
+                        // Reuse the existing photo file that was already captured
+                        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                        reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
 
@@ -955,11 +957,13 @@ public class MediaCaptureService {
                     photoBleIds.remove(requestId);
                     photoOriginalPaths.remove(requestId);
 
-                    // Trigger BLE fallback
+                    // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                     boolean shouldSaveFallback1 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                     String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
                     if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
-                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1, false);
+                    // Reuse the existing photo file that was already captured
+                    Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                    reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
 
@@ -1080,11 +1084,13 @@ public class MediaCaptureService {
                             photoBleIds.remove(requestId);
                             photoOriginalPaths.remove(requestId);
 
-                            // Trigger BLE fallback
+                            // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                             boolean shouldSaveFallback2 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                             String requestedSizeFallback2 = photoRequestedSizes.get(requestId);
                             if (requestedSizeFallback2 == null || requestedSizeFallback2.isEmpty()) requestedSizeFallback2 = "medium";
-                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2, false);
+                            // Reuse the existing photo file that was already captured
+                            Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + mediaFilePath);
+                            reusePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2);
                             return; // Exit early - BLE transfer will handle cleanup
                         }
 
@@ -1293,6 +1299,27 @@ public class MediaCaptureService {
         }
     }
 
+
+    /**
+     * Reuse existing photo for BLE transfer (when webhook fails)
+     * This avoids taking a duplicate photo
+     */
+    private void reusePhotoForBleTransfer(String existingPhotoPath, String requestId, String bleImgId, boolean save, String size) {
+        // Store the save flag for this request
+        photoSaveFlags.put(requestId, save);
+        // Track requested size for BLE compression
+        photoRequestedSizes.put(requestId, size);
+        
+        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + existingPhotoPath);
+        
+        // Notify that we're using an existing photo
+        if (mMediaCaptureListener != null) {
+            mMediaCaptureListener.onPhotoCaptured(requestId, existingPhotoPath);
+        }
+        
+        // Compress and send via BLE using the existing photo
+        compressAndSendViaBle(existingPhotoPath, requestId, bleImgId);
+    }
 
     /**
      * Compress photo and send via BLE

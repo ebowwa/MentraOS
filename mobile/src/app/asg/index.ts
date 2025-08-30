@@ -6,14 +6,14 @@
  */
 
 // Core exports
-export {GalleryScreen} from "./components/Gallery/GalleryScreen"
-export {PhotoGrid} from "./components/Gallery/PhotoGrid"
+export {GalleryScreen} from "../../components/glasses/Gallery/GalleryScreen"
+export {PhotoGrid} from "../../components/glasses/Gallery/PhotoGrid"
 
 // Services
-export {AsgCameraApiClient} from "./services/asgCameraApi"
+export {AsgCameraApiClient} from "../../services/asg/asgCameraApi"
 
 // Types
-export type {PhotoInfo, GalleryResponse, ServerStatus, HealthResponse, GalleryEvent} from "./types"
+export type {PhotoInfo, GalleryResponse, ServerStatus, HealthResponse, GalleryEvent} from "../../types/asg"
 
 // Constants
 export const ASG_CONSTANTS = {

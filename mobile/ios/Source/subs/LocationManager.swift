@@ -17,8 +17,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
     override private init() {
         super.init()
-        // delay setup until after login:
-        // setup()
     }
 
     // porter test
@@ -48,7 +46,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
             Core.log("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
 
             // Notify ServerComms to send the update to the cloud
-            ServerComms.getInstance().sendLocationUpdate(
+            ServerComms.shared.sendLocationUpdate(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 accuracy: location.horizontalAccuracy,

@@ -163,6 +163,6 @@ class CalendarManager {
     }
 
     private func handleCalendarChanged() {
-        ServerComms.getInstance().sendCalendarEvents()
+        ServerComms.shared.sendCalendarEvents()
     }
 }

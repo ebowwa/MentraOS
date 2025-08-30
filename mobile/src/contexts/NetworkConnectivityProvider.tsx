@@ -1,5 +1,5 @@
 import React, {createContext, useContext, useEffect, useState, ReactNode} from "react"
-import {networkConnectivityService, NetworkStatus} from "@/app/asg/services/networkConnectivityService"
+import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
 import {useCoreStatus} from "./CoreStatusProvider"
 
 interface NetworkConnectivityContextType {
