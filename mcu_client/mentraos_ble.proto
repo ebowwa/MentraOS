@@ -11,7 +11,7 @@ extend google.protobuf.FileOptions {
 }
 
 // Set current schema version here (bump on any schema change).
-option (mentra_schema_version) = 2;
+option (mentra_schema_version) = 1;
 
 // ============================================
 // Base Message Types

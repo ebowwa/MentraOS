@@ -19,6 +19,7 @@ public final class MentraosBle {
   }
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistryLite registry) {
+    registry.add(mentraos.ble.MentraosBle.mentraSchemaVersion);
   }
 
   public static void registerAllExtensions(
@@ -274,28 +275,16 @@ public final class MentraosBle {
     mentraos.ble.MentraosBle.DisplayImageOrBuilder getDisplayImageOrBuilder();
 
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      * @return Whether the cacheImage field is set.
      */
     boolean hasCacheImage();
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      * @return The cacheImage.
      */
     mentraos.ble.MentraosBle.CacheImage getCacheImage();
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      */
     mentraos.ble.MentraosBle.CacheImageOrBuilder getCacheImageOrBuilder();
@@ -759,6 +748,33 @@ public final class MentraosBle {
      */
     mentraos.ble.MentraosBle.FactoryResetRequestOrBuilder getFactoryResetOrBuilder();
 
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     * @return Whether the versionRequest field is set.
+     */
+    boolean hasVersionRequest();
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     * @return The versionRequest.
+     */
+    mentraos.ble.MentraosBle.VersionRequest getVersionRequest();
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     */
+    mentraos.ble.MentraosBle.VersionRequestOrBuilder getVersionRequestOrBuilder();
+
     mentraos.ble.MentraosBle.PhoneToGlasses.PayloadCase getPayloadCase();
   }
   /**
@@ -848,6 +864,7 @@ public final class MentraosBle {
       HEAD_GESTURE(58),
       RESTART(60),
       FACTORY_RESET(61),
+      VERSION_REQUEST(70),
       PAYLOAD_NOT_SET(0);
       private final int value;
       private PayloadCase(int value) {
@@ -904,6 +921,7 @@ public final class MentraosBle {
           case 58: return HEAD_GESTURE;
           case 60: return RESTART;
           case 61: return FACTORY_RESET;
+          case 70: return VERSION_REQUEST;
           case 0: return PAYLOAD_NOT_SET;
           default: return null;
         }
@@ -1399,10 +1417,6 @@ public final class MentraosBle {
 
     public static final int CACHE_IMAGE_FIELD_NUMBER = 32;
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      * @return Whether the cacheImage field is set.
      */
@@ -1411,10 +1425,6 @@ public final class MentraosBle {
       return payloadCase_ == 32;
     }
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      * @return The cacheImage.
      */
@@ -1426,10 +1436,6 @@ public final class MentraosBle {
       return mentraos.ble.MentraosBle.CacheImage.getDefaultInstance();
     }
     /**
-     * <pre>
-     * Renamed from PreloadImage for consistency
-     * </pre>
-     *
      * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
      */
     @java.lang.Override
@@ -2299,6 +2305,49 @@ public final class MentraosBle {
       return mentraos.ble.MentraosBle.FactoryResetRequest.getDefaultInstance();
     }
 
+    public static final int VERSION_REQUEST_FIELD_NUMBER = 70;
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     * @return Whether the versionRequest field is set.
+     */
+    @java.lang.Override
+    public boolean hasVersionRequest() {
+      return payloadCase_ == 70;
+    }
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     * @return The versionRequest.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionRequest getVersionRequest() {
+      if (payloadCase_ == 70) {
+         return (mentraos.ble.MentraosBle.VersionRequest) payload_;
+      }
+      return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+    }
+    /**
+     * <pre>
+     * Runtime protocol version query
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionRequestOrBuilder getVersionRequestOrBuilder() {
+      if (payloadCase_ == 70) {
+         return (mentraos.ble.MentraosBle.VersionRequest) payload_;
+      }
+      return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -2432,6 +2481,9 @@ public final class MentraosBle {
       }
       if (payloadCase_ == 61) {
         output.writeMessage(61, (mentraos.ble.MentraosBle.FactoryResetRequest) payload_);
+      }
+      if (payloadCase_ == 70) {
+        output.writeMessage(70, (mentraos.ble.MentraosBle.VersionRequest) payload_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -2600,6 +2652,10 @@ public final class MentraosBle {
       if (payloadCase_ == 61) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(61, (mentraos.ble.MentraosBle.FactoryResetRequest) payload_);
+      }
+      if (payloadCase_ == 70) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(70, (mentraos.ble.MentraosBle.VersionRequest) payload_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSize = size;
@@ -2776,6 +2832,10 @@ public final class MentraosBle {
           if (!getFactoryReset()
               .equals(other.getFactoryReset())) return false;
           break;
+        case 70:
+          if (!getVersionRequest()
+              .equals(other.getVersionRequest())) return false;
+          break;
         case 0:
         default:
       }
@@ -2948,6 +3008,10 @@ public final class MentraosBle {
         case 61:
           hash = (37 * hash) + FACTORY_RESET_FIELD_NUMBER;
           hash = (53 * hash) + getFactoryReset().hashCode();
+          break;
+        case 70:
+          hash = (37 * hash) + VERSION_REQUEST_FIELD_NUMBER;
+          hash = (53 * hash) + getVersionRequest().hashCode();
           break;
         case 0:
         default:
@@ -3206,6 +3270,9 @@ public final class MentraosBle {
         if (factoryResetBuilder_ != null) {
           factoryResetBuilder_.clear();
         }
+        if (versionRequestBuilder_ != null) {
+          versionRequestBuilder_.clear();
+        }
         payloadCase_ = 0;
         payload_ = null;
         return this;
@@ -3411,6 +3478,10 @@ public final class MentraosBle {
             factoryResetBuilder_ != null) {
           result.payload_ = factoryResetBuilder_.build();
         }
+        if (payloadCase_ == 70 &&
+            versionRequestBuilder_ != null) {
+          result.payload_ = versionRequestBuilder_.build();
+        }
       }
 
       @java.lang.Override
@@ -3585,6 +3656,10 @@ public final class MentraosBle {
           }
           case FACTORY_RESET: {
             mergeFactoryReset(other.getFactoryReset());
+            break;
+          }
+          case VERSION_REQUEST: {
+            mergeVersionRequest(other.getVersionRequest());
             break;
           }
           case PAYLOAD_NOT_SET: {
@@ -3895,6 +3970,13 @@ public final class MentraosBle {
                 payloadCase_ = 61;
                 break;
               } // case 490
+              case 562: {
+                input.readMessage(
+                    internalGetVersionRequestFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 70;
+                break;
+              } // case 562
               default: {
                 if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                   done = true; // was an endgroup tag
@@ -5957,10 +6039,6 @@ public final class MentraosBle {
       private com.google.protobuf.SingleFieldBuilder<
           mentraos.ble.MentraosBle.CacheImage, mentraos.ble.MentraosBle.CacheImage.Builder, mentraos.ble.MentraosBle.CacheImageOrBuilder> cacheImageBuilder_;
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        * @return Whether the cacheImage field is set.
        */
@@ -5969,10 +6047,6 @@ public final class MentraosBle {
         return payloadCase_ == 32;
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        * @return The cacheImage.
        */
@@ -5991,10 +6065,6 @@ public final class MentraosBle {
         }
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       public Builder setCacheImage(mentraos.ble.MentraosBle.CacheImage value) {
@@ -6011,10 +6081,6 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       public Builder setCacheImage(
@@ -6029,10 +6095,6 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       public Builder mergeCacheImage(mentraos.ble.MentraosBle.CacheImage value) {
@@ -6056,10 +6118,6 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       public Builder clearCacheImage() {
@@ -6079,20 +6137,12 @@ public final class MentraosBle {
         return this;
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       public mentraos.ble.MentraosBle.CacheImage.Builder getCacheImageBuilder() {
         return internalGetCacheImageFieldBuilder().getBuilder();
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       @java.lang.Override
@@ -6107,10 +6157,6 @@ public final class MentraosBle {
         }
       }
       /**
-       * <pre>
-       * Renamed from PreloadImage for consistency
-       * </pre>
-       *
        * <code>.mentraos.ble.CacheImage cache_image = 32;</code>
        */
       private com.google.protobuf.SingleFieldBuilder<
@@ -9934,6 +9980,184 @@ public final class MentraosBle {
         return factoryResetBuilder_;
       }
 
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VersionRequest, mentraos.ble.MentraosBle.VersionRequest.Builder, mentraos.ble.MentraosBle.VersionRequestOrBuilder> versionRequestBuilder_;
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       * @return Whether the versionRequest field is set.
+       */
+      @java.lang.Override
+      public boolean hasVersionRequest() {
+        return payloadCase_ == 70;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       * @return The versionRequest.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionRequest getVersionRequest() {
+        if (versionRequestBuilder_ == null) {
+          if (payloadCase_ == 70) {
+            return (mentraos.ble.MentraosBle.VersionRequest) payload_;
+          }
+          return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 70) {
+            return versionRequestBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      public Builder setVersionRequest(mentraos.ble.MentraosBle.VersionRequest value) {
+        if (versionRequestBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          versionRequestBuilder_.setMessage(value);
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      public Builder setVersionRequest(
+          mentraos.ble.MentraosBle.VersionRequest.Builder builderForValue) {
+        if (versionRequestBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          versionRequestBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      public Builder mergeVersionRequest(mentraos.ble.MentraosBle.VersionRequest value) {
+        if (versionRequestBuilder_ == null) {
+          if (payloadCase_ == 70 &&
+              payload_ != mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VersionRequest.newBuilder((mentraos.ble.MentraosBle.VersionRequest) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 70) {
+            versionRequestBuilder_.mergeFrom(value);
+          } else {
+            versionRequestBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      public Builder clearVersionRequest() {
+        if (versionRequestBuilder_ == null) {
+          if (payloadCase_ == 70) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 70) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          versionRequestBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      public mentraos.ble.MentraosBle.VersionRequest.Builder getVersionRequestBuilder() {
+        return internalGetVersionRequestFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionRequestOrBuilder getVersionRequestOrBuilder() {
+        if ((payloadCase_ == 70) && (versionRequestBuilder_ != null)) {
+          return versionRequestBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 70) {
+            return (mentraos.ble.MentraosBle.VersionRequest) payload_;
+          }
+          return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * Runtime protocol version query
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionRequest version_request = 70;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VersionRequest, mentraos.ble.MentraosBle.VersionRequest.Builder, mentraos.ble.MentraosBle.VersionRequestOrBuilder> 
+          internalGetVersionRequestFieldBuilder() {
+        if (versionRequestBuilder_ == null) {
+          if (!(payloadCase_ == 70)) {
+            payload_ = mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+          }
+          versionRequestBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VersionRequest, mentraos.ble.MentraosBle.VersionRequest.Builder, mentraos.ble.MentraosBle.VersionRequestOrBuilder>(
+                  (mentraos.ble.MentraosBle.VersionRequest) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 70;
+        onChanged();
+        return versionRequestBuilder_;
+      }
+
       // @@protoc_insertion_point(builder_scope:mentraos.ble.PhoneToGlasses)
     }
 
@@ -10325,6 +10549,33 @@ public final class MentraosBle {
      */
     mentraos.ble.MentraosBle.DashboardShownOrBuilder getDashboardShownOrBuilder();
 
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     * @return Whether the versionResponse field is set.
+     */
+    boolean hasVersionResponse();
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     * @return The versionResponse.
+     */
+    mentraos.ble.MentraosBle.VersionResponse getVersionResponse();
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     */
+    mentraos.ble.MentraosBle.VersionResponseOrBuilder getVersionResponseOrBuilder();
+
     mentraos.ble.MentraosBle.GlassesToPhone.PayloadCase getPayloadCase();
   }
   /**
@@ -10390,6 +10641,7 @@ public final class MentraosBle {
       BUTTON_EVENT(41),
       HEAD_GESTURE(42),
       DASHBOARD_SHOWN(43),
+      VERSION_RESPONSE(70),
       PAYLOAD_NOT_SET(0);
       private final int value;
       private PayloadCase(int value) {
@@ -10423,6 +10675,7 @@ public final class MentraosBle {
           case 41: return BUTTON_EVENT;
           case 42: return HEAD_GESTURE;
           case 43: return DASHBOARD_SHOWN;
+          case 70: return VERSION_RESPONSE;
           case 0: return PAYLOAD_NOT_SET;
           default: return null;
         }
@@ -11030,6 +11283,49 @@ public final class MentraosBle {
       return mentraos.ble.MentraosBle.DashboardShown.getDefaultInstance();
     }
 
+    public static final int VERSION_RESPONSE_FIELD_NUMBER = 70;
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     * @return Whether the versionResponse field is set.
+     */
+    @java.lang.Override
+    public boolean hasVersionResponse() {
+      return payloadCase_ == 70;
+    }
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     * @return The versionResponse.
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionResponse getVersionResponse() {
+      if (payloadCase_ == 70) {
+         return (mentraos.ble.MentraosBle.VersionResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+    }
+    /**
+     * <pre>
+     * Runtime protocol version response
+     * </pre>
+     *
+     * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+     */
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionResponseOrBuilder getVersionResponseOrBuilder() {
+      if (payloadCase_ == 70) {
+         return (mentraos.ble.MentraosBle.VersionResponse) payload_;
+      }
+      return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -11091,6 +11387,9 @@ public final class MentraosBle {
       }
       if (payloadCase_ == 43) {
         output.writeMessage(43, (mentraos.ble.MentraosBle.DashboardShown) payload_);
+      }
+      if (payloadCase_ == 70) {
+        output.writeMessage(70, (mentraos.ble.MentraosBle.VersionResponse) payload_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -11164,6 +11463,10 @@ public final class MentraosBle {
       if (payloadCase_ == 43) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(43, (mentraos.ble.MentraosBle.DashboardShown) payload_);
+      }
+      if (payloadCase_ == 70) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(70, (mentraos.ble.MentraosBle.VersionResponse) payload_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSize = size;
@@ -11246,6 +11549,10 @@ public final class MentraosBle {
           if (!getDashboardShown()
               .equals(other.getDashboardShown())) return false;
           break;
+        case 70:
+          if (!getVersionResponse()
+              .equals(other.getVersionResponse())) return false;
+          break;
         case 0:
         default:
       }
@@ -11324,6 +11631,10 @@ public final class MentraosBle {
         case 43:
           hash = (37 * hash) + DASHBOARD_SHOWN_FIELD_NUMBER;
           hash = (53 * hash) + getDashboardShown().hashCode();
+          break;
+        case 70:
+          hash = (37 * hash) + VERSION_RESPONSE_FIELD_NUMBER;
+          hash = (53 * hash) + getVersionResponse().hashCode();
           break;
         case 0:
         default:
@@ -11511,6 +11822,9 @@ public final class MentraosBle {
         if (dashboardShownBuilder_ != null) {
           dashboardShownBuilder_.clear();
         }
+        if (versionResponseBuilder_ != null) {
+          versionResponseBuilder_.clear();
+        }
         payloadCase_ = 0;
         payload_ = null;
         return this;
@@ -11616,6 +11930,10 @@ public final class MentraosBle {
             dashboardShownBuilder_ != null) {
           result.payload_ = dashboardShownBuilder_.build();
         }
+        if (payloadCase_ == 70 &&
+            versionResponseBuilder_ != null) {
+          result.payload_ = versionResponseBuilder_.build();
+        }
       }
 
       @java.lang.Override
@@ -11693,6 +12011,10 @@ public final class MentraosBle {
           }
           case DASHBOARD_SHOWN: {
             mergeDashboardShown(other.getDashboardShown());
+            break;
+          }
+          case VERSION_RESPONSE: {
+            mergeVersionResponse(other.getVersionResponse());
             break;
           }
           case PAYLOAD_NOT_SET: {
@@ -11837,6 +12159,13 @@ public final class MentraosBle {
                 payloadCase_ = 43;
                 break;
               } // case 346
+              case 562: {
+                input.readMessage(
+                    internalGetVersionResponseFieldBuilder().getBuilder(),
+                    extensionRegistry);
+                payloadCase_ = 70;
+                break;
+              } // case 562
               default: {
                 if (!super.parseUnknownField(input, extensionRegistry, tag)) {
                   done = true; // was an endgroup tag
@@ -14427,6 +14756,184 @@ public final class MentraosBle {
         payloadCase_ = 43;
         onChanged();
         return dashboardShownBuilder_;
+      }
+
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VersionResponse, mentraos.ble.MentraosBle.VersionResponse.Builder, mentraos.ble.MentraosBle.VersionResponseOrBuilder> versionResponseBuilder_;
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       * @return Whether the versionResponse field is set.
+       */
+      @java.lang.Override
+      public boolean hasVersionResponse() {
+        return payloadCase_ == 70;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       * @return The versionResponse.
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionResponse getVersionResponse() {
+        if (versionResponseBuilder_ == null) {
+          if (payloadCase_ == 70) {
+            return (mentraos.ble.MentraosBle.VersionResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+        } else {
+          if (payloadCase_ == 70) {
+            return versionResponseBuilder_.getMessage();
+          }
+          return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      public Builder setVersionResponse(mentraos.ble.MentraosBle.VersionResponse value) {
+        if (versionResponseBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          payload_ = value;
+          onChanged();
+        } else {
+          versionResponseBuilder_.setMessage(value);
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      public Builder setVersionResponse(
+          mentraos.ble.MentraosBle.VersionResponse.Builder builderForValue) {
+        if (versionResponseBuilder_ == null) {
+          payload_ = builderForValue.build();
+          onChanged();
+        } else {
+          versionResponseBuilder_.setMessage(builderForValue.build());
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      public Builder mergeVersionResponse(mentraos.ble.MentraosBle.VersionResponse value) {
+        if (versionResponseBuilder_ == null) {
+          if (payloadCase_ == 70 &&
+              payload_ != mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance()) {
+            payload_ = mentraos.ble.MentraosBle.VersionResponse.newBuilder((mentraos.ble.MentraosBle.VersionResponse) payload_)
+                .mergeFrom(value).buildPartial();
+          } else {
+            payload_ = value;
+          }
+          onChanged();
+        } else {
+          if (payloadCase_ == 70) {
+            versionResponseBuilder_.mergeFrom(value);
+          } else {
+            versionResponseBuilder_.setMessage(value);
+          }
+        }
+        payloadCase_ = 70;
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      public Builder clearVersionResponse() {
+        if (versionResponseBuilder_ == null) {
+          if (payloadCase_ == 70) {
+            payloadCase_ = 0;
+            payload_ = null;
+            onChanged();
+          }
+        } else {
+          if (payloadCase_ == 70) {
+            payloadCase_ = 0;
+            payload_ = null;
+          }
+          versionResponseBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      public mentraos.ble.MentraosBle.VersionResponse.Builder getVersionResponseBuilder() {
+        return internalGetVersionResponseFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionResponseOrBuilder getVersionResponseOrBuilder() {
+        if ((payloadCase_ == 70) && (versionResponseBuilder_ != null)) {
+          return versionResponseBuilder_.getMessageOrBuilder();
+        } else {
+          if (payloadCase_ == 70) {
+            return (mentraos.ble.MentraosBle.VersionResponse) payload_;
+          }
+          return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+        }
+      }
+      /**
+       * <pre>
+       * Runtime protocol version response
+       * </pre>
+       *
+       * <code>.mentraos.ble.VersionResponse version_response = 70;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          mentraos.ble.MentraosBle.VersionResponse, mentraos.ble.MentraosBle.VersionResponse.Builder, mentraos.ble.MentraosBle.VersionResponseOrBuilder> 
+          internalGetVersionResponseFieldBuilder() {
+        if (versionResponseBuilder_ == null) {
+          if (!(payloadCase_ == 70)) {
+            payload_ = mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+          }
+          versionResponseBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              mentraos.ble.MentraosBle.VersionResponse, mentraos.ble.MentraosBle.VersionResponse.Builder, mentraos.ble.MentraosBle.VersionResponseOrBuilder>(
+                  (mentraos.ble.MentraosBle.VersionResponse) payload_,
+                  getParentForChildren(),
+                  isClean());
+          payload_ = null;
+        }
+        payloadCase_ = 70;
+        onChanged();
+        return versionResponseBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:mentraos.ble.GlassesToPhone)
@@ -26528,7 +27035,7 @@ public final class MentraosBle {
 
     /**
      * <pre>
-     * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+     * Font size as integer
      * </pre>
      *
      * <code>uint32 size = 5;</code>
@@ -26654,7 +27161,7 @@ public final class MentraosBle {
     private int size_ = 0;
     /**
      * <pre>
-     * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+     * Font size as integer
      * </pre>
      *
      * <code>uint32 size = 5;</code>
@@ -27234,7 +27741,7 @@ public final class MentraosBle {
       private int size_ ;
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 5;</code>
@@ -27246,7 +27753,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 5;</code>
@@ -27262,7 +27769,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 5;</code>
@@ -28481,10 +28988,6 @@ public final class MentraosBle {
     int getTotalChunks();
   }
   /**
-   * <pre>
-   * Renamed from PreloadImage
-   * </pre>
-   *
    * Protobuf type {@code mentraos.ble.CacheImage}
    */
   public static final class CacheImage extends
@@ -28860,10 +29363,6 @@ public final class MentraosBle {
       return builder;
     }
     /**
-     * <pre>
-     * Renamed from PreloadImage
-     * </pre>
-     *
      * Protobuf type {@code mentraos.ble.CacheImage}
      */
     public static final class Builder extends
@@ -30649,7 +31148,7 @@ public final class MentraosBle {
 
     /**
      * <pre>
-     * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+     * Font size as integer
      * </pre>
      *
      * <code>uint32 size = 10;</code>
@@ -31004,7 +31503,7 @@ public final class MentraosBle {
     private int size_ = 0;
     /**
      * <pre>
-     * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+     * Font size as integer
      * </pre>
      *
      * <code>uint32 size = 10;</code>
@@ -32014,7 +32513,7 @@ public final class MentraosBle {
       private int size_ ;
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 10;</code>
@@ -32026,7 +32525,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 10;</code>
@@ -32042,7 +32541,7 @@ public final class MentraosBle {
       }
       /**
        * <pre>
-       * Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+       * Font size as integer
        * </pre>
        *
        * <code>uint32 size = 10;</code>
@@ -50711,6 +51210,1560 @@ public final class MentraosBle {
 
   }
 
+  public interface VersionRequestOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VersionRequest)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+  }
+  /**
+   * <pre>
+   * ============================================
+   * Versioning Messages (Runtime)
+   * ============================================
+   *
+   * Phone sends VersionRequest right after connect.
+   * Glasses respond with VersionResponse.version (single number).
+   * </pre>
+   *
+   * Protobuf type {@code mentraos.ble.VersionRequest}
+   */
+  public static final class VersionRequest extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VersionRequest)
+      VersionRequestOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VersionRequest.class.getName());
+    }
+    // Use VersionRequest.newBuilder() to construct.
+    private VersionRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VersionRequest() {
+      msgId_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionRequest_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VersionRequest.class, mentraos.ble.MentraosBle.VersionRequest.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VersionRequest)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VersionRequest other = (mentraos.ble.MentraosBle.VersionRequest) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VersionRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VersionRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VersionRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VersionRequest prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * <pre>
+     * ============================================
+     * Versioning Messages (Runtime)
+     * ============================================
+     *
+     * Phone sends VersionRequest right after connect.
+     * Glasses respond with VersionResponse.version (single number).
+     * </pre>
+     *
+     * Protobuf type {@code mentraos.ble.VersionRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VersionRequest)
+        mentraos.ble.MentraosBle.VersionRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionRequest_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VersionRequest.class, mentraos.ble.MentraosBle.VersionRequest.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VersionRequest.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionRequest_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionRequest getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionRequest build() {
+        mentraos.ble.MentraosBle.VersionRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionRequest buildPartial() {
+        mentraos.ble.MentraosBle.VersionRequest result = new mentraos.ble.MentraosBle.VersionRequest(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VersionRequest result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VersionRequest) {
+          return mergeFrom((mentraos.ble.MentraosBle.VersionRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VersionRequest other) {
+        if (other == mentraos.ble.MentraosBle.VersionRequest.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VersionRequest)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VersionRequest)
+    private static final mentraos.ble.MentraosBle.VersionRequest DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VersionRequest();
+    }
+
+    public static mentraos.ble.MentraosBle.VersionRequest getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VersionRequest>
+        PARSER = new com.google.protobuf.AbstractParser<VersionRequest>() {
+      @java.lang.Override
+      public VersionRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VersionRequest> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VersionRequest> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionRequest getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public interface VersionResponseOrBuilder extends
+      // @@protoc_insertion_point(interface_extends:mentraos.ble.VersionResponse)
+      com.google.protobuf.MessageOrBuilder {
+
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    java.lang.String getMsgId();
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    com.google.protobuf.ByteString
+        getMsgIdBytes();
+
+    /**
+     * <pre>
+     * Single, monotonically increasing runtime protocol version.
+     * Start at 1. Bump when wire semantics/behavior meaningfully change.
+     * </pre>
+     *
+     * <code>uint32 version = 2;</code>
+     * @return The version.
+     */
+    int getVersion();
+
+    /**
+     * <pre>
+     * Optional diagnostics
+     * </pre>
+     *
+     * <code>string commit = 10;</code>
+     * @return The commit.
+     */
+    java.lang.String getCommit();
+    /**
+     * <pre>
+     * Optional diagnostics
+     * </pre>
+     *
+     * <code>string commit = 10;</code>
+     * @return The bytes for commit.
+     */
+    com.google.protobuf.ByteString
+        getCommitBytes();
+
+    /**
+     * <pre>
+     * ISO-8601 date string
+     * </pre>
+     *
+     * <code>string build_date = 11;</code>
+     * @return The buildDate.
+     */
+    java.lang.String getBuildDate();
+    /**
+     * <pre>
+     * ISO-8601 date string
+     * </pre>
+     *
+     * <code>string build_date = 11;</code>
+     * @return The bytes for buildDate.
+     */
+    com.google.protobuf.ByteString
+        getBuildDateBytes();
+  }
+  /**
+   * Protobuf type {@code mentraos.ble.VersionResponse}
+   */
+  public static final class VersionResponse extends
+      com.google.protobuf.GeneratedMessage implements
+      // @@protoc_insertion_point(message_implements:mentraos.ble.VersionResponse)
+      VersionResponseOrBuilder {
+  private static final long serialVersionUID = 0L;
+    static {
+      com.google.protobuf.RuntimeVersion.validateProtobufGencodeVersion(
+        com.google.protobuf.RuntimeVersion.RuntimeDomain.PUBLIC,
+        /* major= */ 4,
+        /* minor= */ 32,
+        /* patch= */ 0,
+        /* suffix= */ "",
+        VersionResponse.class.getName());
+    }
+    // Use VersionResponse.newBuilder() to construct.
+    private VersionResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+    }
+    private VersionResponse() {
+      msgId_ = "";
+      commit_ = "";
+      buildDate_ = "";
+    }
+
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionResponse_descriptor;
+    }
+
+    @java.lang.Override
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              mentraos.ble.MentraosBle.VersionResponse.class, mentraos.ble.MentraosBle.VersionResponse.Builder.class);
+    }
+
+    public static final int MSG_ID_FIELD_NUMBER = 1;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object msgId_ = "";
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The msgId.
+     */
+    @java.lang.Override
+    public java.lang.String getMsgId() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        msgId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * echoes request
+     * </pre>
+     *
+     * <code>string msg_id = 1;</code>
+     * @return The bytes for msgId.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMsgIdBytes() {
+      java.lang.Object ref = msgId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        msgId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int VERSION_FIELD_NUMBER = 2;
+    private int version_ = 0;
+    /**
+     * <pre>
+     * Single, monotonically increasing runtime protocol version.
+     * Start at 1. Bump when wire semantics/behavior meaningfully change.
+     * </pre>
+     *
+     * <code>uint32 version = 2;</code>
+     * @return The version.
+     */
+    @java.lang.Override
+    public int getVersion() {
+      return version_;
+    }
+
+    public static final int COMMIT_FIELD_NUMBER = 10;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object commit_ = "";
+    /**
+     * <pre>
+     * Optional diagnostics
+     * </pre>
+     *
+     * <code>string commit = 10;</code>
+     * @return The commit.
+     */
+    @java.lang.Override
+    public java.lang.String getCommit() {
+      java.lang.Object ref = commit_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        commit_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * Optional diagnostics
+     * </pre>
+     *
+     * <code>string commit = 10;</code>
+     * @return The bytes for commit.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getCommitBytes() {
+      java.lang.Object ref = commit_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        commit_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    public static final int BUILD_DATE_FIELD_NUMBER = 11;
+    @SuppressWarnings("serial")
+    private volatile java.lang.Object buildDate_ = "";
+    /**
+     * <pre>
+     * ISO-8601 date string
+     * </pre>
+     *
+     * <code>string build_date = 11;</code>
+     * @return The buildDate.
+     */
+    @java.lang.Override
+    public java.lang.String getBuildDate() {
+      java.lang.Object ref = buildDate_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        buildDate_ = s;
+        return s;
+      }
+    }
+    /**
+     * <pre>
+     * ISO-8601 date string
+     * </pre>
+     *
+     * <code>string build_date = 11;</code>
+     * @return The bytes for buildDate.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getBuildDateBytes() {
+      java.lang.Object ref = buildDate_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        buildDate_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private byte memoizedIsInitialized = -1;
+    @java.lang.Override
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized == 1) return true;
+      if (isInitialized == 0) return false;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    @java.lang.Override
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 1, msgId_);
+      }
+      if (version_ != 0) {
+        output.writeUInt32(2, version_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(commit_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 10, commit_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(buildDate_)) {
+        com.google.protobuf.GeneratedMessage.writeString(output, 11, buildDate_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    @java.lang.Override
+    public int getSerializedSize() {
+      int size = memoizedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(msgId_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(1, msgId_);
+      }
+      if (version_ != 0) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(2, version_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(commit_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(10, commit_);
+      }
+      if (!com.google.protobuf.GeneratedMessage.isStringEmpty(buildDate_)) {
+        size += com.google.protobuf.GeneratedMessage.computeStringSize(11, buildDate_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSize = size;
+      return size;
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof mentraos.ble.MentraosBle.VersionResponse)) {
+        return super.equals(obj);
+      }
+      mentraos.ble.MentraosBle.VersionResponse other = (mentraos.ble.MentraosBle.VersionResponse) obj;
+
+      if (!getMsgId()
+          .equals(other.getMsgId())) return false;
+      if (getVersion()
+          != other.getVersion()) return false;
+      if (!getCommit()
+          .equals(other.getCommit())) return false;
+      if (!getBuildDate()
+          .equals(other.getBuildDate())) return false;
+      if (!getUnknownFields().equals(other.getUnknownFields())) return false;
+      return true;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptor().hashCode();
+      hash = (37 * hash) + MSG_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getMsgId().hashCode();
+      hash = (37 * hash) + VERSION_FIELD_NUMBER;
+      hash = (53 * hash) + getVersion();
+      hash = (37 * hash) + COMMIT_FIELD_NUMBER;
+      hash = (53 * hash) + getCommit().hashCode();
+      hash = (37 * hash) + BUILD_DATE_FIELD_NUMBER;
+      hash = (53 * hash) + getBuildDate().hashCode();
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        java.nio.ByteBuffer data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        java.nio.ByteBuffer data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    public static mentraos.ble.MentraosBle.VersionResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input);
+    }
+
+    public static mentraos.ble.MentraosBle.VersionResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input);
+    }
+    public static mentraos.ble.MentraosBle.VersionResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return com.google.protobuf.GeneratedMessage
+          .parseWithIOException(PARSER, input, extensionRegistry);
+    }
+
+    @java.lang.Override
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder() {
+      return DEFAULT_INSTANCE.toBuilder();
+    }
+    public static Builder newBuilder(mentraos.ble.MentraosBle.VersionResponse prototype) {
+      return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
+    }
+    @java.lang.Override
+    public Builder toBuilder() {
+      return this == DEFAULT_INSTANCE
+          ? new Builder() : new Builder().mergeFrom(this);
+    }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code mentraos.ble.VersionResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> implements
+        // @@protoc_insertion_point(builder_implements:mentraos.ble.VersionResponse)
+        mentraos.ble.MentraosBle.VersionResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionResponse_descriptor;
+      }
+
+      @java.lang.Override
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                mentraos.ble.MentraosBle.VersionResponse.class, mentraos.ble.MentraosBle.VersionResponse.Builder.class);
+      }
+
+      // Construct using mentraos.ble.MentraosBle.VersionResponse.newBuilder()
+      private Builder() {
+
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+
+      }
+      @java.lang.Override
+      public Builder clear() {
+        super.clear();
+        bitField0_ = 0;
+        msgId_ = "";
+        version_ = 0;
+        commit_ = "";
+        buildDate_ = "";
+        return this;
+      }
+
+      @java.lang.Override
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return mentraos.ble.MentraosBle.internal_static_mentraos_ble_VersionResponse_descriptor;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionResponse getDefaultInstanceForType() {
+        return mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance();
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionResponse build() {
+        mentraos.ble.MentraosBle.VersionResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      @java.lang.Override
+      public mentraos.ble.MentraosBle.VersionResponse buildPartial() {
+        mentraos.ble.MentraosBle.VersionResponse result = new mentraos.ble.MentraosBle.VersionResponse(this);
+        if (bitField0_ != 0) { buildPartial0(result); }
+        onBuilt();
+        return result;
+      }
+
+      private void buildPartial0(mentraos.ble.MentraosBle.VersionResponse result) {
+        int from_bitField0_ = bitField0_;
+        if (((from_bitField0_ & 0x00000001) != 0)) {
+          result.msgId_ = msgId_;
+        }
+        if (((from_bitField0_ & 0x00000002) != 0)) {
+          result.version_ = version_;
+        }
+        if (((from_bitField0_ & 0x00000004) != 0)) {
+          result.commit_ = commit_;
+        }
+        if (((from_bitField0_ & 0x00000008) != 0)) {
+          result.buildDate_ = buildDate_;
+        }
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof mentraos.ble.MentraosBle.VersionResponse) {
+          return mergeFrom((mentraos.ble.MentraosBle.VersionResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(mentraos.ble.MentraosBle.VersionResponse other) {
+        if (other == mentraos.ble.MentraosBle.VersionResponse.getDefaultInstance()) return this;
+        if (!other.getMsgId().isEmpty()) {
+          msgId_ = other.msgId_;
+          bitField0_ |= 0x00000001;
+          onChanged();
+        }
+        if (other.getVersion() != 0) {
+          setVersion(other.getVersion());
+        }
+        if (!other.getCommit().isEmpty()) {
+          commit_ = other.commit_;
+          bitField0_ |= 0x00000004;
+          onChanged();
+        }
+        if (!other.getBuildDate().isEmpty()) {
+          buildDate_ = other.buildDate_;
+          bitField0_ |= 0x00000008;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        onChanged();
+        return this;
+      }
+
+      @java.lang.Override
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      @java.lang.Override
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        if (extensionRegistry == null) {
+          throw new java.lang.NullPointerException();
+        }
+        try {
+          boolean done = false;
+          while (!done) {
+            int tag = input.readTag();
+            switch (tag) {
+              case 0:
+                done = true;
+                break;
+              case 10: {
+                msgId_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000001;
+                break;
+              } // case 10
+              case 16: {
+                version_ = input.readUInt32();
+                bitField0_ |= 0x00000002;
+                break;
+              } // case 16
+              case 82: {
+                commit_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000004;
+                break;
+              } // case 82
+              case 90: {
+                buildDate_ = input.readStringRequireUtf8();
+                bitField0_ |= 0x00000008;
+                break;
+              } // case 90
+              default: {
+                if (!super.parseUnknownField(input, extensionRegistry, tag)) {
+                  done = true; // was an endgroup tag
+                }
+                break;
+              } // default:
+            } // switch (tag)
+          } // while (!done)
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.unwrapIOException();
+        } finally {
+          onChanged();
+        } // finally
+        return this;
+      }
+      private int bitField0_;
+
+      private java.lang.Object msgId_ = "";
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The msgId.
+       */
+      public java.lang.String getMsgId() {
+        java.lang.Object ref = msgId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          msgId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return The bytes for msgId.
+       */
+      public com.google.protobuf.ByteString
+          getMsgIdBytes() {
+        java.lang.Object ref = msgId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          msgId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgId(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearMsgId() {
+        msgId_ = getDefaultInstance().getMsgId();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * echoes request
+       * </pre>
+       *
+       * <code>string msg_id = 1;</code>
+       * @param value The bytes for msgId to set.
+       * @return This builder for chaining.
+       */
+      public Builder setMsgIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        msgId_ = value;
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return this;
+      }
+
+      private int version_ ;
+      /**
+       * <pre>
+       * Single, monotonically increasing runtime protocol version.
+       * Start at 1. Bump when wire semantics/behavior meaningfully change.
+       * </pre>
+       *
+       * <code>uint32 version = 2;</code>
+       * @return The version.
+       */
+      @java.lang.Override
+      public int getVersion() {
+        return version_;
+      }
+      /**
+       * <pre>
+       * Single, monotonically increasing runtime protocol version.
+       * Start at 1. Bump when wire semantics/behavior meaningfully change.
+       * </pre>
+       *
+       * <code>uint32 version = 2;</code>
+       * @param value The version to set.
+       * @return This builder for chaining.
+       */
+      public Builder setVersion(int value) {
+
+        version_ = value;
+        bitField0_ |= 0x00000002;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * Single, monotonically increasing runtime protocol version.
+       * Start at 1. Bump when wire semantics/behavior meaningfully change.
+       * </pre>
+       *
+       * <code>uint32 version = 2;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearVersion() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        version_ = 0;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object commit_ = "";
+      /**
+       * <pre>
+       * Optional diagnostics
+       * </pre>
+       *
+       * <code>string commit = 10;</code>
+       * @return The commit.
+       */
+      public java.lang.String getCommit() {
+        java.lang.Object ref = commit_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          commit_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * Optional diagnostics
+       * </pre>
+       *
+       * <code>string commit = 10;</code>
+       * @return The bytes for commit.
+       */
+      public com.google.protobuf.ByteString
+          getCommitBytes() {
+        java.lang.Object ref = commit_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          commit_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * Optional diagnostics
+       * </pre>
+       *
+       * <code>string commit = 10;</code>
+       * @param value The commit to set.
+       * @return This builder for chaining.
+       */
+      public Builder setCommit(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        commit_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * Optional diagnostics
+       * </pre>
+       *
+       * <code>string commit = 10;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearCommit() {
+        commit_ = getDefaultInstance().getCommit();
+        bitField0_ = (bitField0_ & ~0x00000004);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * Optional diagnostics
+       * </pre>
+       *
+       * <code>string commit = 10;</code>
+       * @param value The bytes for commit to set.
+       * @return This builder for chaining.
+       */
+      public Builder setCommitBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        commit_ = value;
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object buildDate_ = "";
+      /**
+       * <pre>
+       * ISO-8601 date string
+       * </pre>
+       *
+       * <code>string build_date = 11;</code>
+       * @return The buildDate.
+       */
+      public java.lang.String getBuildDate() {
+        java.lang.Object ref = buildDate_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          buildDate_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <pre>
+       * ISO-8601 date string
+       * </pre>
+       *
+       * <code>string build_date = 11;</code>
+       * @return The bytes for buildDate.
+       */
+      public com.google.protobuf.ByteString
+          getBuildDateBytes() {
+        java.lang.Object ref = buildDate_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          buildDate_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <pre>
+       * ISO-8601 date string
+       * </pre>
+       *
+       * <code>string build_date = 11;</code>
+       * @param value The buildDate to set.
+       * @return This builder for chaining.
+       */
+      public Builder setBuildDate(
+          java.lang.String value) {
+        if (value == null) { throw new NullPointerException(); }
+        buildDate_ = value;
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * ISO-8601 date string
+       * </pre>
+       *
+       * <code>string build_date = 11;</code>
+       * @return This builder for chaining.
+       */
+      public Builder clearBuildDate() {
+        buildDate_ = getDefaultInstance().getBuildDate();
+        bitField0_ = (bitField0_ & ~0x00000008);
+        onChanged();
+        return this;
+      }
+      /**
+       * <pre>
+       * ISO-8601 date string
+       * </pre>
+       *
+       * <code>string build_date = 11;</code>
+       * @param value The bytes for buildDate to set.
+       * @return This builder for chaining.
+       */
+      public Builder setBuildDateBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) { throw new NullPointerException(); }
+        checkByteStringIsUtf8(value);
+        buildDate_ = value;
+        bitField0_ |= 0x00000008;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:mentraos.ble.VersionResponse)
+    }
+
+    // @@protoc_insertion_point(class_scope:mentraos.ble.VersionResponse)
+    private static final mentraos.ble.MentraosBle.VersionResponse DEFAULT_INSTANCE;
+    static {
+      DEFAULT_INSTANCE = new mentraos.ble.MentraosBle.VersionResponse();
+    }
+
+    public static mentraos.ble.MentraosBle.VersionResponse getDefaultInstance() {
+      return DEFAULT_INSTANCE;
+    }
+
+    private static final com.google.protobuf.Parser<VersionResponse>
+        PARSER = new com.google.protobuf.AbstractParser<VersionResponse>() {
+      @java.lang.Override
+      public VersionResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        Builder builder = newBuilder();
+        try {
+          builder.mergeFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          throw e.setUnfinishedMessage(builder.buildPartial());
+        } catch (com.google.protobuf.UninitializedMessageException e) {
+          throw e.asInvalidProtocolBufferException().setUnfinishedMessage(builder.buildPartial());
+        } catch (java.io.IOException e) {
+          throw new com.google.protobuf.InvalidProtocolBufferException(e)
+              .setUnfinishedMessage(builder.buildPartial());
+        }
+        return builder.buildPartial();
+      }
+    };
+
+    public static com.google.protobuf.Parser<VersionResponse> parser() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<VersionResponse> getParserForType() {
+      return PARSER;
+    }
+
+    @java.lang.Override
+    public mentraos.ble.MentraosBle.VersionResponse getDefaultInstanceForType() {
+      return DEFAULT_INSTANCE;
+    }
+
+  }
+
+  public static final int MENTRA_SCHEMA_VERSION_FIELD_NUMBER = 70001;
+  /**
+   * <pre>
+   * single, monotonically increasing schema version
+   * </pre>
+   *
+   * <code>extend .google.protobuf.FileOptions { ... }</code>
+   */
+  public static final
+    com.google.protobuf.GeneratedMessage.GeneratedExtension<
+      com.google.protobuf.DescriptorProtos.FileOptions,
+      java.lang.Integer> mentraSchemaVersion = com.google.protobuf.GeneratedMessage
+          .newFileScopedGeneratedExtension(
+        java.lang.Integer.class,
+        null);
   private static final com.google.protobuf.Descriptors.Descriptor
     internal_static_mentraos_ble_PhoneToGlasses_descriptor;
   private static final 
@@ -51011,6 +53064,16 @@ public final class MentraosBle {
   private static final 
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_mentraos_ble_DashboardShown_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VersionRequest_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VersionRequest_fieldAccessorTable;
+  private static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_mentraos_ble_VersionResponse_descriptor;
+  private static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_mentraos_ble_VersionResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -51020,214 +53083,224 @@ public final class MentraosBle {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\022mentraos_ble.proto\022\014mentraos.ble\"\326\021\n\016P" +
-      "honeToGlasses\022\016\n\006msg_id\030\001 \001(\t\0225\n\ndisconn" +
-      "ect\030\n \001(\0132\037.mentraos.ble.DisconnectReque" +
-      "stH\000\022:\n\rbattery_state\030\013 \001(\0132!.mentraos.b" +
-      "le.BatteryStateRequestH\000\0228\n\014glasses_info" +
-      "\030\014 \001(\0132 .mentraos.ble.GlassesInfoRequest" +
-      "H\000\0228\n\014pairing_mode\030\r \001(\0132 .mentraos.ble." +
-      "PairingModeRequestH\000\022:\n\rhead_position\030\016 " +
-      "\001(\0132!.mentraos.ble.HeadPositionRequestH\000" +
-      "\0228\n\rhead_up_angle\030\017 \001(\0132\037.mentraos.ble.H" +
-      "eadUpAngleConfigH\000\022*\n\004pong\030\020 \001(\0132\032.mentr" +
-      "aos.ble.PongResponseH\000\0221\n\tmic_state\030\024 \001(" +
-      "\0132\034.mentraos.ble.MicStateConfigH\000\022:\n\017set" +
-      "_vad_enabled\030\027 \001(\0132\037.mentraos.ble.VadEna" +
-      "bledRequestH\000\0228\n\016set_vad_config\030\030 \001(\0132\036." +
-      "mentraos.ble.VadConfigRequestH\000\022<\n\022reque" +
-      "st_vad_status\030\031 \001(\0132\036.mentraos.ble.VadSt" +
-      "atusRequestH\000\0221\n\014display_text\030\036 \001(\0132\031.me" +
-      "ntraos.ble.DisplayTextH\000\0223\n\rdisplay_imag" +
-      "e\030\037 \001(\0132\032.mentraos.ble.DisplayImageH\000\022/\n" +
-      "\013cache_image\030  \001(\0132\030.mentraos.ble.CacheI" +
-      "mageH\000\022@\n\024display_cached_image\030! \001(\0132 .m" +
-      "entraos.ble.DisplayCachedImageH\000\022<\n\022clea" +
-      "r_cached_image\030\" \001(\0132\036.mentraos.ble.Clea" +
-      "rCachedImageH\000\022D\n\026display_scrolling_text" +
-      "\030# \001(\0132\".mentraos.ble.DisplayScrollingTe" +
-      "xtH\000\022+\n\tdraw_line\030( \001(\0132\026.mentraos.ble.D" +
-      "rawLineH\000\022+\n\tdraw_rect\030) \001(\0132\026.mentraos." +
-      "ble.DrawRectH\000\022/\n\013draw_circle\030* \001(\0132\030.me" +
-      "ntraos.ble.DrawCircleH\000\0223\n\rdisplay_batch" +
-      "\0304 \001(\0132\032.mentraos.ble.DisplayBatchH\000\022-\n\006" +
-      "commit\030+ \001(\0132\033.mentraos.ble.CommitDispla" +
-      "yH\000\0229\n\rdisplay_power\030$ \001(\0132 .mentraos.bl" +
-      "e.DisplayPowerConfigH\000\0224\n\nbrightness\030% \001" +
-      "(\0132\036.mentraos.ble.BrightnessConfigH\000\022=\n\017" +
-      "auto_brightness\030& \001(\0132\".mentraos.ble.Aut" +
-      "oBrightnessConfigH\000\022F\n\024auto_brightness_m" +
-      "ult\030\' \001(\0132&.mentraos.ble.AutoBrightnessM" +
-      "ultiplierH\000\022?\n\020display_distance\030, \001(\0132#." +
-      "mentraos.ble.DisplayDistanceConfigH\000\022;\n\016" +
-      "display_height\030- \001(\0132!.mentraos.ble.Disp" +
-      "layHeightConfigH\000\0223\n\rclear_display\030. \001(\013" +
-      "2\032.mentraos.ble.ClearDisplayH\000\022@\n\024queue_" +
-      "status_request\0303 \001(\0132 .mentraos.ble.Disp" +
-      "layQueueStatusH\000\0227\n\017cache_dashboard\030/ \001(" +
-      "\0132\034.mentraos.ble.CacheDashboardH\000\0227\n\017cle" +
-      "ar_dashboard\0300 \001(\0132\034.mentraos.ble.ClearD" +
-      "ashboardH\000\022D\n\021dashboard_trigger\0301 \001(\0132\'." +
-      "mentraos.ble.ConfigureDashboardTriggerH\000" +
-      "\0225\n\013imu_enabled\0307 \001(\0132\036.mentraos.ble.Imu" +
-      "EnabledConfigH\000\0224\n\nimu_single\0308 \001(\0132\036.me" +
-      "ntraos.ble.ImuSingleRequestH\000\0223\n\nimu_str" +
-      "eam\0309 \001(\0132\035.mentraos.ble.ImuStreamConfig" +
-      "H\000\0227\n\014head_gesture\030: \001(\0132\037.mentraos.ble." +
-      "HeadGestureConfigH\000\022/\n\007restart\030< \001(\0132\034.m" +
-      "entraos.ble.RestartRequestH\000\022:\n\rfactory_" +
-      "reset\030= \001(\0132!.mentraos.ble.FactoryResetR" +
-      "equestH\000B\t\n\007payload\"\376\006\n\016GlassesToPhone\0225" +
-      "\n\016battery_status\030\n \001(\0132\033.mentraos.ble.Ba" +
-      "tteryStatusH\000\0225\n\016charging_state\030\013 \001(\0132\033." +
-      "mentraos.ble.ChargingStateH\000\022/\n\013device_i" +
-      "nfo\030\014 \001(\0132\030.mentraos.ble.DeviceInfoH\000\0223\n" +
-      "\rhead_position\030\r \001(\0132\032.mentraos.ble.Head" +
-      "PositionH\000\022>\n\021head_up_angle_set\030\016 \001(\0132!." +
-      "mentraos.ble.HeadUpAngleResponseH\000\022)\n\004pi" +
-      "ng\030\017 \001(\0132\031.mentraos.ble.PingRequestH\000\022+\n" +
-      "\tvad_event\030\024 \001(\0132\026.mentraos.ble.VadEvent" +
-      "H\000\022;\n\017vad_enabled_set\030\025 \001(\0132 .mentraos.b" +
-      "le.VadEnabledResponseH\000\0229\n\016vad_configure" +
-      "d\030\026 \001(\0132\037.mentraos.ble.VadConfigResponse" +
-      "H\000\022-\n\nvad_status\030\027 \001(\0132\027.mentraos.ble.Va" +
-      "dStatusH\000\022F\n\027image_transfer_complete\030\036 \001" +
-      "(\0132#.mentraos.ble.ImageTransferCompleteH" +
-      "\000\022<\n\022display_queue_info\030\037 \001(\0132\036.mentraos" +
-      ".ble.DisplayQueueInfoH\000\022)\n\010imu_data\030( \001(" +
-      "\0132\025.mentraos.ble.ImuDataH\000\0221\n\014button_eve" +
-      "nt\030) \001(\0132\031.mentraos.ble.ButtonEventH\000\0221\n" +
-      "\014head_gesture\030* \001(\0132\031.mentraos.ble.HeadG" +
-      "estureH\000\0227\n\017dashboard_shown\030+ \001(\0132\034.ment" +
-      "raos.ble.DashboardShownH\000B\t\n\007payload\"\023\n\021" +
-      "DisconnectRequest\"\025\n\023BatteryStateRequest" +
-      "\"0\n\rBatteryStatus\022\r\n\005level\030\001 \001(\r\022\020\n\010char" +
-      "ging\030\002 \001(\010\"j\n\rChargingState\0220\n\005state\030\001 \001" +
-      "(\0162!.mentraos.ble.ChargingState.State\"\'\n" +
-      "\005State\022\020\n\014NOT_CHARGING\020\000\022\014\n\010CHARGING\020\001\"\024" +
-      "\n\022GlassesInfoRequest\"b\n\nDeviceInfo\022\022\n\nfw" +
-      "_version\030\001 \001(\t\022\020\n\010hw_model\030\002 \001(\t\022.\n\010feat" +
-      "ures\030\003 \001(\0132\034.mentraos.ble.DeviceFeatures" +
-      "\"\242\001\n\016DeviceFeatures\022\016\n\006camera\030\001 \001(\010\022\017\n\007d" +
-      "isplay\030\002 \001(\010\022\020\n\010audio_tx\030\003 \001(\010\022\020\n\010audio_" +
-      "rx\030\004 \001(\010\022\013\n\003imu\030\005 \001(\010\022\013\n\003vad\030\006 \001(\010\022\025\n\rmi" +
-      "c_switching\030\007 \001(\010\022\032\n\022image_chunk_buffer\030" +
-      "\010 \001(\r\"\024\n\022PairingModeRequest\"\025\n\023HeadPosit" +
-      "ionRequest\"\035\n\014HeadPosition\022\r\n\005angle\030\001 \001(" +
-      "\005\"\"\n\021HeadUpAngleConfig\022\r\n\005angle\030\001 \001(\r\"&\n" +
-      "\023HeadUpAngleResponse\022\017\n\007success\030\001 \001(\010\"\035\n" +
-      "\013PingRequest\022\016\n\006msg_id\030\001 \001(\t\"\016\n\014PongResp" +
-      "onse\"!\n\016MicStateConfig\022\017\n\007enabled\030\001 \001(\010\"" +
-      "Z\n\010VadEvent\022+\n\005state\030\001 \001(\0162\034.mentraos.bl" +
-      "e.VadEvent.State\"!\n\005State\022\014\n\010INACTIVE\020\000\022" +
-      "\n\n\006ACTIVE\020\001\"4\n\021VadEnabledRequest\022\016\n\006msg_" +
-      "id\030\001 \001(\t\022\017\n\007enabled\030\002 \001(\010\"D\n\022VadEnabledR" +
-      "esponse\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007success\030\002 \001(\010" +
-      "\022\r\n\005error\030\003 \001(\t\"7\n\020VadConfigRequest\022\016\n\006m" +
-      "sg_id\030\001 \001(\t\022\023\n\013sensitivity\030\002 \001(\r\"C\n\021VadC" +
-      "onfigResponse\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007success" +
-      "\030\002 \001(\010\022\r\n\005error\030\003 \001(\t\"\"\n\020VadStatusReques" +
-      "t\022\016\n\006msg_id\030\001 \001(\t\"A\n\tVadStatus\022\016\n\006msg_id" +
-      "\030\001 \001(\t\022\017\n\007enabled\030\002 \001(\010\022\023\n\013sensitivity\030\003" +
-      " \001(\r\"N\n\013DisplayText\022\014\n\004text\030\001 \001(\t\022\r\n\005col" +
-      "or\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\014\n\004size\030\005" +
-      " \001(\r\"~\n\014DisplayImage\022\021\n\tstream_id\030\001 \001(\t\022" +
-      "\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 \001(\r\022\r\n\005width\030\004 \001(\r\022\016\n\006" +
-      "height\030\005 \001(\r\022\020\n\010encoding\030\006 \001(\t\022\024\n\014total_" +
-      "chunks\030\007 \001(\r\"x\n\nCacheImage\022\021\n\tstream_id\030" +
-      "\001 \001(\t\022\020\n\010image_id\030\002 \001(\r\022\r\n\005width\030\003 \001(\r\022\016" +
-      "\n\006height\030\004 \001(\r\022\020\n\010encoding\030\005 \001(\t\022\024\n\014tota" +
-      "l_chunks\030\006 \001(\r\"[\n\022DisplayCachedImage\022\020\n\010" +
-      "image_id\030\001 \001(\r\022\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 \001(\r\022\r\n\005" +
-      "width\030\004 \001(\r\022\016\n\006height\030\005 \001(\r\"$\n\020ClearCach" +
-      "edImage\022\020\n\010image_id\030\001 \001(\r\"\246\002\n\024DisplayScr" +
-      "ollingText\022\014\n\004text\030\001 \001(\t\022\r\n\005color\030\002 \001(\r\022" +
-      "\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 \001(\r\022\016\n\006" +
-      "height\030\006 \001(\r\022;\n\005align\030\007 \001(\0162,.mentraos.b" +
-      "le.DisplayScrollingText.Alignment\022\024\n\014lin" +
-      "e_spacing\030\010 \001(\r\022\r\n\005speed\030\t \001(\r\022\014\n\004size\030\n" +
-      " \001(\r\022\014\n\004loop\030\013 \001(\010\022\020\n\010pause_ms\030\014 \001(\r\",\n\t" +
-      "Alignment\022\010\n\004LEFT\020\000\022\n\n\006CENTER\020\001\022\t\n\005RIGHT" +
-      "\020\002\" \n\022DisplayPowerConfig\022\n\n\002on\030\001 \001(\010\"!\n\020" +
-      "BrightnessConfig\022\r\n\005value\030\001 \001(\r\"\'\n\024AutoB" +
-      "rightnessConfig\022\017\n\007enabled\030\001 \001(\010\".\n\030Auto" +
-      "BrightnessMultiplier\022\022\n\nmultiplier\030\001 \001(\002" +
-      "\"Y\n\010DrawLine\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002 " +
-      "\001(\r\022\n\n\002x1\030\003 \001(\r\022\n\n\002y1\030\004 \001(\r\022\n\n\002x2\030\005 \001(\r\022" +
-      "\n\n\002y2\030\006 \001(\r\"^\n\010DrawRect\022\r\n\005color\030\001 \001(\r\022\016" +
-      "\n\006stroke\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005" +
-      "width\030\005 \001(\r\022\016\n\006height\030\006 \001(\r\"Q\n\nDrawCircl" +
-      "e\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\t\n\001x\030\003 " +
-      "\001(\r\022\t\n\001y\030\004 \001(\r\022\016\n\006radius\030\005 \001(\r\"\210\003\n\014Displ" +
-      "ayBatch\022;\n\010commands\030\001 \003(\0132).mentraos.ble" +
-      ".DisplayBatch.DisplayCommand\032\272\002\n\016Display" +
-      "Command\022)\n\004text\030\001 \001(\0132\031.mentraos.ble.Dis" +
-      "playTextH\000\0228\n\014cached_image\030\002 \001(\0132 .mentr" +
-      "aos.ble.DisplayCachedImageH\000\022&\n\004line\030\003 \001" +
-      "(\0132\026.mentraos.ble.DrawLineH\000\022&\n\004rect\030\004 \001" +
-      "(\0132\026.mentraos.ble.DrawRectH\000\022*\n\006circle\030\005" +
-      " \001(\0132\030.mentraos.ble.DrawCircleH\000\022<\n\016scro" +
-      "lling_text\030\006 \001(\0132\".mentraos.ble.DisplayS" +
-      "crollingTextH\000B\t\n\007command\"%\n\rCommitDispl" +
-      "ay\022\024\n\014clear_before\030\001 \001(\010\"\016\n\014ClearDisplay" +
-      "\"\024\n\022DisplayQueueStatus\"u\n\020DisplayQueueIn" +
-      "fo\022\027\n\017queued_commands\030\001 \001(\r\022\023\n\013queue_byt" +
-      "es\030\002 \001(\r\022\026\n\016max_queue_size\030\003 \001(\r\022\033\n\023last" +
-      "_commit_success\030\004 \001(\010\",\n\025DisplayDistance" +
-      "Config\022\023\n\013distance_cm\030\001 \001(\r\"%\n\023DisplayHe" +
-      "ightConfig\022\016\n\006height\030\001 \001(\r\"\240\001\n\025ImageTran" +
-      "sferComplete\022\021\n\tstream_id\030\001 \001(\t\022:\n\006statu" +
-      "s\030\002 \001(\0162*.mentraos.ble.ImageTransferComp" +
-      "lete.Status\022\026\n\016missing_chunks\030\003 \003(\r\" \n\006S" +
-      "tatus\022\006\n\002OK\020\000\022\016\n\nINCOMPLETE\020\001\"#\n\020ImuEnab" +
-      "ledConfig\022\017\n\007enabled\030\001 \001(\010\"\022\n\020ImuSingleR" +
-      "equest\"\"\n\017ImuStreamConfig\022\017\n\007enabled\030\001 \001" +
-      "(\010\"x\n\007ImuData\022$\n\005accel\030\001 \001(\0132\025.mentraos." +
-      "ble.Vector3\022#\n\004gyro\030\002 \001(\0132\025.mentraos.ble" +
-      ".Vector3\022\"\n\003mag\030\003 \001(\0132\025.mentraos.ble.Vec" +
-      "tor3\"*\n\007Vector3\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001(\002\022\t\n" +
-      "\001z\030\003 \001(\002\"\265\001\n\013ButtonEvent\0220\n\006button\030\001 \001(\016" +
-      "2 .mentraos.ble.ButtonEvent.Button\022.\n\005st" +
-      "ate\030\002 \001(\0162\037.mentraos.ble.ButtonEvent.Sta" +
-      "te\")\n\006Button\022\n\n\006CENTER\020\000\022\010\n\004LEFT\020\001\022\t\n\005RI" +
-      "GHT\020\002\"\031\n\005State\022\006\n\002UP\020\000\022\010\n\004DOWN\020\001\"\233\001\n\013Hea" +
-      "dGesture\0222\n\007gesture\030\001 \001(\0162!.mentraos.ble" +
-      ".HeadGesture.Gesture\"X\n\007Gesture\022\007\n\003NOD\020\000" +
-      "\022\t\n\005SHAKE\020\001\022\013\n\007HEAD_UP\020\002\022\r\n\tHEAD_DOWN\020\003\022" +
-      "\r\n\tTILT_LEFT\020\004\022\016\n\nTILT_RIGHT\020\005\"X\n\021HeadGe" +
-      "stureConfig\0222\n\007gesture\030\001 \001(\0162!.mentraos." +
-      "ble.HeadGesture.Gesture\022\017\n\007enabled\030\002 \001(\010" +
-      "\"\020\n\016RestartRequest\"\025\n\023FactoryResetReques" +
-      "t\"Q\n\016CacheDashboard\022\024\n\014dashboard_id\030\001 \001(" +
-      "\r\022)\n\005batch\030\002 \001(\0132\032.mentraos.ble.DisplayB" +
-      "atch\"&\n\016ClearDashboard\022\024\n\014dashboard_id\030\001" +
-      " \001(\r\"\330\001\n\031ConfigureDashboardTrigger\022\024\n\014da" +
-      "shboard_id\030\001 \001(\r\022D\n\007trigger\030\002 \001(\01623.ment" +
-      "raos.ble.ConfigureDashboardTrigger.Trigg" +
-      "erType\022\023\n\013duration_ms\030\003 \001(\r\"J\n\013TriggerTy" +
-      "pe\022\013\n\007HEAD_UP\020\000\022\r\n\tHEAD_DOWN\020\001\022\016\n\nBUTTON" +
-      "_TAP\020\002\022\017\n\013MANUAL_ONLY\020\003\"\230\001\n\016DashboardSho" +
-      "wn\022\024\n\014dashboard_id\030\001 \001(\r\022:\n\006source\030\002 \001(\016" +
-      "2*.mentraos.ble.DashboardShown.TriggerSo" +
-      "urce\"4\n\rTriggerSource\022\013\n\007GESTURE\020\000\022\n\n\006BU" +
-      "TTON\020\001\022\n\n\006MANUAL\020\002b\006proto3"
+      "\n\022mentraos_ble.proto\022\014mentraos.ble\032 goog" +
+      "le/protobuf/descriptor.proto\"\217\022\n\016PhoneTo" +
+      "Glasses\022\016\n\006msg_id\030\001 \001(\t\0225\n\ndisconnect\030\n " +
+      "\001(\0132\037.mentraos.ble.DisconnectRequestH\000\022:" +
+      "\n\rbattery_state\030\013 \001(\0132!.mentraos.ble.Bat" +
+      "teryStateRequestH\000\0228\n\014glasses_info\030\014 \001(\013" +
+      "2 .mentraos.ble.GlassesInfoRequestH\000\0228\n\014" +
+      "pairing_mode\030\r \001(\0132 .mentraos.ble.Pairin" +
+      "gModeRequestH\000\022:\n\rhead_position\030\016 \001(\0132!." +
+      "mentraos.ble.HeadPositionRequestH\000\0228\n\rhe" +
+      "ad_up_angle\030\017 \001(\0132\037.mentraos.ble.HeadUpA" +
+      "ngleConfigH\000\022*\n\004pong\030\020 \001(\0132\032.mentraos.bl" +
+      "e.PongResponseH\000\0221\n\tmic_state\030\024 \001(\0132\034.me" +
+      "ntraos.ble.MicStateConfigH\000\022:\n\017set_vad_e" +
+      "nabled\030\027 \001(\0132\037.mentraos.ble.VadEnabledRe" +
+      "questH\000\0228\n\016set_vad_config\030\030 \001(\0132\036.mentra" +
+      "os.ble.VadConfigRequestH\000\022<\n\022request_vad" +
+      "_status\030\031 \001(\0132\036.mentraos.ble.VadStatusRe" +
+      "questH\000\0221\n\014display_text\030\036 \001(\0132\031.mentraos" +
+      ".ble.DisplayTextH\000\0223\n\rdisplay_image\030\037 \001(" +
+      "\0132\032.mentraos.ble.DisplayImageH\000\022/\n\013cache" +
+      "_image\030  \001(\0132\030.mentraos.ble.CacheImageH\000" +
+      "\022@\n\024display_cached_image\030! \001(\0132 .mentrao" +
+      "s.ble.DisplayCachedImageH\000\022<\n\022clear_cach" +
+      "ed_image\030\" \001(\0132\036.mentraos.ble.ClearCache" +
+      "dImageH\000\022D\n\026display_scrolling_text\030# \001(\013" +
+      "2\".mentraos.ble.DisplayScrollingTextH\000\022+" +
+      "\n\tdraw_line\030( \001(\0132\026.mentraos.ble.DrawLin" +
+      "eH\000\022+\n\tdraw_rect\030) \001(\0132\026.mentraos.ble.Dr" +
+      "awRectH\000\022/\n\013draw_circle\030* \001(\0132\030.mentraos" +
+      ".ble.DrawCircleH\000\0223\n\rdisplay_batch\0304 \001(\013" +
+      "2\032.mentraos.ble.DisplayBatchH\000\022-\n\006commit" +
+      "\030+ \001(\0132\033.mentraos.ble.CommitDisplayH\000\0229\n" +
+      "\rdisplay_power\030$ \001(\0132 .mentraos.ble.Disp" +
+      "layPowerConfigH\000\0224\n\nbrightness\030% \001(\0132\036.m" +
+      "entraos.ble.BrightnessConfigH\000\022=\n\017auto_b" +
+      "rightness\030& \001(\0132\".mentraos.ble.AutoBrigh" +
+      "tnessConfigH\000\022F\n\024auto_brightness_mult\030\' " +
+      "\001(\0132&.mentraos.ble.AutoBrightnessMultipl" +
+      "ierH\000\022?\n\020display_distance\030, \001(\0132#.mentra" +
+      "os.ble.DisplayDistanceConfigH\000\022;\n\016displa" +
+      "y_height\030- \001(\0132!.mentraos.ble.DisplayHei" +
+      "ghtConfigH\000\0223\n\rclear_display\030. \001(\0132\032.men" +
+      "traos.ble.ClearDisplayH\000\022@\n\024queue_status" +
+      "_request\0303 \001(\0132 .mentraos.ble.DisplayQue" +
+      "ueStatusH\000\0227\n\017cache_dashboard\030/ \001(\0132\034.me" +
+      "ntraos.ble.CacheDashboardH\000\0227\n\017clear_das" +
+      "hboard\0300 \001(\0132\034.mentraos.ble.ClearDashboa" +
+      "rdH\000\022D\n\021dashboard_trigger\0301 \001(\0132\'.mentra" +
+      "os.ble.ConfigureDashboardTriggerH\000\0225\n\013im" +
+      "u_enabled\0307 \001(\0132\036.mentraos.ble.ImuEnable" +
+      "dConfigH\000\0224\n\nimu_single\0308 \001(\0132\036.mentraos" +
+      ".ble.ImuSingleRequestH\000\0223\n\nimu_stream\0309 " +
+      "\001(\0132\035.mentraos.ble.ImuStreamConfigH\000\0227\n\014" +
+      "head_gesture\030: \001(\0132\037.mentraos.ble.HeadGe" +
+      "stureConfigH\000\022/\n\007restart\030< \001(\0132\034.mentrao" +
+      "s.ble.RestartRequestH\000\022:\n\rfactory_reset\030" +
+      "= \001(\0132!.mentraos.ble.FactoryResetRequest" +
+      "H\000\0227\n\017version_request\030F \001(\0132\034.mentraos.b" +
+      "le.VersionRequestH\000B\t\n\007payload\"\271\007\n\016Glass" +
+      "esToPhone\0225\n\016battery_status\030\n \001(\0132\033.ment" +
+      "raos.ble.BatteryStatusH\000\0225\n\016charging_sta" +
+      "te\030\013 \001(\0132\033.mentraos.ble.ChargingStateH\000\022" +
+      "/\n\013device_info\030\014 \001(\0132\030.mentraos.ble.Devi" +
+      "ceInfoH\000\0223\n\rhead_position\030\r \001(\0132\032.mentra" +
+      "os.ble.HeadPositionH\000\022>\n\021head_up_angle_s" +
+      "et\030\016 \001(\0132!.mentraos.ble.HeadUpAngleRespo" +
+      "nseH\000\022)\n\004ping\030\017 \001(\0132\031.mentraos.ble.PingR" +
+      "equestH\000\022+\n\tvad_event\030\024 \001(\0132\026.mentraos.b" +
+      "le.VadEventH\000\022;\n\017vad_enabled_set\030\025 \001(\0132 " +
+      ".mentraos.ble.VadEnabledResponseH\000\0229\n\016va" +
+      "d_configured\030\026 \001(\0132\037.mentraos.ble.VadCon" +
+      "figResponseH\000\022-\n\nvad_status\030\027 \001(\0132\027.ment" +
+      "raos.ble.VadStatusH\000\022F\n\027image_transfer_c" +
+      "omplete\030\036 \001(\0132#.mentraos.ble.ImageTransf" +
+      "erCompleteH\000\022<\n\022display_queue_info\030\037 \001(\013" +
+      "2\036.mentraos.ble.DisplayQueueInfoH\000\022)\n\010im" +
+      "u_data\030( \001(\0132\025.mentraos.ble.ImuDataH\000\0221\n" +
+      "\014button_event\030) \001(\0132\031.mentraos.ble.Butto" +
+      "nEventH\000\0221\n\014head_gesture\030* \001(\0132\031.mentrao" +
+      "s.ble.HeadGestureH\000\0227\n\017dashboard_shown\030+" +
+      " \001(\0132\034.mentraos.ble.DashboardShownH\000\0229\n\020" +
+      "version_response\030F \001(\0132\035.mentraos.ble.Ve" +
+      "rsionResponseH\000B\t\n\007payload\"\023\n\021Disconnect" +
+      "Request\"\025\n\023BatteryStateRequest\"0\n\rBatter" +
+      "yStatus\022\r\n\005level\030\001 \001(\r\022\020\n\010charging\030\002 \001(\010" +
+      "\"j\n\rChargingState\0220\n\005state\030\001 \001(\0162!.mentr" +
+      "aos.ble.ChargingState.State\"\'\n\005State\022\020\n\014" +
+      "NOT_CHARGING\020\000\022\014\n\010CHARGING\020\001\"\024\n\022GlassesI" +
+      "nfoRequest\"b\n\nDeviceInfo\022\022\n\nfw_version\030\001" +
+      " \001(\t\022\020\n\010hw_model\030\002 \001(\t\022.\n\010features\030\003 \001(\013" +
+      "2\034.mentraos.ble.DeviceFeatures\"\242\001\n\016Devic" +
+      "eFeatures\022\016\n\006camera\030\001 \001(\010\022\017\n\007display\030\002 \001" +
+      "(\010\022\020\n\010audio_tx\030\003 \001(\010\022\020\n\010audio_rx\030\004 \001(\010\022\013" +
+      "\n\003imu\030\005 \001(\010\022\013\n\003vad\030\006 \001(\010\022\025\n\rmic_switchin" +
+      "g\030\007 \001(\010\022\032\n\022image_chunk_buffer\030\010 \001(\r\"\024\n\022P" +
+      "airingModeRequest\"\025\n\023HeadPositionRequest" +
+      "\"\035\n\014HeadPosition\022\r\n\005angle\030\001 \001(\005\"\"\n\021HeadU" +
+      "pAngleConfig\022\r\n\005angle\030\001 \001(\r\"&\n\023HeadUpAng" +
+      "leResponse\022\017\n\007success\030\001 \001(\010\"\035\n\013PingReque" +
+      "st\022\016\n\006msg_id\030\001 \001(\t\"\016\n\014PongResponse\"!\n\016Mi" +
+      "cStateConfig\022\017\n\007enabled\030\001 \001(\010\"Z\n\010VadEven" +
+      "t\022+\n\005state\030\001 \001(\0162\034.mentraos.ble.VadEvent" +
+      ".State\"!\n\005State\022\014\n\010INACTIVE\020\000\022\n\n\006ACTIVE\020" +
+      "\001\"4\n\021VadEnabledRequest\022\016\n\006msg_id\030\001 \001(\t\022\017" +
+      "\n\007enabled\030\002 \001(\010\"D\n\022VadEnabledResponse\022\016\n" +
+      "\006msg_id\030\001 \001(\t\022\017\n\007success\030\002 \001(\010\022\r\n\005error\030" +
+      "\003 \001(\t\"7\n\020VadConfigRequest\022\016\n\006msg_id\030\001 \001(" +
+      "\t\022\023\n\013sensitivity\030\002 \001(\r\"C\n\021VadConfigRespo" +
+      "nse\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007success\030\002 \001(\010\022\r\n\005" +
+      "error\030\003 \001(\t\"\"\n\020VadStatusRequest\022\016\n\006msg_i" +
+      "d\030\001 \001(\t\"A\n\tVadStatus\022\016\n\006msg_id\030\001 \001(\t\022\017\n\007" +
+      "enabled\030\002 \001(\010\022\023\n\013sensitivity\030\003 \001(\r\"N\n\013Di" +
+      "splayText\022\014\n\004text\030\001 \001(\t\022\r\n\005color\030\002 \001(\r\022\t" +
+      "\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\014\n\004size\030\005 \001(\r\"~\n\014Di" +
+      "splayImage\022\021\n\tstream_id\030\001 \001(\t\022\t\n\001x\030\002 \001(\r" +
+      "\022\t\n\001y\030\003 \001(\r\022\r\n\005width\030\004 \001(\r\022\016\n\006height\030\005 \001" +
+      "(\r\022\020\n\010encoding\030\006 \001(\t\022\024\n\014total_chunks\030\007 \001" +
+      "(\r\"x\n\nCacheImage\022\021\n\tstream_id\030\001 \001(\t\022\020\n\010i" +
+      "mage_id\030\002 \001(\r\022\r\n\005width\030\003 \001(\r\022\016\n\006height\030\004" +
+      " \001(\r\022\020\n\010encoding\030\005 \001(\t\022\024\n\014total_chunks\030\006" +
+      " \001(\r\"[\n\022DisplayCachedImage\022\020\n\010image_id\030\001" +
+      " \001(\r\022\t\n\001x\030\002 \001(\r\022\t\n\001y\030\003 \001(\r\022\r\n\005width\030\004 \001(" +
+      "\r\022\016\n\006height\030\005 \001(\r\"$\n\020ClearCachedImage\022\020\n" +
+      "\010image_id\030\001 \001(\r\"\246\002\n\024DisplayScrollingText" +
+      "\022\014\n\004text\030\001 \001(\t\022\r\n\005color\030\002 \001(\r\022\t\n\001x\030\003 \001(\r" +
+      "\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 \001(\r\022\016\n\006height\030\006 \001" +
+      "(\r\022;\n\005align\030\007 \001(\0162,.mentraos.ble.Display" +
+      "ScrollingText.Alignment\022\024\n\014line_spacing\030" +
+      "\010 \001(\r\022\r\n\005speed\030\t \001(\r\022\014\n\004size\030\n \001(\r\022\014\n\004lo" +
+      "op\030\013 \001(\010\022\020\n\010pause_ms\030\014 \001(\r\",\n\tAlignment\022" +
+      "\010\n\004LEFT\020\000\022\n\n\006CENTER\020\001\022\t\n\005RIGHT\020\002\" \n\022Disp" +
+      "layPowerConfig\022\n\n\002on\030\001 \001(\010\"!\n\020Brightness" +
+      "Config\022\r\n\005value\030\001 \001(\r\"\'\n\024AutoBrightnessC" +
+      "onfig\022\017\n\007enabled\030\001 \001(\010\".\n\030AutoBrightness" +
+      "Multiplier\022\022\n\nmultiplier\030\001 \001(\002\"Y\n\010DrawLi" +
+      "ne\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\n\n\002x1\030" +
+      "\003 \001(\r\022\n\n\002y1\030\004 \001(\r\022\n\n\002x2\030\005 \001(\r\022\n\n\002y2\030\006 \001(" +
+      "\r\"^\n\010DrawRect\022\r\n\005color\030\001 \001(\r\022\016\n\006stroke\030\002" +
+      " \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004 \001(\r\022\r\n\005width\030\005 \001(" +
+      "\r\022\016\n\006height\030\006 \001(\r\"Q\n\nDrawCircle\022\r\n\005color" +
+      "\030\001 \001(\r\022\016\n\006stroke\030\002 \001(\r\022\t\n\001x\030\003 \001(\r\022\t\n\001y\030\004" +
+      " \001(\r\022\016\n\006radius\030\005 \001(\r\"\210\003\n\014DisplayBatch\022;\n" +
+      "\010commands\030\001 \003(\0132).mentraos.ble.DisplayBa" +
+      "tch.DisplayCommand\032\272\002\n\016DisplayCommand\022)\n" +
+      "\004text\030\001 \001(\0132\031.mentraos.ble.DisplayTextH\000" +
+      "\0228\n\014cached_image\030\002 \001(\0132 .mentraos.ble.Di" +
+      "splayCachedImageH\000\022&\n\004line\030\003 \001(\0132\026.mentr" +
+      "aos.ble.DrawLineH\000\022&\n\004rect\030\004 \001(\0132\026.mentr" +
+      "aos.ble.DrawRectH\000\022*\n\006circle\030\005 \001(\0132\030.men" +
+      "traos.ble.DrawCircleH\000\022<\n\016scrolling_text" +
+      "\030\006 \001(\0132\".mentraos.ble.DisplayScrollingTe" +
+      "xtH\000B\t\n\007command\"%\n\rCommitDisplay\022\024\n\014clea" +
+      "r_before\030\001 \001(\010\"\016\n\014ClearDisplay\"\024\n\022Displa" +
+      "yQueueStatus\"u\n\020DisplayQueueInfo\022\027\n\017queu" +
+      "ed_commands\030\001 \001(\r\022\023\n\013queue_bytes\030\002 \001(\r\022\026" +
+      "\n\016max_queue_size\030\003 \001(\r\022\033\n\023last_commit_su" +
+      "ccess\030\004 \001(\010\",\n\025DisplayDistanceConfig\022\023\n\013" +
+      "distance_cm\030\001 \001(\r\"%\n\023DisplayHeightConfig" +
+      "\022\016\n\006height\030\001 \001(\r\"\240\001\n\025ImageTransferComple" +
+      "te\022\021\n\tstream_id\030\001 \001(\t\022:\n\006status\030\002 \001(\0162*." +
+      "mentraos.ble.ImageTransferComplete.Statu" +
+      "s\022\026\n\016missing_chunks\030\003 \003(\r\" \n\006Status\022\006\n\002O" +
+      "K\020\000\022\016\n\nINCOMPLETE\020\001\"#\n\020ImuEnabledConfig\022" +
+      "\017\n\007enabled\030\001 \001(\010\"\022\n\020ImuSingleRequest\"\"\n\017" +
+      "ImuStreamConfig\022\017\n\007enabled\030\001 \001(\010\"x\n\007ImuD" +
+      "ata\022$\n\005accel\030\001 \001(\0132\025.mentraos.ble.Vector" +
+      "3\022#\n\004gyro\030\002 \001(\0132\025.mentraos.ble.Vector3\022\"" +
+      "\n\003mag\030\003 \001(\0132\025.mentraos.ble.Vector3\"*\n\007Ve" +
+      "ctor3\022\t\n\001x\030\001 \001(\002\022\t\n\001y\030\002 \001(\002\022\t\n\001z\030\003 \001(\002\"\265" +
+      "\001\n\013ButtonEvent\0220\n\006button\030\001 \001(\0162 .mentrao" +
+      "s.ble.ButtonEvent.Button\022.\n\005state\030\002 \001(\0162" +
+      "\037.mentraos.ble.ButtonEvent.State\")\n\006Butt" +
+      "on\022\n\n\006CENTER\020\000\022\010\n\004LEFT\020\001\022\t\n\005RIGHT\020\002\"\031\n\005S" +
+      "tate\022\006\n\002UP\020\000\022\010\n\004DOWN\020\001\"\233\001\n\013HeadGesture\0222" +
+      "\n\007gesture\030\001 \001(\0162!.mentraos.ble.HeadGestu" +
+      "re.Gesture\"X\n\007Gesture\022\007\n\003NOD\020\000\022\t\n\005SHAKE\020" +
+      "\001\022\013\n\007HEAD_UP\020\002\022\r\n\tHEAD_DOWN\020\003\022\r\n\tTILT_LE" +
+      "FT\020\004\022\016\n\nTILT_RIGHT\020\005\"X\n\021HeadGestureConfi" +
+      "g\0222\n\007gesture\030\001 \001(\0162!.mentraos.ble.HeadGe" +
+      "sture.Gesture\022\017\n\007enabled\030\002 \001(\010\"\020\n\016Restar" +
+      "tRequest\"\025\n\023FactoryResetRequest\"Q\n\016Cache" +
+      "Dashboard\022\024\n\014dashboard_id\030\001 \001(\r\022)\n\005batch" +
+      "\030\002 \001(\0132\032.mentraos.ble.DisplayBatch\"&\n\016Cl" +
+      "earDashboard\022\024\n\014dashboard_id\030\001 \001(\r\"\330\001\n\031C" +
+      "onfigureDashboardTrigger\022\024\n\014dashboard_id" +
+      "\030\001 \001(\r\022D\n\007trigger\030\002 \001(\01623.mentraos.ble.C" +
+      "onfigureDashboardTrigger.TriggerType\022\023\n\013" +
+      "duration_ms\030\003 \001(\r\"J\n\013TriggerType\022\013\n\007HEAD" +
+      "_UP\020\000\022\r\n\tHEAD_DOWN\020\001\022\016\n\nBUTTON_TAP\020\002\022\017\n\013" +
+      "MANUAL_ONLY\020\003\"\230\001\n\016DashboardShown\022\024\n\014dash" +
+      "board_id\030\001 \001(\r\022:\n\006source\030\002 \001(\0162*.mentrao" +
+      "s.ble.DashboardShown.TriggerSource\"4\n\rTr" +
+      "iggerSource\022\013\n\007GESTURE\020\000\022\n\n\006BUTTON\020\001\022\n\n\006" +
+      "MANUAL\020\002\" \n\016VersionRequest\022\016\n\006msg_id\030\001 \001" +
+      "(\t\"h\n\017VersionResponse\022\016\n\006msg_id\030\001 \001(\t\022\017\n" +
+      "\007version\030\002 \001(\r\022\016\n\006commit\030\n \001(\t\022\022\n\nbuild_" +
+      "date\030\013 \001(\tJ\004\010\003\020\004J\004\010\004\020\005J\004\010\005\020\006:=\n\025mentra_s" +
+      "chema_version\022\034.google.protobuf.FileOpti" +
+      "ons\030\361\242\004 \001(\rB\004\210\227\"\002b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
+          com.google.protobuf.DescriptorProtos.getDescriptor(),
         });
     internal_static_mentraos_ble_PhoneToGlasses_descriptor =
       getDescriptor().getMessageTypes().get(0);
     internal_static_mentraos_ble_PhoneToGlasses_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_PhoneToGlasses_descriptor,
-        new java.lang.String[] { "MsgId", "Disconnect", "BatteryState", "GlassesInfo", "PairingMode", "HeadPosition", "HeadUpAngle", "Pong", "MicState", "SetVadEnabled", "SetVadConfig", "RequestVadStatus", "DisplayText", "DisplayImage", "CacheImage", "DisplayCachedImage", "ClearCachedImage", "DisplayScrollingText", "DrawLine", "DrawRect", "DrawCircle", "DisplayBatch", "Commit", "DisplayPower", "Brightness", "AutoBrightness", "AutoBrightnessMult", "DisplayDistance", "DisplayHeight", "ClearDisplay", "QueueStatusRequest", "CacheDashboard", "ClearDashboard", "DashboardTrigger", "ImuEnabled", "ImuSingle", "ImuStream", "HeadGesture", "Restart", "FactoryReset", "Payload", });
+        new java.lang.String[] { "MsgId", "Disconnect", "BatteryState", "GlassesInfo", "PairingMode", "HeadPosition", "HeadUpAngle", "Pong", "MicState", "SetVadEnabled", "SetVadConfig", "RequestVadStatus", "DisplayText", "DisplayImage", "CacheImage", "DisplayCachedImage", "ClearCachedImage", "DisplayScrollingText", "DrawLine", "DrawRect", "DrawCircle", "DisplayBatch", "Commit", "DisplayPower", "Brightness", "AutoBrightness", "AutoBrightnessMult", "DisplayDistance", "DisplayHeight", "ClearDisplay", "QueueStatusRequest", "CacheDashboard", "ClearDashboard", "DashboardTrigger", "ImuEnabled", "ImuSingle", "ImuStream", "HeadGesture", "Restart", "FactoryReset", "VersionRequest", "Payload", });
     internal_static_mentraos_ble_GlassesToPhone_descriptor =
       getDescriptor().getMessageTypes().get(1);
     internal_static_mentraos_ble_GlassesToPhone_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_GlassesToPhone_descriptor,
-        new java.lang.String[] { "BatteryStatus", "ChargingState", "DeviceInfo", "HeadPosition", "HeadUpAngleSet", "Ping", "VadEvent", "VadEnabledSet", "VadConfigured", "VadStatus", "ImageTransferComplete", "DisplayQueueInfo", "ImuData", "ButtonEvent", "HeadGesture", "DashboardShown", "Payload", });
+        new java.lang.String[] { "BatteryStatus", "ChargingState", "DeviceInfo", "HeadPosition", "HeadUpAngleSet", "Ping", "VadEvent", "VadEnabledSet", "VadConfigured", "VadStatus", "ImageTransferComplete", "DisplayQueueInfo", "ImuData", "ButtonEvent", "HeadGesture", "DashboardShown", "VersionResponse", "Payload", });
     internal_static_mentraos_ble_DisconnectRequest_descriptor =
       getDescriptor().getMessageTypes().get(2);
     internal_static_mentraos_ble_DisconnectRequest_fieldAccessorTable = new
@@ -51576,7 +53649,26 @@ public final class MentraosBle {
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_mentraos_ble_DashboardShown_descriptor,
         new java.lang.String[] { "DashboardId", "Source", });
+    internal_static_mentraos_ble_VersionRequest_descriptor =
+      getDescriptor().getMessageTypes().get(59);
+    internal_static_mentraos_ble_VersionRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VersionRequest_descriptor,
+        new java.lang.String[] { "MsgId", });
+    internal_static_mentraos_ble_VersionResponse_descriptor =
+      getDescriptor().getMessageTypes().get(60);
+    internal_static_mentraos_ble_VersionResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_mentraos_ble_VersionResponse_descriptor,
+        new java.lang.String[] { "MsgId", "Version", "Commit", "BuildDate", });
+    mentraSchemaVersion.internalInit(descriptor.getExtensions().get(0));
     descriptor.resolveAllFeaturesImmutable();
+    com.google.protobuf.DescriptorProtos.getDescriptor();
+    com.google.protobuf.ExtensionRegistry registry =
+        com.google.protobuf.ExtensionRegistry.newInstance();
+    registry.add(mentraos.ble.MentraosBle.mentraSchemaVersion);
+    com.google.protobuf.Descriptors.FileDescriptor
+        .internalUpdateFileDescriptor(descriptor, registry);
   }
 
   // @@protoc_insertion_point(outer_class_scope)
