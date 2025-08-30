@@ -168,7 +168,7 @@ struct ViewState {
         } else if wearable.contains("Mach1") && mach1Manager == nil {
             mach1Manager = Mach1Manager()
         } else if wearable.contains("Nex"), nexManager == nil {
-            nexManager = MentraNexSGC.shared
+            nexManager = MentraNexSGC.getInstance()
         } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"), frameManager == nil {
             frameManager = FrameManager.shared
         }
@@ -398,7 +398,7 @@ struct ViewState {
         if nexManager != nil {
             nexManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                CoreCommsService.log("Nex glasses connection changed to: \(self.nexManager!.isConnected() ? "Connected" : "Disconnected")")
+                Core.log("Nex glasses connection changed to: \(self.nexManager!.isConnected() ? "Connected" : "Disconnected")")
                 if self.nexManager!.isConnected() {
                     self.handleDeviceReady()
                 } else {
@@ -1056,6 +1056,7 @@ struct ViewState {
 
         g1Manager?.sendTextWall(text)
         mach1Manager?.sendTextWall(text)
+        nexManager?.sendTextWall(text)
         frameManager?.displayTextWall(text)
     }
 
@@ -2004,7 +2005,7 @@ struct ViewState {
     }
 
     private func handleNexReady() {
-        CoreCommsService.log("AOS: Mentra Nex device ready")
+        Core.log("AOS: Mentra Nex device ready")
         isSearching = false
         defaultWearable = "Mentra Nex"
         handleRequestStatus()
@@ -2335,7 +2336,7 @@ struct ViewState {
     // MARK: - Cleanup
 
     @objc func cleanup() {
-        // Clean up transcriber resources - DISABLED
+        // Clean up transcriber resources
         transcriber?.shutdown()
         transcriber = nil
 
