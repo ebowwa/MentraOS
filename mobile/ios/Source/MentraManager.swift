@@ -517,7 +517,7 @@ struct ViewState {
 
                     // Also send to local transcriber when bypassing VAD - DISABLED
                     if self.shouldSendTranscript {
-                        // self.transcriber?.acceptAudio(pcm16le: pcmData)
+                        self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                     return
                 }
@@ -552,7 +552,7 @@ struct ViewState {
 
                     // Send to local transcriber when speech is detected - DISABLED
                     if self.shouldSendTranscript {
-                        // self.transcriber?.acceptAudio(pcm16le: pcmData)
+                        self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
                 } else {
                     checkSetVadStatus(speaking: false)
@@ -2063,7 +2063,6 @@ struct ViewState {
             } else if self.pendingWearable.contains("Nex") {
                 self.nexManager?.connect(name: self.deviceName)
             }
-            }
         }
 
         // wait for the g1's to be fully ready:
@@ -2346,35 +2345,35 @@ struct ViewState {
 
     // MARK: - SherpaOnnxTranscriber / STT Model Management
 
-    // func didReceivePartialTranscription(_ text: String) {
-    //     // Send partial result to server with proper formatting
-    //     let transcription: [String: Any] = [
-    //         "type": "local_transcription",
-    //         "text": text,
-    //         "isFinal": false,
-    //         "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
-    //         "endTime": Int(Date().timeIntervalSince1970 * 1000),
-    //         "speakerId": 0,
-    //         "transcribeLanguage": "en-US",
-    //         "provider": "sherpa-onnx",
-    //     ]
+    func didReceivePartialTranscription(_ text: String) {
+        // Send partial result to server with proper formatting
+        let transcription: [String: Any] = [
+            "type": "local_transcription",
+            "text": text,
+            "isFinal": false,
+            "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
+            "endTime": Int(Date().timeIntervalSince1970 * 1000),
+            "speakerId": 0,
+            "transcribeLanguage": "en-US",
+            "provider": "sherpa-onnx",
+        ]
 
-    //     serverComms.sendTranscriptionResult(transcription: transcription)
-    // }
+        serverComms.sendTranscriptionResult(transcription: transcription)
+    }
 
-    // func didReceiveFinalTranscription(_ text: String) {
-    //     // Send final result to server with proper formatting
-    //     if !text.isEmpty {
-    //         let transcription: [String: Any] = [
-    //             "type": "local_transcription",
-    //             "text": text,
-    //             "isFinal": true,
-    //             "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
-    //             "endTime": Int(Date().timeIntervalSince1970 * 1000),
-    //         "speakerId": 0,
-    //         "transcribeLanguage": "en-US",
-    //         "provider": "sherpa-onnx",
-    //     ]
+    func didReceiveFinalTranscription(_ text: String) {
+        // Send final result to server with proper formatting
+        if !text.isEmpty {
+            let transcription: [String: Any] = [
+                "type": "local_transcription",
+                "text": text,
+                "isFinal": true,
+                "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
+                "endTime": Int(Date().timeIntervalSince1970 * 1000),
+                "speakerId": 0,
+                "transcribeLanguage": "en-US",
+                "provider": "sherpa-onnx",
+            ]
 
             serverComms.sendTranscriptionResult(transcription: transcription)
         }
