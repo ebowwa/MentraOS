@@ -9,6 +9,8 @@ podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties
 
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
+project 'AOS.xcodeproj'
+
 
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
@@ -29,7 +31,7 @@ setup_permissions([
 ])
 # @generated end setup
 
-target 'MentraOS' do
+target 'AOS' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -48,6 +50,10 @@ target 'MentraOS' do
   end
 
   config = use_native_modules!(config_command)
+
+  # Add SWCompression for TarBz2Extractor functionality
+  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
+  pod 'SWCompression', '~> 4.8.0'
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
