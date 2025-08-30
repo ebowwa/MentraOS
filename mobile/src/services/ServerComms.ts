@@ -46,7 +46,33 @@ class ServerComms {
 
   public static getInstance(): any {
     // disabled for now
-    return {} as any
+    return {
+      restartConnection: () => {},
+      setAuthCreds: () => {},
+      sendText: () => {},
+      send_calendar_events: () => {},
+      send_location_updates: () => {},
+      send_user_datetime_to_backend: () => {},
+      send_transcription_result: () => {},
+      cleanup: () => {},
+      isWebSocketConnected: () => false,
+      send_vad_status: () => {},
+      send_battery_status: () => {},
+      send_calendar_event: () => {},
+      send_location_update: () => {},
+      send_glasses_connection_state: () => {},
+      update_asr_config: () => {},
+      send_core_status: () => {},
+      send_audio_play_response: () => {},
+      send_start_app: () => {},
+      send_stop_app: () => {},
+      send_button_press: () => {},
+      send_photo_response: () => {},
+      send_video_stream_response: () => {},
+      send_head_position: () => {},
+      parse_app_list: () => [],
+      get_current_iso_datetime: () => "",
+    } as any
   }
 
   private setupPeriodicTasks() {
