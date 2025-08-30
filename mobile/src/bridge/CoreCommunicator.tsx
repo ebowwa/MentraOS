@@ -392,6 +392,11 @@ export class CoreCommunicator extends EventEmitter {
           console.log("send_command_to_ble", data)
           GlobalEventEmitter.emit("send_command_to_ble", data.send_command_to_ble)
           break
+        case "protobuf_schema_version":
+          // Note: Protobuf schema version is now included in core_info status
+          // No need to emit separate event since it's part of regular status updates
+          console.log("Protobuf schema version received (now included in core status):", data)
+          break
         default:
           console.log("Unknown event type:", data.type)
           break

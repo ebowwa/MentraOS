@@ -105,6 +105,7 @@ export interface CoreInfo {
   always_on_status_bar_enabled: boolean
   metric_system_enabled: boolean
   is_searching: boolean
+  protobuf_schema_version: string
 }
 
 export interface CoreStatus {
@@ -139,6 +140,7 @@ export class CoreStatusParser {
       always_on_status_bar_enabled: false,
       metric_system_enabled: true,
       is_searching: false,
+      protobuf_schema_version: "Unknown",
     },
     glasses_info: null,
     glasses_settings: {
@@ -268,6 +270,7 @@ export class CoreStatusParser {
           always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
           metric_system_enabled: status.core_info.metric_system_enabled ?? true,
           is_searching: status.core_info.is_searching ?? false,
+          protobuf_schema_version: status.core_info.protobuf_schema_version ?? "Unknown",
         },
         glasses_info: status.connected_glasses
           ? {
