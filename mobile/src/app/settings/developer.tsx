@@ -84,7 +84,6 @@ export default function DeveloperSettingsScreen() {
         console.log("URL Test Successful:", response.data)
         // Save the URL if the test passes
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await ServerComms.getInstance().restartConnection()
         await coreCommunicator.setServerUrl(urlToTest) // TODO: config: remove
         setSavedCustomUrl(urlToTest)
         await showAlert(
@@ -141,8 +140,14 @@ export default function DeveloperSettingsScreen() {
     await coreCommunicator.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    await ServerComms.getInstance().restartConnection()
-    showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
+    showAlert("Success", "Backend URL reset to default.", [
+      {
+        text: "OK",
+        onPress: () => {
+          replace("/auth/core-token-exchange")
+        },
+      },
+    ])
   }
 
   // Triple-tap handler for Asia East button
