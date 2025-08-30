@@ -123,6 +123,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Displ
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtobufSchemaVersionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtocolVersionResponseEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -320,6 +321,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesStyle = null;
     private String glassesColor = null;
     private String protobufSchemaVersion = "Unknown";
+    private String glassesProtobufVersion = "Unknown";
 
     // OTA progress tracking
     private DownloadProgressEvent.DownloadStatus downloadStatus = null;
@@ -1599,6 +1601,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("power_saving_mode", SmartGlassesManager.getPowerSavingMode(this));
             coreInfo.put("is_searching", getIsSearchingForGlasses());
             coreInfo.put("protobuf_schema_version", this.protobufSchemaVersion);
+            coreInfo.put("glasses_protobuf_version", this.glassesProtobufVersion);
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
 
@@ -3348,6 +3351,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
         
         Log.d(TAG, "Updated protobuf schema version in core status: " + this.protobufSchemaVersion);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onProtocolVersionResponseEvent(ProtocolVersionResponseEvent event) {
+        Log.d(TAG, "Received glasses protobuf version response event: " + event.getFormattedVersion());
+        
+        // Store the glasses protobuf version in the service state
+        this.glassesProtobufVersion = event.getFormattedVersion();
+        
+        // Send updated status to React Native (includes the new glasses protobuf version)
+        sendStatusToAugmentOsManager();
+        
+        Log.d(TAG, "Updated glasses protobuf version in core status: " + this.glassesProtobufVersion);
     }
 
     @Override
