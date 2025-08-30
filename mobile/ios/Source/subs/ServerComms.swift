@@ -476,31 +476,8 @@ class ServerComms {
         case "audio_stop_request":
             handleAudioStopRequest()
 
-        case "request_single":
-            if let dataType = msg["data_type"] as? String {
-                m.onRequestSingle(dataType)
-            }
-
         case "reconnect":
-            Core.log("ServerComms: Server is requesting a reconnect.")
-
-        case "settings_update":
-            Core.log("ServerComms: Received settings update from WebSocket")
-            guard let status = msg["status"] as? [String: Any] else {
-                Core.log("ServerComms: Received settings update but no status")
-                return
-            }
-            m.onStatusUpdate(status)
-
-      // Log.d(TAG, "Received settings update from WebSocket");
-      // try {
-      //     JSONObject settings = msg.optJSONObject("settings");
-      //     if (settings != null && serverCommsCallback != null) {
-      //         serverCommsCallback.onSettingsUpdate(settings);
-      //     }
-      // } catch (Exception e) {
-      //     Log.e(TAG, "Error handling settings update", e);
-      // }
+            Core.log("ServerComms: TODO: Server is requesting a reconnect.")
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
