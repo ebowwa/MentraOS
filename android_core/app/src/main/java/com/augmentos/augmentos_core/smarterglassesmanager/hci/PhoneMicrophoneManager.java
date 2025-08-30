@@ -1823,7 +1823,7 @@ public class PhoneMicrophoneManager {
         recordingRunnable = new Runnable() {
             @Override
             public void run() {
-                saveAudioRecording();
+                // saveAudioRecording();
                 // Reset for next 30-second cycle
                 recordingStartTime = System.currentTimeMillis();
                 startRecordingTimer();
@@ -2102,9 +2102,9 @@ public class PhoneMicrophoneManager {
         }
         
         // Save any remaining audio data
-        if (!audioBuffer.isEmpty()) {
-            saveAudioRecording();
-        }
+        // if (!audioBuffer.isEmpty()) {
+        //     saveAudioRecording();
+        // }
         
         recordingStartTime = 0;
         audioBuffer.clear();
@@ -2139,11 +2139,11 @@ public class PhoneMicrophoneManager {
      * Manually triggers saving of current audio buffer (for testing/debugging)
      */
     public void manualSaveRecording() {
-        if (!audioBuffer.isEmpty()) {
-            Log.d(TAG, "🔧 Manual recording save triggered");
-            saveAudioRecording();
-        } else {
-            Log.w(TAG, "No audio data available for manual save");
-        }
+        // if (!audioBuffer.isEmpty()) {
+        //     Log.d(TAG, "🔧 Manual recording save triggered");
+        //     saveAudioRecording();
+        // } else {
+        //     Log.w(TAG, "No audio data available for manual save");
+        // }
     }
 }
