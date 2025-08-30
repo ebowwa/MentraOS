@@ -368,4 +368,16 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Stop video recording not implemented for this device");
     }
+    
+    /**
+     * Get protobuf schema version information
+     * Default implementation returns unknown - specific communicators should override
+     *
+     * @return Protobuf schema version information
+     */
+    public String getProtobufSchemaVersionInfo() {
+        // Default implementation returns unknown
+        Log.d("SmartGlassesCommunicator", "Protobuf schema version not implemented for this device");
+        return "Schema v1 | Unknown";
+    }
 }

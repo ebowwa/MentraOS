@@ -122,6 +122,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayTextEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtobufSchemaVersionEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -318,6 +319,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesSerialNumber = null;
     private String glassesStyle = null;
     private String glassesColor = null;
+    private String protobufSchemaVersion = "Unknown";
 
     // OTA progress tracking
     private DownloadProgressEvent.DownloadStatus downloadStatus = null;
@@ -1596,6 +1598,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("metric_system_enabled", this.metricSystemEnabled);
             coreInfo.put("power_saving_mode", SmartGlassesManager.getPowerSavingMode(this));
             coreInfo.put("is_searching", getIsSearchingForGlasses());
+            coreInfo.put("protobuf_schema_version", this.protobufSchemaVersion);
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
 
@@ -3332,6 +3335,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesColor = event.color;
         Log.d(TAG, "Glasses serial number: " + glassesSerialNumber + ", Style: " + glassesStyle + ", Color: " + glassesColor);
         sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onProtobufSchemaVersionEvent(ProtobufSchemaVersionEvent event) {
+        Log.d(TAG, "Received protobuf schema version event: " + event.getBuildInfo());
+        
+        // Store the protobuf version in the service state
+        this.protobufSchemaVersion = event.getBuildInfo();
+        
+        // Send updated status to React Native (includes the new protobuf version)
+        sendStatusToAugmentOsManager();
+        
+        Log.d(TAG, "Updated protobuf schema version in core status: " + this.protobufSchemaVersion);
     }
 
     @Override
