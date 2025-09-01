@@ -279,7 +279,7 @@ export default function PairingPrepScreen() {
       return
     }
 
-    push("/pairing/bluetooth", {glassesModelName})
+    push("/pairing/scan", {glassesModelName})
   }
 
   return (
