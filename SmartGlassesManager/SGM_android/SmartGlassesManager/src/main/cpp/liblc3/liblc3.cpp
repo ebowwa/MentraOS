@@ -65,10 +65,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     int srHz = 16000;
     uint16_t samplesPerFrame = lc3_frame_samples(dtUs, srHz);
     uint16_t bytesPerFrame = samplesPerFrame * 2;
-    
-    // Calculate encoded frame size for 32 kbps at 10ms frames
-    // 32 kbps = 32,000 bits/sec = 320 bits per 10ms frame = 40 bytes per frame
-    uint16_t encodedFrameSize = (32000 * dtUs / 1000000) / 8; // 40 bytes
 
     int frameCount = pcmLength / bytesPerFrame;
     int outputSize = frameCount * encodedFrameSize;
@@ -124,10 +120,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass 
 
     uint16_t samplesPerFrame = lc3_frame_samples(dtUs, srHz);
     uint16_t bytesPerFrame = samplesPerFrame * 2;
-    
-    // Calculate encoded frame size for 32 kbps at 10ms frames
-    // 32 kbps = 32,000 bits/sec = 320 bits per 10ms frame = 40 bytes per frame
-    uint16_t encodedFrameSize = (32000 * dtUs / 1000000) / 8; // 40 bytes
 
     int outSize = (lc3Length / encodedFrameSize) * bytesPerFrame;
     unsigned char* outArray = (unsigned char*)malloc(outSize);
