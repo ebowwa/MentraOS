@@ -47,6 +47,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Insta
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairFailureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuDataEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuGestureEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.MessageChunker;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
@@ -2508,6 +2509,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Update the microphone state tracker
         isMicrophoneEnabled = enable;
+        
+        // Post event for frontend notification
+        EventBus.getDefault().post(new isMicEnabledForFrontendEvent(enable));
         
         // Update the shouldUseGlassesMic flag to reflect the current state
         this.shouldUseGlassesMic = enable && SmartGlassesManager.getSensingEnabled(context);
