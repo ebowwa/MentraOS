@@ -68,6 +68,7 @@ import Foundation
             case validate_stt_model
             case extract_tar_bz2
             case display_event
+            case display_text
             case update_settings
             case microphone_state_change
             case unknown
@@ -115,6 +116,12 @@ import Foundation
                         break
                     }
                     m.handle_display_event(params)
+                case .display_text:
+                    guard let params else {
+                        Core.log("CommandBridge: display_text invalid params")
+                        break
+                    }
+                    m.handle_display_text(params)
                 case .request_status:
                     m.handleRequestStatus()
                 case .connect_wearable:
