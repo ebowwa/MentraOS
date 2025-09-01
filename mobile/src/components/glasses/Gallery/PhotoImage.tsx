@@ -8,7 +8,7 @@ import {View, Image, Text, ActivityIndicator, Platform} from "react-native"
 import {ViewStyle, ImageStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {PhotoInfo} from "../../types"
+import {PhotoInfo} from "../../../types/asg"
 import RNFS from "react-native-fs"
 
 interface PhotoImageProps {

@@ -146,7 +146,7 @@ export default function SelectGlassesModelScreen() {
           <View
             style={[
               styles.onboardingBanner,
-              {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary},
+              {backgroundColor: theme.colors.palette.blue500, borderColor: theme.colors.buttonPrimary},
             ]}>
             <Icon name="info-circle" size={20} color={theme.colors.icon} style={{marginRight: 8}} />
 

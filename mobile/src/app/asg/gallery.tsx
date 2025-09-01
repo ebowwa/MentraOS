@@ -1,9 +1,9 @@
 import React, {useCallback} from "react"
-import {GalleryScreen} from "./components/Gallery/GalleryScreen"
+import {GalleryScreen} from "../../components/glasses/Gallery/GalleryScreen"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useFocusEffect} from "expo-router"
 import {BackHandler, View, ViewStyle} from "react-native"
-import {Header} from "@/components/ignite"
+import {Header, Screen} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 
@@ -25,10 +25,9 @@ export default function AsgGallery() {
   )
 
   return (
-    <View style={themed($screenContainer)}>
-      <Header title="Glasses Gallery" leftIcon="caretLeft" onLeftPress={handleGoBack} />
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <GalleryScreen />
-    </View>
+    </Screen>
   )
 }
 

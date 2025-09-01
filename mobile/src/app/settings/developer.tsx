@@ -17,6 +17,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import ServerComms from "@/services/ServerComms"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
@@ -83,7 +84,7 @@ export default function DeveloperSettingsScreen() {
         console.log("URL Test Successful:", response.data)
         // Save the URL if the test passes
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await coreCommunicator.setServerUrl(urlToTest)
+        await coreCommunicator.setServerUrl(urlToTest) // TODO: config: remove
         setSavedCustomUrl(urlToTest)
         await showAlert(
           "Success",
@@ -136,10 +137,17 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    await coreCommunicator.setServerUrl("") // Clear Android service override
+    await coreCommunicator.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
+    showAlert("Success", "Backend URL reset to default.", [
+      {
+        text: "OK",
+        onPress: () => {
+          replace("/auth/core-token-exchange")
+        },
+      },
+    ])
   }
 
   // Triple-tap handler for Asia East button

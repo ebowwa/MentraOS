@@ -24,7 +24,6 @@ export const AllProviders = withWrappers(
   Suspense,
   KeyboardProvider,
   CoreStatusProvider,
-  NetworkConnectivityProvider,
   AuthProvider,
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,

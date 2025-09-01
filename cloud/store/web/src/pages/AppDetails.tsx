@@ -68,6 +68,32 @@ const AppDetails: React.FC = () => {
   const isDesktop = useIsDesktop();
   const { isWebView } = usePlatform();
 
+  // Smart navigation function
+  const handleBackNavigation = () => {
+    // Check if we have history to go back to
+    const canGoBack = window.history.length > 1;
+
+    // Check if the referrer is from the same domain
+    const referrer = document.referrer;
+    const currentDomain = window.location.hostname;
+
+    if (canGoBack && referrer) {
+      try {
+        const referrerUrl = new URL(referrer);
+        // If the referrer is from the same domain, go back
+        if (referrerUrl.hostname === currentDomain) {
+          navigate(-1);
+          return;
+        }
+      } catch (e) {
+        // If parsing fails, fall through to navigate home
+      }
+    }
+
+    // Otherwise, navigate to the homepage
+    navigate("/");
+  };
+
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -342,7 +368,7 @@ const AppDetails: React.FC = () => {
           >
             {/* Desktop Close Button */}
             <button
-              onClick={() => navigate(-1)}
+              onClick={handleBackNavigation}
               className="hidden sm:block absolute top-6 right-6 transition-colors"
               style={{
                 color: theme === "light" ? "#000000" : "#9CA3AF",
@@ -366,7 +392,7 @@ const AppDetails: React.FC = () => {
               style={{ borderColor: "var(--border-color)" }}
             >
               <button
-                onClick={() => navigate(-1)}
+                onClick={handleBackNavigation}
                 className="flex items-center gap-2 transition-colors"
                 style={{ color: "var(--text-primary)" }}
               >
@@ -469,6 +495,41 @@ const AppDetails: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {app.isOnline === false && (
+                  <div className="mb-6">
+                    <div
+                      className="flex items-center gap-3 p-3 rounded-lg"
+                      style={{
+                        backgroundColor:
+                          theme === "light"
+                            ? "#FDECEA"
+                            : "rgba(255, 255, 255, 0.05)",
+                        border: `1px solid ${
+                          theme === "light"
+                            ? "#F5C6CB"
+                            : "rgba(255, 255, 255, 0.1)"
+                        }`,
+                      }}
+                    >
+                      <Info
+                        className="h-5 w-5"
+                        style={{
+                          color: theme === "light" ? "#B91C1C" : "#FCA5A5",
+                        }}
+                      />
+                      <span
+                        className="text-[14px]"
+                        style={{
+                          color: theme === "light" ? "#B91C1C" : "#FCA5A5",
+                        }}
+                      >
+                        This app appears to be offline. Some actions may not
+                        work.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="mb-8">

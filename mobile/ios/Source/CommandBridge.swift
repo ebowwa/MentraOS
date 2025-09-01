@@ -67,7 +67,9 @@ import Foundation
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
-            case set_settings
+            case display_event
+            case update_settings
+            case microphone_state_change
             case unknown
         }
 
@@ -96,7 +98,8 @@ import Foundation
                         Core.log("CommandBridge: set_server_url invalid params")
                         break
                     }
-                    m.setServerUrl(url: url)
+                    ServerComms.shared.setServerUrl(url)
+                // TODO: config: remove
                 case .set_auth_secret_key:
                     guard let params = params,
                           let userId = params["userId"] as? String,
@@ -105,7 +108,13 @@ import Foundation
                         Core.log("CommandBridge: set_auth_secret_key invalid params")
                         break
                     }
-                    m.setAuthSecretKey(secretKey: authSecretKey, userId: userId)
+                    m.setAuthCreds(authSecretKey, userId)
+                case .display_event:
+                    guard let params else {
+                        Core.log("CommandBridge: display_event invalid params")
+                        break
+                    }
+                    m.handle_display_event(params)
                 case .request_status:
                     m.handleRequestStatus()
                 case .connect_wearable:
@@ -268,13 +277,13 @@ import Foundation
                 case .query_gallery_status:
                     Core.log("CommandBridge: Querying gallery status")
                     m.queryGalleryStatus()
+                // TODO: config: remove
                 case .simulate_head_position:
                     guard let params = params, let position = params["position"] as? String else {
                         Core.log("CommandBridge: simulate_head_position invalid params")
                         break
                     }
-                    // Send to server
-                    ServerComms.getInstance().sendHeadPosition(isUp: position == "up")
+                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     m.sendCurrentState(position == "up")
                 case .simulate_button_press:
@@ -286,7 +295,7 @@ import Foundation
                         break
                     }
                     // Use existing sendButtonPress method
-                    ServerComms.getInstance().sendButtonPress(buttonId: buttonId, pressType: pressType)
+                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
                 case .enforce_local_transcription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Core.log("CommandBridge: enforce_local_transcription invalid params")
@@ -360,9 +369,29 @@ import Foundation
                         break
                     }
                     return m.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
-                case .set_settings:
-                    // m.setSettings(params)
-                    break
+                case .microphone_state_change:
+                    guard let msg = params else {
+                        Core.log("CommandBridge: microphone_state_change invalid params")
+                        break
+                    }
+                    let bypassVad = msg["bypassVad"] as? Bool ?? false
+                    var requiredDataStrings: [String] = []
+                    if let requiredDataArray = msg["requiredData"] as? [String] {
+                        requiredDataStrings = requiredDataArray
+                    } else if let requiredDataArray = msg["requiredData"] as? [Any] {
+                        // Handle case where it might come as mixed array
+                        requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
+                    }
+                    // Convert string array to enum array
+                    var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+                    Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+                    m.handle_microphone_state_change(requiredData, bypassVad)
+                case .update_settings:
+                    guard let params else {
+                        Core.log("CommandBridge: update_settings invalid params")
+                        break
+                    }
+                    m.handle_update_settings(params)
                 }
             }
         } catch {

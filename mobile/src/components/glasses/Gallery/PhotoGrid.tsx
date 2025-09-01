@@ -6,9 +6,9 @@ import React, {useState} from "react"
 import {View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {PhotoGridProps, PhotoInfo} from "../../types"
+import {PhotoGridProps, PhotoInfo} from "../../../types/asg"
 import {translate} from "@/i18n/translate"
-import {asgCameraApi} from "../../services/asgCameraApi"
+import {asgCameraApi} from "../../../services/asg/asgCameraApi"
 
 interface PhotoItemState {
   loading: boolean

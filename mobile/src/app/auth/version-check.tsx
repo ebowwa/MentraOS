@@ -119,7 +119,7 @@ export default function VersionUpdateScreen() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text style={themed($loadingText)}>{translate("versionCheck:checkingForUpdates")}</Text>
         </View>
       </Screen>
