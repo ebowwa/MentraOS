@@ -59,7 +59,7 @@ public class Lc3Player extends Thread{
         {
             mTrack.play();
         }
-        startRec();
+        // startRec(); // Recording disabled
     }
 
     private byte[] mRecvBuffer = new byte[200*10];
@@ -109,7 +109,7 @@ public class Lc3Player extends Thread{
             mTrack = null;
             L3cCpp.freeDecoder(mDecorderHandle);
         }
-        stopRec();
+        // stopRec(); // Recording disabled
         Thread.interrupted();
     }
     private int mLastSeq = 0;
@@ -167,6 +167,8 @@ public class Lc3Player extends Thread{
 
 
 //////////////////////
+    // Recording functionality disabled - commented out
+    /*
     private float mWave = 0;
     private boolean mIsRecording = false;
     private static String FILE_PATH = Environment.getExternalStorageDirectory().toString()+"/1111.pcm";
@@ -208,5 +210,6 @@ public class Lc3Player extends Thread{
             mFos = null;
         }
     }
+    */
 }
 
