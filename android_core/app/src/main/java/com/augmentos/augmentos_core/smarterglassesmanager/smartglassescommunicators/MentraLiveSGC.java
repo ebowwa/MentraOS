@@ -843,7 +843,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             long threadId = Thread.currentThread().getId();
             UUID uuid = characteristic.getUuid();
 
-            Log.d(TAG, "onCharacteristicChanged triggered for: " + uuid);
+            // Log.d(TAG, "onCharacteristicChanged triggered for: " + uuid);
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
@@ -855,7 +855,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             } else if (isTxCharacteristic) {
                 Log.d(TAG, "Received data on TX characteristic");
             } else if (isLc3ReadCharacteristic) {
-                Log.d(TAG, "Received data on LC3_READ characteristic");
+                // Log.d(TAG, "Received data on LC3_READ characteristic");
                 processLc3AudioPacket(characteristic.getValue());
             } else if (isLc3WriteCharacteristic) {
                 Log.d(TAG, "Received data on LC3_WRITE characteristic");
@@ -1381,7 +1381,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         for (int i = 0; i < Math.min(size, 16); i++) {
             hexData.append(String.format("%02X ", data[i]));
         }
-        Log.d(TAG, "Processing data packet, first " + Math.min(size, 16) + " bytes: " + hexData.toString());
+        // Log.d(TAG, "Processing data packet, first " + Math.min(size, 16) + " bytes: " + hexData.toString());
 
         // Get thread ID for consistent logging
         long threadId = Thread.currentThread().getId();
@@ -1435,7 +1435,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         // Check the first byte to determine the packet type for non-protocol formatted data
         byte commandByte = data[0];
-        Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
+        // Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
 
         // CRITICAL DEBUG: Try multiple ways to detect LC3 audio data
         boolean isLc3Audio = false;
@@ -1443,26 +1443,26 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Method 1: Check using switch case (what we were doing)
         if (commandByte == (byte)0xA0) {
             isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): MATCH");
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): MATCH");
         } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): NO MATCH");
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): NO MATCH");
         }
 
         // Method 2: Check by comparing integer values
         int cmdByteInt = commandByte & 0xFF; // Convert signed byte to unsigned int
         if (cmdByteInt == 0xA0) {
             isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): MATCH");
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): MATCH");
         } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): NO MATCH - Value: " + cmdByteInt);
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): NO MATCH - Value: " + cmdByteInt);
         }
 
         // Method 3: Explicit check against -96 (0xA0 as signed byte)
         if (commandByte == -96) {
             isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): MATCH");
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): MATCH");
         } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): NO MATCH - Value: " + (int)commandByte);
+            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): NO MATCH - Value: " + (int)commandByte);
         }
 
         // Process based on detection results
@@ -1532,9 +1532,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             default:
                 // Unknown packet type
-                Log.w(TAG, "Received unknown packet type: " + String.format("0x%02X", commandByte));
+                // Log.w(TAG, "Received unknown packet type: " + String.format("0x%02X", commandByte));
                 if (size > 10) {
-                    Log.d(TAG, "First 10 bytes: " + bytesToHex(Arrays.copyOfRange(data, 0, 10)));
+                    // Log.d(TAG, "First 10 bytes: " + bytesToHex(Arrays.copyOfRange(data, 0, 10)));
                 } else {
                     Log.d(TAG, "Data: " + bytesToHex(data));
                 }
@@ -2333,6 +2333,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void stopMicBeat() {
         Log.d(TAG, "🎤 Stopping micbeat mechanism");
+        sendEnableCustomAudioTxMessage(false);        
         micBeatHandler.removeCallbacks(micBeatRunnable);
         micBeatCount = 0;
     }
@@ -4067,9 +4068,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             // Enhanced LC3 packet logging and saving
             logLc3PacketDetails(lc3Data, sequenceNumber, receiveTime);
-            saveLc3AudioPacket(lc3Data, sequenceNumber);
+            // saveLc3AudioPacket(lc3Data, sequenceNumber);
             
-            Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
+            // Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
 
             // Forward raw LC3 data if a callback is registered
             if (audioProcessingCallback != null) {
@@ -4081,7 +4082,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // The data array already contains the full packet with F1 header and sequence
                 // Just pass it directly to the LC3 player
                 lc3AudioPlayer.write(data, 0, data.length);
-                Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + data.length + " bytes");
+                // Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + data.length + " bytes");
             } else {
                 Log.d(TAG, "Audio playback disabled - skipping LC3 audio output");
             }
@@ -4229,13 +4230,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         long timeSinceLast = receiveTime - lastLc3PacketTime;
         
         // Log detailed packet information
-        Log.i(TAG, String.format("🎵 LC3 PACKET #%d RECEIVED:", sequenceNumber));
-        Log.i(TAG, String.format("   📊 Size: %d bytes", data.length));
-        Log.i(TAG, String.format("   ⏰ Time: %s", lc3PacketTimestampFormat.format(new Date(receiveTime))));
-        Log.i(TAG, String.format("   ⏱️  Since first: +%dms", timeSinceFirst));
-        Log.i(TAG, String.format("   ⏱️  Since last: +%dms", timeSinceLast));
-        Log.i(TAG, String.format("   📈 Total packets: %d", totalLc3PacketsReceived));
-        Log.i(TAG, String.format("   📈 Total bytes: %d", totalLc3BytesReceived));
+        // Log.i(TAG, String.format("🎵 LC3 PACKET #%d RECEIVED:", sequenceNumber));
+        // Log.i(TAG, String.format("   📊 Size: %d bytes", data.length));
+        // Log.i(TAG, String.format("   ⏰ Time: %s", lc3PacketTimestampFormat.format(new Date(receiveTime))));
+        // Log.i(TAG, String.format("   ⏱️  Since first: +%dms", timeSinceFirst));
+        // Log.i(TAG, String.format("   ⏱️  Since last: +%dms", timeSinceLast));
+        // Log.i(TAG, String.format("   📈 Total packets: %d", totalLc3PacketsReceived));
+        // Log.i(TAG, String.format("   📈 Total bytes: %d", totalLc3BytesReceived));
         
         // Log first few bytes for debugging
         if (data.length > 0) {
@@ -4243,7 +4244,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             for (int i = 0; i < Math.min(16, data.length); i++) {
                 hexDump.append(String.format("%02X ", data[i] & 0xFF));
             }
-            Log.d(TAG, hexDump.toString());
+            // Log.d(TAG, hexDump.toString());
         }
         
         // Log packet statistics every 10 packets
@@ -4252,11 +4253,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             double packetsPerSecond = duration > 0 ? (totalLc3PacketsReceived * 1000.0) / duration : 0;
             double bytesPerSecond = duration > 0 ? (totalLc3BytesReceived * 1000.0) / duration : 0;
             
-            Log.i(TAG, String.format("📊 LC3 STATS UPDATE:"));
-            Log.i(TAG, String.format("   🎯 Packets/sec: %.2f", packetsPerSecond));
-            Log.i(TAG, String.format("   🎯 Bytes/sec: %.2f", bytesPerSecond));
-            Log.i(TAG, String.format("   🎯 Average packet size: %.1f bytes", 
-                totalLc3PacketsReceived > 0 ? (double) totalLc3BytesReceived / totalLc3PacketsReceived : 0));
+            // Log.i(TAG, String.format("📊 LC3 STATS UPDATE:"));
+            // Log.i(TAG, String.format("   🎯 Packets/sec: %.2f", packetsPerSecond));
+            // Log.i(TAG, String.format("   🎯 Bytes/sec: %.2f", bytesPerSecond));
+            // Log.i(TAG, String.format("   🎯 Average packet size: %.1f bytes", 
+            //     totalLc3PacketsReceived > 0 ? (double) totalLc3BytesReceived / totalLc3PacketsReceived : 0));
         }
     }
 
