@@ -17,7 +17,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {MOCK_CONNECTION, SETTINGS_KEYS} from "@/consts"
+import {MOCK_CONNECTION} from "@/consts"
 import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
@@ -57,6 +57,13 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     searchResultsRef.current = searchResults
   }, [searchResults])
+
+  // Clear search results when screen comes into focus to prevent stale data
+  useFocusEffect(
+    React.useCallback(() => {
+      setSearchResults([])
+    }, [setSearchResults]),
+  )
 
   // Shared function to handle the forget glasses logic
   const handleForgetGlasses = useCallback(async () => {
@@ -165,7 +172,7 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     const initializeAndSearchForDevices = async () => {
       console.log("Searching for compatible devices for: ", glassesModelName)
-      // setSearchResults([])
+      setSearchResults([])
       coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
     }
 
