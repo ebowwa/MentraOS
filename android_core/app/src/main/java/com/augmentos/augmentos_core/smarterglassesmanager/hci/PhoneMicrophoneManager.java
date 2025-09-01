@@ -453,7 +453,7 @@ public class PhoneMicrophoneManager {
         Log.d(TAG, "Executing mic enable - User prefers phone: " + userPrefersPhoneMic + 
                    ", Glasses have mic: " + glassesHaveMic);
         
-        if (true || glassesHaveMic) { // HACK: FORCE GLASSES MIC - DISABLE PHONE MIC
+        if (!userPrefersPhoneMic && glassesHaveMic) {
             // User prefers glasses mic and glasses have one
             Log.d(TAG, "User prefers glasses mic - switching to glasses mic");
             switchToGlassesMic();
@@ -1621,6 +1621,8 @@ public class PhoneMicrophoneManager {
         // Determine what mic we should be using based on new preference
         boolean shouldUseGlassesMic = !userPrefersPhoneMic && glassesHaveMic && !isExternalAudioActive;
         boolean currentlyUsingGlassesMic = (currentStatus == MicStatus.GLASSES_MIC);
+
+        Log.d(TAG, "shouldUseGlassesMic: " + shouldUseGlassesMic + ", currentlyUsingGlassesMic: " + currentlyUsingGlassesMic);
         
         // If we need to change mic source
         if (shouldUseGlassesMic != currentlyUsingGlassesMic) {
