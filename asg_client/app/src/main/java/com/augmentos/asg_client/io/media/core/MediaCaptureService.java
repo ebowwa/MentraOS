@@ -904,11 +904,13 @@ public class MediaCaptureService {
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
 
-                        // Trigger BLE fallback
+                        // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                         boolean shouldSave = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                         String requestedSize = photoRequestedSizes.get(requestId);
                         if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
-                        takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize, false);
+                        // Reuse the existing photo file that was already captured
+                        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                        reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
 
@@ -955,11 +957,13 @@ public class MediaCaptureService {
                     photoBleIds.remove(requestId);
                     photoOriginalPaths.remove(requestId);
 
-                    // Trigger BLE fallback
+                    // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                     boolean shouldSaveFallback1 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                     String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
                     if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
-                    takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1, false);
+                    // Reuse the existing photo file that was already captured
+                    Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                    reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
 
@@ -1080,11 +1084,13 @@ public class MediaCaptureService {
                             photoBleIds.remove(requestId);
                             photoOriginalPaths.remove(requestId);
 
-                            // Trigger BLE fallback
+                            // Trigger BLE fallback - reuse the existing photo instead of taking a new one
                             boolean shouldSaveFallback2 = Boolean.TRUE.equals(photoSaveFlags.get(requestId));
                             String requestedSizeFallback2 = photoRequestedSizes.get(requestId);
                             if (requestedSizeFallback2 == null || requestedSizeFallback2.isEmpty()) requestedSizeFallback2 = "medium";
-                            takePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2, false);
+                            // Reuse the existing photo file that was already captured
+                            Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + mediaFilePath);
+                            reusePhotoForBleTransfer(mediaFilePath, requestId, bleImgId, shouldSaveFallback2, requestedSizeFallback2);
                             return; // Exit early - BLE transfer will handle cleanup
                         }
 
@@ -1295,6 +1301,27 @@ public class MediaCaptureService {
 
 
     /**
+     * Reuse existing photo for BLE transfer (when webhook fails)
+     * This avoids taking a duplicate photo
+     */
+    private void reusePhotoForBleTransfer(String existingPhotoPath, String requestId, String bleImgId, boolean save, String size) {
+        // Store the save flag for this request
+        photoSaveFlags.put(requestId, save);
+        // Track requested size for BLE compression
+        photoRequestedSizes.put(requestId, size);
+        
+        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + existingPhotoPath);
+        
+        // Notify that we're using an existing photo
+        if (mMediaCaptureListener != null) {
+            mMediaCaptureListener.onPhotoCaptured(requestId, existingPhotoPath);
+        }
+        
+        // Compress and send via BLE using the existing photo
+        compressAndSendViaBle(existingPhotoPath, requestId, bleImgId);
+    }
+
+    /**
      * Compress photo and send via BLE
      */
     private void compressAndSendViaBle(String originalPath, String requestId, String bleImgId) {
@@ -1385,6 +1412,7 @@ public class MediaCaptureService {
 
                 // Clean up the flag
                 photoSaveFlags.remove(requestId);
+                photoRequestedSizes.remove(requestId);
 
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
@@ -1392,6 +1420,7 @@ public class MediaCaptureService {
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
+                photoRequestedSizes.remove(requestId);
             }
         }).start();
     }
@@ -1402,19 +1431,49 @@ public class MediaCaptureService {
     private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
         Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
 
-        // First, notify the phone that the photo is ready (include timing info)
-        sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
-
-        // Then, trigger the actual file transfer
-        if (mServiceCallback != null) {
-            boolean started = mServiceCallback.sendFileViaBluetooth(compressedPath);
-            if (!started) {
-                Log.e(TAG, "Failed to start BLE file transfer");
-                sendBleTransferError(requestId, "Failed to start file transfer");
+        boolean transferStarted = false;
+        try {
+            if (mServiceCallback != null) {
+                // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
+                if (mServiceCallback.isBleTransferInProgress()) {
+                    Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
+                    sendBleTransferError(requestId, "BLE transfer busy - another transfer in progress");
+                    return;
+                }
+                
+                // BLE is available - send the ready message first (phone expects this for timing tracking)
+                sendBlePhotoReadyMsg(compressedPath, bleImgId, requestId, transferStartTime);
+                
+                // Then try to start the file transfer
+                transferStarted = mServiceCallback.sendFileViaBluetooth(compressedPath);
+                
+                if (transferStarted) {
+                    Log.i(TAG, "✅ BLE file transfer started for: " + bleImgId);
+                } else {
+                    // This shouldn't happen since we checked above, but handle it anyway
+                    Log.e(TAG, "Failed to start BLE file transfer despite availability check");
+                    sendBleTransferError(requestId, "BLE transfer failed to start");
+                }
+            } else {
+                Log.e(TAG, "Service callback not available for BLE file transfer");
+                sendBleTransferError(requestId, "Service callback not available");
             }
-        } else {
-            Log.e(TAG, "Service callback not available for BLE file transfer");
-            sendBleTransferError(requestId, "Service callback not available");
+        } finally {
+            // Critical: Clean up compressed file if transfer didn't start
+            if (!transferStarted) {
+                try {
+                    File compressedFile = new File(compressedPath);
+                    if (compressedFile.exists()) {
+                        if (compressedFile.delete()) {
+                            Log.d(TAG, "🗑️ Deleted compressed file after BLE transfer failure: " + compressedPath);
+                        } else {
+                            Log.w(TAG, "⚠️ Failed to delete compressed file: " + compressedPath);
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error deleting compressed file: " + compressedPath, e);
+                }
+            }
         }
     }
 

@@ -3,7 +3,7 @@ import axios, {AxiosRequestConfig} from "axios"
 import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
@@ -20,7 +20,7 @@ export default class BackendServerComms {
     const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
 
     if (customUrl && typeof customUrl === "string" && customUrl.trim() !== "") {
-      console.log(`${this.TAG}: Using custom backend URL: ${customUrl}`)
+      // console.log(`${this.TAG}: Using custom backend URL: ${customUrl}`)
       return customUrl
     }
 
@@ -66,7 +66,7 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Received gallery photos:", response.data)
+        // console.log("Received gallery photos:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
@@ -481,7 +481,7 @@ export default class BackendServerComms {
 
     const baseUrl = await this.getServerUrl()
     const url = `${baseUrl}/api/auth/${endpoint}`
-    console.log("Requesting webview token for:", packageName, "at URL:", url)
+    // console.log("Requesting webview token for:", packageName, "at URL:", url)
 
     const config: AxiosRequestConfig = {
       method: "POST",

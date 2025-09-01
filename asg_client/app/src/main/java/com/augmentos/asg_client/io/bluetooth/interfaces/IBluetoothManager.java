@@ -43,6 +43,12 @@ public interface IBluetoothManager {
     boolean sendImageFile(String filePath);
     
     /**
+     * Check if a file transfer is currently in progress
+     * @return true if a transfer is active, false otherwise
+     */
+    boolean isFileTransferInProgress();
+    
+    /**
      * Add a listener for Bluetooth state changes and data reception
      * @param listener The listener to add
      */

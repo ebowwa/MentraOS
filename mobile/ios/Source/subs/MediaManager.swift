@@ -9,15 +9,12 @@ import Foundation
 import MediaPlayer
 
 class MediaManager: NSObject {
+    static let shared = MediaManager()
+
     private let nowPlayingInfoCenter = MPNowPlayingInfoCenter.default()
-    private var mediaChangedCallback: (() -> Void)?
     private var currentMedia: [String: Any]?
 
-    override init() {
-        super.init()
-        // delay setup until after login:
-        // setup()
-    }
+    override private init() {}
 
     func setup() {
         // Register for notifications about now playing item changes
@@ -36,10 +33,6 @@ class MediaManager: NSObject {
         musicPlayer.beginGeneratingPlaybackNotifications()
 
         print("MediaManager: Setup complete")
-    }
-
-    func setMediaChangedCallback(_ callback: @escaping () -> Void) {
-        mediaChangedCallback = callback
     }
 
     // MARK: - Notification Handlers
@@ -66,7 +59,7 @@ class MediaManager: NSObject {
             }
 
             // Notify via callback
-            mediaChangedCallback?()
+//            mediaChangedCallback?()
         }
     }
 

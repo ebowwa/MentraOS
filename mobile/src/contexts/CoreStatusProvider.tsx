@@ -36,11 +36,11 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
 
     const diff = deepCompare(lastStatus, parsedStatus)
     if (diff.length === 0) {
-      console.log("STATUS PROVIDER: Status did not change ###############################################")
+      console.log("CoreStatusProvider: Status did not change ###############################################")
       return
     }
 
-    console.log("STATUS PROVIDER: Status changed:", diff)
+    console.log("CoreStatusProvider: Status changed:", diff)
 
     lastStatus = parsedStatus
     setStatus(parsedStatus)
@@ -48,7 +48,7 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
-    console.log("STATUS PROVIDER: Initializing core connection @@@@@@@@@@@@@@@@@")
+    console.log("CoreStatusProvider: Initializing core connection @@@@@@@@@@@@@@@@@")
     coreCommunicator.initialize()
   }, [])
 

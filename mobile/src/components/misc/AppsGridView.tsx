@@ -1,5 +1,5 @@
 import React, {useState, useRef, useCallback, useMemo} from "react"
-import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle, Dimensions, FlatList} from "react-native"
+import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle, Dimensions, FlatList, Alert} from "react-native"
 import Popover from "react-native-popover-view"
 import {Text} from "@/components/ignite"
 import AppIcon from "./AppIcon"
@@ -19,8 +19,7 @@ interface AppModel {
   name: string
   packageName: string
   is_running?: boolean
-  is_foreground?: boolean
-  appType?: string
+  type?: string
   webviewURL?: string
   publicUrl?: string
   logoURL?: string
@@ -29,6 +28,9 @@ interface AppModel {
     isCompatible: boolean
     message?: string
   }
+  // New optional online flag provided by backend
+  isOnline?: boolean | null
+  developerName?: string
 }
 
 interface AppsGridViewProps {
@@ -66,7 +68,7 @@ const AppPopover: React.FC<{
       arrowSize={{width: 16, height: 8}}>
       <View style={themed($popoverContent)}>
         <View style={themed($popoverHeader)}>
-          <AppIcon app={app} isForegroundApp={app.appType === "standard"} style={themed($popoverAppIcon)} />
+          <AppIcon app={app} isForegroundApp={app.type === "standard"} style={themed($popoverAppIcon)} />
           <Text text={app.name} style={themed($popoverAppName)} numberOfLines={1} />
         </View>
 
@@ -119,19 +121,29 @@ const GridItem: React.FC<{
     return <View style={themed($gridItem)} />
   }
 
-  const isForeground = item.appType === "standard" || item.is_foreground
+  const isForeground = item.type === "standard"
+  const isOffline = item.isOnline === false
 
   return (
     <TouchableOpacity ref={setRef} style={themed($gridItem)} onPress={handlePress} activeOpacity={0.7}>
       <View style={themed($appContainer)}>
-        <AppIcon app={item} isForegroundApp={isForeground} style={themed($appIcon)} />
+        <AppIcon app={item as any} style={themed($appIcon)} />
+        {isOffline && (
+          <View style={themed($offlineBadge)}>
+            <MaterialCommunityIcons name="alert-circle" size={14} color={theme.colors.error} />
+          </View>
+        )}
         {isForeground && (
           <View style={themed($foregroundIndicator)}>
             <TreeIcon size={theme.spacing.md} color={theme.colors.text} />
           </View>
         )}
       </View>
-      <Text text={item.name} style={themed($appName)} numberOfLines={item.name.split(" ").length > 1 ? 2 : 1} />
+      <Text
+        text={item.name}
+        style={themed(isOffline ? $appNameOffline : $appName)}
+        numberOfLines={item.name.split(" ").length > 1 ? 2 : 1}
+      />
     </TouchableOpacity>
   )
 }
@@ -147,6 +159,28 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)
   const [popoverVisible, setPopoverVisible] = useState(false)
   const touchableRefs = useRef<Map<string, React.Component | null>>(new Map())
+
+  // Maintenance dialog for offline apps
+  const showMaintenanceDialog = useCallback(
+    (app: AppModel) => {
+      const developerName = (" " + (app.developerName || "") + " ").replace("  ", " ")
+      Alert.alert(
+        "App is down for maintenance",
+        `${app.name} appears to be offline. You can try anyway.\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+        [
+          {text: "Cancel", style: "cancel"},
+          {
+            text: "Try Anyway",
+            onPress: () => {
+              onStartApp?.(app.packageName)
+            },
+          },
+        ],
+        {cancelable: true},
+      )
+    },
+    [onStartApp],
+  )
 
   // Memoize padded apps to avoid recalculation on every render
   const paddedApps = useMemo(() => {
@@ -165,13 +199,21 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     return appsCopy
   }, [apps])
 
-  const handleAppPress = useCallback((app: AppModel) => {
-    const ref = touchableRefs.current.get(app.packageName)
-    if (ref) {
-      setSelectedApp(app)
-      setPopoverVisible(true)
-    }
-  }, [])
+  const handleAppPress = useCallback(
+    (app: AppModel) => {
+      const ref = touchableRefs.current.get(app.packageName)
+      if (ref) {
+        // If app is offline, show maintenance dialog instead of popover
+        if (app.isOnline === false) {
+          showMaintenanceDialog(app)
+          return
+        }
+        setSelectedApp(app)
+        setPopoverVisible(true)
+      }
+    },
+    [showMaintenanceDialog],
+  )
 
   const handlePopoverClose = useCallback(() => {
     setPopoverVisible(false)
@@ -340,6 +382,15 @@ const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
   lineHeight: 14,
 })
 
+const $appNameOffline: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 11,
+  fontWeight: "600",
+  color: colors.text,
+  textAlign: "center",
+  lineHeight: 14,
+  textDecorationLine: "line-through",
+})
+
 const $popoverStyle: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   borderRadius: spacing.sm,
@@ -384,4 +435,13 @@ const $popoverOptionText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 15,
   color: colors.text,
   marginLeft: spacing.md,
+})
+
+const $offlineBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  position: "absolute",
+  right: -spacing.xxs,
+  top: -spacing.xxs,
+  backgroundColor: colors.background,
+  borderRadius: spacing.sm,
+  padding: 2,
 })

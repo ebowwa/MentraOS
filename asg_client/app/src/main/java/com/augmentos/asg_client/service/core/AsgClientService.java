@@ -728,6 +728,20 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     return false;
                 }
             }
+            
+            @Override
+            public boolean isBleTransferInProgress() {
+                Log.d(TAG, "📊 isBleTransferInProgress() called");
+                
+                if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
+                    boolean inProgress = serviceContainer.getServiceManager().getBluetoothManager().isFileTransferInProgress();
+                    Log.d(TAG, "📊 BLE transfer in progress: " + inProgress);
+                    return inProgress;
+                } else {
+                    Log.w(TAG, "⚠️ Bluetooth manager is null - cannot check transfer status");
+                    return false;
+                }
+            }
         };
     }
 

@@ -1106,7 +1106,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             }
 
 //            Log.d(TAG, "PREFERRED ID: " + preferredG1DeviceId);
-            if (preferredG1DeviceId == null || !name.contains(preferredG1DeviceId + "_")) {
+            if (preferredG1DeviceId == null || !name.contains("_" + preferredG1DeviceId + "_")) {
                 Log.d(TAG, "NOT PAIRED GLASSES");
                 return;
             }

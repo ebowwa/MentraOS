@@ -10,6 +10,8 @@ import Combine
 import Foundation
 
 class OnboardMicrophoneManager {
+    static let shared = OnboardMicrophoneManager()
+
     // MARK: - Properties
 
     /// Publisher for voice data
@@ -235,7 +237,7 @@ class OnboardMicrophoneManager {
     func startRecording() -> Bool {
         // Ensure we're not already recording
         if isRecording {
-            Core.log("MIC: Microphone is already ON!")
+            // Core.log("MIC: Microphone is already ON!")
             return true
         }
 

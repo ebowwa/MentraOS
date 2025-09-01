@@ -357,6 +357,14 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     
     /**
+     * Check if a file transfer is currently in progress
+     * @return true if a transfer is active, false otherwise
+     */
+    public boolean isFileTransferInProgress() {
+        return currentFileTransfer != null && currentFileTransfer.isActive;
+    }
+    
+    /**
      * Send an image file over the K900 Bluetooth connection
      * @param filePath Path to the image file to send
      * @return true if transfer started successfully
@@ -441,6 +449,8 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
      * Send the next file packet
      */
     private void sendNextFilePacket() {
+        long methodStartTime = System.currentTimeMillis();
+        
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
             return;
         }
@@ -499,13 +509,23 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         }
         
         // Send the packet using sendFile (no logging)
+        long sendStartTime = System.currentTimeMillis();
         comManager.sendFile(packet);
+        long sendEndTime = System.currentTimeMillis();
         
-        // Track packet state for acknowledgment
-        pendingPackets.put(packetIndex, new FilePacketState());
+        // Track packet state for acknowledgment (preserve retry count if resending)
+        FilePacketState existingState = pendingPackets.get(packetIndex);
+        if (existingState == null) {
+            pendingPackets.put(packetIndex, new FilePacketState());
+        } else {
+            // Update timestamp but preserve retry count
+            existingState.lastSendTime = System.currentTimeMillis();
+        }
         
-        Log.d(TAG, "Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
-                   " (" + packSize + " bytes)");
+        long totalMethodTime = System.currentTimeMillis() - methodStartTime;
+        Log.d(TAG, "📊 Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
+                   " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + 
+                   "ms, total method time: " + totalMethodTime + "ms");
         
         // Schedule acknowledgment timeout check
         fileTransferExecutor.schedule(() -> checkFilePacketAck(packetIndex), 
@@ -550,7 +570,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 
                 // Resend the packet
                 currentFileTransfer.currentPacketIndex = packetIndex;
-                packetState.lastSendTime = System.currentTimeMillis();
                 sendNextFilePacket();
             }
         }
@@ -565,7 +584,13 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             return;
         }
         
-        Log.d(TAG, "File transfer ACK: state=" + state + ", index=" + index);
+        // Calculate time since packet was sent
+        FilePacketState packetState = pendingPackets.get(index);
+        long ackDelay = packetState != null ? 
+            (System.currentTimeMillis() - packetState.lastSendTime) : -1;
+        
+        Log.d(TAG, "📊 File transfer ACK: state=" + state + ", index=" + index + 
+                   ", ACK received after " + ackDelay + "ms");
         
         if (state == 1) { // Success (K900 uses state=1 for success)
             // Remove from pending packets
