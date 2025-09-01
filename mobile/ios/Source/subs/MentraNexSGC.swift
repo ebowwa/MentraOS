@@ -5,6 +5,7 @@
 //  Created by Gemini on 2024-07-29.
 //
 
+import Combine
 import CoreBluetooth
 import Foundation
 import SwiftProtobuf
@@ -67,6 +68,31 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     // Device discovery cache (like MentraLive)
     private var discoveredPeripherals = [String: CBPeripheral]() // name -> peripheral
+
+    // MARK: - Published Properties (G1-compatible)
+
+    @Published var batteryLevel: Int = -1
+    @Published var isCharging: Bool = false
+    @Published var isHeadUp: Bool = false
+    @Published var vadActive: Bool = false
+    @Published var deviceReady: Bool = false
+
+    // Device info properties
+    @Published var deviceFirmwareVersion: String = ""
+    @Published var deviceHardwareModel: String = ""
+
+    // IMU data properties
+    @Published var accelerometer: [Float] = [0.0, 0.0, 0.0]
+    @Published var gyroscope: [Float] = [0.0, 0.0, 0.0]
+    @Published var magnetometer: [Float] = [0.0, 0.0, 0.0]
+
+    // Button state properties
+    @Published var lastButtonPressed: Int = -1
+    @Published var lastButtonState: String = ""
+
+    // Head gesture properties
+    @Published var lastHeadGesture: String = ""
+    @Published var headUpAngle: Int = 0
 
     // Enhanced device persistence (from Java implementation)
     private let PREFS_DEVICE_NAME = "MentraNexLastConnectedDeviceName"
@@ -271,6 +297,8 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         // Send each chunk sequentially
         for (index, chunk) in command.chunks.enumerated() {
             let data = Data(chunk)
+            Core.log("NEX: 📦 Sending chunk \(index) of \(command.chunks.count) to \(peripheral.name ?? "Unknown")")
+            Core.log("NEX: 📦 Chunk data: \(data.toHexString())")
             peripheral.writeValue(data, for: writeCharacteristic, type: .withResponse)
 
             // Delay between chunks except maybe after the last chunk if waitTime will handle it
@@ -1191,54 +1219,26 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 🔋 Battery Status - Level: \(level)%, Charging: \(charging)")
 
-        // Emit battery level event to React Native
-        let eventBody: [String: Any] = [
-            "battery_level": level,
-            "is_charging": charging,
-            "device_model": "Mentra Nex",
-            "timestamp": Date().timeIntervalSince1970 * 1000,
-        ]
-
-        emitEvent("BatteryLevelEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        batteryLevel = level
+        isCharging = charging
     }
 
     private func handleChargingStateProtobuf(_ chargingState: Mentraos_Ble_ChargingState) {
-        let isCharging = chargingState.state == .charging
+        let chargingState = chargingState.state == .charging
 
-        Core.log("NEX: 🔌 Charging State: \(isCharging ? "CHARGING" : "NOT_CHARGING")")
+        Core.log("NEX: 🔌 Charging State: \(chargingState ? "CHARGING" : "NOT_CHARGING")")
 
-        // Emit charging state event
-        let eventBody: [String: Any] = [
-            "charging_state": isCharging,
-            "device_model": "Mentra Nex",
-            "timestamp": Date().timeIntervalSince1970 * 1000,
-        ]
-
-        emitEvent("ChargingStateEvent", body: eventBody)
+        // Update @Published property (G1-compatible approach)
+        isCharging = chargingState
     }
 
     private func handleDeviceInfoProtobuf(_ deviceInfo: Mentraos_Ble_DeviceInfo) {
         Core.log("NEX: 📱 Device Info: \(deviceInfo)")
 
-        // Emit device info event using correct property names
-        let eventBody: [String: Any] = [
-            "device_info": [
-                "model": "Mentra Nex",
-                "fw_version": deviceInfo.fwVersion,
-                "hw_model": deviceInfo.hwModel,
-                "features": [
-                    "camera": deviceInfo.features.camera,
-                    "display": deviceInfo.features.display,
-                    "audio_tx": deviceInfo.features.audioTx,
-                    "audio_rx": deviceInfo.features.audioRx,
-                    "imu": deviceInfo.features.imu,
-                    "vad": deviceInfo.features.vad,
-                ],
-            ],
-            "timestamp": Date().timeIntervalSince1970 * 1000,
-        ]
-
-        emitEvent("DeviceInfoEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        deviceFirmwareVersion = deviceInfo.fwVersion
+        deviceHardwareModel = deviceInfo.hwModel
     }
 
     private func handleHeadPositionProtobuf(_ headPosition: Mentraos_Ble_HeadPosition) {
@@ -1246,14 +1246,8 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 📐 Head Position - Angle: \(angle)°")
 
-        // Emit head up angle event
-        let eventBody: [String: Any] = [
-            "head_up_angle": angle,
-            "device_model": "Mentra Nex",
-            "timestamp": Date().timeIntervalSince1970 * 1000,
-        ]
-
-        emitEvent("HeadUpAngleEvent", body: eventBody)
+        // Update @Published property (G1-compatible approach)
+        headUpAngle = angle
     }
 
     private func handleHeadUpAngleResponseProtobuf(_ response: Mentraos_Ble_HeadUpAngleResponse) {
@@ -1299,19 +1293,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func handleVadEventProtobuf(_ vadEvent: Mentraos_Ble_VadEvent) {
-        let vadActive = vadEvent.state == .active
+        let vadActiveState = vadEvent.state == .active
 
-        Core.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActive)")
+        Core.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActiveState)")
 
-        // Emit VAD event
-        let eventBody: [String: Any] = [
-            "vad_event": [
-                "vad_active": vadActive,
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-            ],
-        ]
-
-        emitEvent("VadEvent", body: eventBody)
+        // Update @Published property (G1-compatible approach)
+        vadActive = vadActiveState
     }
 
     private func handleImageTransferCompleteProtobuf(_ transferComplete: Mentraos_Ble_ImageTransferComplete) {
@@ -1348,17 +1335,10 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleImuDataProtobuf(_ imuData: Mentraos_Ble_ImuData) {
         Core.log("NEX: 📊 IMU Data: \(imuData)")
 
-        // Emit IMU data event using correct Vector3 structure
-        let eventBody: [String: Any] = [
-            "imu_data": [
-                "accelerometer": [imuData.accel.x, imuData.accel.y, imuData.accel.z],
-                "gyroscope": [imuData.gyro.x, imuData.gyro.y, imuData.gyro.z],
-                "magnetometer": [imuData.mag.x, imuData.mag.y, imuData.mag.z],
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-            ],
-        ]
-
-        emitEvent("ImuDataEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        accelerometer = [imuData.accel.x, imuData.accel.y, imuData.accel.z]
+        gyroscope = [imuData.gyro.x, imuData.gyro.y, imuData.gyro.z]
+        magnetometer = [imuData.mag.x, imuData.mag.y, imuData.mag.z]
     }
 
     private func handleButtonEventProtobuf(_ buttonEvent: Mentraos_Ble_ButtonEvent) {
@@ -1367,17 +1347,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 🔘 Button Event - Button: \(buttonNumber), State: \(buttonState)")
 
-        // Emit button press event
-        let eventBody: [String: Any] = [
-            "button_press": [
-                "device_model": "Mentra Nex",
-                "button_id": buttonNumber,
-                "button_state": buttonState.rawValue,
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-            ],
-        ]
-
-        emitEvent("ButtonPressEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        lastButtonPressed = buttonNumber
+        lastButtonState = "\(buttonState.rawValue)"
     }
 
     private func handleHeadGestureProtobuf(_ headGesture: Mentraos_Ble_HeadGesture) {
@@ -1385,28 +1357,18 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 👤 Head Gesture: \(gestureType)")
 
-        // Emit head gesture events based on type
+        // Update @Published properties (G1-compatible approach)
         switch gestureType {
         case .headUp:
-            emitEvent("GlassesHeadUpEvent", body: ["timestamp": Date().timeIntervalSince1970 * 1000])
+            isHeadUp = true
+            lastHeadGesture = "headUp"
         case .nod:
-            let eventBody: [String: Any] = [
-                "head_gesture": [
-                    "gesture": "nod",
-                    "timestamp": Date().timeIntervalSince1970 * 1000,
-                ],
-            ]
-            emitEvent("HeadGestureEvent", body: eventBody)
+            lastHeadGesture = "nod"
         case .shake:
-            let eventBody: [String: Any] = [
-                "head_gesture": [
-                    "gesture": "shake",
-                    "timestamp": Date().timeIntervalSince1970 * 1000,
-                ],
-            ]
-            emitEvent("HeadGestureEvent", body: eventBody)
+            lastHeadGesture = "shake"
         default:
             Core.log("NEX: Unknown head gesture type: \(gestureType)")
+            lastHeadGesture = "unknown"
         }
     }
 
@@ -1418,14 +1380,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 🔋 JSON Battery Status - Level: \(level)%, Charging: \(charging)")
 
-        let eventBody: [String: Any] = [
-            "battery_level": level,
-            "is_charging": charging,
-            "device_model": "Mentra Nex",
-            "timestamp": Date().timeIntervalSince1970 * 1000,
-        ]
-
-        emitEvent("BatteryLevelEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        batteryLevel = level
+        isCharging = charging
     }
 
     private func handleDeviceInfoJson(_ json: [String: Any]) {
@@ -1523,8 +1480,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.emitter.sendEvent(withName: eventName, body: jsonString)
-                Core.log("NEX: 📡 Emitted \(eventName): \(jsonString)")
+                // Use CoreMessageEvent like G1 does to avoid unsupported event type errors
+                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Core.log("NEX: 📡 Emitted \(eventName) via CoreMessageEvent: \(jsonString)")
             }
         } catch {
             Core.log("NEX: ❌ Error emitting \(eventName): \(error)")
@@ -2018,6 +1976,21 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         stopMicBeat()
 
         nexReady = false
+        deviceReady = false
+        batteryLevel = -1
+        isCharging = false
+        isHeadUp = false
+        vadActive = false
+        deviceFirmwareVersion = ""
+        deviceHardwareModel = ""
+        accelerometer = [0.0, 0.0, 0.0]
+        gyroscope = [0.0, 0.0, 0.0]
+        magnetometer = [0.0, 0.0, 0.0]
+        lastButtonPressed = -1
+        lastButtonState = ""
+        lastHeadGesture = ""
+        headUpAngle = 0
+
         peripheral = nil
         writeCharacteristic = nil
         notifyCharacteristic = nil
@@ -2118,6 +2091,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         Core.log("NEX-CONN: ✅ Device initialization complete - ready for communication")
         nexReady = true
         connectionState = .connected
+
+        // Update @Published property for device ready state
+        deviceReady = true
+
+        // Initialize command queue worker to process queued commands
+        setupCommandQueue()
 
         // Emit device ready event to React Native
         emitDeviceReady()

@@ -433,6 +433,26 @@ struct ViewState {
                     self.handleRequestStatus()
                 }
             }
+
+            // Subscribe to @Published properties (G1-compatible approach)
+            nexManager!.$batteryLevel.sink { [weak self] (level: Int) in
+                guard let self = self else { return }
+                guard level >= 0 else { return }
+                self.batteryLevel = level
+                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: self.nexManager!.isCharging)
+                handleRequestStatus()
+            }.store(in: &cancellables)
+
+            nexManager!.$isHeadUp.sink { [weak self] (value: Bool) in
+                guard let self = self else { return }
+                updateHeadUp(value)
+            }.store(in: &cancellables)
+
+            nexManager!.$vadActive.sink { [weak self] (active: Bool) in
+                guard let self = self else { return }
+                // Handle VAD state changes if needed
+                Core.log("NEX: VAD active state changed: \(active)")
+            }.store(in: &cancellables)
         }
     }
 
@@ -921,6 +941,16 @@ struct ViewState {
         }
 
         return result
+    }
+
+    func handle_display_text(_ params: [String: Any]) {
+        guard let text = params["text"] as? String else {
+            Core.log("Mentra: display_text missing text parameter")
+            return
+        }
+
+        Core.log("Mentra: Displaying text: \(text)")
+        sendText(text)
     }
 
     func handle_display_event(_ event: [String: Any]) {
