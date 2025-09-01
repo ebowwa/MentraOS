@@ -53282,7 +53282,7 @@ public final class MentraosBle {
       "\007version\030\002 \001(\r\022\016\n\006commit\030\n \001(\t\022\022\n\nbuild_" +
       "date\030\013 \001(\tJ\004\010\003\020\004J\004\010\004\020\005J\004\010\005\020\006:=\n\025mentra_s" +
       "chema_version\022\034.google.protobuf.FileOpti" +
-      "ons\030\361\242\004 \001(\rB\004\210\227\"\002b\006proto3"
+      "ons\030\361\242\004 \001(\rB\004\210\227\"\001b\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
