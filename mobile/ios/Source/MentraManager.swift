@@ -453,6 +453,22 @@ struct ViewState {
                 // Handle VAD state changes if needed
                 Core.log("NEX: VAD active state changed: \(active)")
             }.store(in: &cancellables)
+
+            // Audio subscriptions (G1-compatible)
+            nexManager!.$compressedVoiceData.sink { [weak self] (data: Data) in
+                guard let self = self else { return }
+                // Handle compressed voice data like G1 does
+                if data.count > 0 {
+                    Core.log("NEX: Received compressed voice data: \(data.count) bytes")
+                    // Forward to audio processing system if needed
+                }
+            }.store(in: &cancellables)
+
+            nexManager!.$aiListening.sink { [weak self] (listening: Bool) in
+                guard let self = self else { return }
+                Core.log("NEX: AI listening state changed: \(listening)")
+                // Handle AI listening state changes if needed
+            }.store(in: &cancellables)
         }
     }
 

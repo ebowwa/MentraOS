@@ -77,6 +77,10 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     @Published var vadActive: Bool = false
     @Published var deviceReady: Bool = false
 
+    // Audio properties (G1-compatible)
+    @Published var compressedVoiceData: Data = .init()
+    @Published var aiListening: Bool = false
+
     // Device info properties
     @Published var deviceFirmwareVersion: String = ""
     @Published var deviceHardwareModel: String = ""
@@ -969,6 +973,18 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         let protobufData = try! phoneToGlasses.serializedData()
         queueDataWithOptimalChunking(protobufData, packetType: PACKET_TYPE_PROTOBUF)
+
+        // Update aiListening state when microphone state changes (G1-compatible)
+        if enabled, !vadActive {
+            // Only set aiListening if VAD isn't already controlling it
+            aiListening = enabled
+        }
+    }
+
+    // G1-compatible alias for microphone control
+    func setMicEnabled(enabled: Bool) async -> Bool {
+        setMicrophoneEnabled(enabled)
+        return true
     }
 
     // MARK: - Status Query Commands
@@ -1193,17 +1209,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func processAudioData(_ audioData: Data, sequenceNumber: UInt8) {
         Core.log("NEX: Received audio data - sequence: \(sequenceNumber), size: \(audioData.count) bytes")
 
-        // Emit audio data event for React Native
-        let eventBody: [String: Any] = [
-            "audio_data": [
-                "sequence": sequenceNumber,
-                "data": audioData.base64EncodedString(),
-                "size": audioData.count,
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-            ],
-        ]
+        // Update @Published property (G1-compatible approach)
+        // Create packet with sequence number prefix like G1 expects
+        var packetData = Data()
+        packetData.append(sequenceNumber)
+        packetData.append(audioData)
 
-        emitEvent("AudioDataEvent", body: eventBody)
+        compressedVoiceData = packetData
     }
 
     private func processImageData(_ imageData: Data) {
@@ -1297,8 +1309,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Core.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActiveState)")
 
-        // Update @Published property (G1-compatible approach)
+        // Update @Published properties (G1-compatible approach)
         vadActive = vadActiveState
+        aiListening = vadActiveState // Mirror G1's aiListening behavior
     }
 
     private func handleImageTransferCompleteProtobuf(_ transferComplete: Mentraos_Ble_ImageTransferComplete) {
@@ -1434,18 +1447,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func handleVadEventJson(_ json: [String: Any]) {
-        let vadActive = json["vad"] as? Bool ?? false
+        let vadActiveState = json["vad"] as? Bool ?? false
 
-        Core.log("NEX: 🎤 JSON VAD Event - Voice Activity: \(vadActive)")
+        Core.log("NEX: 🎤 JSON VAD Event - Voice Activity: \(vadActiveState)")
 
-        let eventBody: [String: Any] = [
-            "vad_event": [
-                "vad_active": vadActive,
-                "timestamp": Date().timeIntervalSince1970 * 1000,
-            ],
-        ]
-
-        emitEvent("VadEvent", body: eventBody)
+        // Update @Published properties (G1-compatible approach)
+        vadActive = vadActiveState
+        aiListening = vadActiveState // Mirror G1's aiListening behavior
     }
 
     private func handleImuDataJson(_ json: [String: Any]) {
@@ -1981,6 +1989,8 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         isCharging = false
         isHeadUp = false
         vadActive = false
+        compressedVoiceData = .init()
+        aiListening = false
         deviceFirmwareVersion = ""
         deviceHardwareModel = ""
         accelerometer = [0.0, 0.0, 0.0]
