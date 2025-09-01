@@ -578,9 +578,9 @@ struct ViewState {
 
     // MARK: - ServerCommsCallback Implementation
 
-    func handle_microphone_state_change(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+    func handle_microphone_state_change(_ isEnabled: Bool, _ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
         Core.log(
-            "Mentra: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@"
+            "Mentra: MIC: @@@@@@@@ changing microphone state to: \(isEnabled) with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@"
         )
 
         bypassVadForPCM = bypassVad
@@ -614,7 +614,7 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = shouldSendPcmData
+        micEnabled = isEnabled || shouldSendPcmData
 
         // Handle microphone state change if needed
         Task {
@@ -1042,7 +1042,7 @@ struct ViewState {
         Core.log("Mentra: Interruption: \(began)")
 
         onboardMicUnavailable = began
-        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(micEnabled, currentRequiredData, bypassVadForPCM)
     }
 
     private func clearDisplay() {
@@ -1157,7 +1157,7 @@ struct ViewState {
 
     func setPreferredMic(_ mic: String) {
         preferredMic = mic
-        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1274,7 +1274,7 @@ struct ViewState {
     func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
-        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
+        handle_microphone_state_change(micEnabled, currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
         saveSettings()
     }
@@ -1379,6 +1379,11 @@ struct ViewState {
         Task {
             await self.g1Manager?.RN_showDashboard()
         }
+    }
+
+    func restartTranscriber() {
+        Core.log("Mentra: Restarting SherpaOnnxTranscriber via command")
+        transcriber?.restart()
     }
 
     @objc func handleCommand(_ command: String) {
@@ -2021,7 +2026,7 @@ struct ViewState {
 
     private func handleDeviceDisconnected() {
         Core.log("Mentra: Device disconnected")
-        handle_microphone_state_change([], false)
+        handle_microphone_state_change(false, [], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }

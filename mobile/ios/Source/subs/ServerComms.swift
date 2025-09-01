@@ -448,6 +448,7 @@ class ServerComms {
             m.onAuthError()
 
         case "microphone_state_change":
+            let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
             let bypassVad = msg["bypassVad"] as? Bool ?? false
 
             var requiredDataStrings: [String] = []
@@ -463,7 +464,7 @@ class ServerComms {
 
             Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
-            m.handle_microphone_state_change(requiredData, bypassVad)
+            m.handle_microphone_state_change(isMicrophoneEnabled, requiredData, bypassVad)
 
         case "display_event":
             if let view = msg["view"] as? String {
