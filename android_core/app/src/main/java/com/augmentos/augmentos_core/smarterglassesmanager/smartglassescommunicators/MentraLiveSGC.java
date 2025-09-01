@@ -167,6 +167,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
     // Audio microphone state tracking
     private boolean shouldUseGlassesMic = false; // Whether to use glasses microphone for audio input
+    private boolean isMicrophoneEnabled = false; // Track current microphone state
 
     // Rate limiting - minimum delay between BLE characteristic writes
     private static final long MIN_SEND_DELAY_MS = 160; // 160ms minimum delay (increased from 100ms)
@@ -2504,7 +2505,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void changeSmartGlassesMicrophoneState(boolean enable) {
         Log.d(TAG, "Microphone state changed: " + enable);
-
+        
+        // Update the microphone state tracker
+        isMicrophoneEnabled = enable;
+        
         // Update the shouldUseGlassesMic flag to reflect the current state
         this.shouldUseGlassesMic = enable && SmartGlassesManager.getSensingEnabled(context);
         Log.d(TAG, "Updated shouldUseGlassesMic to: " + shouldUseGlassesMic);
@@ -2516,6 +2520,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Microphone disabled, stopping audio input handling");
             stopMicBeat();
         }
+    }
+
+    /**
+     * Returns whether the microphone is currently enabled
+     * @return true if microphone is enabled, false otherwise
+     */
+    public boolean isMicrophoneEnabled() {
+        return isMicrophoneEnabled;
     }
 
     @Override
