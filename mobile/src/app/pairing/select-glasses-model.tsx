@@ -53,7 +53,6 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Nex", key: "mentra_nex"},
-          {modelName: "Audio Wearable", key: "Audio Wearable"},
           // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 
