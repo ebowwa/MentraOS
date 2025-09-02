@@ -21,6 +21,8 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
     continueAnyways: "Continue Anyways",
+    resetUrl: "Reset to Default URL",
+    connectingToServer: "Connecting to server...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
@@ -218,6 +220,8 @@ const en = {
     newUi: "New UI",
     newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
     loggingOutMessage: "We're logging you out...",
+    themeSettings: "Theme Settings",
+    feedback: "Give Feedback",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -359,6 +363,14 @@ const en = {
     mirror: "Mirror",
     store: "Store",
     account: "Account",
+  },
+  feedback: {
+    thankYou: "Thank You!",
+    feedbackReceived: "Your feedback has been received.",
+    submitFeedback: "Submit Feedback",
+    shareYourThoughts: "Share your thoughts, suggestions, or report issues...",
+    giveFeedback: "Give Feedback",
+    errorSendingFeedback: "There was an error sending your feedback. Please try again.",
   },
 }
 
