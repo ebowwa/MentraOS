@@ -3,8 +3,6 @@ import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
-
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
@@ -151,7 +149,9 @@ export default function SettingsPage() {
             onPress={() => push("/settings/transcription")}
           />
 
-          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
+          <RouteButton label={translate("settings:themeSettings")} onPress={() => push("/settings/theme")} />
+
+          <RouteButton label={translate("settings:feedback")} onPress={() => push("/settings/feedback")} />
 
           {devMode && (
             <>

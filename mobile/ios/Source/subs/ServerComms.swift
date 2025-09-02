@@ -483,31 +483,8 @@ class ServerComms {
         case "audio_stop_request":
             handleAudioStopRequest()
 
-        case "request_single":
-            if let dataType = msg["data_type"] as? String {
-                m.onRequestSingle(dataType)
-            }
-
         case "reconnect":
-            Core.log("ServerComms: Server is requesting a reconnect.")
-
-        case "settings_update":
-            Core.log("ServerComms: Received settings update from WebSocket")
-            guard let status = msg["status"] as? [String: Any] else {
-                Core.log("ServerComms: Received settings update but no status")
-                return
-            }
-            m.onStatusUpdate(status)
-
-      // Log.d(TAG, "Received settings update from WebSocket");
-      // try {
-      //     JSONObject settings = msg.optJSONObject("settings");
-      //     if (settings != null && serverCommsCallback != null) {
-      //         serverCommsCallback.onSettingsUpdate(settings);
-      //     }
-      // } catch (Exception e) {
-      //     Log.e(TAG, "Error handling settings update", e);
-      // }
+            Core.log("ServerComms: TODO: Server is requesting a reconnect.")
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
@@ -716,7 +693,7 @@ class ServerComms {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = jsonData
 
-            Core.log("ServerComms: Sending datetime to: \(url)")
+            // Core.log("ServerComms: Sending datetime to: \(url)")
 
             URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
@@ -724,11 +701,7 @@ class ServerComms {
                 }
 
                 if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 200 {
-                        if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
-                            Core.log("ServerComms: Datetime transmission successful: \(responseString)")
-                        }
-                    } else {
+                    if httpResponse.statusCode != 200 {
                         Core.log("ServerComms: Datetime transmission failed. Response code: \(httpResponse.statusCode)")
                         if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
                             Core.log("ServerComms: Error response: \(responseString)")

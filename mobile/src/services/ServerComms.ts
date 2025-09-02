@@ -2,6 +2,7 @@ import Config from "react-native-config"
 import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {getWsUrl} from "@/utils/SettingsHelper"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -19,7 +20,6 @@ class ServerComms {
   private ws = WebSocketManager.getInstance()
   private coreToken: string = ""
   public userid: string = ""
-  private serverUrl: string = ""
 
   private reconnecting = false
   private reconnectionAttempts = 0
@@ -37,11 +37,42 @@ class ServerComms {
     this.setupPeriodicTasks()
   }
 
-  public static getInstance(): ServerComms {
-    if (!ServerComms.instance) {
-      ServerComms.instance = new ServerComms()
-    }
-    return ServerComms.instance
+  // public static getInstance(): ServerComms {
+  //   if (!ServerComms.instance) {
+  //     ServerComms.instance = new ServerComms()
+  //   }
+  //   return ServerComms.instance
+  // }
+
+  public static getInstance(): any {
+    // disabled for now
+    return {
+      restartConnection: () => {},
+      setAuthCreds: () => {},
+      sendText: () => {},
+      send_calendar_events: () => {},
+      send_location_updates: () => {},
+      send_user_datetime_to_backend: () => {},
+      send_transcription_result: () => {},
+      cleanup: () => {},
+      isWebSocketConnected: () => false,
+      send_vad_status: () => {},
+      send_battery_status: () => {},
+      send_calendar_event: () => {},
+      send_location_update: () => {},
+      send_glasses_connection_state: () => {},
+      update_asr_config: () => {},
+      send_core_status: () => {},
+      send_audio_play_response: () => {},
+      send_start_app: () => {},
+      send_stop_app: () => {},
+      send_button_press: () => {},
+      send_photo_response: () => {},
+      send_video_stream_response: () => {},
+      send_head_position: () => {},
+      parse_app_list: () => [],
+      get_current_iso_datetime: () => "",
+    } as any
   }
 
   private setupPeriodicTasks() {
@@ -64,40 +95,9 @@ class ServerComms {
 
   // Connection Management
 
-  private getServerUrlForRest(): string {
-    if (this.serverUrl) {
-      // Extract base URL from WebSocket URL
-      const url = new URL(this.serverUrl)
-      const secure = url.protocol === "https:"
-      return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
-    }
-
-    // Fallback to environment configuration
-    const host = Config.MENTRAOS_HOST
-    const port = Config.MENTRAOS_PORT
-    const secure = Config.MENTRAOS_SECURE === "true"
-    return `${secure ? "https" : "http"}://${host}:${port}`
-  }
-
-  private getServerUrl(): string {
-    if (this.serverUrl) {
-      const url = new URL(this.serverUrl)
-      const secure = url.protocol === "https:"
-      const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
-      return wsUrl
-    }
-
-    const host = Config.MENTRAOS_HOST
-    const port = Config.MENTRAOS_PORT
-    const secure = Config.MENTRAOS_SECURE === "true"
-    const url = `${secure ? "wss" : "ws"}://${host}:${port}/glasses-ws`
-    console.log(`ServerCommsTS: getServerUrl(): ${url}`)
-    return url
-  }
-
-  private connectWebsocket() {
+  private async connectWebsocket() {
     console.log("ServerCommsTS: connectWebsocket()")
-    const url = this.getServerUrl()
+    const url = await getWsUrl()
     if (!url) {
       console.error(`ServerCommsTS: Invalid server URL`)
       return
@@ -105,6 +105,7 @@ class ServerComms {
     this.ws.connect(url, this.coreToken)
   }
 
+  // TODO: config: might not need this?
   private sendConnectionInit() {
     console.log("ServerCommsTS: Sending connection_init message")
     if (!this.coreToken) {
@@ -165,9 +166,8 @@ class ServerComms {
     return this.ws.isActuallyConnected()
   }
 
-  setServerUrl(url: string) {
-    this.serverUrl = url
-    console.log(`ServerCommsTS: setServerUrl: ${url}`)
+  restartConnection() {
+    console.log(`ServerCommsTS: restartConnection`)
     if (this.ws.isConnected()) {
       this.ws.disconnect()
       this.connectWebsocket()
@@ -189,6 +189,10 @@ class ServerComms {
       console.log(`ServerCommsTS: Failed to send text: ${error}`)
     }
   }
+
+  // SERVER COMMANDS
+  // these are public functions that can be called from anywhere to notify the server of something:
+  // should all be prefixed with send_
 
   send_vad_status(isSpeaking: boolean) {
     const vadMsg = {
@@ -352,7 +356,7 @@ class ServerComms {
   }
 
   // App Lifecycle
-  start_app(packageName: string) {
+  send_start_app(packageName: string) {
     try {
       const msg = {
         type: "start_app",
@@ -367,7 +371,7 @@ class ServerComms {
     }
   }
 
-  stop_app(packageName: string) {
+  send_stop_app(packageName: string) {
     try {
       const msg = {
         type: "stop_app",
@@ -446,7 +450,17 @@ class ServerComms {
     }
   }
 
-  // message handlers:
+  // message handlers, these should only ever be called from handle_message / the server:
+  private handle_connection_ack(msg: any) {
+    console.log("ServerCommsTS: connection ack", msg)
+    this.parse_app_list(msg)
+    // coreCommunicator.sendCommand("connection_ack")
+  }
+
+  private handle_app_state_change(msg: any) {
+    console.log("ServerCommsTS: app state change", msg)
+    this.parse_app_list(msg)
+  }
 
   private handle_connection_error(msg: any) {
     console.error("ServerCommsTS: connection error", msg)
@@ -469,183 +483,6 @@ class ServerComms {
   private handle_display_event(msg: any) {
     if (msg.view) {
       coreCommunicator.sendCommand("display_event", msg)
-    }
-  }
-
-  // Message Handling
-  private handle_message(msg: any) {
-    const type = msg.type
-
-    console.log(`ServerCommsTS: handle_incoming_message: ${type}`)
-
-    switch (type) {
-      case "connection_ack":
-        this.parse_app_list(msg)
-        // coreCommunicator.sendCommand("connection_ack")
-        break
-
-      case "app_state_change":
-        this.parse_app_list(msg)
-        break
-
-      case "connection_error":
-        this.handle_connection_error(msg)
-        break
-
-      case "auth_error":
-        this.handle_auth_error()
-        break
-
-      case "microphone_state_change":
-        this.handle_microphone_state_change(msg)
-        break
-
-      case "display_event":
-        this.handle_display_event(msg)
-        break
-
-      case "audio_play_request":
-        this.handle_audio_play_request(msg)
-        break
-
-      case "audio_stop_request":
-        this.handle_audio_stop_request()
-        break
-
-      case "request_single":
-        if (msg.data_type) {
-          coreCommunicator.sendCommand("request_single", {
-            data_type: msg.data_type,
-          })
-        }
-        break
-
-      case "reconnect":
-        console.log("ServerCommsTS: Server is requesting a reconnect.")
-        break
-
-      case "settings_update":
-        console.log("ServerCommsTS: Received settings update from WebSocket")
-        const status = msg.status
-        if (status) {
-          coreCommunicator.sendCommand("status_update", {status})
-        }
-        break
-
-      case "set_location_tier":
-        console.log("DEBUG set_location_tier:", msg)
-        if (msg.tier) {
-          coreCommunicator.sendCommand("set_location_tier", {tier: msg.tier})
-        }
-        break
-
-      case "request_single_location":
-        console.log("DEBUG request_single_location:", msg)
-        if (msg.accuracy && msg.correlationId) {
-          coreCommunicator.sendCommand("request_single_location", {
-            accuracy: msg.accuracy,
-            correlationId: msg.correlationId,
-          })
-        }
-        break
-
-      case "app_started":
-        if (msg.packageName) {
-          console.log(`ServerCommsTS: Received app_started message for package: ${msg.packageName}`)
-          coreCommunicator.sendCommand("app_started", {
-            packageName: msg.packageName,
-          })
-        }
-        break
-
-      case "app_stopped":
-        if (msg.packageName) {
-          console.log(`ServerCommsTS: Received app_stopped message for package: ${msg.packageName}`)
-          coreCommunicator.sendCommand("app_stopped", {
-            packageName: msg.packageName,
-          })
-        }
-        break
-
-      case "photo_request":
-        const requestId = msg.requestId || ""
-        const appId = msg.appId || ""
-        const webhookUrl = msg.webhookUrl || ""
-        const size = msg.size || "medium"
-        console.log(
-          `Received photo_request, requestId: ${requestId}, appId: ${appId}, webhookUrl: ${webhookUrl}, size: ${size}`,
-        )
-        if (requestId && appId) {
-          coreCommunicator.sendCommand("photo_request", {
-            requestId,
-            appId,
-            webhookUrl,
-            size,
-          })
-        } else {
-          console.log("Invalid photo request: missing requestId or appId")
-        }
-        break
-
-      case "start_rtmp_stream":
-        const rtmpUrl = msg.rtmpUrl || ""
-        if (rtmpUrl) {
-          coreCommunicator.sendCommand("start_rtmp_stream", msg)
-        } else {
-          console.log("Invalid RTMP stream request: missing rtmpUrl")
-        }
-        break
-
-      case "stop_rtmp_stream":
-        console.log("Received STOP_RTMP_STREAM")
-        coreCommunicator.sendCommand("stop_rtmp_stream")
-        break
-
-      case "keep_rtmp_stream_alive":
-        console.log(`ServerCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
-        coreCommunicator.sendCommand("keep_rtmp_stream_alive", msg)
-        break
-
-      case "start_buffer_recording":
-        console.log("ServerCommsTS: Received START_BUFFER_RECORDING")
-        coreCommunicator.sendCommand("start_buffer_recording")
-        break
-
-      case "stop_buffer_recording":
-        console.log("ServerCommsTS: Received STOP_BUFFER_RECORDING")
-        coreCommunicator.sendCommand("stop_buffer_recording")
-        break
-
-      case "save_buffer_video":
-        console.log(`ServerCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
-        const bufferRequestId = msg.requestId || `buffer_${Date.now()}`
-        const durationSeconds = msg.durationSeconds || 30
-        coreCommunicator.sendCommand("save_buffer_video", {
-          requestId: bufferRequestId,
-          durationSeconds,
-        })
-        break
-
-      case "start_video_recording":
-        console.log(`ServerCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
-        const videoRequestId = msg.requestId || `video_${Date.now()}`
-        const save = msg.save !== false
-        coreCommunicator.sendCommand("start_video_recording", {
-          requestId: videoRequestId,
-          save,
-        })
-        break
-
-      case "stop_video_recording":
-        console.log(`ServerCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
-        const stopRequestId = msg.requestId || ""
-        coreCommunicator.sendCommand("stop_video_recording", {
-          requestId: stopRequestId,
-        })
-        break
-
-      default:
-        console.log(`ServerCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
     }
   }
 
@@ -673,6 +510,221 @@ class ServerComms {
     console.log("ServerCommsTS: Handling audio stop request")
     // Forward to native audio handling
     coreCommunicator.sendCommand("audio_stop_request")
+  }
+
+  private handle_set_location_tier(msg: any) {
+    console.log("ServerCommsTS: DEBUG set_location_tier:", msg)
+    const tier = msg.tier
+    if (!tier) {
+      console.log("ServerCommsTS: No tier provided")
+      return
+    }
+    coreCommunicator.sendCommand("set_location_tier", {tier})
+  }
+
+  private handle_request_single_location(msg: any) {
+    console.log("ServerCommsTS: DEBUG request_single_location:", msg)
+    if (msg.accuracy && msg.correlationId) {
+      coreCommunicator.sendCommand("request_single_location", {
+        accuracy: msg.accuracy,
+        correlationId: msg.correlationId,
+      })
+    }
+  }
+
+  private handle_app_started(msg: any) {
+    const packageName = msg.packageName
+    if (!packageName) {
+      console.log("ServerCommsTS: No package name provided")
+      return
+    }
+    console.log(`ServerCommsTS: Received app_started message for package: ${msg.packageName}`)
+    coreCommunicator.sendCommand("app_started", {
+      packageName: msg.packageName,
+    })
+  }
+  private handle_app_stopped(msg: any) {
+    console.log(`ServerCommsTS: Received app_stopped message for package: ${msg.packageName}`)
+    coreCommunicator.sendCommand("app_stopped", {
+      packageName: msg.packageName,
+    })
+  }
+
+  private handle_photo_request(msg: any) {
+    const requestId = msg.requestId || ""
+    const appId = msg.appId || ""
+    const webhookUrl = msg.webhookUrl || ""
+    const size = msg.size || "medium"
+    console.log(
+      `Received photo_request, requestId: ${requestId}, appId: ${appId}, webhookUrl: ${webhookUrl}, size: ${size}`,
+    )
+    if (!requestId || !appId) {
+      console.log("Invalid photo request: missing requestId or appId")
+      return
+    }
+    coreCommunicator.sendCommand("photo_request", {
+      requestId,
+      appId,
+      webhookUrl,
+      size,
+    })
+  }
+
+  private handle_start_rtmp_stream(msg: any) {
+    const rtmpUrl = msg.rtmpUrl || ""
+    if (rtmpUrl) {
+      coreCommunicator.sendCommand("start_rtmp_stream", msg)
+    } else {
+      console.log("Invalid RTMP stream request: missing rtmpUrl")
+    }
+  }
+
+  private handle_stop_rtmp_stream() {
+    coreCommunicator.sendCommand("stop_rtmp_stream")
+  }
+
+  private handle_keep_rtmp_stream_alive(msg: any) {
+    console.log(`ServerCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
+    coreCommunicator.sendCommand("keep_rtmp_stream_alive", msg)
+  }
+
+  private handle_save_buffer_video(msg: any) {
+    console.log(`ServerCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
+    const bufferRequestId = msg.requestId || `buffer_${Date.now()}`
+    const durationSeconds = msg.durationSeconds || 30
+    coreCommunicator.sendCommand("save_buffer_video", {
+      requestId: bufferRequestId,
+      durationSeconds,
+    })
+  }
+
+  private handle_start_buffer_recording(msg: any) {
+    console.log("ServerCommsTS: Received START_BUFFER_RECORDING")
+    coreCommunicator.sendCommand("start_buffer_recording")
+  }
+
+  private handle_stop_buffer_recording(msg: any) {
+    console.log("ServerCommsTS: Received STOP_BUFFER_RECORDING")
+    coreCommunicator.sendCommand("stop_buffer_recording")
+  }
+
+  private handle_start_video_recording(msg: any) {
+    console.log(`ServerCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+    const videoRequestId = msg.requestId || `video_${Date.now()}`
+    const save = msg.save !== false
+    coreCommunicator.sendCommand("start_video_recording", {
+      requestId: videoRequestId,
+      save,
+    })
+  }
+
+  private handle_stop_video_recording(msg: any) {
+    console.log(`ServerCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+    const stopRequestId = msg.requestId || ""
+    coreCommunicator.sendCommand("stop_video_recording", {
+      requestId: stopRequestId,
+    })
+  }
+
+  // Message Handling
+  private handle_message(msg: any) {
+    const type = msg.type
+
+    console.log(`ServerCommsTS: handle_incoming_message: ${type}`)
+
+    switch (type) {
+      case "connection_ack":
+        this.handle_connection_ack(msg)
+        // coreCommunicator.sendCommand("connection_ack")
+        break
+
+      case "app_state_change":
+        this.handle_app_state_change(msg)
+        break
+
+      case "connection_error":
+        this.handle_connection_error(msg)
+        break
+
+      case "auth_error":
+        this.handle_auth_error()
+        break
+
+      case "microphone_state_change":
+        this.handle_microphone_state_change(msg)
+        break
+
+      case "display_event":
+        this.handle_display_event(msg)
+        break
+
+      case "audio_play_request":
+        this.handle_audio_play_request(msg)
+        break
+
+      case "audio_stop_request":
+        this.handle_audio_stop_request()
+        break
+
+      case "reconnect":
+        console.log("ServerCommsTS: TODO: Server is requesting a reconnect.")
+        break
+
+      case "set_location_tier":
+        this.handle_set_location_tier(msg)
+        break
+
+      case "request_single_location":
+        this.handle_request_single_location(msg)
+        break
+
+      case "app_started":
+        this.handle_app_started(msg)
+        break
+
+      case "app_stopped":
+        this.handle_app_stopped(msg)
+        break
+
+      case "photo_request":
+        this.handle_photo_request(msg)
+        break
+
+      case "start_rtmp_stream":
+        this.handle_start_rtmp_stream(msg)
+        break
+
+      case "stop_rtmp_stream":
+        this.handle_stop_rtmp_stream()
+        break
+
+      case "keep_rtmp_stream_alive":
+        this.handle_keep_rtmp_stream_alive(msg)
+        break
+
+      case "start_buffer_recording":
+        this.handle_start_buffer_recording(msg)
+        break
+
+      case "stop_buffer_recording":
+        this.handle_stop_buffer_recording(msg)
+        break
+
+      case "save_buffer_video":
+        this.handle_save_buffer_video(msg)
+        break
+
+      case "start_video_recording":
+        this.handle_start_video_recording(msg)
+        break
+
+      case "stop_video_recording":
+        this.handle_stop_video_recording(msg)
+        break
+
+      default:
+        console.log(`ServerCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
+    }
   }
 
   // Helper methods

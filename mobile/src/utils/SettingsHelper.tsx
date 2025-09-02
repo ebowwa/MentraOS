@@ -34,10 +34,11 @@ export const SETTINGS_KEYS = {
   button_camera_led: "button_camera_led",
   button_video_settings_width: "button_video_settings_width",
   core_token: "core_token",
+  server_url: "server_url",
 }
 
 const DEFAULT_SETTINGS = {
-  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: null,
+  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass",
   [SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]: false,
   [SETTINGS_KEYS.ONBOARDING_COMPLETED]: false,
   [SETTINGS_KEYS.SETTINGS_ACCESS_COUNT]: 0,
@@ -91,6 +92,21 @@ const loadSetting = async (key: string, overrideDefaultValue?: any) => {
     console.error(`Failed to load setting (${key}):`, error)
     return defaultValue
   }
+}
+
+export const getRestUrl = async (): Promise<string> => {
+  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const url = new URL(serverUrl)
+  const secure = url.protocol === "https:"
+  return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
+}
+
+export const getWsUrl = async (): Promise<string> => {
+  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const url = new URL(serverUrl)
+  const secure = url.protocol === "https:"
+  const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
+  return wsUrl
 }
 
 export {saveSetting, loadSetting}
