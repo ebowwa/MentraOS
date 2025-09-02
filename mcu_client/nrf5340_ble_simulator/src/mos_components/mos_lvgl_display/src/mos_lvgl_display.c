@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 14:00:54
+ * @LastEditTime : 2025-09-02 19:40:56
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -801,6 +801,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     display_state_t state_type = LCD_STATE_INIT;
     display_cmd_t   cmd;
     display_open();  // test
+    uint8_t mirror_value = 0;
     while (1)
     {
         // frame_count++;
@@ -825,7 +826,13 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     hls12vga_power_on();
                     set_display_onoff(true);
                     hls12vga_set_brightness(9);  // 设置亮度
-                    hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+
+                    // hls12vga_get_mirror(0, &mirror_value);
+                    // BSP_LOGI(TAG, "Current mirror value: 0x%02X", mirror_value);
+                    hls12vga_set_mirror(0x08);// 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像; 0x10 Vertical Mirror 0x00 Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
+                    hls12vga_get_mirror(0, &mirror_value);
+                    BSP_LOGI(TAG, "New mirror value set to: 0x%02X", mirror_value);
+                    
                     // hls12vga_set_brightness(cmd.p.open.brightness);
                     // hls12vga_set_mirror(cmd.p.open.mirror);
                     mos_delay_ms(2);

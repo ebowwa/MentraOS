@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-07-31 20:19:54
- * @LastEditTime : 2025-08-01 11:17:02
+ * @LastEditTime : 2025-09-02 19:16:54
  * @FilePath     : hls12vga.h
  * @Description  : 
  * @
@@ -102,4 +102,5 @@ int hls12vga_draw_vertical_grayscale_pattern(void);
 
 int hls12vga_draw_chess_pattern(void);
 
+int hls12vga_get_mirror(int mode, uint8_t *value);
 #endif /* _HLS12VGA_H_ */

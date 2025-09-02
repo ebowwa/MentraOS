@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 13:54:11
+ * @LastEditTime : 2025-09-02 19:16:26
  * @FilePath     : hls12vga.c
  * @Description  :
  *
@@ -425,6 +425,75 @@ int hls12vga_set_mirror(const uint8_t value)
 	cmd[2] = value;
 	int err = hls12vga_transmit_all(dev_hls12vga, cmd, sizeof(cmd), 1);
 	return err;
+}
+/**
+ * @Description: Get display orientation
+ * @param mode:  Left/Right display mode (0: Left, 1: Right)
+ * @param value: Pointer to store the orientation value
+ *               0x10: Vertical mirror
+ *               0x00: Normal display
+ *               0x08: Horizontal mirror
+ *               0x18: Horizontal + vertical mirror
+ * @return: 0 on success, negative value on error
+ */
+int hls12vga_get_mirror(int mode, uint8_t *value)
+{
+    if (mode < 0 || mode > 1 || value == NULL)
+    {
+        BSP_LOGE(TAG, "Invalid parameters err!!!");
+        return -EINVAL;
+    }
+    const hls12vga_config *cfg = dev_hls12vga->config;
+
+    int     err   = -1;
+    uint8_t tx[3] = {0};
+    uint8_t rx[3] = {0};
+    tx[0]         = LCD_READ_ADDRESS;
+    tx[1]         = HLS12VGA_LCD_MIRROR_REG;
+	tx[2]         = 0x00;  // Dummy byte for reading
+    struct spi_buf tx_buf = {
+        .buf = tx,
+        .len = sizeof(tx),
+    };
+    struct spi_buf_set tx_set = {
+        .buffers = &tx_buf,
+        .count   = 1,
+    };
+    struct spi_buf rx_buf = {
+        .buf = rx,
+        .len = sizeof(rx),
+    };
+    struct spi_buf_set rx_set = {
+        .buffers = &rx_buf,
+        .count   = 1,
+    };
+    if (mode == 0)
+    {
+        gpio_pin_set_dt(&cfg->left_cs, 0);  // Select left CS (active LOW)
+    }
+    else
+    {
+        gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
+    }
+    err = spi_transceive_dt(&cfg->spi, &tx_set, &rx_set);
+    if (err != 0)
+    {
+        BSP_LOGE(TAG, "SPI read_reg_side @0x%02x failed: %d", HLS12VGA_LCD_MIRROR_REG, err);
+    }
+    else
+    {
+        *value = rx[2];
+        BSP_LOGI(TAG, "hls12vga_get_mirror: reg=0x%02X, val=0x%02X", HLS12VGA_LCD_MIRROR_REG, *value);
+    }
+    if (mode == 0)
+    {
+        gpio_pin_set_dt(&cfg->left_cs, 1);  // Deselect left CS (inactive HIGH)
+    }
+    else
+    {
+        gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
+    }
+    return err;
 }
 static void *hls12vga_get_framebuffer(struct device *dev)
 {
