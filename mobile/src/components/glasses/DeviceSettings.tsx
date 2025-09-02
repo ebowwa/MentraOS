@@ -379,14 +379,14 @@ export default function DeviceSettings() {
         </View>
       )}
 
-      {/* Nex Developer Settings - Only show in dev mode */}
-      {
+      {/* Nex Developer Settings - Only show when connected to Mentra Nex */}
+      {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("nex") && (
         <RouteButton
           label="Nex Developer Settings"
           subtitle="Advanced developer tools and debugging features"
           onPress={() => push("/glasses/nex-developer-settings")}
         />
-      }
+      )}
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
