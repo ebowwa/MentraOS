@@ -170,7 +170,7 @@ export class AudioManager {
    *
    * @param audioData Audio data to relay
    */
-  private relayAudioToApps(audioData: ArrayBuffer): void {
+  private relayAudioToApps(audioData: ArrayBuffer | Buffer): void {
     try {
       // Get subscribers using subscriptionService instead of subscriptionManager
       const subscribedPackageNames =
@@ -184,7 +184,7 @@ export class AudioManager {
         return;
       }
       const bytes = (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData))
-        ? (audioData as unknown as Buffer).length
+        ? (audioData as Buffer).length
         : (audioData as ArrayBuffer).byteLength;
       this.logger.debug({ feature: 'livekit', bytes, subscribers: subscribedPackageNames }, 'AUDIO_CHUNK: relaying to apps');
 
@@ -196,7 +196,12 @@ export class AudioManager {
           try {
             this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sending to app');
 
-            connection.send(audioData);
+            // Node ws supports Buffer; ensure we send Buffer for efficiency
+            if (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData)) {
+              connection.send(audioData);
+            } else {
+              connection.send(Buffer.from(audioData as ArrayBuffer));
+            }
             this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sent to app');
 
           } catch (sendError) {

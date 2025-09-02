@@ -75,6 +75,17 @@ export class TranslationManager {
     );
   }
 
+  // Normalize Buffer to ArrayBuffer for provider APIs
+  private toArrayBuffer(input: ArrayBuffer | Buffer): ArrayBuffer {
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(input)) {
+      const buf = input as unknown as Buffer;
+      const ab = new ArrayBuffer(buf.length);
+      new Uint8Array(ab).set(buf);
+      return ab;
+    }
+    return input as ArrayBuffer;
+  }
+
   /**
    * Update active subscriptions
    */
@@ -136,10 +147,10 @@ export class TranslationManager {
   /**
    * Feed audio to all active translation streams
    */
-  feedAudio(audioData: ArrayBuffer): void {
+  feedAudio(audioData: ArrayBuffer | Buffer): void {
     // If we're buffering, add to buffer
     if (this.isBufferingAudio) {
-      this.audioBuffer.push(audioData);
+      this.audioBuffer.push(this.toArrayBuffer(audioData));
 
       // Prevent buffer from growing too large
       if (this.audioBuffer.length > this.audioBufferMaxSize) {
@@ -1226,7 +1237,7 @@ export class TranslationManager {
     this.logger.debug("Cleared translation audio buffer");
   }
 
-  private feedAudioToStreams(audioData: ArrayBuffer): void {
+  private feedAudioToStreams(audioData: ArrayBuffer | Buffer): void {
     if (!this.isInitialized || this.streams.size === 0) {
       return;
     }
@@ -1250,9 +1261,10 @@ export class TranslationManager {
       );
     }
 
+    const normalized = this.toArrayBuffer(audioData);
     for (const [subscription, stream] of this.streams) {
       try {
-        stream.writeAudio(audioData);
+        stream.writeAudio(normalized);
       } catch (error) {
         this.logger.warn(
           {

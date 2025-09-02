@@ -62,6 +62,7 @@ type LiveKitClient struct {
     subTracks        map[string]*webrtc.TrackRemote // by publication SID
     subTrackOwner    map[string]string               // SID -> participant identity
     subActive        map[string]bool                 // SID -> forwarding active
+    pcmBySID         map[string]*lkmedia.PCMRemoteTrack // SID -> PCM remote track
     // subscriber outgoing 16kHz frame buffer (bytes)
     subBuf16k        []byte
     subFrameCount    int
@@ -122,6 +123,7 @@ func (s *LiveKitService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
         subTracks:     make(map[string]*webrtc.TrackRemote),
         subTrackOwner: make(map[string]string),
         subActive:     make(map[string]bool),
+        pcmBySID:      make(map[string]*lkmedia.PCMRemoteTrack),
         closedCh:      make(chan struct{}),
 	}
 
@@ -252,8 +254,7 @@ func (c *LiveKitClient) joinRoom(roomName, token string) {
 	c.room = room
 	c.connected = true
 
-	// Create audio track for publishing
-	c.createAudioTrack()
+	// NOTE: Do not auto-publish a local track here; this connection may be subscribe-only.
 
 	// Send success event
 	log.Printf("Sending room_joined event for user %s in room %s", c.userId, roomName)
@@ -347,70 +348,45 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
         ParticipantID:    string(c.room.LocalParticipant.Identity()),
         ParticipantCount: len(c.room.GetRemoteParticipants()),
     })
+}
 
-    // Create audio track for publishing at 16kHz so LiveKit upsamples internally
+// ensurePublishTrack lazily creates & publishes a local PCM track if not present.
+func (c *LiveKitClient) ensurePublishTrack() error {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    if !c.connected || c.room == nil {
+        return fmt.Errorf("not connected to room")
+    }
+    if c.publishTrack != nil {
+        return nil
+    }
     track, err := lkmedia.NewPCMLocalTrack(16000, 1, nil)
     if err != nil {
-        log.Printf("Failed to create PCM track: %v", err)
-        return
+        return fmt.Errorf("create PCM track: %w", err)
+    }
+    if _, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{ Name: "microphone" }); err != nil {
+        return fmt.Errorf("publish track: %w", err)
     }
     c.publishTrack = track
     c.sampleRate = 16000
-
-    if pub, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{ Name: "microphone" }); err != nil {
-        log.Printf("Failed to publish track: %v", err)
-        return
-    } else {
-        log.Printf("Published track SID=%s", pub.SID())
-    }
-
-    // Wait briefly to ensure publication propagates
-    time.Sleep(300 * time.Millisecond)
-
     log.Printf("PCM audio track published for user %s (16kHz mono)", c.userId)
-    // Signal track published
-    c.sendEvent(Event{ Type: "track_published" })
-}
-
-func (c *LiveKitClient) createAudioTrack() {
-	// Create PCM track with 16kHz sample rate (SDK handles resampling to 48kHz internally)
-	track, err := lkmedia.NewPCMLocalTrack(
-		16000, // 16kHz sample rate (SDK will resample to 48kHz)
-		1,     // Mono
-		nil,   // Use default logger
-	)
-	if err != nil {
-		log.Printf("Failed to create PCM track: %v", err)
-		return
-	}
-
-	c.publishTrack = track
-    c.sampleRate = 16000
-
-	// Publish the track
-	if _, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{
-		Name: "microphone",
-	}); err != nil {
-		log.Printf("Failed to publish track: %v", err)
-		return
-	}
-
-	log.Printf("PCM audio track published for user %s (16kHz mono, auto-resampled to 48kHz)", c.userId)
+    return nil
 }
 
 // publishTone generates a sine wave at the given frequency and publishes via WriteSample at ~10ms cadence
 func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
-    c.mu.Lock()
-    track := c.publishTrack
-    connected := c.connected
-    c.mu.Unlock()
-    if track == nil || !connected {
-        log.Printf("Cannot publish tone - track ready: %v connected: %v", track != nil, connected)
+    if err := c.ensurePublishTrack(); err != nil {
+        log.Printf("Cannot publish tone - ensurePublishTrack failed: %v", err)
         return
     }
+    c.mu.Lock()
+    track := c.publishTrack
+    sr := c.sampleRate
+    c.mu.Unlock()
 
-    // Match track's configured source sample rate (48kHz)
-    sampleRate := 48000
+    // Match track's configured source sample rate
+    sampleRate := sr
+    if sampleRate == 0 { sampleRate = 16000 }
     samplesPer10ms := sampleRate / 100
     totalFrames := durationMs / 10
     log.Printf("Publishing tone: freq=%dHz duration=%dms frames=%d", freqHz, durationMs, totalFrames)
@@ -457,10 +433,10 @@ func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
 }
 
 func (c *LiveKitClient) handleAudioData(data []byte) {
-	if c.publishTrack == nil || !c.connected {
-		log.Printf("Cannot send audio - track: %v, connected: %v", c.publishTrack != nil, c.connected)
-		return
-	}
+    if err := c.ensurePublishTrack(); err != nil {
+        log.Printf("Cannot send audio - ensurePublishTrack failed: %v", err)
+        return
+    }
 
 	// Log audio data reception (every 10th chunk to avoid spam)
 	c.mu.Lock()
@@ -621,11 +597,17 @@ func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, owner string, si
         log.Printf("Failed to create PCMRemoteTrack: %v", err)
         return
     }
+    c.tracksMu.Lock()
+    c.pcmBySID[sid] = pcmTrack
+    c.tracksMu.Unlock()
     // Run until context or disable
-    go func() {
+    go func(localSID string) {
         <-c.ctx.Done()
         pcmTrack.Close()
-    }()
+        c.tracksMu.Lock()
+        delete(c.pcmBySID, localSID)
+        c.tracksMu.Unlock()
+    }(sid)
 }
 
 // pcm16WSWriter implements media.PCM16Writer to receive 16 kHz mono samples from SDK.
@@ -664,6 +646,14 @@ func (c *LiveKitClient) leaveRoom() {
 		c.publishTrack.Close()
 		c.publishTrack = nil
 	}
+
+    // Stop all PCM remote tracks
+    c.tracksMu.Lock()
+    for sid, pcm := range c.pcmBySID {
+        pcm.Close()
+        delete(c.pcmBySID, sid)
+    }
+    c.tracksMu.Unlock()
 
 	c.room.Disconnect()
 	c.room = nil
@@ -721,11 +711,22 @@ func (c *LiveKitClient) Close() {
     c.mu.Lock()
     // mark forwarding disabled
     c.subscribeEnabled = false
+    if c.subQuit != nil {
+        close(c.subQuit)
+        c.subQuit = nil
+    }
     // disconnect room and ws
     if c.room != nil {
         c.room.Disconnect()
         c.room = nil
     }
+    // Close remote PCM tracks
+    c.tracksMu.Lock()
+    for sid, pcm := range c.pcmBySID {
+        pcm.Close()
+        delete(c.pcmBySID, sid)
+    }
+    c.tracksMu.Unlock()
     if c.ws != nil {
         _ = c.ws.Close()
         c.ws = nil

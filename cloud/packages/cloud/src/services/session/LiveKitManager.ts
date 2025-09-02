@@ -161,8 +161,15 @@ export class LiveKitManager {
   }
 
   public dispose(): void {
-    this.healthTimer && clearInterval(this.healthTimer);
-    this.bridgeClient?.dispose();
+    if (this.healthTimer) {
+      clearInterval(this.healthTimer);
+      this.healthTimer = null;
+    }
+    if (this.bridgeClient) {
+      this.logger.info({ feature: 'livekit' }, 'Disposing bridge client');
+      this.bridgeClient.dispose();
+      this.bridgeClient = null;
+    }
   }
 }
 

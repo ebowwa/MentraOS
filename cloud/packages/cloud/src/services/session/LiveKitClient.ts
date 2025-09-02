@@ -23,6 +23,7 @@ export class LiveKitClient {
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private manualClose = false;
+  private disposed = false;
 
   constructor(userSession: UserSession, opts?: BridgeOptions) {
     this.userSession = userSession;
@@ -31,6 +32,9 @@ export class LiveKitClient {
   }
 
   async connect(params: { url: string; roomName: string; token: string; targetIdentity?: string }): Promise<void> {
+    if (this.disposed) {
+      throw new Error('LiveKitClientTS is disposed');
+    }
     if (this.ws) await this.close();
 
     const userId = `cloud-agent:${this.userSession.userId}`;
@@ -43,17 +47,29 @@ export class LiveKitClient {
     this.manualClose = false;
     this.lastParams = params;
     this.frameCount = 0;
+    const wsRef = this.ws;
 
     await new Promise<void>((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('bridge ws timeout')), 8000);
       this.ws!.once('open', () => {
         clearTimeout(to);
+        // If we were disposed/closed while connecting, abort immediately
+        if (this.disposed || this.manualClose || this.ws !== wsRef) {
+          try { wsRef.close(); } catch { /* noop */ }
+          reject(new Error('bridge ws aborted'));
+          return;
+        }
         this.logger.debug({ feature: 'livekit', wsUrl }, 'Bridge WS open (server)');
         resolve();
       });
       this.ws!.once('error', (err) => { clearTimeout(to); reject(err as any); });
     });
 
+    if (this.disposed || this.manualClose || this.ws !== wsRef) {
+      // Safety: connection established but client was disposed in-between
+      try { wsRef.close(); } catch { /* noop */ }
+      throw new Error('bridge ws aborted (post-open)');
+    }
     this.connected = true;
     let i = 0;
 
@@ -96,11 +112,15 @@ export class LiveKitClient {
 
     // Join room via bridge
     this.logger.debug({ feature: 'livekit', roomName: params.roomName }, 'Sending join_room to bridge');
-    this.ws.send(JSON.stringify({ action: 'join_room', roomName: params.roomName, token: params.token, url: params.url }));
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ action: 'join_room', roomName: params.roomName, token: params.token, url: params.url }));
+    }
 
     // Enable subscribe to target identity (publisher) if provided
     this.logger.debug({ feature: 'livekit', targetIdentity: params.targetIdentity || '' }, 'Sending subscribe_enable to bridge');
-    this.ws.send(JSON.stringify({ action: 'subscribe_enable', targetIdentity: params.targetIdentity || '' }));
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ action: 'subscribe_enable', targetIdentity: params.targetIdentity || '' }));
+    }
 
     this.logger.info({ feature: 'livekit' }, 'LiveKitClientTS connected and subscribe enabled');
   }
@@ -117,6 +137,7 @@ export class LiveKitClient {
     } catch { ; }
     this.ws = null;
     this.connected = false;
+    this.lastParams = null;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -137,7 +158,7 @@ export class LiveKitClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.manualClose) return;
+    if (this.manualClose || this.disposed) return;
     if (!this.lastParams) return;
     if (this.reconnectTimer) return;
     const delay = Math.min(30000, 1000 * Math.pow(2, this.reconnectAttempts++));
@@ -153,9 +174,9 @@ export class LiveKitClient {
   }
 
   public dispose(): void {
-    if (this.ws) {
-      this.ws.close();
-    }
+    // Ensure we do a full, manual-close teardown to prevent auto-reconnect
+    this.disposed = true;
+    void this.close();
   }
 }
 
