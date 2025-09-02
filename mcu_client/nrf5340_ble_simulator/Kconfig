@@ -41,7 +41,18 @@ config ZMS
 
 config NVS
 	default y if !(SOC_FLASH_NRF_RRAM || SOC_FLASH_NRF_MRAM)
-
+	
+config USER_STEREO_1RX_L_1RX_R
+	bool "encode fifo enable"
+	default y
+	
+config USER_STEREO_2RX_L
+	bool "encode fifo enable"
+	default n
+	
+config USER_STEREO_2RX_LR
+	bool "encode fifo enable"
+	default n
 endmenu
 
 # Include custom driver module Kconfig (projector display)

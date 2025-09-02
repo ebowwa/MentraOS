@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-01 17:13:46
+ * @LastEditTime : 2025-09-02 13:54:11
  * @FilePath     : hls12vga.c
  * @Description  :
  *
@@ -174,23 +174,18 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 	/* 执行SPI传输（带重试机制）; Execute SPI transmission (with retry mechanism) */
 	for (int i = 0; i <= retries; i++)
 	{
-		/* Send to left side */
 		gpio_pin_set_dt(&cfg->left_cs, 0);   // Select left CS (active LOW)
-		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
+		gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
+
 		err = spi_write_dt(&cfg->spi, &tx);
 		gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
+		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		if (err != 0)
 		{
 			k_msleep(1); /* 短暂延迟; Short delay */
 			BSP_LOGI(TAG, "SPI write to left failed (attempt %d/%d): %d", i + 1, retries + 1, err);
 			continue;
 		}
-
-		/* Send to right side */
-		gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
-		gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
-		err = spi_write_dt(&cfg->spi, &tx);
-		gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
 		if (err == 0)
 		{
 			// **NEW: Calculate and log SPI transfer performance**
@@ -870,7 +865,7 @@ static int hls12vga_init(const struct device *dev)
 
 	// Clear the display to start fresh for LVGL
 	// BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
-	hls12vga_clear_screen(false);  // Start with display OFF (black)
+	// hls12vga_clear_screen(false);  // Start with display OFF (black)
 
 	BSP_LOGI(TAG, "Display initialized");
 	return 0;

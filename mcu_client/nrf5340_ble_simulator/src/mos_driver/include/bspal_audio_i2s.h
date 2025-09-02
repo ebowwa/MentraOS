@@ -24,10 +24,6 @@
 #define HFCLKAUDIO_12_288_MHZ 0x9BA6
 #define HFCLKAUDIO_12_165_MHZ 0x8FD8
 #define HFCLKAUDIO_12_411_MHZ 0xA774
-
-// PDM PCM buffer size: 16K 16bit 10ms = 160 samples
-#define PDM_PCM_REQ_BUFFER_SIZE 160
-
 /**
  * @brief Function to fill the I2S PCM data buffer.
  * This function is called to fill the I2S PCM data buffer with audio data.

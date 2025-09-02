@@ -2,6 +2,52 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.16.0] - 2025-09-02
+
+### 🎵 LC3 Audio Codec Integration & Live Caption System
+
+#### Complete Audio Streaming Implementation
+- **🎤 PDM Microphone Integration**: Full digital microphone capture via P1.11/P1.12 pins
+- **🔊 LC3 Audio Codec**: Low Complexity Communication Codec for efficient voice streaming
+- **📡 BLE Audio Streaming**: Real-time audio transmission via protobuf 0xA0 audio chunks
+- **⚙️ MicStateConfig Control**: Enable/disable microphone via protobuf Tag 20 messages
+
+#### Audio System Architecture
+- **📊 Sample Rate**: 16 kHz voice optimized with 16-bit PCM depth
+- **⏱️ Frame Duration**: 10ms LC3 frames for minimal latency
+- **🔀 Bitrate**: Configurable encoding (default 32 kbps for voice)
+- **🎯 Integration**: Seamless integration with live caption display system
+
+#### SPI Bus Optimization
+- **🔧 Dual CS Control**: Modified SPI usage to simultaneously control two CS lines
+- **📈 Thread Stack Increase**: LVGL thread stack expanded to 4096 bytes
+- **⚖️ Priority Balancing**: Adjusted LC3 thread priority to prevent LVGL starvation
+- **🔇 Noise Reduction**: Implemented noise handling for microphone open/close operations
+
+#### Live Caption + Audio Integration
+- **📱 Mobile App Ready**: Complete protobuf integration for Mentra Nex app testing
+- **✅ Voice Functionality**: Normal voice operation confirmed on nRF5340DK
+- **🎮 Pattern Support**: Maintains Pattern 4 & 5 text display functionality
+- **🔗 Connectivity**: Compatible with ping/pong connectivity monitoring
+
+#### Technical Implementation
+- **📋 API Functions**: `enable_audio_system()`, `lc3_encoder_start()`, `lc3_decoder_start()`, `lc3_encoder_stop()`, `lc3_decoder_stop()`
+- **🎛️ Protobuf Tag 20**: Fully enabled MicStateConfig message processing
+- **🏗️ Display Integration**: Modified display logic for audio-caption coordination
+- **🐛 Bug Fixes**: Resolved LC3 voice function issues and IIS/PCM peripheral setup
+
+#### Hardware Compatibility
+- **🔌 nRF5340DK**: Full support and testing completed
+- **📡 BLE Streaming**: 40x5=200B audio block transmission
+- **🎤 Digital PDM**: Compatible with standard PDM microphones
+- **⚡ Performance**: Optimized for real-time audio processing
+
+#### Status: ✅ Production Ready
+- **Mobile App Integration**: Successfully tested with Mentra Nex app
+- **Audio Quality**: Normal voice transmission confirmed
+- **System Stability**: Live caption and audio streaming work simultaneously
+- **Developer Ready**: Ready for integration into main development branch
+
 ## [2.14.0] - 2025-08-22
 
 ### 🔄 Ping/Pong Connectivity Monitoring Implementation

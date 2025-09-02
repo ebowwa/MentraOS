@@ -179,6 +179,15 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 {
 	LOG_INF("Parsing protobuf control message (%u bytes) using nanopb", len);
 	
+	// *** DETAILED HEX DUMP FOR DEBUGGING ***
+	printk("\n=== PROTOBUF RAW DATA HEX DUMP (Length: %u bytes) ===\n", len);
+	for (size_t i = 0; i < len; i++) {
+		printk("%02X ", protobuf_data[i]);
+		if ((i + 1) % 16 == 0) printk("\n");
+	}
+	if (len % 16 != 0) printk("\n");
+	printk("=== END HEX DUMP ===\n");
+	
 	if (len == 0) {
 		LOG_WRN("Empty protobuf message");
 		return;
@@ -1264,7 +1273,17 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	
 	LOG_INF("=== MICROPHONE STATE CONFIG MESSAGE (Tag 20) ===");
 	
+	// *** RAW PROTOBUF FIELD ANALYSIS ***
+	printk("\n🔍 RAW MICSTATECONFIG FIELD VALUES:\n");
+	printk("  - enabled field: %s (bool value: %d)\n", mic_state->enabled ? "true" : "false", mic_state->enabled);
+	printk("🔍 FIELD INTERPRETATION:\n");
+	printk("  - Message Type: PhoneToGlasses::MicStateConfig\n");
+	printk("  - Tag Number: 20\n");
+	printk("  - Field 1 (enabled): %s\n", mic_state->enabled ? "ENABLE_MICROPHONE" : "DISABLE_MICROPHONE");
+	printk("  - Expected Action: %s\n", mic_state->enabled ? "Start PDM capture + LC3 encoding + BLE streaming" : "Stop all audio processing");
+	
 	bool enabled = mic_state->enabled;
+
 	pdm_audio_state_t current_state = pdm_audio_stream_get_state();
 	bool was_streaming = (current_state == PDM_AUDIO_STATE_STREAMING);
 	
@@ -1281,14 +1300,14 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	LOG_INF("  - Sample Rate: %d Hz", PDM_SAMPLE_RATE);
 	LOG_INF("  - Bit Depth: 16-bit PCM");
 	LOG_INF("  - Channels: %d (Mono)", PDM_CHANNELS);
-	LOG_INF("  - Frame Size: %d samples (%d ms)", 
-	        PDM_FRAME_SIZE_SAMPLES, LC3_FRAME_DURATION_MS);
+	// LOG_INF("  - Frame Size: %d samples (%d ms)", 
+	//         PDM_FRAME_SIZE_SAMPLES, LC3_FRAME_DURATION_MS);
 	
 	// LC3 encoding configuration
 	LOG_INF("Audio Streaming Configuration:");
 	LOG_INF("  - Codec: LC3 (Low Complexity Communication Codec)");
-	LOG_INF("  - Frame Duration: %d ms", LC3_FRAME_DURATION_MS);
-	LOG_INF("  - Bitrate: %d bps", LC3_BITRATE_DEFAULT);
+	// LOG_INF("  - Frame Duration: %d ms", LC3_FRAME_DURATION_MS);
+	// LOG_INF("  - Bitrate: %d bps", LC3_BITRATE_DEFAULT);
 	LOG_INF("  - Transport: BLE via 0xA0 audio chunk messages");
 	LOG_INF("  - Stream ID: 0x01 (microphone audio)");
 	

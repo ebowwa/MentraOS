@@ -41,6 +41,7 @@
 #include <zephyr/logging/log.h>
 #include <nrfx_clock.h>
 
+
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -104,7 +105,9 @@ struct uart_data_t {
 	uint8_t data[UART_BUF_SIZE];
 	uint16_t len;
 };
-
+static uint16_t payload_mtu   = 20;
+static bool     ble_connected = false; 
+static struct bt_conn *my_current_conn;
 static K_FIFO_DEFINE(fifo_uart_tx_data);
 static K_FIFO_DEFINE(fifo_uart_rx_data);
 
@@ -423,7 +426,14 @@ static void advertising_start(void)
 {
 	k_work_submit(&adv_work);
 }
-
+void set_ble_connected_status(bool connected)
+{
+    ble_connected = connected;
+}
+bool get_ble_connected_status(void)
+{
+    return ble_connected;
+}
 static void connected(struct bt_conn *conn, uint8_t err)
 {
 	char addr[BT_ADDR_LE_STR_LEN];
@@ -435,9 +445,8 @@ static void connected(struct bt_conn *conn, uint8_t err)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	LOG_INF("Connected %s", addr);
-
+	set_ble_connected_status(true);
 	current_conn = bt_conn_ref(conn);
-
 	dk_set_led_on(CON_STATUS_LED);
 }
 
@@ -446,9 +455,9 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
+	
 	LOG_INF("Disconnected: %s, reason 0x%02x %s", addr, reason, bt_hci_err_to_str(reason));
-
+	set_ble_connected_status(false);
 	if (auth_conn) {
 		bt_conn_unref(auth_conn);
 		auth_conn = NULL;
@@ -634,7 +643,64 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 static struct mentra_ble_cb mentra_cb = {
 	.received = bt_receive_cb,
 };
+uint16_t get_ble_payload_mtu(void)
+{
+    return payload_mtu;
+}
+void mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
+{
+    payload_mtu = bt_gatt_get_mtu(conn) - 3;  // 3 bytes used for Attribute headers.
+    LOG_INF("Updated MTU: TX: %d RX: %d bytes", tx, rx);
+    LOG_INF("Updated MTU: %d; Payload=[%d] ", payload_mtu + 3, payload_mtu);
+}
+static struct bt_gatt_cb gatt_callbacks = 
+{
+	.att_mtu_updated = mtu_updated
+};
 
+/**
+ * @brief ble send data function
+ * @param data Pointer to the data to send
+ * @param len Length of the data to send
+ * @return 0 on success, -1 on failure
+ */
+int ble_send_data(const uint8_t *data, uint16_t len)
+{
+    if ((!data || len == 0) || !get_ble_connected_status())
+    // if ((!data || len == 0))
+    {
+        // LOG_ERR("Invalid data or length || ble not connected");
+        return -1;
+    }
+    LOG_INF("<--Sending data to BLE-->: len=%d", len);
+    // LOG_INF("Data: %s", data);
+    // LOG_HEXDUMP_INF(data, len, "Hexdump:");
+    uint16_t offset = 0;
+    uint16_t mtu    = get_ble_payload_mtu();
+    while (offset < len)
+    {
+        uint16_t chunk_len = MIN(len - offset, mtu);
+        int      retry     = 0;
+        int      err;
+        do
+        {
+            err = mentra_ble_send(NULL, &data[offset], chunk_len);
+            if (err == 0)
+                break;
+            LOG_ERR(" Chunk send failed (offset=%u len=%u), retry %d", offset, chunk_len, retry);
+        } while (++retry < 3);  // max 3 retries
+        // LOG_HEXDUMP_INF( &data[offset], chunk_len, "Hexdump:");
+        if (err != 0)
+        {
+            LOG_ERR("Final failure at offset=%u", offset);
+            return -1;
+        }
+        offset += chunk_len;
+        k_msleep(1);  // delay 2ms to avoid flooding the BLE interface
+    }
+
+    return 0;
+}
 void error(void)
 {
 	dk_set_leds_state(DK_ALL_LEDS_MSK, DK_NO_LEDS_MSK);
@@ -724,7 +790,7 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **DISABLED: Buttons 3 & 4 are ignored due to SPI4 conflicts**
 	if (has_changed & (DK_BTN3_MSK | DK_BTN4_MSK)) {
-		LOG_WRN("⚠️  Buttons 3/4 disabled (SPI4 conflict on P0.08/P0.09)");
+		// LOG_WRN("⚠️  Buttons 3/4 disabled (SPI4 conflict on P0.08/P0.09)");
 	}
 }
 
@@ -793,7 +859,7 @@ int main(void)
 	if (err) {
 		error();
 	}
-
+	
 	LOG_INF("Bluetooth initialized");
 
 	k_sem_give(&ble_init_ok);
@@ -807,7 +873,7 @@ int main(void)
 		LOG_ERR("Failed to initialize Mentra BLE service (err: %d)", err);
 		return 0;
 	}
-
+	bt_gatt_cb_register(&gatt_callbacks);
 	// Initialize PDM audio streaming system
 	LOG_INF("🎤 Initializing PDM audio streaming system...");
 	err = pdm_audio_stream_init();
@@ -832,7 +898,7 @@ int main(void)
         printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
         lvgl_display_thread();
         printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-        
+
         // Give the thread a moment to initialize
         k_msleep(100);
         

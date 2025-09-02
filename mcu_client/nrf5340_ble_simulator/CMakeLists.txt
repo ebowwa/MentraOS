@@ -16,6 +16,8 @@ list(APPEND CMAKE_MODULE_PATH ${ZEPHYR_BASE}/modules/nanopb)
 include(nanopb)
 
 # Custom driver module picked up via ZEPHYR_EXTRA_MODULES (module.yml)
+add_subdirectory(src/mos_components/mos_pdm)
+add_subdirectory(src/mos_driver)
 
 target_sources(app PRIVATE
     src/main.c
@@ -44,3 +46,4 @@ target_include_directories(app PRIVATE
     src/mos_components/mos_lvgl_display/include
     custom_driver_module/drivers
 )
+
