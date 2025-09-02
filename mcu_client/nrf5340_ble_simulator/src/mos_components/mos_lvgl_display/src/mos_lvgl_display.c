@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-29 17:08:15
+ * @LastEditTime : 2025-09-02 14:00:54
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -26,12 +26,16 @@
 #include "mos_lvgl_display.h"
 // #include "bspal_icm42688p.h"
 // #include "task_ble_receive.h"
+#include <zephyr/logging/log.h>
+
+#define LOG_MODULE_NAME MOS_LVGL
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #define TAG            "MOS_LVGL"
 #define TASK_LVGL_NAME "MOS_LVGL"
 
-#define LVGL_THREAD_STACK_SIZE (4096 * 2)
-#define LVGL_THREAD_PRIORITY   5
+#define LVGL_THREAD_STACK_SIZE (4096 * 4)
+#define LVGL_THREAD_PRIORITY   6
 K_THREAD_STACK_DEFINE(lvgl_stack_area, LVGL_THREAD_STACK_SIZE);
 static struct k_thread lvgl_thread_data;
 k_tid_t                lvgl_thread_handle;
@@ -228,7 +232,7 @@ static lv_obj_t   *counter_label;
 static lv_timer_t *counter_timer;  // 指针即可
 static lv_obj_t   *acc_label;
 static lv_obj_t   *gyr_label;
-static void        counter_timer_cb(lv_timer_t *timer)
+static void  counter_timer_cb(lv_timer_t *timer)
 {
     // int *count = (int *)lv_timer_get_user_data(timer);
     // // lv_label_set_text_fmt(counter_label, "Count: %d", (*count)++);
@@ -799,10 +803,10 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     display_open();  // test
     while (1)
     {
-        frame_count++;
+        // frame_count++;
         bool need_refresh = false;
         // 到预算了，允许本轮刷一次； When budgeted, allow one refresh this round
-        if (state_type == LCD_STATE_ON && (k_uptime_get_32() - last_refresh_ms) >= 10)
+        if (state_type == LCD_STATE_ON && ((k_uptime_get_32() - last_refresh_ms) >= 10))
         {
             need_refresh = true;
         }

@@ -898,7 +898,7 @@ int main(void)
         printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
         lvgl_display_thread();
         printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-        
+
         // Give the thread a moment to initialize
         k_msleep(100);
         
@@ -947,7 +947,6 @@ int main(void)
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
-		LOG_INF("test lc3 demo!!!");
 	}
 }
 

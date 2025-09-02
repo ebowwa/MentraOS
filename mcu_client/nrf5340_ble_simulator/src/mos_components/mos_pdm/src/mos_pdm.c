@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-08-25 15:47:30
+ * @LastEditTime : 2025-09-02 10:06:28
  * @FilePath     : mos_pdm.c
  * @Description  :
  *
@@ -10,10 +10,12 @@
  */
 
 // #include <bluetooth/audio/lc3.h>
-#include <nrfx_pdm.h>
 #include "mos_pdm.h"
-#include "bal_os.h"
+
+#include <nrfx_pdm.h>
 #include <zephyr/logging/log.h>
+
+#include "bal_os.h"
 
 #define LOG_MODULE_NAME MOS_LE_AUDIO
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -34,7 +36,6 @@ static volatile uint8_t fifo_tail = 0;  // 读指针（上层用）;read pointer
 #define NRF_GPIO_PIN_MAP(port, pin) (((port) << 5) | ((pin) & 0x1F))
 #define PDM_CLK                     NRF_GPIO_PIN_MAP(1, 12)
 #define PDM_DIN                     NRF_GPIO_PIN_MAP(1, 11)
-
 
 static inline bool fifo_push(const int16_t *src)
 {
@@ -152,24 +153,22 @@ uint32_t get_pdm_sample(int16_t *pdm_pcm_data, uint32_t pdm_pcm_szie)
                 (unsigned)pdm_pcm_szie);
         return MOS_OS_ERROR;  // 目标缓冲太小或空指针；Target buffer too small or null pointer
     }
-    // 等待中断回调把一帧放入FIFO（buffer_released时give）
-    // Wait for the interrupt callback to put a frame into the FIFO (give on buffer_released)
-    mos_sem_take(&pcmsem, MOS_OS_WAIT_FOREVER);
-
-    // 从FIFO弹出一帧（极少数竞态下可能为空，再尝试一次）
-    // Pop a frame from the FIFO (in very rare）
-    if (!fifo_pop(pdm_pcm_data))
+    for (;;)
     {
+        // 等待中断回调把一帧放入FIFO（buffer_released时give）
+        // Wait for the interrupt callback to put a frame into the FIFO (give on buffer_released)
+        mos_sem_take(&pcmsem, MOS_OS_WAIT_FOREVER);
+        // LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
+        if (fifo_pop(pdm_pcm_data))
+        {
+            return 0;// 成功取到一帧;Successfully got a frame
+        }
         // 理论上不会发生；保护性重试
         // This should not happen; protective retry
-        while (!fifo_pop(pdm_pcm_data))
-        {
-            /* 可根据系统情况选择yield或短延时 */
-            // Yield to other tasks or add a short delay
-        }
+        LOG_WRN("get_pdm_sample: fifo_pop failed, retrying...");
+        // k_sleep(K_MSEC(1));  // 短暂延迟; Short delay
     }
-
-    // LOG_INF("get_pdm_sample: %u", (unsigned)pdm_pcm_szie);
+   
     return 0;
 }
 
