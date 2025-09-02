@@ -3,8 +3,8 @@ import axios, {AxiosRequestConfig} from "axios"
 import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
-import {AppInterface} from "@/contexts/AppletStatusProvider"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
   onSuccess: (data: any) => void
@@ -13,14 +13,14 @@ interface Callback {
 
 export default class BackendServerComms {
   private static instance: BackendServerComms
-  private TAG = "MXT2_BackendServerComms"
+  private TAG = "BServerComms"
   private coreToken: string | null = null
 
   public async getServerUrl(): Promise<string> {
     const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
 
     if (customUrl && typeof customUrl === "string" && customUrl.trim() !== "") {
-      console.log(`${this.TAG}: Using custom backend URL: ${customUrl}`)
+      // console.log(`${this.TAG}: Using custom backend URL: ${customUrl}`)
       return customUrl
     }
 
@@ -66,7 +66,7 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Received gallery photos:", response.data)
+        // console.log("Received gallery photos:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
@@ -423,7 +423,7 @@ export default class BackendServerComms {
    * Fetch all available apps
    * @returns Promise with the apps data
    */
-  public async getApps(): Promise<AppInterface[]> {
+  public async getApps(): Promise<AppletInterface[]> {
     console.log(`${this.TAG}: getApps() called`)
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")
@@ -481,7 +481,7 @@ export default class BackendServerComms {
 
     const baseUrl = await this.getServerUrl()
     const url = `${baseUrl}/api/auth/${endpoint}`
-    console.log("Requesting webview token for:", packageName, "at URL:", url)
+    // console.log("Requesting webview token for:", packageName, "at URL:", url)
 
     const config: AxiosRequestConfig = {
       method: "POST",

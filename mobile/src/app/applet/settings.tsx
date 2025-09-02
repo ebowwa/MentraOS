@@ -22,7 +22,6 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -32,9 +31,9 @@ import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetti
 import NumberSetting from "@/components/settings/NumberSetting"
 import TimeSetting from "@/components/settings/TimeSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
-import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
+import {useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
@@ -77,8 +76,7 @@ export default function AppSettings() {
   const [serverAppInfo, setServerAppInfo] = useState<any>(null)
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
-  // Get app info from status
-  const {status} = useCoreStatus()
+
   const {
     appStatus,
     refreshAppStatus,
@@ -95,13 +93,13 @@ export default function AppSettings() {
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
 
+  // Check if we're in old UI mode
+  const [isOldUI, setIsOldUI] = useState(false)
+
   if (!packageName || typeof packageName !== "string") {
     console.error("No packageName found in params")
     return null
   }
-
-  // Check if we're in old UI mode
-  const [isOldUI, setIsOldUI] = useState(false)
 
   useEffect(() => {
     const checkUIMode = async () => {
@@ -113,7 +111,7 @@ export default function AppSettings() {
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
   useEffect(() => {
-    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true") {
+    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true" && appInfo?.isOnline !== false) {
       console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
       replace("/applet/webview", {
         webviewURL: appInfo.webviewURL,
@@ -123,21 +121,15 @@ export default function AppSettings() {
     }
   }, [appInfo, fromWebView, appName, packageName, replace, isOldUI])
 
-  // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
-      // Handle Android back button
       const onBackPress = () => {
-        // Always go back to home when back is pressed
         replace("/(tabs)/home")
         return true
       }
-
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
-
       return () => {
         BackHandler.removeEventListener("hardwareBackPress", onBackPress)
-        refreshAppStatus()
       }
     }, []),
   )
@@ -146,14 +138,35 @@ export default function AppSettings() {
   const handleStartStopApp = async () => {
     if (!appInfo) return
 
-    console.log(`${appInfo.is_running ? "Stopping" : "Starting"} app: ${packageName}`)
-
-    console.log("appInfo", appInfo.is_running)
-
     try {
       if (appInfo.is_running) {
         optimisticallyStopApp(packageName)
         return
+      }
+
+      // If the app appears offline, confirm before proceeding
+      if (appInfo.isOnline === false) {
+        const developerName = (
+          " " +
+          ((serverAppInfo as any)?.organization?.name ||
+            (appInfo as any).orgName ||
+            (appInfo as any).developerId ||
+            "") +
+          " "
+        ).replace("  ", " ")
+        const proceed = await new Promise<boolean>(resolve => {
+          // Use the shared alert utility
+          showAlert(
+            "App is down for maintenance",
+            `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+            [
+              {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
+              {text: "Try Anyway", onPress: () => resolve(true)},
+            ],
+            {iconName: "alert-circle-outline", iconColor: theme.colors.warning},
+          )
+        })
+        if (!proceed) return
       }
 
       if (!(await checkAppHealthStatus(appInfo.packageName))) {
@@ -233,98 +246,10 @@ export default function AppSettings() {
       {
         iconName: "delete-forever",
         iconSize: 48,
-        iconColor: theme.colors.destructiveAction,
+        iconColor: theme.colors.palette.angry600,
       },
     )
   }
-
-  // Add header button when webviewURL exists
-  useLayoutEffect(() => {
-    if (serverAppInfo?.webviewURL) {
-      // TODO2.0:
-      // navigation.setOptions({
-      //   headerRight: () => (
-      //     <View style={{marginRight: 8}}>
-      //       <FontAwesome.Button
-      //         name="globe"
-      //         size={22}
-      //         color={isDarkTheme ? "#FFFFFF" : "#000000"}
-      //         backgroundColor="transparent"
-      //         underlayColor="transparent"
-      //         onPress={() => {
-      //           navigation.replace("AppWebView", {
-      //             webviewURL: serverAppInfo.webviewURL,
-      //             appName: appName,
-      //             packageName: packageName,
-      //             fromSettings: true,
-      //           })
-      //         }}
-      //         style={{padding: 0, margin: 0}}
-      //         iconStyle={{marginRight: 0}}
-      //       />
-      //     </View>
-      //   ),
-      // })
-    }
-  }, [serverAppInfo, packageName, appName])
-
-  // Reset hasLoadedData when packageName changes
-  useEffect(() => {
-    hasLoadedData.current = false
-  }, [packageName])
-
-  // Fetch App settings on mount
-  useEffect(() => {
-    // Skip if we've already loaded data for this packageName
-    if (hasLoadedData.current) {
-      return
-    }
-
-    let isMounted = true
-    let debounceTimeout: NodeJS.Timeout
-
-    const loadCachedSettings = async () => {
-      const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
-      if (cached && isMounted) {
-        setServerAppInfo(cached.serverAppInfo)
-        setSettingsState(cached.settingsState)
-        setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
-        setSettingsLoading(false)
-
-        // Update appName from cached data if available
-        if (cached.serverAppInfo?.name) {
-          setAppName(cached.serverAppInfo.name)
-        }
-
-        // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
-        // if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
-        //   replace("/applet/webview", {
-        //     webviewURL: cached.serverAppInfo.webviewURL,
-        //     appName: appName,
-        //     packageName: packageName,
-        //   })
-        //   return
-        // }
-      } else {
-        setHasCachedSettings(false)
-        setSettingsLoading(true)
-      }
-    }
-
-    // Load cached settings immediately
-    loadCachedSettings()
-
-    // Debounce fetch to avoid redundant calls
-    debounceTimeout = setTimeout(() => {
-      fetchUpdatedSettingsInfo()
-      hasLoadedData.current = true
-    }, 150)
-
-    return () => {
-      isMounted = false
-      clearTimeout(debounceTimeout)
-    }
-  }, [])
 
   const fetchUpdatedSettingsInfo = async () => {
     // Only show skeleton if there are no cached settings
@@ -542,6 +467,94 @@ export default function AppSettings() {
     }
   }
 
+  // Add header button when webviewURL exists
+  useLayoutEffect(() => {
+    if (serverAppInfo?.webviewURL) {
+      // TODO2.0:
+      // navigation.setOptions({
+      //   headerRight: () => (
+      //     <View style={{marginRight: 8}}>
+      //       <FontAwesome.Button
+      //         name="globe"
+      //         size={22}
+      //         color={isDarkTheme ? "#FFFFFF" : "#000000"}
+      //         backgroundColor="transparent"
+      //         underlayColor="transparent"
+      //         onPress={() => {
+      //           navigation.replace("AppWebView", {
+      //             webviewURL: serverAppInfo.webviewURL,
+      //             appName: appName,
+      //             packageName: packageName,
+      //             fromSettings: true,
+      //           })
+      //         }}
+      //         style={{padding: 0, margin: 0}}
+      //         iconStyle={{marginRight: 0}}
+      //       />
+      //     </View>
+      //   ),
+      // })
+    }
+  }, [serverAppInfo, packageName, appName])
+
+  // Reset hasLoadedData when packageName changes
+  useEffect(() => {
+    hasLoadedData.current = false
+  }, [packageName])
+
+  // Fetch App settings on mount
+  useEffect(() => {
+    // Skip if we've already loaded data for this packageName
+    if (hasLoadedData.current) {
+      return
+    }
+
+    let isMounted = true
+    let debounceTimeout: NodeJS.Timeout
+
+    const loadCachedSettings = async () => {
+      const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+      if (cached && isMounted) {
+        setServerAppInfo(cached.serverAppInfo)
+        setSettingsState(cached.settingsState)
+        setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
+        setSettingsLoading(false)
+
+        // Update appName from cached data if available
+        if (cached.serverAppInfo?.name) {
+          setAppName(cached.serverAppInfo.name)
+        }
+
+        // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
+        // if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+        //   replace("/applet/webview", {
+        //     webviewURL: cached.serverAppInfo.webviewURL,
+        //     appName: appName,
+        //     packageName: packageName,
+        //   })
+        //   return
+        // }
+      } else {
+        setHasCachedSettings(false)
+        setSettingsLoading(true)
+      }
+    }
+
+    // Load cached settings immediately
+    loadCachedSettings()
+
+    // Debounce fetch to avoid redundant calls
+    debounceTimeout = setTimeout(() => {
+      fetchUpdatedSettingsInfo()
+      hasLoadedData.current = true
+    }, 150)
+
+    return () => {
+      isMounted = false
+      clearTimeout(debounceTimeout)
+    }
+  }, [])
+
   if (!appInfo) {
     // Optionally, you could render a fallback error or nothing
     return null
@@ -602,15 +615,15 @@ export default function AppSettings() {
             pointerEvents: "none",
           }}>
           <Text
-            text={appInfo?.name || appName}
             style={{
               fontSize: 17,
               fontWeight: "600",
               color: theme.colors.text,
             }}
             numberOfLines={1}
-            ellipsizeMode="tail"
-          />
+            ellipsizeMode="tail">
+            {appInfo?.name || (appName as string)}
+          </Text>
         </Animated.View>
       </View>
 
@@ -628,7 +641,7 @@ export default function AppSettings() {
         <View style={{gap: theme.spacing.lg}}>
           {/* Combined App Info and Action Section */}
           <View style={themed($topSection)}>
-            <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
+            <AppIcon app={appInfo} style={themed($appIconLarge)} />
 
             <View style={themed($rightColumn)}>
               <View style={themed($textContainer)}>
@@ -645,6 +658,24 @@ export default function AppSettings() {
               </View>
             </View>
           </View>
+
+          {appInfo.isOnline === false && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.spacing.xs,
+                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                borderRadius: 8,
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+              }}>
+              <FontAwesome name="warning" size={16} color={theme.colors.error} />
+              <Text style={{color: theme.colors.error, flex: 1}}>
+                This app appears to be offline. Some actions may not work.
+              </Text>
+            </View>
+          )}
 
           <Divider variant="full" />
 
@@ -702,11 +733,7 @@ export default function AppSettings() {
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.appType === "standard"
-                    ? "Foreground"
-                    : appInfo?.appType === "background"
-                      ? "Background"
-                      : "-"
+                  appInfo?.type === "standard" ? "Foreground" : appInfo?.type === "background" ? "Background" : "-"
                 }
                 showDivider={false}
               />

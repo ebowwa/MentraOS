@@ -1720,20 +1720,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // Adding apps array
             JSONArray apps = new JSONArray();
 
-//            for (ThirdPartyEdgeApp app : edgeAppSystem.getThirdPartyApps()) {
-//                if(app.appType != ThirdPartyAppType.APP) continue;
-//
-//                JSONObject appObj = app.toJson(false);
-//                appObj.put("is_running", edgeAppSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
-//                appObj.put("is_foreground", edgeAppSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
-//                apps.put(appObj);
-//            }
-
             // Check if cachedThirdPartyAppList is not null before iterating
             if (cachedThirdPartyAppList != null) {
                 for (ThirdPartyCloudApp app : cachedThirdPartyAppList) {
                     JSONObject appObj = app.toJson(false);
-                    appObj.put("is_foreground", false);//appSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
                     apps.put(appObj);
                 }
             }

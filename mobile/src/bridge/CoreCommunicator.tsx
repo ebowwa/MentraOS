@@ -12,7 +12,8 @@ import BleManager from "react-native-ble-manager"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser from "@/utils/AugmentOSStatusParser"
+import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
+import ServerComms from "@/services/ServerComms"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -186,7 +187,8 @@ export class CoreCommunicator extends EventEmitter {
 
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
-    await this.setServerUrl(backendServerUrl)
+    await this.setServerUrl(backendServerUrl) // todo: config: remove
+    await ServerComms.getInstance().setServerUrl(backendServerUrl) // todo: config: remove
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -352,6 +354,7 @@ export class CoreCommunicator extends EventEmitter {
       if (!("type" in data)) {
         return
       }
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -367,8 +370,23 @@ export class CoreCommunicator extends EventEmitter {
         case "audio_stop_request":
           await AudioPlayService.stopAllAudio()
           break
+        case "wifi_scan_results":
+          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
+            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
+            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
+          })
+          break
         case "pair_failure":
           GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
+          break
+        case "show_banner":
+          GlobalEventEmitter.emit("SHOW_BANNER", {
+            message: data.message,
+            type: data.type,
+          })
+          break
+        case "ws_text":
+          ServerComms.getInstance().sendText(data.text)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -376,7 +394,7 @@ export class CoreCommunicator extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
+      this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
     }
   }
 
@@ -779,16 +797,18 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
-  async setAuthenticationSecretKey(userId: string, authSecretKey: string) {
+  // TODO: config: remove
+  async setAuthCreds(coreToken: string, userId: string) {
     return await this.sendData({
       command: "set_auth_secret_key",
       params: {
         userId: userId,
-        authSecretKey: authSecretKey,
+        authSecretKey: coreToken,
       },
     })
   }
 
+  // TODO: config: remove
   async setServerUrl(url: string) {
     return await this.sendData({
       command: "set_server_url",

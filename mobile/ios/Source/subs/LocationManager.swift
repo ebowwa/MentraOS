@@ -9,15 +9,14 @@ import CoreLocation
 import Foundation
 
 class LocationManager: NSObject, CLLocationManagerDelegate {
+    static let shared = LocationManager()
+
     private let locationManager = CLLocationManager()
-    private var locationChangedCallback: (() -> Void)?
     private var currentLocation: CLLocation?
     private var currentCorrelationId: String?
 
-    override init() {
+    override private init() {
         super.init()
-        // delay setup until after login:
-        // setup()
     }
 
     // porter test
@@ -34,10 +33,6 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         locationManager.startUpdatingLocation()
     }
 
-    func setLocationChangedCallback(_ callback: @escaping () -> Void) {
-        locationChangedCallback = callback
-    }
-
     // MARK: - CLLocationManagerDelegate Methods
 
     func locationManager(_: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -51,7 +46,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
             Core.log("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
 
             // Notify ServerComms to send the update to the cloud
-            ServerComms.getInstance().sendLocationUpdate(
+            ServerComms.shared.sendLocationUpdate(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 accuracy: location.horizontalAccuracy,

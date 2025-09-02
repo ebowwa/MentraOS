@@ -410,7 +410,7 @@ export default function GlassesMirrorFullscreen() {
                 <View
                   style={[
                     styles.badgeContainer,
-                    {backgroundColor: theme.colors.badgeBackground, borderColor: theme.colors.fullscreenOverlay},
+                    {backgroundColor: theme.colors.palette.angry600, borderColor: theme.colors.fullscreenOverlay},
                   ]}>
                   <Text style={[styles.badgeText, {color: theme.colors.icon}]}>{recordingCount}</Text>
                 </View>
@@ -419,9 +419,7 @@ export default function GlassesMirrorFullscreen() {
           )}
 
           {/* Simulated glasses controls - only show for simulated glasses */}
-          {status.glasses_info?.model_name?.includes("Simulated") && (
-            <SimulatedGlassesControls theme={theme} insets={insets} />
-          )}
+          {status.glasses_info?.model_name?.includes("Simulated") && <SimulatedGlassesControls />}
         </View>
       ) : (
         <View style={[styles.fallbackContainer, {backgroundColor: theme.colors.galleryBackground}]}>

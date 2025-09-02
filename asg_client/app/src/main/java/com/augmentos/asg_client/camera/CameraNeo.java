@@ -1567,7 +1567,7 @@ public class CameraNeo extends LifecycleService {
                                 Log.d(TAG, "Camera ready, processing " + globalRequestQueue.size() + " queued requests");
                                 // Don't call processNextPhotoRequest here as it might try to reopen camera
                                 // Instead, start the preview and then trigger the first photo
-                                PhotoRequest firstRequest = globalRequestQueue.peek();
+                                PhotoRequest firstRequest = globalRequestQueue.poll(); // Changed from peek() to poll() to remove from queue
                                 if (firstRequest != null) {
                                     // Set up for the first queued photo
                                     if (firstRequest.callback == null && callbackRegistry.containsKey(firstRequest.requestId)) {
@@ -1576,6 +1576,8 @@ public class CameraNeo extends LifecycleService {
                                     sPhotoCallback = firstRequest.callback;
                                     pendingPhotoPath = firstRequest.filePath;
                                     pendingRequestedSize = firstRequest.size;
+                                    // Store LED state from request
+                                    pendingLedEnabled = firstRequest.enableLed;
                                 }
                             }
                         }

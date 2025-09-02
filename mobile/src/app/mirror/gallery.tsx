@@ -734,7 +734,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  // Removed shareButton and deleteButton hardcoded colors - using VideoItem/PhotoItem components with theme support
 })
 
 export default GlassesRecordingsGallery

@@ -481,6 +481,14 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         return false;
                     }
                 }
+                
+                @Override
+                public boolean isBleTransferInProgress() {
+                    if (bluetoothManager != null) {
+                        return bluetoothManager.isFileTransferInProgress();
+                    }
+                    return false;
+                }
             });
         }
     }

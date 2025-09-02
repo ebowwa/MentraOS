@@ -1,14 +1,23 @@
 import React, {useEffect, useState, useRef} from "react"
-import {View, Text, ActivityIndicator, StyleSheet, Platform, TouchableOpacity, Animated, TextStyle} from "react-native"
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  Platform,
+  TouchableOpacity,
+  Animated,
+  TextStyle,
+  ViewStyle,
+} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useNavigation} from "@react-navigation/native"
 import {useAuth} from "@/contexts/AuthContext"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Button from "@/components/misc/Button"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
@@ -16,6 +25,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {router} from "expo-router"
+import ServerComms from "@/services/ServerComms"
 
 export default function CoreTokenExchange() {
   const {status} = useCoreStatus()
@@ -24,7 +34,7 @@ export default function CoreTokenExchange() {
   const [isLoading, setIsLoading] = useState(false)
   const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
   const [errorMessage, setErrorMessage] = useState(
-    "Connection to AugmentOS failed. Please check your connection and try again.",
+    "Connection to MentraOS failed. Please check your connection and try again.",
   )
   const hasAttemptedConnection = useRef(false)
   const loadingOverlayOpacity = useRef(new Animated.Value(1)).current
@@ -64,16 +74,12 @@ export default function CoreTokenExchange() {
 
       // Exchange token with backend
       const backend = BackendServerComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken).catch(err => {
-        // Hide console.error output
-        // Log only if needed for debugging
-        // console.error('Token exchange failed:', err);
-        throw err
-      })
+      const coreToken = await backend.exchangeToken(supabaseToken)
 
       const uid = user.email || user.id
-      coreCommunicator.setAuthenticationSecretKey(uid, coreToken)
-      BackendServerComms.getInstance().setCoreToken(coreToken)
+      coreCommunicator.setAuthCreds(coreToken, uid) // TODO: config: remove
+      // const serverComms = ServerComms.getInstance()
+      // serverComms.setAuthCreds(coreToken, uid)
 
       // Navigate
       // Check if the user has completed onboarding
@@ -122,7 +128,7 @@ export default function CoreTokenExchange() {
     if (connectionError || hasAttemptedConnection.current) return
 
     // We only proceed once the core is connected, the user is loaded, etc.
-    if (/*TODO2.0: status.core_info.puck_connected && */ !authLoading && user) {
+    if (!authLoading && user) {
       // Track that we've attempted a connection
       hasAttemptedConnection.current = true
 
@@ -157,8 +163,8 @@ export default function CoreTokenExchange() {
   if (!connectionError) {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
-        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
+        <View style={themed($loadingContainer)}>
+          <ActivityIndicator size="large" color={theme.colors.text} />
           <Text style={themed($loadingText)}>{translate("login:connectingToServer")}</Text>
         </View>
       </Screen>
@@ -167,26 +173,21 @@ export default function CoreTokenExchange() {
 
   // Error screen (similar to VersionUpdateScreen)
   return (
-    <Screen preset="fixed" style={{flex: 1, justifyContent: "center", alignItems: "center"}} safeAreaEdges={["bottom"]}>
-      <View style={styles.mainContainer}>
-        <View style={styles.infoContainer}>
-          <View style={styles.iconContainer}>
+    <Screen preset="fixed" style={themed($screenContainer)} safeAreaEdges={["bottom"]}>
+      <View style={themed($mainContainer)}>
+        <View style={themed($infoContainer)}>
+          <View style={themed($iconContainer)}>
             <Icon name="wifi-off" size={80} color={theme.colors.error} />
           </View>
 
-          <Text style={[styles.title, {color: theme.colors.text}]}>{translate("login:connectionError")}</Text>
+          <Text style={themed($title)}>{translate("login:connectionError")}</Text>
 
-          <Text style={[styles.description, {color: theme.colors.textDim}]}>{errorMessage}</Text>
+          <Text style={themed($description)}>{errorMessage}</Text>
         </View>
 
-        <View style={styles.setupContainer}>
+        <View style={themed($setupContainer)}>
           {isUsingCustomUrl && (
-            <Button
-              onPress={handleResetUrl}
-              isDarkTheme={theme.isDark}
-              disabled={isLoading}
-              iconName="refresh"
-              style={styles.resetButton}>
+            <Button onPress={handleResetUrl} disabled={isLoading} iconName="refresh" style={themed($resetButton)}>
               Reset to Default URL
             </Button>
           )}
@@ -200,86 +201,68 @@ export default function CoreTokenExchange() {
   )
 }
 
+// Themed styles
+const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
 const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginTop: spacing.md,
   fontSize: 16,
   color: colors.text,
 })
 
-const styles = StyleSheet.create({
-  authLoadingIndicator: {
-    marginBottom: 16,
-  },
-  authLoadingLogoPlaceholder: {
-    height: 100,
-    marginBottom: 20,
-    width: 100,
-  },
-  authLoadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // backgroundColor: "rgba(255, 255, 255, 0.9)",
-    zIndex: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  authLoadingText: {
-    fontSize: 16,
-    fontFamily: "Montserrat-Medium",
-    // color moved to themed style
-    textAlign: "center",
-  },
-  container: {
-    flex: 1,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 32,
-    paddingHorizontal: 24,
-    textAlign: "center",
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  infoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 180,
-    height: 400,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 16,
-  },
-  mainContainer: {
-    flex: 1,
-    flexDirection: "column",
-    justifyContent: "flex-start",
-    padding: 24,
-  },
-  setupContainer: {
-    alignItems: "center",
-    paddingBottom: 40,
-    width: "100%",
-    marginTop: "auto",
-  },
-  title: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 28,
-    textAlign: "center",
-  },
-  resetButton: {
-    marginBottom: 16,
-  },
-  // Removed hardcoded color styles - now using theme dynamic colors
+const $screenContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $mainContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  flexDirection: "column",
+  justifyContent: "flex-start",
+  padding: spacing.lg,
+})
+
+const $infoContainer: ThemedStyle<ViewStyle> = () => ({
+  alignItems: "center",
+  justifyContent: "center",
+  paddingTop: 180,
+  height: 400,
+})
+
+const $iconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.xl,
+})
+
+const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontFamily: "Montserrat-Bold",
+  fontSize: 28,
+  fontWeight: "bold",
+  marginBottom: spacing.lg,
+  textAlign: "center",
+  color: colors.text,
+})
+
+const $description: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  lineHeight: 24,
+  marginBottom: spacing.xl,
+  paddingHorizontal: spacing.lg,
+  textAlign: "center",
+  color: colors.textDim,
+})
+
+const $setupContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  paddingBottom: spacing.xxl,
+  width: "100%",
+  marginTop: "auto",
+})
+
+const $resetButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.md,
 })

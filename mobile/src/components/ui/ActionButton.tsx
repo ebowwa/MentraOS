@@ -50,7 +50,7 @@ export default function ActionButton({
       case "warning":
         return theme.colors.palette.accent100
       case "destructive":
-        return theme.colors.destructiveAction
+        return theme.colors.palette.angry600
       case "secondary":
         return theme.colors.textDim
       default:

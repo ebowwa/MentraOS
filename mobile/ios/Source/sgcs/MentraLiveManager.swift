@@ -1894,19 +1894,31 @@ typealias JSONObject = [String: Any]
     // MARK: - Status Requests
 
     private func requestBatteryStatus() {
+        // cs_batv is a K900 protocol command handled directly by BES2700
+        // It doesn't go through MTK Android, so it doesn't use ACK system
+        guard let peripheral = connectedPeripheral,
+              let txChar = txCharacteristic
+        else {
+            Core.log("Cannot send battery request - not connected")
+            return
+        }
+
         let json: [String: Any] = [
             "C": "cs_batv",
             "V": 1,
             "B": "",
-            "mId": globalMessageId,
         ]
-        globalMessageId += 1
 
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: json)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) ?? Data()
-                queueSend(packedData, id: String(globalMessageId - 1))
+                Core.log("Sending battery request: \(jsonString)")
+                if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
+                    // Send directly without ACK tracking (like Android's queueData)
+                    // BES will respond with sr_batv, not msg_ack
+                    peripheral.writeValue(packedData, for: txChar, type: .withResponse)
+                    Core.log("Sent cs_batv without ACK tracking (BES-handled command)")
+                }
             }
         } catch {
             Core.log("Error creating K900 battery request: \(error)")
@@ -2070,7 +2082,7 @@ typealias JSONObject = [String: Any]
                 "timestamp": Date().timeIntervalSince1970 * 1000,
             ],
         ]
-        emitEvent("ImuDataEvent", body: eventBody)
+        Core.sendTypedMessage("imu_data_event", body: eventBody)
     }
 
     private func handleStreamImuData(_ json: [String: Any]) {
@@ -2101,7 +2113,7 @@ typealias JSONObject = [String: Any]
                 "timestamp": timestamp,
             ],
         ]
-        emitEvent("ImuGestureEvent", body: eventBody)
+        Core.sendTypedMessage("imu_gesture_event", body: eventBody)
     }
 
     // MARK: - Update Methods
@@ -2145,7 +2157,7 @@ typealias JSONObject = [String: Any]
             "total_size": totalSize,
             "has_content": hasContent,
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_gallery_status", body: eventBody)
     }
 
     // MARK: - Timers
@@ -2211,9 +2223,18 @@ typealias JSONObject = [String: Any]
     }
 
     private func requestReadyK900() {
+        // cs_hrt is a K900 protocol command handled directly by BES2700
+        // It doesn't go through MTK Android, so it doesn't use ACK system
+        guard let peripheral = connectedPeripheral,
+              let txChar = txCharacteristic
+        else {
+            Core.log("Cannot send readiness check - not connected")
+            return
+        }
+
         let cmdObject: [String: Any] = [
-            "C": "cs_hrt", // Video command
-            "B": "", // Add the body
+            "C": "cs_hrt", // Heartbeat command for BES2700
+            "B": "", // Empty body
         ]
 
         do {
@@ -2222,12 +2243,14 @@ typealias JSONObject = [String: Any]
                 Core.log("Sending hrt command: \(jsonStr)")
 
                 if let packedData = packDataToK900(jsonData, cmdType: K900ProtocolUtils.CMD_TYPE_STRING) {
-                    queueSend(packedData, id: String(globalMessageId))
-                    globalMessageId += 1
+                    // Send directly without ACK tracking (like Android's queueData)
+                    // BES will respond with sr_hrt, not msg_ack
+                    peripheral.writeValue(packedData, for: txChar, type: .withResponse)
+                    Core.log("Sent cs_hrt without ACK tracking (BES-handled command)")
                 }
             }
         } catch {
-            Core.log("Error creating video command: \(error)")
+            Core.log("Error creating readiness check command: \(error)")
         }
     }
 
@@ -2278,7 +2301,7 @@ typealias JSONObject = [String: Any]
             ],
         ]
 
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("compatible_glasses_search_result", body: eventBody)
     }
 
     private func emitStopScanEvent() {
@@ -2286,8 +2309,6 @@ typealias JSONObject = [String: Any]
             "type": "glasses_bluetooth_search_stop",
             "device_model": "Mentra Live",
         ]
-
-        // emitEvent("GlassesBluetoothSearchStopEvent", body: eventBody)
     }
 
     // private func emitBatteryLevelEvent(level: Int, charging: Bool) {
@@ -2295,7 +2316,6 @@ typealias JSONObject = [String: Any]
     //     "battery_level": level,
     //     "is_charging": charging
     //   ]
-
     //   emitEvent("BatteryLevelEvent", body: eventBody)
     // }
 
@@ -2305,7 +2325,7 @@ typealias JSONObject = [String: Any]
             "ssid": wifiSsid,
             "local_ip": wifiLocalIp,
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_wifi_status_change", body: eventBody)
     }
 
     private func emitHotspotStatusChange() {
@@ -2315,12 +2335,12 @@ typealias JSONObject = [String: Any]
             "password": hotspotPassword,
             "local_ip": hotspotGatewayIp, // Using gateway IP for consistency with Android
         ]]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("glasses_hotspot_status_change", body: eventBody)
     }
 
     private func emitWifiScanResult(_ networks: [String]) {
         let eventBody = ["wifi_scan_results": networks]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("wifi_scan_results", body: eventBody)
     }
 
     private func emitWifiScanResultEnhanced(_ enhancedNetworks: [[String: Any]], legacyNetworks: [String]) {
@@ -2328,11 +2348,11 @@ typealias JSONObject = [String: Any]
             "wifi_scan_results": legacyNetworks, // Backwards compatibility
             "wifi_scan_results_enhanced": enhancedNetworks, // Enhanced format with security info
         ]
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("wifi_scan_results", body: eventBody)
     }
 
     private func emitRtmpStreamStatus(_ json: [String: Any]) {
-        emitEvent("RtmpStreamStatusEvent", body: json)
+        Core.sendTypedMessage("rtmp_stream_status", body: json)
     }
 
     private func emitButtonPress(buttonId: String, pressType: String, timestamp: Int64) {
@@ -2355,30 +2375,11 @@ typealias JSONObject = [String: Any]
             "ota_version_url": otaVersionUrl,
         ]
 
-        emitEvent("CoreMessageEvent", body: eventBody)
+        Core.sendTypedMessage("version_info", body: eventBody)
     }
 
     private func emitKeepAliveAck(_ json: [String: Any]) {
-        emitEvent("KeepAliveAckEvent", body: json)
-    }
-
-    private func emitEvent(_ eventName: String, body: [String: Any]) {
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                if eventName == "CoreMessageEvent" {
-                    Core.sendEvent(withName: eventName, body: jsonString)
-                    return
-                }
-                if eventName == "GlassesWifiScanResults" {
-                    Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                    return
-                }
-                Core.log("Would emit event: \(eventName) with body: \(jsonString)")
-            }
-        } catch {
-            Core.log("Error converting event to JSON: \(error)")
-        }
+        Core.sendTypedMessage("keep_alive_ack", body: json)
     }
 
     // MARK: - Cleanup
@@ -2683,13 +2684,13 @@ extension MentraLiveManager {
 
         let json: [String: Any] = [
             "type": "button_video_recording_setting",
-            "settings": [
+            "params": [
                 "width": finalWidth,
                 "height": finalHeight,
                 "fps": finalFps,
             ],
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonPhotoSettings() {
@@ -2706,7 +2707,7 @@ extension MentraLiveManager {
             "type": "button_photo_setting",
             "size": size,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func sendButtonCameraLedSetting() {
@@ -2723,7 +2724,7 @@ extension MentraLiveManager {
             "type": "button_camera_led",
             "enabled": enabled,
         ]
-        sendJson(json)
+        sendJson(json, wakeUp: true)
     }
 
     func startVideoRecording(requestId: String, save: Bool) {

@@ -5,7 +5,7 @@ import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray,
 import * as SystemUI from "expo-system-ui"
 import * as NavigationBar from "expo-navigation-bar"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts

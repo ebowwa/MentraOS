@@ -23,7 +23,7 @@ class Core: RCTEventEmitter {
     }
 
     static func log(_ message: String) {
-        print(message)
+        // print(message)
         let msg = "SWIFT:\(message)"
         emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
     }
@@ -33,36 +33,41 @@ class Core: RCTEventEmitter {
     }
 
     static func showBanner(type: String, message: String) {
-        let data = ["notify_manager":
-            ["type": type, "message": message]] as [String: Any]
-        let jsonData = try! JSONSerialization.data(withJSONObject: data)
-        let jsonString = String(data: jsonData, encoding: .utf8)
-        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+        let data = ["type": type, "message": message] as [String: Any]
+        Core.sendTypedMessage("show_banner", body: data)
     }
 
     static func sendAppStartedEvent(_ packageName: String) {
-        let msg = ["type": "app_started", "packageName": packageName]
-        let jsonData = try! JSONSerialization.data(withJSONObject: msg)
-        let jsonString = String(data: jsonData, encoding: .utf8)
-        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+        let data = ["packageName": packageName]
+        Core.sendTypedMessage("app_started", body: data)
     }
 
     static func sendAppStoppedEvent(_ packageName: String) {
-        let msg = ["type": "app_stopped", "packageName": packageName]
-        let jsonData = try! JSONSerialization.data(withJSONObject: msg)
-        let jsonString = String(data: jsonData, encoding: .utf8)
-        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+        let data = ["packageName": packageName]
+        Core.sendTypedMessage("app_stopped", body: data)
     }
 
     static func sendPairFailureEvent(_ error: String) {
-        let msg = ["type": "pair_failure", "error": error]
-        let jsonData = try! JSONSerialization.data(withJSONObject: msg, options: [])
-        let jsonString = String(data: jsonData, encoding: .utf8)
-        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+        let data = ["error": error]
+        Core.sendTypedMessage("pair_failure", body: data)
     }
 
     override func supportedEvents() -> [String] {
         // add more as needed
-        return ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent", "WIFI_SCAN_RESULTS"]
+        return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
+    }
+
+    // WS Comms:
+    static func sendWSText(_ msg: String) {
+        let data = ["text": msg]
+        Core.sendTypedMessage("ws_text", body: data)
+    }
+
+    static func sendTypedMessage(_ type: String, body: [String: Any]) {
+        var body = body
+        body["type"] = type
+        let jsonData = try! JSONSerialization.data(withJSONObject: body)
+        let jsonString = String(data: jsonData, encoding: .utf8)
+        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
     }
 }

@@ -33,6 +33,18 @@ export default defineConfig([
       "@typescript-eslint/no-empty-object-type": "warn",
       "@typescript-eslint/no-require-imports": "warn",
       "prefer-const": "warn",
+      // "@typescript-eslint/naming-convention": [
+      //   "error",
+      //   {selector: "default", format: ["camelCase"]},
+      //   {selector: "variableLike", format: ["camelCase"]},
+      //   {selector: "variable", format: ["camelCase", "UPPER_CASE"]},
+      //   {selector: "parameter", format: ["camelCase"], leadingUnderscore: "allow"},
+      //   {selector: "memberLike", format: ["camelCase"]},
+      //   // {selector: "memberLike", modifiers: ["private"], format: ["camelCase"], leadingUnderscore: "require"},
+      //   {selector: "typeLike", format: ["PascalCase"]},
+      //   {selector: "typeParameter", format: ["PascalCase"], prefix: ["T"]},
+      //   {selector: "interface", format: ["PascalCase"], custom: {regex: "^I[A-Z]", match: false}},
+      // ],
     },
   },
 ])

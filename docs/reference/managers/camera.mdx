@@ -6,9 +6,9 @@ The Camera Module provides comprehensive camera functionality, including photo c
 
 The Camera Module is part of the App Session and provides three main capabilities:
 
-- **📸 Photo Capture**: Request individual photos from smart glasses
-- **📹 Managed Streaming**: Zero-infrastructure streaming with automatic HLS/DASH URLs
-- **🔧 Unmanaged Streaming**: Full-control streaming to custom RTMP endpoints
+- **Photo Capture**: Request individual photos from smart glasses
+- **Managed Streaming**: Zero-infrastructure streaming with automatic HLS/DASH URLs
+- **Unmanaged Streaming**: Full-control streaming to custom RTMP endpoints
 
 Access the camera module through your app session:
 
@@ -129,6 +129,8 @@ interface ManagedStreamOptions {
   audio?: AudioConfig;
   /** Optional stream configuration settings */
   stream?: StreamConfig;
+  /** Optional RTMP destinations to re-stream to (e.g., YouTube, Twitch) */
+  restreamDestinations?: { url: string; name?: string }[];
 }
 ```
 
@@ -144,6 +146,10 @@ interface ManagedStreamResult {
   webrtcUrl?: string;
   /** Internal stream ID */
   streamId: string;
+  /** Cloud-hosted preview/player URL (for quick embedding and testing) */
+  previewUrl?: string;
+  /** Thumbnail image URL for previews */
+  thumbnailUrl?: string;
 }
 ```
 
@@ -237,15 +243,15 @@ const streamCheck = await session.camera.checkExistingStream();
 
 if (streamCheck.hasActiveStream) {
   console.log(`Found existing ${streamCheck.streamInfo?.type} stream`);
-  
+
   if (streamCheck.streamInfo?.type === 'managed') {
     // Managed stream is active - can display URLs or join it
     console.log('HLS URL:', streamCheck.streamInfo.hlsUrl);
     console.log('Active viewers:', streamCheck.streamInfo.activeViewers);
-    
+
     // Option 1: Display the existing stream info
-    session.layouts.showTextWall(`📺 Stream active!\nHLS: ${streamCheck.streamInfo.hlsUrl}`);
-    
+    session.layouts.showTextWall(`Stream active.\nHLS: ${streamCheck.streamInfo.hlsUrl}`);
+
     // Option 2: Join the existing managed stream
     // (Managed streams support multiple apps)
     const result = await session.camera.startManagedStream();
@@ -253,7 +259,7 @@ if (streamCheck.hasActiveStream) {
     // Unmanaged stream is active - cannot start another
     console.log('RTMP URL:', streamCheck.streamInfo.rtmpUrl);
     console.log('Requested by:', streamCheck.streamInfo.requestingAppId);
-    
+
     session.layouts.showTextWall('⚠️ Another app is currently streaming');
   }
 } else {
@@ -519,12 +525,12 @@ getStreamStatus(): RtmpStreamStatus | undefined
 
 | Feature | Managed Streaming | Unmanaged Streaming |
 |---------|------------------|---------------------|
-| **Infrastructure Required** | ❌ None | ✅ RTMP Server |
+| **Infrastructure Required** | None | RTMP Server |
 | **Multiple Apps Can Stream** | ✅ Yes | ❌ No (Exclusive) |
 | **Blocks Other Apps** | ❌ No | ✅ Yes |
-| **Setup Complexity** | 🟢 Easy | 🔴 Complex |
 | **Viewer URLs Provided** | ✅ HLS/DASH/WebRTC | ❌ You manage |
 | **Best For** | Social media, prototypes, multi-app scenarios | Custom servers, exclusive access |
+| **Requires Internet** | Yes | No |
 
 ## Error Handling
 

@@ -25,6 +25,8 @@ import {
   Package,
   Smartphone,
   X,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import api from "../services/api.service";
 import { StatusBadge, UptimeStatus } from "@/components/ui/upTime";
@@ -80,6 +82,44 @@ interface AppDetail {
   reviewNotes?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  // Extended fields available from the admin app detail endpoint
+  publicUrl?: string;
+  webviewURL?: string;
+  tools?: Array<{
+    id: string;
+    description: string;
+    activationPhrases?: string[];
+    parameters?: Record<
+      string,
+      {
+        type: string;
+        description: string;
+        enum?: string[];
+        required?: boolean;
+      }
+    >;
+  }>;
+  settings?: Array<{
+    type: string;
+    key?: string;
+    label?: string;
+    title?: string;
+    defaultValue?: unknown;
+    value?: unknown;
+    options?: Array<{ label: string; value: unknown }>;
+    min?: number;
+    max?: number;
+    maxLines?: number;
+  }>;
+  permissions?: Array<{
+    type: string;
+    description?: string;
+  }>;
+  hardwareRequirements?: Array<{
+    type: string;
+    level: string;
+    description?: string;
+  }>;
 }
 
 const AdminPanel: React.FC = () => {
@@ -108,6 +148,14 @@ const AdminPanel: React.FC = () => {
 
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  // Install/uninstall state for the selected app in the review dialog
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [isInstalledForUser, setIsInstalledForUser] = useState<boolean | null>(
+    null,
+  );
+  // Collapsible sections state (collapsed by default)
+  const [showTools, setShowTools] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
@@ -420,12 +468,31 @@ const AdminPanel: React.FC = () => {
   }
 
   // Ui doodoo
+  /**
+   * Open the app review dialog by fetching full app details and
+   * checking whether the app is installed for the current user.
+   */
   const openAppReview = async (packageName: string) => {
     try {
       const appData = await api.admin.getAppDetail(packageName);
       setSelectedApp(appData);
       setReviewNotes("");
       setOpenReviewDialog(true);
+      // Reset collapsibles to default collapsed state on open
+      setShowTools(false);
+      setShowSettings(false);
+
+      // Determine installation status for the logged-in user
+      try {
+        const installed = await api.userApps.getInstalledApps();
+        const isInstalled = Array.isArray(installed)
+          ? installed.some((app: any) => app.packageName === packageName)
+          : false;
+        setIsInstalledForUser(isInstalled);
+      } catch (err) {
+        console.error("Failed to fetch installed apps for user:", err);
+        setIsInstalledForUser(null);
+      }
     } catch (error) {
       console.error("Error loading app details:", error);
       alert("Error loading app details. Please try again.");
@@ -467,6 +534,38 @@ const AdminPanel: React.FC = () => {
       alert("Failed to reject app. Please try again.");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  /**
+   * Install or uninstall the currently selected app for the logged-in user.
+   */
+  const handleInstallToggle = async () => {
+    if (!selectedApp || isInstalling) return;
+    setIsInstalling(true);
+    try {
+      if (isInstalledForUser) {
+        const ok = await api.userApps.uninstallApp(selectedApp.packageName);
+        if (ok) {
+          setIsInstalledForUser(false);
+          alert("App uninstalled for current user");
+        } else {
+          alert("Failed to uninstall app for current user");
+        }
+      } else {
+        const ok = await api.userApps.installApp(selectedApp.packageName);
+        if (ok) {
+          setIsInstalledForUser(true);
+          alert("App installed for current user");
+        } else {
+          alert("Failed to install app for current user");
+        }
+      }
+    } catch (err) {
+      console.error("Install/uninstall error:", err);
+      alert("Operation failed. See console for details.");
+    } finally {
+      setIsInstalling(false);
     }
   };
 
@@ -929,7 +1028,7 @@ const AdminPanel: React.FC = () => {
                         {filteredApps.map((app) => (
                           <div
                             key={app._id}
-                            className="py-4 flex justify-between items-center 
+                            className="py-4 flex justify-between items-center
                           hover:bg-gray-50 cursor-pointer transition-colors px-4"
                             onClick={() => {
                               setChosenAppStatus(app.name);
@@ -1145,7 +1244,7 @@ const AdminPanel: React.FC = () => {
 
         {/* App Review Dialog */}
         <Dialog open={openReviewDialog} onOpenChange={setOpenReviewDialog}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Review App Submission</DialogTitle>
               <DialogDescription>
@@ -1185,6 +1284,144 @@ const AdminPanel: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Server & Webview URLs */}
+                <div className="grid grid-cols-1 gap-2">
+                  {selectedApp.publicUrl && (
+                    <div className="text-sm">
+                      <span className="font-medium">Server URL: </span>
+                      <a
+                        href={selectedApp.publicUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {selectedApp.publicUrl}
+                      </a>
+                    </div>
+                  )}
+                  {selectedApp.webviewURL && (
+                    <div className="text-sm">
+                      <span className="font-medium">Webview URL: </span>
+                      <a
+                        href={selectedApp.webviewURL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {selectedApp.webviewURL}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tools - Collapsible (default collapsed) */}
+                {selectedApp.tools && selectedApp.tools.length > 0 && (
+                  <div>
+                    <Button
+                      variant="ghost"
+                      className="px-0 h-auto text-base font-medium flex items-center gap-2"
+                      onClick={() => setShowTools((v) => !v)}
+                    >
+                      {showTools ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      Tools ({selectedApp.tools.length})
+                    </Button>
+                    {showTools && (
+                      <div className="mt-2 space-y-2">
+                        {selectedApp.tools.map((tool) => (
+                          <div key={tool.id} className="text-sm">
+                            <div className="font-medium">{tool.id}</div>
+                            <div className="text-gray-600">
+                              {tool.description}
+                            </div>
+                            {tool.activationPhrases &&
+                              tool.activationPhrases.length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  Activation:{" "}
+                                  {tool.activationPhrases.join(", ")}
+                                </div>
+                              )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Settings - Collapsible (default collapsed) */}
+                {selectedApp.settings && selectedApp.settings.length > 0 && (
+                  <div>
+                    <Button
+                      variant="ghost"
+                      className="px-0 h-auto text-base font-medium flex items-center gap-2"
+                      onClick={() => setShowSettings((v) => !v)}
+                    >
+                      {showSettings ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      Settings ({selectedApp.settings.length})
+                    </Button>
+                    {showSettings && (
+                      <div className="mt-2 space-y-1 text-sm">
+                        {selectedApp.settings.map((s, idx) => (
+                          <div
+                            key={`${s.key || s.title || s.label || idx}`}
+                            className="flex gap-2"
+                          >
+                            <div className="font-medium">
+                              {s.title || s.label || s.key || s.type}
+                            </div>
+                            <div className="text-gray-600">{s.type}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Permissions */}
+                {selectedApp.permissions &&
+                  selectedApp.permissions.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-1">Permissions</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedApp.permissions.map((p, idx) => (
+                          <Badge key={`${p.type}-${idx}`} variant="outline">
+                            {p.type}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Hardware Requirements */}
+                {selectedApp.hardwareRequirements &&
+                  selectedApp.hardwareRequirements.length > 0 && (
+                    <div>
+                      <h4 className="font-medium mb-1">
+                        Hardware Requirements
+                      </h4>
+                      <div className="space-y-1 text-sm">
+                        {selectedApp.hardwareRequirements.map((h, idx) => (
+                          <div key={`${h.type}-${idx}`} className="flex gap-2">
+                            <div className="font-medium">{h.type}</div>
+                            <div className="text-gray-600">{h.level}</div>
+                            {h.description && (
+                              <div className="text-gray-500">
+                                {h.description}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-medium mb-1">Developer</h4>
@@ -1202,22 +1439,63 @@ const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                <hr className="border-t border-gray-200" />
-
-                <div>
-                  <h4 className="font-medium mb-1">Review Notes</h4>
-                  <Textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add review notes here (required for rejection)"
-                    className="mt-2"
-                    rows={4}
-                  />
+                {/* Uptime section inside review dialog */}
+                <div className="pt-2">
+                  <h4 className="font-medium mb-1">Uptime</h4>
+                  <div className="mt-2">
+                    <UptimeStatus
+                      title="Uptime"
+                      uptimePercentage={calculateUptimePercentage(
+                        getAppBatchStatusByPackageName(
+                          collectedAllAppBatchStatus,
+                          selectedApp.packageName,
+                        ),
+                        monthNumberDynamic,
+                        yearNumber,
+                      )}
+                      month={monthNumberDynamic}
+                      year={yearNumber}
+                      appHealthStatus={
+                        submittedAppsStatus.find(
+                          (statusApp) =>
+                            statusApp.packageName === selectedApp.packageName,
+                        )?.healthStatus || "unknown"
+                      }
+                      appItems={getAppBatchStatusByPackageName(
+                        collectedAllAppBatchStatus,
+                        selectedApp.packageName,
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
+            <hr className="border-t border-gray-200" />
+
+            <div>
+              <h4 className="font-medium mb-1">Review Notes</h4>
+              <Textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="Add review notes here (required for rejection)"
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+
             <DialogFooter className="space-x-3">
+              {/* Install/Uninstall for current user */}
+              <Button
+                variant="secondary"
+                onClick={handleInstallToggle}
+                disabled={isInstalling || !selectedApp}
+              >
+                {isInstalling ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {isInstalledForUser ? "Uninstall" : "Install"}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setOpenReviewDialog(false)}
