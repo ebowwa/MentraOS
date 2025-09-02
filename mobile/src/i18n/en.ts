@@ -21,6 +21,8 @@ const en = {
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
     continueAnyways: "Continue Anyways",
+    resetUrl: "Reset to Default URL",
+    connectingToServer: "Connecting to server...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
