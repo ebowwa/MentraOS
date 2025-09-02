@@ -378,6 +378,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         lc3AudioPlayer = new Lc3Player(context);
         lc3AudioPlayer.init();
         lc3AudioPlayer.startPlay();
+
+        //setup LC3 decoder for PCM conversion
+        if (lc3DecoderPtr == 0) {
+            lc3DecoderPtr = L3cCpp.initDecoder();
+            Log.d(TAG, "Initialized LC3 decoder for PCM conversion: " + lc3DecoderPtr);
+        }
     }
 
     @Override
@@ -1437,85 +1443,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         byte commandByte = data[0];
         // Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
 
-        // CRITICAL DEBUG: Try multiple ways to detect LC3 audio data
-        boolean isLc3Audio = false;
-
-        // Method 1: Check using switch case (what we were doing)
-        if (commandByte == (byte)0xA0) {
-            isLc3Audio = true;
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): MATCH");
-        } else {
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): NO MATCH");
-        }
-
-        // Method 2: Check by comparing integer values
-        int cmdByteInt = commandByte & 0xFF; // Convert signed byte to unsigned int
-        if (cmdByteInt == 0xA0) {
-            isLc3Audio = true;
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): MATCH");
-        } else {
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): NO MATCH - Value: " + cmdByteInt);
-        }
-
-        // Method 3: Explicit check against -96 (0xA0 as signed byte)
-        if (commandByte == -96) {
-            isLc3Audio = true;
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): MATCH");
-        } else {
-            // Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): NO MATCH - Value: " + (int)commandByte);
-        }
-
-        // Process based on detection results
-        if (isLc3Audio) {
-            Log.e(TAG, "Thread-" + threadId + ": ✅ DETECTED LC3 AUDIO PACKET!");
-
-            // Report packet size vs. MTU diagnostic
-            if (bluetoothGatt != null) {
-                try {
-                    int effectiveMtu = currentMtu - 3;
-                    Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + size + " bytes, MTU limit: " + effectiveMtu + " bytes");
-
-                    if (size > effectiveMtu) {
-                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
-                }
-            }
-
-            if (size > 1) {
-                // Extract the LC3 audio data (skip the command byte)
-                byte[] lc3AudioData = Arrays.copyOfRange(data, 1, data.length);
-
-                // Log callback status
-                Log.e(TAG, "Thread-" + threadId + ": ⭐ Audio callback registered: " + (audioProcessingCallback != null ? "YES" : "NO"));
-
-                // Forward to the audio processing system
-                if (audioProcessingCallback != null) {
-                    try {
-                        Log.e(TAG, "Thread-" + threadId + ": ⏩ Forwarding LC3 audio data (" + lc3AudioData.length + " bytes) to processing system");
-                        audioProcessingCallback.onLC3AudioDataAvailable(lc3AudioData);
-                        Log.e(TAG, "Thread-" + threadId + ": ✅ LC3 audio data forwarded successfully");
-                    } catch (Exception e) {
-                        //Log.e(TAG, "Thread-" + threadId + ": ❌ EXCEPTION during audio data forwarding: " + e.getMessage(), e);
-                    }
-                } else {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Received LC3 audio data but no processing callback is registered");
-
-                    // Fire a warning event that we're receiving audio but not processing it
-                    // This will help the user understand why audio isn't working
-                    handler.post(() -> {
-                        Log.e(TAG, "Thread-" + threadId + ": 📢 Posting warning about missing audio callback");
-                        // TODO: Consider adding a specific event for missing audio callback
-                    });
-                }
-            } else {
-                Log.e(TAG, "Thread-" + threadId + ": ⚠️ Received audio packet with no data");
-            }
-        } else {
-            // Not LC3 audio, continue with regular switch statement
-            switch (commandByte) {
-
+        // NOTE: LC3 audio (0xA0) is now processed exclusively via the dedicated LC3_READ characteristic
+        // This prevents duplicate audio processing and follows the proper BLE characteristic separation
+        
+        // Process non-audio data based on command byte
+        switch (commandByte) {
             case '{': // Likely a JSON message (starts with '{')
                 try {
                     String jsonStr = new String(data, 0, size, StandardCharsets.UTF_8);
@@ -1531,7 +1463,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 break;
 
             default:
-                // Unknown packet type
+                // Unknown packet type (LC3 audio 0xA0 is handled via dedicated characteristic)
                 // Log.w(TAG, "Received unknown packet type: " + String.format("0x%02X", commandByte));
                 if (size > 10) {
                     // Log.d(TAG, "First 10 bytes: " + bytesToHex(Arrays.copyOfRange(data, 0, 10)));
@@ -1539,7 +1471,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "Data: " + bytesToHex(data));
                 }
                 break;
-            }
         }
     }
 
@@ -2784,6 +2715,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Clean up LC3 audio player
         if (lc3AudioPlayer != null) {
             lc3AudioPlayer.stopPlay();
+        }
+
+        // Clean up LC3 decoder
+        if (lc3DecoderPtr != 0) {
+            L3cCpp.freeDecoder(lc3DecoderPtr);
+            lc3DecoderPtr = 0;
+            Log.d(TAG, "Freed LC3 decoder resources");
         }
     }
 
@@ -4072,9 +4010,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             // Log.d(TAG, "Received LC3 audio packet seq=" + sequenceNumber + ", size=" + lc3Data.length);
 
-            // Forward raw LC3 data if a callback is registered
+            // Decode LC3 to PCM and forward to audio processing system
             if (audioProcessingCallback != null) {
-                audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
+                if (lc3DecoderPtr != 0) {
+                    // Decode LC3 to PCM using the native decoder
+                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
+                    
+                    if (pcmData != null && pcmData.length > 0) {
+                        // Forward PCM data to audio processing system (like Even Realities G1)
+                        audioProcessingCallback.onAudioDataAvailable(pcmData);
+                        // Log.d(TAG, "Decoded and forwarded LC3 to PCM: " + lc3Data.length + " -> " + pcmData.length + " bytes");
+                    } else {
+                        // Log.e(TAG, "Failed to decode LC3 data to PCM - got null or empty result");
+                    }
+                } else {
+                    Log.e(TAG, "LC3 decoder not initialized - cannot decode to PCM");
+
+                }
+            } else {
+                Log.w(TAG, "No audio processing callback registered - audio data will not be processed");
             }
 
             // Play LC3 audio directly through LC3 player if enabled

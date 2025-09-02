@@ -362,7 +362,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 }
             }
 
-
             //SENDING STUFF
             // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
             if (bypassVadForDebugging || bypassVadForPCM || isSpeaking) {
