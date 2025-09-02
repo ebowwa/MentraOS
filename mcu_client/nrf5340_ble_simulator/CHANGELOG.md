@@ -2,6 +2,36 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.15.0] - 2025-09-02
+
+### 🧹 Production Debug Cleanup & Optimization
+
+#### Configurable Debug System Implementation
+- **🎛️ Debug Control Flags**: Added `MOS_LVGL_DEBUG_ENABLED=0` and `MOS_LVGL_PERFORMANCE_LOGS=0` compilation flags
+- **🔇 Production Logging**: Converted all verbose `BSP_LOGI` calls to conditional `DEBUG_LOG` macros
+- **⚡ Performance Optimization**: Eliminated MOS_LVGL debug spam for clean production operation
+- **📊 Selective Debugging**: Debug logs can be enabled/disabled at compile time for development vs production
+
+#### Files Modified
+- **📄 mos_lvgl_display.c**: Converted 41 debug statements to conditional logging system
+- **📄 protobuf_handler.c**: Added `MOS_PROTOBUF_DEBUG_ENABLED` configuration framework
+- **🔧 Debug Infrastructure**: Created DEBUG_LOG macro system for consistent logging control
+
+#### Technical Implementation
+- **✅ Clean Compilation**: Firmware builds without warnings or debug flooding
+- **🎯 Production Ready**: Eliminates verbose I[MOS_LVGL] console output in deployment
+- **🛠️ Developer Friendly**: Debug logs easily re-enabled by setting flags to 1
+- **📈 Performance Gain**: Reduced console I/O overhead during live caption operation
+
+#### Validation Status
+- **✅ Build Verification**: Clean compilation with Nordic nCS v3.0.0
+- **✅ Live Caption Functionality**: Verified Pattern 4 & 5 continue working correctly
+- **✅ Display Performance**: No regression in display or LVGL operation
+- **⚡ Ready for Testing**: Debug-cleaned firmware ready for production deployment
+
+#### Next Phase: Live Caption + PDM Audio Integration
+> **🎵 Transition Ready**: Branch prepared for integration with PDM microphone LC3 audio streaming and live caption system
+
 ## [2.14.0] - 2025-08-22
 
 ### 🔄 Ping/Pong Connectivity Monitoring Implementation

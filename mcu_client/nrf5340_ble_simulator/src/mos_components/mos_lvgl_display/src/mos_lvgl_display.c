@@ -28,6 +28,19 @@
 #define TAG "MOS_LVGL"
 #define TASK_LVGL_NAME "MOS_LVGL"
 
+// **DEBUG CONFIGURATION** - Set to 1 to enable detailed debug logging, 0 to disable
+#define MOS_LVGL_DEBUG_ENABLED 0
+
+// **PERFORMANCE MONITORING** - Set to 1 to enable FPS monitoring logs, 0 to disable
+#define MOS_LVGL_PERFORMANCE_LOGS 0
+
+// Debug logging macro - only logs when debug is enabled
+#if MOS_LVGL_DEBUG_ENABLED
+#define DEBUG_LOG(fmt, ...) BSP_LOGI(TAG, fmt, ##__VA_ARGS__)
+#else
+#define DEBUG_LOG(fmt, ...) ((void)0)
+#endif
+
 #define LVGL_THREAD_STACK_SIZE (4096 * 2)
 #define LVGL_THREAD_PRIORITY 5
 K_THREAD_STACK_DEFINE(lvgl_stack_area, LVGL_THREAD_STACK_SIZE);
@@ -39,7 +52,7 @@ static K_SEM_DEFINE(lvgl_display_sem, 0, 1);
 #define DISPLAY_CMD_QSZ 16
 K_MSGQ_DEFINE(lvgl_display_msgq, sizeof(display_cmd_t), DISPLAY_CMD_QSZ, 4);
 
-#define LVGL_TICK_MS 2  // Reduced from 5ms to 2ms for better FPS (K901 optimization)
+#define LVGL_TICK_MS 2  // Reduced from 5ms to 2ms for better FPS
 static struct k_timer fps_timer;
 static uint32_t frame_count = 0;
 
@@ -57,10 +70,12 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count = 0;
+#if MOS_LVGL_PERFORMANCE_LOGS
     BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
-    BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
-    BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
-    BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
+    BSP_LOGI(TAG, "  - Current FPS: %d", fps);
+    BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms", LVGL_TICK_MS);
+    BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms");
+#endif
 }
 
 void lv_example_scroll_text(void)
@@ -105,7 +120,7 @@ void lvgl_display_sem_give(void)
 
 int lvgl_display_sem_take(int64_t time)
 {
-    mos_sem_take(&lvgl_display_sem, time);
+    return mos_sem_take(&lvgl_display_sem, time);
 }
 
 void display_open(void)
@@ -381,11 +396,11 @@ static void show_test_pattern(int pattern_id);
 
 static void show_default_ui(void)
 {
-    BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
+    DEBUG_LOG("🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
     show_test_pattern(3);
     
-    BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
+    DEBUG_LOG("🖼️ Scrolling welcome message complete - should see animated text");
 }
 
 // Test pattern functions
@@ -516,19 +531,24 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     
     lv_anim_start(&welcome_scroll_anim);
     
-    BSP_LOGI(TAG, "🔄 Started infinite smooth horizontal scrolling animation for welcome text");
+    DEBUG_LOG("🔄 Started infinite smooth horizontal scrolling animation for welcome text");
 }
 
 static void create_scrolling_text_container(lv_obj_t *screen)
 {
+    DEBUG_LOG("🔧 [DEBUG] Creating scrolling text container for Pattern 4");
+    
     // Create scrollable container with 20px margins on all sides
     // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
     lv_obj_t *container = lv_obj_create(screen);
     lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
     lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
     
+    DEBUG_LOG("📦 [DEBUG] Container created: size=600x440, pos=(20,20)");
+    
     // **NEW: Store global reference for protobuf text updates**
     protobuf_container = container;
+    DEBUG_LOG("🔗 [DEBUG] Global protobuf_container reference set: %p", protobuf_container);
     
     // Configure container scrolling - NO SCROLLBARS, NO BORDERS
     lv_obj_set_scroll_dir(container, LV_DIR_VER);  // Vertical scrolling only
@@ -540,6 +560,8 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
     lv_obj_set_style_pad_all(container, 5, 0);  // Reduced padding for performance
     
+    DEBUG_LOG("🎨 [DEBUG] Container styling applied");
+    
     // Create label inside container with protobuf text
     lv_obj_t *label = lv_label_create(container);
     lv_obj_set_width(label, 590);  // Container width minus minimal padding (600-10=590)
@@ -547,27 +569,18 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
+    DEBUG_LOG("🔗 [DEBUG] Global protobuf_label reference set: %p", protobuf_label);
     
-    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
-    const char *initial_text = 
-        "MentraOS AR Display Ready\n\n"
-        "Waiting for protobuf text messages...\n\n"
-        "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!";
+    // Set initial text to show the container is working
+    lv_label_set_text(label, "📱 Live Caption Ready\nWaiting for protobuf text messages...");
+    DEBUG_LOG("📝 [DEBUG] Initial label text set");
     
-    lv_label_set_text(label, initial_text);
-    
-    // Style the label text - optimized settings
+    // Style the label with visible white text
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_line_space(label, 3, 0);  // Reduced line spacing for performance
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);  // Use smaller font for better performance
     
-    // Position label at top of container
-    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
-    
-    // AUTO-SCROLL TO BOTTOM to show latest content
-    lv_obj_update_layout(container);  // Ensure layout is calculated
-    lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
+    DEBUG_LOG("✅ [DEBUG] Pattern 4 container initialization complete");
+    DEBUG_LOG("📱 Live Caption container ready - Pattern 4 protobuf text display");
 }
 
 // **NEW: Pattern 5 - XY Text Positioning Area with 600x440 bordered view**
@@ -597,7 +610,7 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     
     // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
     
-    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (600x440 with border)");
+    DEBUG_LOG("📍 Pattern 5: XY Text Positioning Area created (600x440 with border)");
 }
 
 static int current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
@@ -666,7 +679,7 @@ static void show_test_pattern(int pattern_id)
     last_cycle_time = current_time;
     
     current_pattern = (current_pattern + 1) % num_patterns;
-    BSP_LOGI(TAG, "Pattern #%d", current_pattern);  // Minimal log
+    DEBUG_LOG("Pattern #%d", current_pattern);  // Minimal log
     show_test_pattern(current_pattern);
 }
 
@@ -675,25 +688,39 @@ static void update_protobuf_text_content(const char *text_content)
 {
     // **SAFETY: This function must only be called from LVGL thread context**
     
+    DEBUG_LOG("🔍 [DEBUG] update_protobuf_text_content called");
+    
     if (!text_content) {
-        BSP_LOGE(TAG, "Invalid text content pointer");
+        BSP_LOGE(TAG, "❌ Invalid text content pointer");
         return;
     }
+    
+    DEBUG_LOG("📝 [DEBUG] Text content: \"%s\" (length: %zu)", text_content, strlen(text_content));
     
     // Verify we have valid global references
     if (!protobuf_container || !protobuf_label) {
-        BSP_LOGE(TAG, "Protobuf container not initialized");
+        BSP_LOGE(TAG, "❌ Protobuf container not initialized - container:%p, label:%p", 
+                 protobuf_container, protobuf_label);
+        BSP_LOGE(TAG, "💡 Current pattern: %d (should be 4 for protobuf container)", current_pattern);
         return;
     }
     
+    DEBUG_LOG("✅ [DEBUG] Container and label valid - updating text");
+    
     // **CLEAR AND UPDATE: Replace existing text with new protobuf content**
     lv_label_set_text(protobuf_label, text_content);
+    DEBUG_LOG("✅ [DEBUG] Label text set successfully");
     
     // **AUTO-SCROLL TO BOTTOM: Show latest content**
     lv_obj_update_layout(protobuf_container);  // Ensure layout is calculated
     lv_obj_scroll_to_y(protobuf_container, lv_obj_get_scroll_bottom(protobuf_container), LV_ANIM_OFF);
+    DEBUG_LOG("✅ [DEBUG] Container layout updated and scrolled");
     
-    BSP_LOGI(TAG, "📱 Protobuf text updated: %.50s%s", 
+    // Force immediate LVGL refresh
+    lv_timer_handler();
+    DEBUG_LOG("✅ [DEBUG] LVGL timer handler called for immediate refresh");
+    
+    DEBUG_LOG("📱 Protobuf text updated: %.50s%s", 
              text_content, strlen(text_content) > 50 ? "..." : "");
 }
 
@@ -721,7 +748,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     const uint16_t max_x = 580;  // 600 - (2 * 10px padding)
     const uint16_t max_y = 420;  // 440 - (2 * 10px padding)
     
-    BSP_LOGI(TAG, "📍 Original XY: (%u,%u), max bounds: (%u,%u)", x, y, max_x, max_y);
+    DEBUG_LOG("📍 Original XY: (%u,%u), max bounds: (%u,%u)", x, y, max_x, max_y);
     
     if (x >= max_x || y >= max_y) {
         BSP_LOGW(TAG, "XY coordinates out of bounds: (%u,%u) - max is (%u,%u)", 
@@ -755,7 +782,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     // Position the text at specified coordinates (relative to container padding)
     lv_obj_set_pos(current_xy_text_label, x, y);
     
-    BSP_LOGI(TAG, "� Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", 
+    DEBUG_LOG("🎯 Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", 
              x, y, font_size, color, text_content, strlen(text_content) > 30 ? "..." : "");
 }
 
@@ -800,7 +827,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         {
             lv_timer_handler();
         }
-        /* 2) 尝试读命令——减少等待时间以提高FPS (K901 optimization) */
+        /* 2) 尝试读命令——减少等待时间以提高FPS */
         int err = mos_msgq_receive(&lvgl_display_msgq, &cmd, 1);  // Reduced from LVGL_TICK_MS to 1ms for better responsiveness
         if (err != 0)
         {
@@ -814,7 +841,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             // state_type = LCD_STATE_OFF;
             break;
         case LCD_CMD_OPEN:
-            BSP_LOGI(TAG, "LCD_CMD_OPEN");
+            DEBUG_LOG("LCD_CMD_OPEN");
             hls12vga_power_on();
             set_display_onoff(true);
             hls12vga_set_brightness(9); // 设置亮度
@@ -827,16 +854,16 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             hls12vga_clear_screen(false); // 清屏
             state_type = LCD_STATE_ON;
 
-            BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
+            DEBUG_LOG("🚀 About to call show_default_ui()...");
             show_default_ui(); // 显示默认图像
-            BSP_LOGI(TAG, "✅ show_default_ui() completed");
+            DEBUG_LOG("✅ show_default_ui() completed");
             break;
         case LCD_CMD_DATA:
             /* 处理帧数据*/
             break;
         case LCD_CMD_CYCLE_PATTERN:
             /* **NEW: Handle pattern cycling safely in LVGL thread** */
-            BSP_LOGI(TAG, "LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
+            DEBUG_LOG("LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
             cycle_test_pattern();  // Now called from LVGL thread context
             break;
         case LCD_CMD_UPDATE_PROTOBUF_TEXT:
@@ -845,7 +872,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
             break;
         case LCD_CMD_UPDATE_XY_TEXT:
             /* **NEW: Handle XY positioned text updates for Pattern 5** */
-            BSP_LOGI(TAG, "LCD_CMD_UPDATE_XY_TEXT - XY positioned text at (%u,%u)", 
+            DEBUG_LOG("LCD_CMD_UPDATE_XY_TEXT - XY positioned text at (%u,%u)", 
                      cmd.p.xy_text.x, cmd.p.xy_text.y);
             update_xy_positioned_text(cmd.p.xy_text.x, cmd.p.xy_text.y, 
                                     cmd.p.xy_text.text, cmd.p.xy_text.font_size, 
@@ -875,21 +902,21 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         break;
         case LCD_CMD_GRAYSCALE_HORIZONTAL:
             /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
-            BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+            DEBUG_LOG("LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
             if (hls12vga_draw_horizontal_grayscale_pattern() != 0) {
                 BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
             }
             break;
         case LCD_CMD_GRAYSCALE_VERTICAL:
             /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
-            BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+            DEBUG_LOG("LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
             if (hls12vga_draw_vertical_grayscale_pattern() != 0) {
                 BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
             }
             break;
         case LCD_CMD_CHESS_PATTERN:
             /* **NEW: Handle direct HLS12VGA chess pattern** */
-            BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+            DEBUG_LOG("LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
             if (hls12vga_draw_chess_pattern() != 0) {
                 BSP_LOGE(TAG, "Failed to draw chess pattern");
             }

@@ -58,6 +58,15 @@
 
 LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_DBG);
 
+// Debug logging configuration
+#define MOS_PROTOBUF_DEBUG_ENABLED 0  // Set to 1 to enable debug logging, 0 to disable
+
+#if MOS_PROTOBUF_DEBUG_ENABLED
+    #define DEBUG_LOG(fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
+#else
+    #define DEBUG_LOG(fmt, ...)  // No operation when disabled
+#endif
+
 // Global battery level state (0-100%)
 static uint32_t current_battery_level = 85;
 
@@ -968,15 +977,21 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	// **NEW: Check current pattern to determine display mode**
 	int current_pattern = display_get_current_pattern();
 	
+	DEBUG_LOG("🔍 [DEBUG] Current display pattern: %d", current_pattern);
+	
 	if (current_pattern == 5) {
 		// Pattern 5: XY Text Positioning - use coordinates and font size from protobuf
 		uint16_t font_size = (display_text->size > 0) ? display_text->size : 12;  // Default to 12pt
+		DEBUG_LOG("🎯 [DEBUG] Using Pattern 5 XY positioning: (%u,%u) font_size=%u", 
+		        display_text->x, display_text->y, font_size);
 		display_update_xy_text(display_text->x, display_text->y, display_text->text, 
 		                      font_size, color_rgb565);
 		printk("✅ LVGL: XY positioned text at (%u,%u) with font %upt in Pattern 5\n", 
 		       display_text->x, display_text->y, font_size);
 	} else {
 		// Pattern 4 or others: Auto-scroll container (backward compatibility)
+		DEBUG_LOG("📱 [DEBUG] Using Pattern %d auto-scroll container for text: \"%s\"", 
+		        current_pattern, display_text->text);
 		display_update_protobuf_text(display_text->text);
 		printk("✅ LVGL: Protobuf text updated in auto-scroll container (Pattern %d)\n", current_pattern);
 	}
