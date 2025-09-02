@@ -67,6 +67,8 @@ export class AudioManager {
   // Lightweight telemetry for PCM ingestion
   private processedFrameCount = 0;
   private lastLogAt = 0;
+  // Carry-over byte to keep PCM16 even-length between frames
+  private pcmRemainder: Buffer | null = null;
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
@@ -90,13 +92,39 @@ export class AudioManager {
 
       // Send to transcription and translation services
       if (audioData) {
+        // Normalize to Buffer and enforce even-length PCM16 by carrying a remainder byte
+        let buf: Buffer | null = null;
+        if (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData)) {
+          buf = audioData as Buffer;
+        } else if (audioData instanceof ArrayBuffer) {
+          buf = Buffer.from(audioData as ArrayBuffer);
+        } else if (ArrayBuffer.isView(audioData)) {
+          const view = audioData as ArrayBufferView;
+          buf = Buffer.from(view.buffer, (view as any).byteOffset || 0, (view as any).byteLength || view.byteLength);
+        }
+
+        if (!buf) {
+          return undefined;
+        }
+
+        if (this.pcmRemainder && this.pcmRemainder.length > 0) {
+          buf = Buffer.concat([this.pcmRemainder, buf]);
+          this.pcmRemainder = null;
+        }
+        if ((buf.length & 1) !== 0) {
+          // Keep last byte for next frame to maintain PCM16 alignment
+          this.pcmRemainder = buf.subarray(buf.length - 1);
+          buf = buf.subarray(0, buf.length - 1);
+        }
+        if (buf.length === 0) {
+          return undefined;
+        }
         // Telemetry: log every 100 frames to avoid noise
         this.processedFrameCount++;
         if (this.processedFrameCount % 100 === 0) {
           const now = Date.now();
           const dt = this.lastLogAt ? now - this.lastLogAt : 0;
           this.lastLogAt = now;
-          const buf = (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData)) ? audioData as Buffer : Buffer.from(audioData as ArrayBuffer);
           this.logger.debug({
             feature: 'livekit',
             frames: this.processedFrameCount,
@@ -107,13 +135,13 @@ export class AudioManager {
         }
 
         // Relay to Apps if there are subscribers
-        this.relayAudioToApps(audioData);
+        this.relayAudioToApps(buf);
 
         // Feed to TranscriptionManager
-        this.userSession.transcriptionManager.feedAudio(audioData);
+        this.userSession.transcriptionManager.feedAudio(buf);
 
         // Feed to TranslationManager (separate from transcription)
-        this.userSession.translationManager.feedAudio(audioData);
+        this.userSession.translationManager.feedAudio(buf);
 
         // Notify MicrophoneManager that we received audio
         this.userSession.microphoneManager.onAudioReceived();

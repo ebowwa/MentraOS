@@ -65,6 +65,10 @@ type LiveKitClient struct {
     // subscriber outgoing 16kHz frame buffer (bytes)
     subBuf16k        []byte
     subFrameCount    int
+
+    // lifecycle
+    closedCh      chan struct{}
+    closeOnce     sync.Once
 }
 
 // Message types
@@ -110,7 +114,7 @@ func (s *LiveKitService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	client := &LiveKitClient{
+    client := &LiveKitClient{
 		userId: userId,
 		ws:     ws,
 		ctx:    ctx,
@@ -118,12 +122,22 @@ func (s *LiveKitService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
         subTracks:     make(map[string]*webrtc.TrackRemote),
         subTrackOwner: make(map[string]string),
         subActive:     make(map[string]bool),
+        closedCh:      make(chan struct{}),
 	}
 
 	s.mu.Lock()
 	// Clean up existing client if present
 	if existing, ok := s.clients[userId]; ok {
-		existing.Close()
+        existing.Close()
+        // Wait for previous client to fully close to avoid ghosts
+        s.mu.Unlock()
+        select {
+        case <-existing.closedCh:
+            // closed
+        case <-time.After(2 * time.Second):
+            // timeout; proceed anyway
+        }
+        s.mu.Lock()
 	}
 	s.clients[userId] = client
 	s.mu.Unlock()
@@ -520,6 +534,7 @@ func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
             _ = c.ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
             if err := c.ws.WriteMessage(websocket.BinaryMessage, chunk); err != nil {
                 log.Printf("WS binary write failed for user %s: %v", c.userId, err)
+                go c.Close()
                 return
             }
             c.subFrameCount++
@@ -702,16 +717,21 @@ func (c *LiveKitClient) pingLoop() {
 }
 
 func (c *LiveKitClient) Close() {
-	c.cancel()
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.room != nil {
-		c.room.Disconnect()
-	}
-	if c.ws != nil {
-		c.ws.Close()
-	}
+    c.cancel()
+    c.mu.Lock()
+    // mark forwarding disabled
+    c.subscribeEnabled = false
+    // disconnect room and ws
+    if c.room != nil {
+        c.room.Disconnect()
+        c.room = nil
+    }
+    if c.ws != nil {
+        _ = c.ws.Close()
+        c.ws = nil
+    }
+    c.mu.Unlock()
+    c.closeOnce.Do(func() { close(c.closedCh) })
 }
 
 func getLiveKitURL() string {

@@ -538,6 +538,7 @@ export class UserSession {
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();
+    if (this.liveKitManager) this.liveKitManager.dispose();
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();

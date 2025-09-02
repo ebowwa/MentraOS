@@ -159,6 +159,11 @@ export class LiveKitManager {
       })
       .catch((err) => this.logger.error({ feature: 'livekit', err }, 'Failed ensuring bridge connection'));
   }
+
+  public dispose(): void {
+    this.healthTimer && clearInterval(this.healthTimer);
+    this.bridgeClient?.dispose();
+  }
 }
 
 export default LiveKitManager;

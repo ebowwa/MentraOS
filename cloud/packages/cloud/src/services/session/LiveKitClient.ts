@@ -79,7 +79,7 @@ export class LiveKitClient {
           if (evt?.type && evt?.type !== 'connected') {
             this.logger.debug({ feature: 'livekit', evt }, '[LiveKitClient] Bridge event');
           }
-        } catch { }
+        } catch { ; }
       }
     });
 
@@ -108,10 +108,13 @@ export class LiveKitClient {
   async close(): Promise<void> {
     if (!this.ws) return;
     try {
-      try { this.ws.send(JSON.stringify({ action: 'subscribe_disable' })); } catch { }
+      try { this.ws.send(JSON.stringify({ action: 'subscribe_disable' })); } catch (error) {
+        const _logger = this.logger.child({ feature: 'livekit' });
+        _logger.warn(error, 'Failed to send subscribe_disable');
+      }
       this.manualClose = true;
       this.ws.close();
-    } catch { }
+    } catch { ; }
     this.ws = null;
     this.connected = false;
     if (this.reconnectTimer) {
@@ -142,10 +145,17 @@ export class LiveKitClient {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect(this.lastParams!).catch((err) => {
-        this.logger.error({ feature: 'livekit', err }, 'Bridge reconnect failed');
+        const _logger = this.logger.child({ feature: 'livekit' });
+        _logger.error(err, 'Bridge reconnect failed');
         this.scheduleReconnect();
       });
     }, delay);
+  }
+
+  public dispose(): void {
+    if (this.ws) {
+      this.ws.close();
+    }
   }
 }
 
