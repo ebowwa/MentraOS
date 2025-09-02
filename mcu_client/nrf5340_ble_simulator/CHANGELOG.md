@@ -29,6 +29,14 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 - **✅ Display Performance**: No regression in display or LVGL operation
 - **⚡ Ready for Testing**: Debug-cleaned firmware ready for production deployment
 
+#### Known Issues & TODOs
+- **🔄 Display Mirror Register Issue**: The display projector occasionally mirrors itself spontaneously
+  - **Problem**: Mirror register value changes by itself during operation
+  - **Impact**: Display becomes horizontally mirrored unexpectedly
+  - **TODO**: Implement periodic mirror register checking and auto-correction
+  - **Suggested Fix**: Add timer-based register validation every 30-60 seconds
+  - **Implementation**: Monitor HLS12VGA mirror control register and restore to correct orientation
+
 #### Next Phase: Live Caption + PDM Audio Integration
 > **🎵 Transition Ready**: Branch prepared for integration with PDM microphone LC3 audio streaming and live caption system
 
