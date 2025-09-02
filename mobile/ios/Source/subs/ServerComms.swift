@@ -109,23 +109,6 @@ class ServerComms {
         audioBuffer.offer(audioData)
     }
 
-    private func sendConnectionInit(coreToken: String) {
-        do {
-            let initMsg: [String: Any] = [
-                "type": "connection_init",
-                "coreToken": coreToken,
-            ]
-
-            let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
-                Core.log("ServerComms: Sent connection_init message")
-            }
-        } catch {
-            Core.log("ServerComms: Error building connection_init JSON: \(error)")
-        }
-    }
-
     func sendVadStatus(_ isSpeaking: Bool) {
         let vadMsg: [String: Any] = [
             "type": "VAD",
@@ -621,16 +604,6 @@ class ServerComms {
         if status == .disconnected || status == .error {
             stopAudioSenderThread()
             attemptReconnect()
-        }
-
-        if status == .connected {
-            // Wait a second before sending connection_init (similar to the Java code)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.sendConnectionInit(coreToken: self.coreToken)
-
-                self.sendCalendarEvents()
-                self.sendLocationUpdates()
-            }
         }
     }
 
