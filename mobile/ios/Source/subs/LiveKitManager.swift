@@ -203,7 +203,7 @@ public class LiveKitManager: NSObject {
 }
 
 extension LiveKitManager: RoomDelegate {
-    func room(
+    public func room(
         _: Room, didUpdateConnectionState connectionState: ConnectionState,
         from _: ConnectionState
     ) {

@@ -522,6 +522,7 @@ struct ViewState {
                     //          // first send out whatever's in the vadBuffer (if there is anything):
                     //          emptyVadBuffer()
                     //          self.serverComms.sendAudioChunk(lc3Data)
+                    Core.log("Mentra: bypassing VAD, sending PCM data to server \(self.shouldSendPcmData)")
                     if self.shouldSendPcmData {
                         self.serverComms.sendAudioChunk(pcmData)
                     }
