@@ -69,18 +69,18 @@ export default function CloudConnection() {
 
   useEffect(() => {
     console.log("CloudConnection: Status:", status.core_info.cloud_connection_status)
-    // if it changes to CONNECTED, fade out the cloud connection status
-    if (status.core_info.cloud_connection_status === "CONNECTED") {
-      cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
+    // if it changes to DISCONNECTED, fade in the cloud connection status
+    if (status.core_info.cloud_connection_status === "DISCONNECTED") {
+      cloudConnectionStatusAnim.value = withTiming(1, {duration: 500})
       setTimeout(() => {
-        setHideCloudConnection(true)
+        setHideCloudConnection(false)
       }, 500)
       return
     } else {
-      setHideCloudConnection(false)
+      setHideCloudConnection(true)
     }
-    // fade in the cloud connection status
-    cloudConnectionStatusAnim.value = withTiming(1, {duration: 500})
+    // fade out the cloud connection status
+    cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
   }, [status.core_info.cloud_connection_status])
 
   // if (status.core_info.cloud_connection_status === "CONNECTED") {
