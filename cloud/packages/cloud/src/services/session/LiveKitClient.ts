@@ -18,7 +18,6 @@ export class LiveKitClient {
   private readonly bridgeUrl: string;
   private ws: WebSocket | null = null;
   private connected = false;
-  private frameCount = 0;
   private lastParams: { url: string; roomName: string; token: string; targetIdentity?: string } | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
@@ -46,7 +45,6 @@ export class LiveKitClient {
     this.ws = new WebSocket(wsUrl);
     this.manualClose = false;
     this.lastParams = params;
-    this.frameCount = 0;
     const wsRef = this.ws;
 
     await new Promise<void>((resolve, reject) => {
@@ -71,7 +69,7 @@ export class LiveKitClient {
       throw new Error('bridge ws aborted (post-open)');
     }
     this.connected = true;
-    let i = 0;
+    let frameCount = 0; // TODO(isaiah): clean up after livekit feature implementation.
 
     // Wire message handler before sending commands
     this.ws.on('message', (data: WebSocket.RawData) => {
@@ -80,23 +78,27 @@ export class LiveKitClient {
         try {
           // const ab = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
           // print first 10 bytes.
-          i++;
-          this.frameCount++;
-          if (i % 20 === 0) {
+          if (frameCount % 500 === 0) {
             this.logger.debug({ feature: 'livekit', data: data.slice(0, 10) }, 'Received PCM16 frame');
           }
           this.userSession.audioManager.processAudioData(data, /* isLC3 */ false);
         } catch (err) {
-          this.logger.warn(err, 'Failed to forward PCM16 frame');
+          if (frameCount % 500 === 0) {
+            this.logger.warn(err, 'Failed to forward PCM16 frame');
+          }
         }
       } else {
         try {
           const evt = JSON.parse((data as any).toString());
           if (evt?.type && evt?.type !== 'connected') {
-            this.logger.debug({ feature: 'livekit', evt }, '[LiveKitClient] Bridge event');
+            if (frameCount % 500 === 0) {
+              this.logger.debug({ feature: 'livekit', evt }, '[LiveKitClient] Bridge event thats not RawData');
+            }
           }
         } catch { ; }
       }
+
+      frameCount++;
     });
 
     // Lifecycle: close/error

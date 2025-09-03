@@ -1,0 +1,145 @@
+# Multi-stage build: Build Go binary first
+FROM golang:1.24-alpine AS go-builder
+
+# Install build dependencies including C compiler for CGO
+RUN apk add --no-cache git gcc musl-dev pkgconfig opus-dev opusfile-dev soxr-dev
+
+WORKDIR /app
+
+# Copy Go mod files
+COPY livekit-client/go.mod livekit-client/go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy Go source code
+COPY livekit-client/ ./
+
+# Build the binary with CGO enabled for opus codec
+RUN CGO_ENABLED=1 GOOS=linux go build -o livekit-bridge .
+
+# Final stage: Bun runtime with Go binary
+FROM oven/bun:latest
+
+# Install runtime dependencies for Go binary and SSL
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libc6-compat \
+    libopus0 \
+    libopusfile0 \
+    libsoxr0 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the Go binary from builder stage
+COPY --from=go-builder /app/livekit-bridge ./livekit-bridge
+
+# Copy Bun application source
+COPY . .
+
+# Install dependencies and ensure correct bun-types version
+RUN bun install && \
+    rm -rf node_modules/@types/bun && \
+    bun add -d bun-types@1.0.17
+
+# Build packages in sequence
+RUN echo "🚀 Starting build process..." && \
+    echo "⚙️ Building packages/sdk..." && \
+    cd packages/sdk && bun run build && \
+    echo "✅ Built packages/sdk..." && \
+    echo "⚙️ Building packages/cloud..." && \
+    cd ../cloud && bun run build && \
+    echo "✅ Built packages/cloud..." && \
+    echo "🎉 All packages built successfully! 🎉"
+
+# Create supervisor script
+COPY <<'EOF' /app/supervisor.sh
+#!/bin/bash
+set -e
+
+echo "🚀 Starting combined Bun + Go services..."
+
+# Start Go LiveKit bridge in background
+echo "📡 Starting LiveKit Go bridge on port 8080..."
+./livekit-bridge &
+GO_PID=$!
+
+# Give Go service a moment to start
+sleep 2
+
+# Start Bun cloud service
+echo "☁️ Starting Bun cloud service on port 80..."
+cd packages/cloud && bun run start &
+BUN_PID=$!
+
+# Function to cleanup on exit
+cleanup() {
+    echo "🛑 Shutting down services..."
+    kill $GO_PID $BUN_PID 2>/dev/null || true
+    wait
+    echo "✅ Services stopped"
+}
+
+# Setup signal handlers
+trap cleanup SIGTERM SIGINT EXIT
+
+# Health check function
+health_check() {
+    # Check if Go service is responding
+    wget --quiet --tries=1 --spider http://localhost:8080/health 2>/dev/null || return 1
+    # Add Bun health check if you have one
+    # wget --quiet --tries=1 --spider http://localhost:80/health 2>/dev/null || return 1
+    return 0
+}
+
+# Wait for both services to be ready
+echo "⏳ Waiting for services to be healthy..."
+for i in {1..30}; do
+    if health_check; then
+        echo "✅ Services are healthy and ready!"
+        break
+    fi
+    echo "⏳ Waiting for services... ($i/30)"
+    sleep 2
+done
+
+# Keep the container alive and monitor both processes
+while true; do
+    # Check if either process has died
+    if ! kill -0 $GO_PID 2>/dev/null; then
+        echo "❌ Go service died, shutting down..."
+        cleanup
+        exit 1
+    fi
+    
+    if ! kill -0 $BUN_PID 2>/dev/null; then
+        echo "❌ Bun service died, shutting down..."
+        cleanup
+        exit 1
+    fi
+    
+    sleep 5
+done
+EOF
+
+RUN chmod +x /app/supervisor.sh
+
+# Expose both ports
+EXPOSE 80 8080
+
+# Set production environment
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV SERVICE_NAME=cloud
+ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
+
+# Health check for the combined service
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+
+# Run supervisor script
+CMD ["echo", "Ready to run services"]
+
+# The porter.yaml file will run the supervisor script. starting both cloud and livekit-client services.

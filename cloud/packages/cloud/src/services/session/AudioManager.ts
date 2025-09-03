@@ -164,7 +164,7 @@ export class AudioManager {
     }
   }
 
-
+  private logAudioChunkCount = 0;
   /**
    * Relay audio data to Apps
    *
@@ -177,16 +177,21 @@ export class AudioManager {
         this.userSession.subscriptionManager.getSubscribedApps(
           StreamType.AUDIO_CHUNK,
         );
-
       // Skip if no subscribers
       if (subscribedPackageNames.length === 0) {
-        this.logger.debug({ feature: 'livekit' }, 'AUDIO_CHUNK: no subscribed apps');
+        if (this.logAudioChunkCount % 500 === 0) {
+          this.logger.debug({ feature: 'livekit' }, 'AUDIO_CHUNK: no subscribed apps');
+        }
+        this.logAudioChunkCount++;
         return;
       }
       const bytes = (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData))
         ? (audioData as Buffer).length
         : (audioData as ArrayBuffer).byteLength;
-      this.logger.debug({ feature: 'livekit', bytes, subscribers: subscribedPackageNames }, 'AUDIO_CHUNK: relaying to apps');
+
+      if (this.logAudioChunkCount % 500 === 0) {
+        this.logger.debug({ feature: 'livekit', bytes, subscribers: subscribedPackageNames }, 'AUDIO_CHUNK: relaying to apps');
+      }
 
       // Send to each subscriber
       for (const packageName of subscribedPackageNames) {
@@ -194,7 +199,9 @@ export class AudioManager {
 
         if (connection && connection.readyState === WebSocket.OPEN) {
           try {
-            this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sending to app');
+            if (this.logAudioChunkCount % 500 === 0) {
+              this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sending to app');
+            }
 
             // Node ws supports Buffer; ensure we send Buffer for efficiency
             if (typeof Buffer !== 'undefined' && Buffer.isBuffer(audioData)) {
@@ -202,16 +209,23 @@ export class AudioManager {
             } else {
               connection.send(Buffer.from(audioData as ArrayBuffer));
             }
-            this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sent to app');
+
+            if (this.logAudioChunkCount % 500 === 0) {
+              this.logger.debug({ feature: 'livekit', packageName, bytes }, 'AUDIO_CHUNK: sent to app');
+            }
 
           } catch (sendError) {
-            this.logger.error(
-              `Error sending audio to ${packageName}:`,
-              sendError,
-            );
+            if (this.logAudioChunkCount % 500 === 0) {
+              this.logger.error(
+                `Error sending audio to ${packageName}:`,
+                sendError,
+              );
+            }
           }
         }
       }
+      this.logAudioChunkCount++;
+
     } catch (error) {
       this.logger.error(`Error relaying audio:`, error);
     }
