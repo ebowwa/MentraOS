@@ -1,6 +1,15 @@
 // AppIcon.tsx
 import React from "react"
-import {View, StyleSheet, TouchableOpacity, ViewStyle, ImageStyle, TextStyle, Platform} from "react-native"
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ViewStyle,
+  ImageStyle,
+  TextStyle,
+  Platform,
+  ActivityIndicator,
+} from "react-native"
 import {Image} from "expo-image"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -35,13 +44,17 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
           height: style?.height ?? 56,
           borderRadius: (style?.width ?? 56) / 2, // Make it a perfect circle
         }}>
-        <Image
-          source={{uri: app.logoURL}}
-          style={themed($icon)}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
+        {app.loading ? (
+          <ActivityIndicator size="small" color={theme.colors.text} />
+        ) : (
+          <Image
+            source={{uri: app.logoURL}}
+            style={themed($icon)}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        )}
       </View>
 
       {showLabel && <Text text={app.name} style={themed($appName)} numberOfLines={2} />}
