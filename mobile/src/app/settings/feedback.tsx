@@ -7,7 +7,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 
 export default function FeedbackPage() {
   const [feedbackText, setFeedbackText] = useState("")

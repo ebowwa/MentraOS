@@ -5,7 +5,7 @@ import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
 
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"

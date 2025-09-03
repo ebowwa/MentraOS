@@ -9,7 +9,7 @@ import {
 } from "./CoreServiceStarter"
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"

@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import Icon from "react-native-vector-icons/FontAwesome"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
 import {Button, Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"

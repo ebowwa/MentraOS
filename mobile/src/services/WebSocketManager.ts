@@ -10,9 +10,7 @@ export enum WebSocketStatus {
 class WebSocketManager extends EventEmitter {
   private static instance: WebSocketManager | null = null
   private webSocket: WebSocket | null = null
-  private coreToken: string | null = null
   private previousStatus: WebSocketStatus = WebSocketStatus.DISCONNECTED
-  private url: string | null = null
   private reconnectTimeout: NodeJS.Timeout | null = null
 
   private constructor() {
@@ -36,8 +34,6 @@ class WebSocketManager extends EventEmitter {
 
   connect(url: string, coreToken: string) {
     console.log(`WSManagerTS: connect: ${url}, ${coreToken}`)
-    this.coreToken = coreToken
-    this.url = url
 
     // Disconnect existing connection if any
     if (this.webSocket) {

@@ -1,6 +1,6 @@
 // LogService.ts
 import {NativeModules, Platform} from "react-native"
-import BackendServerComms from "../backend_comms/BackendServerComms"
+import BackendServerComms from "../bridge/BackendServerComms"
 
 const {LogcatCapture} = NativeModules
 
