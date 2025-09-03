@@ -621,9 +621,8 @@ class ServerComms {
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
                     } else if self.wsManager.isConnected() {
-                        Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
-                        // TODO: reenable
-                        // self.wsManager.sendBinary(chunk)
+                        // Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
+                        self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
                         self.audioBuffer.offer(chunk)
