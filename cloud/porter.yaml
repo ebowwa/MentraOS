@@ -28,7 +28,7 @@ namespace: ${PORTER_NAMESPACE}
 build:
   method: docker
   context: ./cloud/.
-  dockerfile: ./cloud/docker/Dockerfile.porter
+  dockerfile: ./cloud/docker/Dockerfile.livekit
 
 services:
 - name: combined-service
