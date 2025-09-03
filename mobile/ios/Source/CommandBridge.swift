@@ -375,7 +375,7 @@ import Foundation
                         Core.log("CommandBridge: microphone_state_change invalid params")
                         break
                     }
-                    let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
+
                     let bypassVad = msg["bypassVad"] as? Bool ?? false
                     var requiredDataStrings: [String] = []
                     if let requiredDataArray = msg["requiredData"] as? [String] {
@@ -387,7 +387,7 @@ import Foundation
                     // Convert string array to enum array
                     var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
                     Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
-                    m.handle_microphone_state_change(isMicrophoneEnabled, requiredData, bypassVad)
+                    m.handle_microphone_state_change(requiredData, bypassVad)
                 case .update_settings:
                     guard let params else {
                         Core.log("CommandBridge: update_settings invalid params")
