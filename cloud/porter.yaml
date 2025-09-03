@@ -31,7 +31,7 @@ build:
   dockerfile: ./cloud/docker/Dockerfile.livekit
 
 services:
-- name: combined-service
+- name: cloud
   type: web
   run: ./supervisor.sh
   port: 80 # Main Cloud API port
