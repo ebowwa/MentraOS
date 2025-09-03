@@ -621,6 +621,7 @@ class ServerComms {
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
                     } else if self.wsManager.isConnected() {
+                        Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
                         // TODO: reenable
                         // self.wsManager.sendBinary(chunk)
                     } else {

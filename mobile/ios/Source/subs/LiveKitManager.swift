@@ -2,8 +2,7 @@ import AVFoundation
 import Combine
 import Foundation
 import LiveKit
-@preconcurrency
-internal import LiveKitWebRTC
+@preconcurrency internal import LiveKitWebRTC
 
 @objc
 public class LiveKitManager: NSObject {
@@ -27,9 +26,9 @@ public class LiveKitManager: NSObject {
 
         do {
             LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
-//                        try LiveKit.AudioManager.shared.setManualRenderingMode(true)
-//            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
-//            try LiveKit.AudioManager.shared.setManualRenderingMode(false)
+            //                        try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+            //            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
+            //            try LiveKit.AudioManager.shared.setManualRenderingMode(false)
         } catch {
             Core.log("Error setting manual rendering mode")
         }
@@ -75,7 +74,7 @@ public class LiveKitManager: NSObject {
                 enabled = true
 
                 // Setup custom audio source for PCM input
-                try await setupCustomAudioTrack()
+                // try await setupCustomAudioTrack()
                 Core.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
                 //              Core.log("LiveKit: a: \(room.)")
                 //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
@@ -90,13 +89,13 @@ public class LiveKitManager: NSObject {
 
     /// Setup custom audio track for PCM input
     private func setupCustomAudioTrack() async throws {
-//        // Create the buffer injector
-//        bufferInjector = BufferInjector()
-//
-//        // Set it as the audio processing delegate
+        //        // Create the buffer injector
+        //        bufferInjector = BufferInjector()
+        //
+        //        // Set it as the audio processing delegate
         ////      LiveKit.AudioManager.shared.capturePostProcessingDelegate = SineWaveGenerator()
-//        LiveKit.AudioManager.shared.capturePostProcessingDelegate = bufferInjector
-//
+        //        LiveKit.AudioManager.shared.capturePostProcessingDelegate = bufferInjector
+        //
         // Create track options
         let captureOptions = AudioCaptureOptions(
             echoCancellation: false,
@@ -127,12 +126,14 @@ public class LiveKitManager: NSObject {
     /// Convert raw PCM data to AVAudioPCMBuffer
     private func dataToPCMBuffer(data: Data) -> AVAudioPCMBuffer? {
         // Create format for 16kHz, mono, 16-bit PCM
-        guard let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: 16000,
-            channels: 1,
-            interleaved: false
-        ) else {
+        guard
+            let format = AVAudioFormat(
+                commonFormat: .pcmFormatInt16,
+                sampleRate: 16000,
+                channels: 1,
+                interleaved: false
+            )
+        else {
             Core.log("LiveKit: Failed to create audio format")
             return nil
         }
@@ -159,14 +160,14 @@ public class LiveKitManager: NSObject {
     /// Add PCM audio data to be published
     /// - Parameter pcmData: Raw PCM audio data (16kHz, mono, 16-bit little endian)
     @objc public func addPcm(_ pcmData: Data) {
-//      Task {
-//          try await room.localParticipant.publish(data: pcmData)
-//      }
-//        guard let injector = bufferInjector else {
-//            Core.log("LiveKit: Buffer injector not initialized")
-//            return
-//        }
-//
+        //      Task {
+        //          try await room.localParticipant.publish(data: pcmData)
+        //      }
+        //        guard let injector = bufferInjector else {
+        //            Core.log("LiveKit: Buffer injector not initialized")
+        //            return
+        //        }
+        //
         guard let buffer = dataToPCMBuffer(data: pcmData) else {
             Core.log("LiveKit: Failed to convert data to PCM buffer")
             return
@@ -175,15 +176,15 @@ public class LiveKitManager: NSObject {
         Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
 
         LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
-//
-//        injector.addBuffer(buffer)
+        //
+        //        injector.addBuffer(buffer)
     }
 
     /// Disconnect from LiveKit room
     @objc public func disconnect() {
-        guard room.connectionState == .connected ||
-            room.connectionState == .connecting ||
-            room.connectionState == .reconnecting
+        guard
+            room.connectionState == .connected || room.connectionState == .connecting
+            || room.connectionState == .reconnecting
         else {
             Core.log("LiveKit: Not connected, nothing to disconnect")
             return
@@ -197,6 +198,24 @@ public class LiveKitManager: NSObject {
 
             await room.disconnect()
             enabled = false
+        }
+    }
+}
+
+extension LiveKitManager: RoomDelegate {
+    func room(
+        _: Room, didUpdateConnectionState connectionState: ConnectionState,
+        from _: ConnectionState
+    ) {
+        switch connectionState {
+        case .disconnected:
+            Core.log("LiveKit: Disconnected from room")
+        case .connecting:
+            Core.log("LiveKit: Connecting to room...")
+        case .connected:
+            Core.log("LiveKit: Connected to room")
+        case .reconnecting:
+            Core.log("LiveKit: Reconnecting to room...")
         }
     }
 }
