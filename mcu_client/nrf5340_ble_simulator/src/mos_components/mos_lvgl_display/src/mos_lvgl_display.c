@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 19:40:56
+ * @LastEditTime : 2025-09-03 19:10:03
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -17,8 +17,8 @@
 
 #include "lvgl_display.h"
 // #include <lvgl.h>
-// #include <hls12vga.h>
-#include <display/lcd/hls12vga.h>
+// #include <a6m_0011.h>
+#include <display/lcd/a6m_0011.h>
 
 #include "bal_os.h"
 #include "bsp_log.h"
@@ -163,7 +163,7 @@ void display_update_protobuf_text(const char *text_content)
     mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
-// **NEW: Direct HLS12VGA pattern functions - Thread-safe**
+// **NEW: Direct A6M_0011 pattern functions - Thread-safe**
 void display_draw_horizontal_grayscale(void)
 {
     display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_HORIZONTAL};
@@ -789,9 +789,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
         return;
     }
-    if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
+    if (a6m_0011_init_sem_take() != 0)  // 等待屏幕spi初始化完成
     {
-        BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+        BSP_LOGE(TAG, "Failed to a6m_0011_init_sem_take err");
         return;
     }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
@@ -823,22 +823,41 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     break;
                 case LCD_CMD_OPEN:
                     BSP_LOGI(TAG, "LCD_CMD_OPEN");
-                    hls12vga_power_on();
+                    a6m_0011_power_on();
                     set_display_onoff(true);
-                    hls12vga_set_brightness(9);  // 设置亮度
 
-                    // hls12vga_get_mirror(0, &mirror_value);
-                    // BSP_LOGI(TAG, "Current mirror value: 0x%02X", mirror_value);
-                    hls12vga_set_mirror(0x08);// 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像; 0x10 Vertical Mirror 0x00 Normal Display 0x08 Horizontal Mirror 0x18 Horizontal + Vertical Mirror
-                    hls12vga_get_mirror(0, &mirror_value);
-                    BSP_LOGI(TAG, "New mirror value set to: 0x%02X", mirror_value);
-                    
-                    // hls12vga_set_brightness(cmd.p.open.brightness);
-                    // hls12vga_set_mirror(cmd.p.open.mirror);
+                    a6m_0011_read_reg(0, 0x00);
+                    a6m_0011_read_reg(0, 0xBE);
+                    a6m_0011_read_reg(0, 0xE2);
+
+                    a6m_0011_set_brightness(0x3A);
+                    a6m_0011_write_reg(0xBE, 0x82);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0X60, 0X80);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0X78, 0X0E);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0X7C, 0X13);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0XDD, 0X00);  // clear border start
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0XDE, 0X00);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0XC3, 0X80);
+                    mos_delay_ms(20);
+                    a6m_0011_write_reg(0XDD, 0X81);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0XDE, 0X01);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0XC3, 0X00);  // clear border end
+                    mos_delay_us(6);
+                    a6m_0011_set_mirror(MIRROR_HORZ);
                     mos_delay_ms(2);
-                    hls12vga_open_display();  // 开启显示
-                    // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                    hls12vga_clear_screen(false);  // 清屏
+                    // a6m_0011_write_reg(0xE2, 0x19);
+                    // mos_delay_ms(2);
+                    a6m_0011_open_display();
+                    // a6m_0011_set_shift(MOVE_DEFAULT, 0);
+                    a6m_0011_clear_screen(false);
                     state_type = LCD_STATE_ON;
 
                     BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
@@ -867,11 +886,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 case LCD_CMD_CLOSE:
                     if (get_display_onoff())
                     {
-                        // hls12vga_clear_screen(false); // 清屏
+                        // a6m_0011_clear_screen(false); // 清屏
                         // lv_timer_handler();
                         scroll_text_stop();
                         set_display_onoff(false);
-                        hls12vga_power_off();
+                        a6m_0011_power_off();
                     }
                     state_type = LCD_STATE_OFF;
                     break;
@@ -887,25 +906,25 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 }
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
-                    /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
+                    /* **NEW: Handle direct A6M_0011 horizontal grayscale pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
+                    if (a6m_0011_draw_horizontal_grayscale_pattern() != 0)
                     {
                         BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
                     }
                     break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
-                    /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
+                    /* **NEW: Handle direct A6M_0011 vertical grayscale pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    if (hls12vga_draw_vertical_grayscale_pattern() != 0)
+                    if (a6m_0011_draw_vertical_grayscale_pattern() != 0)
                     {
                         BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
                     }
                     break;
                 case LCD_CMD_CHESS_PATTERN:
-                    /* **NEW: Handle direct HLS12VGA chess pattern** */
+                    /* **NEW: Handle direct A6M_0011 chess pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    if (hls12vga_draw_chess_pattern() != 0)
+                    if (a6m_0011_draw_chess_pattern() != 0)
                     {
                         BSP_LOGE(TAG, "Failed to draw chess pattern");
                     }

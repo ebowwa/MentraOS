@@ -29,7 +29,7 @@
 #include "pdm_audio_stream.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
-#include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
+#include "display/lcd/a6m_0011.h"
 
 #include <dk_buttons_and_leds.h>
 
@@ -907,11 +907,11 @@ int main(void)
         display_open();
         printk("✅✅✅ display_open() call completed! ✅✅✅\n");
         
-        // Add direct HLS12VGA test from main thread
-        LOG_INF("🖥️ Testing HLS12VGA display from main thread...");
+        // Add direct A6M_0011 test from main thread
+        LOG_INF("🖥️ Testing A6M_0011 display from main thread...");
         const struct device *test_disp = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
         if (device_is_ready(test_disp)) {
-            LOG_INF("✅ HLS12VGA device ready in main: %s", test_disp->name);
+            LOG_INF("✅ A6M_0011 device ready in main: %s", test_disp->name);
             
             // Try to turn off blanking
             int ret = display_blanking_off(test_disp);
@@ -930,12 +930,12 @@ int main(void)
             LOG_INF("🎨 Display write result: %d", ret);
             
             if (ret == 0) {
-                LOG_INF("🎉 SUCCESS: HLS12VGA write operation completed!");
+                LOG_INF("🎉 SUCCESS: A6M_0011 write operation completed!");
             } else {
-                LOG_ERR("❌ FAILED: HLS12VGA write operation failed: %d", ret);
+                LOG_ERR("❌ FAILED: A6M_0011 write operation failed: %d", ret);
             }
         } else {
-            LOG_ERR("❌ HLS12VGA device not ready in main");
+            LOG_ERR("❌ A6M_0011 device not ready in main");
         }
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here

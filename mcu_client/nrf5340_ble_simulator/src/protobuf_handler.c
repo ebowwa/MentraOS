@@ -48,7 +48,7 @@
 
 #include "protobuf_handler.h"
 #include "proto/mentraos_ble.pb.h"
-#include "../custom_driver_module/drivers/display/lcd/hls12vga.h"
+#include "../custom_driver_module/drivers/display/lcd/a6m_0011.h"
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
 #include "mos_components/mos_lvgl_display/include/mos_lvgl_display.h"  // **NEW: For protobuf text display**
@@ -836,7 +836,7 @@ void protobuf_set_brightness_level(uint32_t level)
 	
 	LOG_INF("Setting projector brightness: %u%% -> level %u (0-9)", level, projector_level);
 	
-	int ret = hls12vga_set_brightness(projector_level);
+	int ret = a6m_0011_set_brightness(projector_level);
 	if (ret == 0) {
 		LOG_INF("✅ Display projector brightness set to level %u/9", projector_level);
 	} else {
@@ -888,7 +888,7 @@ void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *bri
 	LOG_INF("  - Message Type: PhoneToGlasses::BrightnessConfig");
 	LOG_INF("  - Field 1 present: YES");
 	LOG_INF("  - Value type: uint32");
-	LOG_INF("  - Implementation: Hardware PWM control (LED3) + Projector brightness (HLS12VGA) + Auto brightness disable");
+	LOG_INF("  - Implementation: Hardware PWM control (LED3) + Projector brightness (A6M_0011) + Auto brightness disable");
 	
 	// Print to UART
 	printk("\n[Phone->Glasses BRIGHTNESS] %u%% -> LED3: %u%%, Projector: %u/9, Auto: %s->OFF\n", 
