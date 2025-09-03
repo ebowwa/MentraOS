@@ -1,4 +1,5 @@
 import {EventEmitter} from "events"
+import {useConnectionStore} from "@/stores/connection"
 
 export enum WebSocketStatus {
   DISCONNECTED = "disconnected",
@@ -28,7 +29,10 @@ class WebSocketManager extends EventEmitter {
   private updateStatus(newStatus: WebSocketStatus) {
     if (newStatus !== this.previousStatus) {
       this.previousStatus = newStatus
-      this.emit("statusChange", newStatus)
+
+      // Update the connection store
+      const store = useConnectionStore.getState()
+      store.setStatus(newStatus)
     }
   }
 
@@ -41,8 +45,10 @@ class WebSocketManager extends EventEmitter {
       this.webSocket = null
     }
 
-    // Update status to connecting
+    // Update status to connecting and set URL in store
     this.updateStatus(WebSocketStatus.CONNECTING)
+    const store = useConnectionStore.getState()
+    store.setUrl(url)
 
     // Create new WebSocket with authorization header
     const wsUrl = new URL(url)
@@ -54,6 +60,7 @@ class WebSocketManager extends EventEmitter {
     this.webSocket.onopen = () => {
       console.log("WSManagerTS: WebSocket connection established")
       this.updateStatus(WebSocketStatus.CONNECTED)
+      store.setConnected()
     }
 
     this.webSocket.onmessage = event => {
@@ -63,11 +70,13 @@ class WebSocketManager extends EventEmitter {
     this.webSocket.onerror = error => {
       console.error("WSManagerTS: WebSocket error:", error)
       this.updateStatus(WebSocketStatus.ERROR)
+      store.setError(error?.toString() || "WebSocket error")
     }
 
     this.webSocket.onclose = event => {
       console.log("WSManagerTS: Connection closed with code:", event.code)
       this.updateStatus(WebSocketStatus.DISCONNECTED)
+      store.setDisconnected()
     }
   }
 
@@ -83,6 +92,8 @@ class WebSocketManager extends EventEmitter {
     }
 
     this.updateStatus(WebSocketStatus.DISCONNECTED)
+    const store = useConnectionStore.getState()
+    store.setDisconnected()
   }
 
   isConnected(): boolean {
@@ -145,6 +156,8 @@ class WebSocketManager extends EventEmitter {
     this.disconnect()
     this.removeAllListeners()
     WebSocketManager.instance = null
+    const store = useConnectionStore.getState()
+    store.reset()
   }
 }
 

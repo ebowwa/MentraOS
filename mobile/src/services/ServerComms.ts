@@ -3,6 +3,7 @@ import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getWsUrl} from "@/utils/SettingsHelper"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -45,7 +46,14 @@ class ServerComms {
   // }
 
   public static getInstance(): any {
-    // disabled for now
+    const disableNewWsManager = false
+    if (!disableNewWsManager) {
+      if (!ServerComms.instance) {
+        ServerComms.instance = new ServerComms()
+      }
+
+      return ServerComms.instance
+    }
     return {
       restartConnection: () => {},
       setAuthCreds: () => {},
@@ -460,6 +468,7 @@ class ServerComms {
   private handle_display_event(msg: any) {
     if (msg.view) {
       coreCommunicator.sendCommand("display_event", msg)
+      GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", msg) // send to the glasses mirror
     }
   }
 
