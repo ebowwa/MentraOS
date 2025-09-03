@@ -24,12 +24,10 @@ import {
   RequestSettings,
   RtmpStreamStatus,
   LocalTranscription,
-  SettingsUpdate,
   Vad,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
-// import subscriptionService from "../session/subscription.service";
 import { PosthogService } from "../logging/posthog.service";
 import { sessionService } from "../session/session.service";
 import { User } from "../../models/user.model";
@@ -72,7 +70,7 @@ export enum GlassesErrorCode {
  */
 export class GlassesWebSocketService {
   private static instance: GlassesWebSocketService;
-  private constructor() {}
+  private constructor() { ; }
 
   /**
    * Get singleton instance
@@ -101,29 +99,17 @@ export class GlassesWebSocketService {
 
       if (!userId) {
         logger.error(
-          {
-            error: GlassesErrorCode.INVALID_TOKEN,
-            request,
-          },
+          { error: GlassesErrorCode.INVALID_TOKEN, request },
           "No user ID provided in request",
         );
-        this.sendError(
-          ws,
-          GlassesErrorCode.INVALID_TOKEN,
-          "Authentication failed",
-        );
+        this.sendError(ws, GlassesErrorCode.INVALID_TOKEN, "Authentication failed");
         return;
       }
 
       // Create or retrieve user session
-      const { userSession, reconnection } = await sessionService.createSession(
-        ws,
-        userId,
-      );
-      userSession.logger.info(
-        `Glasses WebSocket connection from user: ${userId} (LiveKit: ${livekitRequested})`,
-      );
-      
+      const { userSession, reconnection } = await sessionService.createSession(ws, userId);
+      userSession.logger.info(`Glasses WebSocket connection from user: ${userId} (LiveKit: ${livekitRequested})`);
+
       // Store LiveKit preference in the session
       userSession.livekitRequested = livekitRequested;
 
@@ -136,7 +122,7 @@ export class GlassesWebSocketService {
             i++;
             // await this.handleBinaryMessage(userSession, data);
             if (i % 10 === 0) {
-              logger.debug({service: "LiveKitManager"}, "[Websocket]Received binary message");
+              logger.debug({ service: "LiveKitManager" }, "[Websocket]Received binary message");
             }
             userSession.audioManager.processAudioData(data);
             return;
@@ -166,30 +152,28 @@ export class GlassesWebSocketService {
               });
             return;
           }
+
           // Handle LiveKit init handshake (client requests LiveKit info)
-          if (message.type === GlassesToCloudMessageType.LIVEKIT_INIT) {
-            const livekitInitMessage = message as any; // Cast to get mode
-            const mode = livekitInitMessage.mode || 'publish'; // Default to publish for backward compatibility
-            
-            userSession.liveKitManager
-              .handleLiveKitInit()
-              .then((info) => {
-                if (!info) return;
-                const livekitInfo: CloudToGlassesMessage = {
-                  type: CloudToGlassesMessageType.LIVEKIT_INFO,
-                  url: info.url,
-                  roomName: info.roomName,
-                  token: info.token,
-                  timestamp: new Date(),
-                } as any;
-                ws.send(JSON.stringify(livekitInfo));
-                userSession.logger.info({ url: info.url, roomName: info.roomName, feature: 'livekit' }, 'Sent LIVEKIT_INFO (on LIVEKIT_INIT)');
-              })
-              .catch((e) => {
-                userSession.logger.warn({ e, feature: 'livekit' }, 'Failed LIVEKIT_INIT handling');
-              });
-            return;
-          }
+          // if (message.type === GlassesToCloudMessageType.LIVEKIT_INIT) {
+          //   userSession.liveKitManager
+          //     .handleLiveKitInit()
+          //     .then((info) => {
+          //       if (!info) return;
+          //       const livekitInfo: CloudToGlassesMessage = {
+          //         type: CloudToGlassesMessageType.LIVEKIT_INFO,
+          //         url: info.url,
+          //         roomName: info.roomName,
+          //         token: info.token,
+          //         timestamp: new Date(),
+          //       } as any;
+          //       ws.send(JSON.stringify(livekitInfo));
+          //       userSession.logger.info({ url: info.url, roomName: info.roomName, feature: 'livekit' }, 'Sent LIVEKIT_INFO (on LIVEKIT_INIT)');
+          //     })
+          //     .catch((e) => {
+          //       userSession.logger.warn({ e, feature: 'livekit' }, 'Failed LIVEKIT_INIT handling');
+          //     });
+          //   return;
+          // }
 
           // Process the message
           this.handleGlassesMessage(userSession, message)
@@ -563,7 +547,7 @@ export class GlassesWebSocketService {
   private async handleConnectionInit(
     userSession: UserSession,
     reconnection: boolean,
-    livekitRequested: boolean = false,
+    livekitRequested = false,
   ): Promise<void> {
     if (!reconnection) {
       // Start all the apps that the user has running.
@@ -611,16 +595,20 @@ export class GlassesWebSocketService {
             roomName: livekitInfo.roomName,
             token: livekitInfo.token,
           };
-          userSession.logger.info({ 
-            url: livekitInfo.url, 
-            roomName: livekitInfo.roomName, 
-            feature: 'livekit' 
+          userSession.logger.info({
+            url: livekitInfo.url,
+            roomName: livekitInfo.roomName,
+            feature: 'livekit'
           }, 'Included LiveKit info in CONNECTION_ACK');
+          userSession.logger.debug({
+            ackMessage,
+            feature: "connection"
+          }, 'Sent CONNECTION_ACK');
         }
       } catch (error) {
-        userSession.logger.warn({ 
-          error, 
-          feature: 'livekit' 
+        userSession.logger.warn({
+          error,
+          feature: 'livekit'
         }, 'Failed to initialize LiveKit for CONNECTION_ACK');
       }
     }

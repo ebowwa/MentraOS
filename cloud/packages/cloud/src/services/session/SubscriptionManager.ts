@@ -351,7 +351,6 @@ export class SubscriptionManager {
 
       const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
       if (!user.locationSubscriptions) {
-        // @ts-ignore - mongoose map
         user.locationSubscriptions = new Map();
       }
       if (locationRate) {
