@@ -69,3 +69,4 @@ ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
 
 # The porter.yaml file will run the supervisor script. starting both cloud and livekit-client services.
 CMD ["echo", "Ready to run service cloud service and livekit-client ./start.sh"]
+# CMD ["./start.sh"]

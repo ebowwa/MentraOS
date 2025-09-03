@@ -33,7 +33,7 @@ build:
 services:
 - name: cloud
   type: web
-  run: ./supervisor.sh
+  run: ./start.sh
   port: 80 # Main Cloud API port
   cpuCores: 5
   ramMegabytes: 4096
