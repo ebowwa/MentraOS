@@ -262,37 +262,28 @@ export default function VersionUpdateScreen() {
 
           <View style={themed($buttonContainer)}>
             {state === "error" && (
-              <>
-                <Button
-                  onPress={checkCloudVersion}
-                  style={themed($primaryButton)}
-                  text={translate("versionCheck:retryConnection")}
-                />
-                <Spacer height={theme.spacing.md} />
-              </>
+              <Button
+                onPress={checkCloudVersion}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:retryConnection")}
+              />
             )}
 
             {state === "outdated" && (
-              <>
-                <Button
-                  onPress={handleUpdate}
-                  disabled={isUpdating}
-                  style={themed($primaryButton)}
-                  text={translate("versionCheck:update")}
-                />
-                <Spacer height={theme.spacing.md} />
-              </>
+              <Button
+                onPress={handleUpdate}
+                disabled={isUpdating}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:update")}
+              />
             )}
 
             {state === "error" && isUsingCustomUrl && (
-              <>
-                <Spacer height={theme.spacing.md} />
-                <Button
-                  onPress={handleResetUrl}
-                  style={themed($secondaryButton)}
-                  text={translate("versionCheck:resetUrl")}
-                />
-              </>
+              <Button
+                onPress={handleResetUrl}
+                style={themed($secondaryButton)}
+                text={translate("versionCheck:resetUrl")}
+              />
             )}
 
             {(state === "error" || state === "outdated") && (
@@ -367,6 +358,7 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
+  gap: spacing.md,
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = () => ({
