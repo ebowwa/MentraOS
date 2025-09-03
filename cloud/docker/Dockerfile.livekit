@@ -1,3 +1,4 @@
+
 # Multi-stage build: Build Go binary first
 FROM golang:1.24-alpine AS go-builder
 
@@ -138,7 +139,6 @@ ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 #   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run supervisor script
-CMD ["echo", "Ready to run services"]
 
 # The porter.yaml file will run the supervisor script. starting both cloud and livekit-client services.
+CMD ["echo", "Ready to run services"]
