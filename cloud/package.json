@@ -6,6 +6,7 @@
   "scripts": {
     "build": "cd packages/sdk && bun run build && cd ../utils && bun run build && cd ../agents && bun run build",
     "setup-deps": "bun install --no-link",
+    "start": "bun packages/cloud/src/index.ts",
     "dev": "bun run dev:stop && bun run dev:rebuild && docker compose -f docker-compose.dev.yml -p dev up",
     "dev:core": "docker compose -f docker-compose.dev.yml -p dev up shared-packages cloud",
     "dev:detached": "docker compose -f docker-compose.dev.yml -p dev up -d",
