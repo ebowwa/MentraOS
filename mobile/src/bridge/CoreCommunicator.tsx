@@ -188,7 +188,6 @@ export class CoreCommunicator extends EventEmitter {
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
     await this.setServerUrl(backendServerUrl) // todo: config: remove
-    await ServerComms.getInstance().setServerUrl(backendServerUrl) // todo: config: remove
 
     // Start periodic status checks
     this.startStatusPolling()

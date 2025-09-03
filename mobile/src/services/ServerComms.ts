@@ -105,28 +105,6 @@ class ServerComms {
     this.ws.connect(url, this.coreToken)
   }
 
-  // TODO: config: might not need this?
-  private sendConnectionInit() {
-    console.log("ServerCommsTS: Sending connection_init message")
-    if (!this.coreToken) {
-      console.error("ServerCommsTS: No core token found")
-      return
-    }
-
-    try {
-      const initMsg = {
-        type: "connection_init",
-        coreToken: this.coreToken,
-      }
-
-      const jsonString = JSON.stringify(initMsg)
-      this.ws.sendText(jsonString)
-      console.log("ServerCommsTS: Sent connection_init message")
-    } catch (error) {
-      console.log(`ServerCommsTS: Error building connection_init JSON: ${error}`)
-    }
-  }
-
   private attemptReconnect(override = false) {
     if (this.reconnecting && !override) return
     this.reconnecting = true
@@ -155,7 +133,6 @@ class ServerComms {
     if (status === WebSocketStatus.CONNECTED) {
       // Wait a bit before sending connection_init
       setTimeout(() => {
-        this.sendConnectionInit()
         this.send_calendar_events()
         this.send_location_updates()
       }, 3000)
