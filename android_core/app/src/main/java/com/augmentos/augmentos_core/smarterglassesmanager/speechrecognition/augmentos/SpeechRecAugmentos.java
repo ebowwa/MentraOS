@@ -422,6 +422,18 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     public void destroy() {
         Log.d(TAG, "Destroying Speech Recognition Service");
         vadRunning = false;
+        
+        // Properly shut down Sherpa transcriber to avoid native resource issues
+        if (sherpaTranscriber != null) {
+            try {
+                Log.d(TAG, "Shutting down Sherpa ONNX transcriber");
+                sherpaTranscriber.shutdown();
+                sherpaTranscriber = null;
+            } catch (Exception e) {
+                Log.e(TAG, "Error shutting down Sherpa transcriber", e);
+            }
+        }
+        
         //ServerComms.getInstance().disconnectWebSocket();
     }
 
