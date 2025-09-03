@@ -93,7 +93,7 @@ export default function DeveloperSettingsScreen() {
             {
               text: translate("common:ok"),
               onPress: () => {
-                replace("/auth/core-token-exchange")
+                replace("/auth/version-check")
               },
             },
           ],
@@ -140,11 +140,11 @@ export default function DeveloperSettingsScreen() {
     await coreCommunicator.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    showAlert("Success", "Backend URL reset to default.", [
+    showAlert("Success", "Reset backend URL to default.", [
       {
         text: "OK",
         onPress: () => {
-          replace("/auth/core-token-exchange")
+          replace("/auth/version-check")
         },
       },
     ])

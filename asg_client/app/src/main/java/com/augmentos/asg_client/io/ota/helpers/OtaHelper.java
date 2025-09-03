@@ -1,9 +1,5 @@
 package com.augmentos.asg_client.io.ota.helpers;
 
-import static com.augmentos.asg_client.io.ota.utils.OtaConstants.APK_FILENAME;
-import static com.augmentos.asg_client.io.ota.utils.OtaConstants.BASE_DIR;
-import static com.augmentos.asg_client.io.ota.utils.OtaConstants.METADATA_JSON;
-
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -41,11 +37,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.stream.Collectors;
 
-import com.augmentos.asg_client.io.ota.constants.OtaConstants;
-import com.augmentos.asg_client.io.ota.constants.Constants;
+import com.augmentos.asg_client.io.ota.utils.OtaConstants;
 
 public class OtaHelper {
-    private static final String TAG = Constants.TAG;
+    private static final String TAG = OtaConstants.TAG;
     private static ConnectivityManager.NetworkCallback networkCallback;
     private static ConnectivityManager connectivityManager;
     private static volatile boolean isCheckingVersion = false;
@@ -107,12 +102,12 @@ public class OtaHelper {
                 Log.d(TAG, "Performing periodic OTA check");
                 startVersionCheck(context);
                 // Schedule next check
-                handler.postDelayed(this, Constants.PERIODIC_CHECK_INTERVAL_MS);
+                handler.postDelayed(this, OtaConstants.PERIODIC_CHECK_INTERVAL_MS);
             }
         };
 
         // Start the first periodic check after the interval
-        handler.postDelayed(periodicCheckRunnable, Constants.PERIODIC_CHECK_INTERVAL_MS);
+        handler.postDelayed(periodicCheckRunnable, OtaConstants.PERIODIC_CHECK_INTERVAL_MS);
         isPeriodicCheckActive = true;
         Log.d(TAG, "Started periodic OTA checks every 15 minutes");
     }
@@ -241,7 +236,7 @@ public class OtaHelper {
 
             try {
                 // Fetch version info
-                String versionInfo = fetchVersionInfo(Constants.VERSION_JSON_URL);
+                String versionInfo = fetchVersionInfo(OtaConstants.VERSION_JSON_URL);
                 JSONObject json = new JSONObject(versionInfo);
                 
                 // Check if new format (multiple apps) or legacy format
@@ -338,7 +333,7 @@ public class OtaHelper {
                 String filename = packageName.equals(context.getPackageName()) 
                     ? "ota_updater_update.apk" 
                     : "asg_client_update.apk";
-                File apkFile = new File(BASE_DIR, filename);
+                File apkFile = new File(OtaConstants.BASE_DIR, filename);
                 
                 if (apkFile.exists()) {
                     Log.d(TAG, "Deleting existing APK: " + apkFile.getName());
@@ -383,7 +378,7 @@ public class OtaHelper {
             PackageInfo info = context.getPackageManager().getPackageInfo(packageName, 0);
             String sourceApk = info.applicationInfo.sourceDir;
             
-            File backupFile = new File(BASE_DIR, "asg_client_backup.apk");
+            File backupFile = new File(OtaConstants.BASE_DIR, "asg_client_backup.apk");
             File sourceFile = new File(sourceApk);
             
             // Simple file copy
@@ -424,7 +419,7 @@ public class OtaHelper {
                 Log.e(TAG, "Download attempt " + (retryCount + 1) + " failed", e);
                 
                 // Clean up partial download
-                File partialFile = new File(BASE_DIR, filename);
+                File partialFile = new File(OtaConstants.BASE_DIR, filename);
                 if (partialFile.exists()) {
                     partialFile.delete();
                     Log.d(TAG, "Cleaned up partial download file");
@@ -461,7 +456,7 @@ public class OtaHelper {
     
     // Internal download method (original logic)
     private boolean downloadApkInternal(String urlStr, JSONObject json, Context context, String filename) throws Exception {
-        File asgDir = new File(BASE_DIR);
+        File asgDir = new File(OtaConstants.BASE_DIR);
 
         if (!asgDir.exists()) {
             boolean created = asgDir.mkdirs();
@@ -575,7 +570,7 @@ public class OtaHelper {
         }
 
         try {
-            File jsonFile = new File(BASE_DIR, METADATA_JSON);
+            File jsonFile = new File(OtaConstants.BASE_DIR, OtaConstants.METADATA_JSON);
             FileWriter writer = new FileWriter(jsonFile);
             writer.write(json.toString(2)); // Pretty print
             writer.close();
@@ -586,7 +581,7 @@ public class OtaHelper {
     }
 
     public void installApk(Context context) {
-        installApk(context, Constants.APK_FULL_PATH);
+        installApk(context, OtaConstants.APK_FULL_PATH);
     }
 
     public static void installApk(Context context, String apkPath) {
@@ -668,8 +663,8 @@ public class OtaHelper {
     }
 
     private void deleteOldFiles() {
-        String apkFile = BASE_DIR + "/" + APK_FILENAME;
-        String metaFile = BASE_DIR + "/" + METADATA_JSON ;
+        String apkFile = OtaConstants.BASE_DIR + "/" + OtaConstants.APK_FILENAME;
+        String metaFile = OtaConstants.BASE_DIR + "/" + OtaConstants.METADATA_JSON ;
         //remove metaFile and apkFile
         File apk = new File(apkFile);
         File meta = new File(metaFile);
@@ -685,7 +680,7 @@ public class OtaHelper {
 
     private int getMetadataVersion() {
         int localJsonVersion = 0;
-        File metaDataJson = new File(BASE_DIR, METADATA_JSON);
+        File metaDataJson = new File(OtaConstants.BASE_DIR, OtaConstants.METADATA_JSON);
         if (metaDataJson.exists()) {
             FileInputStream fis = null;
             try {
@@ -707,7 +702,7 @@ public class OtaHelper {
     }
 
     public boolean reinstallApkFromBackup() {
-        String backupPath = Constants.BACKUP_APK_PATH;
+        String backupPath = OtaConstants.BACKUP_APK_PATH;
         Log.d(TAG, "Attempting to reinstall APK from backup at: " + backupPath);
 
         File backupApk = new File(backupPath);
@@ -744,13 +739,13 @@ public class OtaHelper {
     public boolean saveBackupApk(String sourceApkPath) {
         try {
             // Create backup directory if it doesn't exist
-            File backupDir = new File(context.getFilesDir(), BASE_DIR);
+            File backupDir = new File(context.getFilesDir(), OtaConstants.BASE_DIR);
             if (!backupDir.exists()) {
                 boolean created = backupDir.mkdirs();
                 Log.d(TAG, "Created backup directory: " + created);
             }
 
-            File backupApk = new File(backupDir, Constants.BACKUP_APK_FILENAME);
+            File backupApk = new File(backupDir, OtaConstants.BACKUP_APK_FILENAME);
             String backupPath = backupApk.getAbsolutePath();
 
             // Delete existing backup if it exists
@@ -790,7 +785,7 @@ public class OtaHelper {
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 try {
                     // Now send the completion broadcast
-                    Intent completeIntent = new Intent(Constants.ACTION_UPDATE_COMPLETED);
+                    Intent completeIntent = new Intent(OtaConstants.ACTION_UPDATE_COMPLETED);
                     completeIntent.setPackage(context.getPackageName());
                     context.sendBroadcast(completeIntent);
                     Log.i(TAG, "Sent update completion broadcast");
@@ -806,7 +801,7 @@ public class OtaHelper {
             Log.e(TAG, "Failed to send update reset broadcast", e);
             // Fallback direct completion broadcast
             try {
-                Intent completeIntent = new Intent(Constants.ACTION_UPDATE_COMPLETED);
+                Intent completeIntent = new Intent(OtaConstants.ACTION_UPDATE_COMPLETED);
                 completeIntent.setPackage(context.getPackageName());
                 context.sendBroadcast(completeIntent);
                 Log.i(TAG, "Sent fallback update completion broadcast");

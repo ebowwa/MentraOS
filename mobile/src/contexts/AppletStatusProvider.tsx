@@ -93,7 +93,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
-  const refreshAppStatus = async () => {
+  const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
       console.log("AppStatusProvider: No user, clearing app status")
@@ -149,7 +149,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     } catch (err) {
       console.error("AppStatusProvider: Error fetching apps:", err)
     }
-  }
+  }, [user])
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {
@@ -305,6 +305,15 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
     }
   }, [])
+
+  // refresh app status until loaded:
+  useEffect(() => {
+    if (appStatus.length > 0) return
+    const interval = setInterval(() => {
+      refreshAppStatus()
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [appStatus.length])
 
   return (
     <AppStatusContext.Provider

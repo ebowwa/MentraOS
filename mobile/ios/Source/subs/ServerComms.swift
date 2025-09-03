@@ -681,7 +681,7 @@ class ServerComms {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = jsonData
 
-            Core.log("ServerComms: Sending datetime to: \(url)")
+            // Core.log("ServerComms: Sending datetime to: \(url)")
 
             URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
@@ -689,11 +689,7 @@ class ServerComms {
                 }
 
                 if let httpResponse = response as? HTTPURLResponse {
-                    if httpResponse.statusCode == 200 {
-                        if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
-                            Core.log("ServerComms: Datetime transmission successful: \(responseString)")
-                        }
-                    } else {
+                    if httpResponse.statusCode != 200 {
                         Core.log("ServerComms: Datetime transmission failed. Response code: \(httpResponse.statusCode)")
                         if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
                             Core.log("ServerComms: Error response: \(responseString)")
