@@ -197,7 +197,7 @@ export default function VersionUpdateScreen() {
           iconColor: theme.colors.error,
           title: "Connection Error",
           description: isUsingCustomUrl
-            ? "Could not connect to the custom server. Please reset to default or check your connection."
+            ? "Could not connect to the custom server. Please try resetting the URL to the default or check your connection."
             : "Could not connect to the server. Please check your connection and try again.",
         }
 
