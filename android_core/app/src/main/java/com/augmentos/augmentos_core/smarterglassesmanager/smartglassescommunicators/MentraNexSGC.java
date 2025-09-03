@@ -402,6 +402,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         mainReconnectAttempts = 0;
                         Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
                         stopScan();
+
+                        if (!isWorkerRunning) {
+                            Log.d(TAG, "Worker thread is not running. Starting it.");
+                            startWorkerIfNeeded();
+                        }
+
                         Log.d(TAG, "Discover services calling...");
                         gatt.discoverServices();
                         updateConnectionState();
