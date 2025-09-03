@@ -106,7 +106,8 @@
     "react-native-webview": "13.12.5",
     "react-native-wifi-reborn": "^4.13.6",
     "semver": "^7.7.2",
-    "tar-js": "^0.3.0"
+    "tar-js": "^0.3.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@babel/core": "^7.27.4",

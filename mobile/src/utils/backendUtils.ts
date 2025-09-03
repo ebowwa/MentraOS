@@ -1,4 +1,4 @@
-import BackendServerComms from "../backend_comms/BackendServerComms"
+import BackendServerComms from "../bridge/BackendServerComms"
 import {AppStoreItem} from "../components/types.ts"
 import {GET_APP_STORE_DATA_ENDPOINT} from "../consts"
 

@@ -5,7 +5,7 @@ import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
 
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -17,6 +17,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
+import ServerComms from "@/services/ServerComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -96,7 +97,13 @@ export default function VersionUpdateScreen() {
       const coreToken = await backend.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
-      coreCommunicator.setAuthCreds(coreToken, uid)
+      const useNewWsManager = false
+      if (useNewWsManager) {
+        coreCommunicator.setup()
+        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+      } else {
+        coreCommunicator.setAuthCreds(coreToken, uid)
+      }
 
       // Check onboarding status
       const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)

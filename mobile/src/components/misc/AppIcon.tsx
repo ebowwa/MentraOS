@@ -44,17 +44,29 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
           height: style?.height ?? 56,
           borderRadius: (style?.width ?? 56) / 2, // Make it a perfect circle
         }}>
-        {app.loading ? (
-          <ActivityIndicator size="small" color={theme.colors.text} />
-        ) : (
-          <Image
-            source={{uri: app.logoURL}}
-            style={themed($icon)}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-          />
+        {/* overlay loading indicator: */}
+        {app.loading && (
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 10,
+            }}>
+            <ActivityIndicator size="large" color={theme.colors.text} />
+          </View>
         )}
+        <Image
+          source={{uri: app.logoURL}}
+          style={themed($icon)}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
       </View>
 
       {showLabel && <Text text={app.name} style={themed($appName)} numberOfLines={2} />}

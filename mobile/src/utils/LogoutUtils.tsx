@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import {supabase} from "@/supabase/supabaseClient"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
