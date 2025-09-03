@@ -24,7 +24,6 @@ FROM oven/bun:latest
 # Install runtime dependencies for Go binary and SSL
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libc6-compat \
     libopus0 \
     libopusfile0 \
     libsoxr0 \
@@ -136,8 +135,8 @@ ENV SERVICE_NAME=cloud
 ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
 
 # Health check for the combined service
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+#   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run supervisor script
 CMD ["echo", "Ready to run services"]
