@@ -6,7 +6,7 @@ import {AppletInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
-import {SquircleView} from "expo-squircle-view"
+//import {SquircleView} from "expo-squircle-view"
 import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 interface AppIconProps {
@@ -39,9 +39,9 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
       {Platform.OS === "ios" && usingNewUI ? (
-        <SquircleView
-          cornerSmoothing={100}
-          preserveSmoothing={true}
+        <View
+          // cornerSmoothing={100}
+          // preserveSmoothing={true}
           style={{
             overflow: "hidden", // use as a mask
             alignItems: "center",
@@ -72,7 +72,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
             transition={200}
             cachePolicy="memory-disk"
           />
-        </SquircleView>
+        </View>
       ) : (
         <>
           {app.loading && usingNewUI && (
