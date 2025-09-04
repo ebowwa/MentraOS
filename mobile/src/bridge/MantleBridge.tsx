@@ -6,7 +6,7 @@ import {
   isAugmentOsCoreInstalled,
   isLocationServicesEnabled as checkLocationServices,
   startExternalService,
-} from "./CoreServiceStarter"
+} from "@/bridge/CoreServiceStarter"
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
@@ -15,11 +15,11 @@ import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import {getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
-const {Core, BridgeModule, CoreCommsService} = NativeModules
-const eventEmitter = new NativeEventEmitter(Core)
+const {Bridge, BridgeModule, CoreCommsService} = NativeModules
+const eventEmitter = new NativeEventEmitter(Bridge)
 
-export class Bridge extends EventEmitter {
-  private static instance: Bridge | null = null
+export class MantleBridge extends EventEmitter {
+  private static instance: MantleBridge | null = null
   private messageEventSubscription: any = null
   private validationInProgress: Promise<boolean> | null = null
   private reconnectionTimer: NodeJS.Timeout | null = null
@@ -154,11 +154,11 @@ export class Bridge extends EventEmitter {
   /**
    * Gets the singleton instance of Bridge
    */
-  public static getInstance(): Bridge {
+  public static getInstance(): MantleBridge {
     if (!Bridge.instance) {
-      Bridge.instance = new Bridge()
+      MantleBridge.instance = new MantleBridge()
     }
-    return Bridge.instance
+    return MantleBridge.instance
   }
 
   /**
@@ -1030,5 +1030,5 @@ export class Bridge extends EventEmitter {
 }
 
 // Create and export the singleton instance
-const bridge = Bridge.getInstance()
+const bridge = MantleBridge.getInstance()
 export default bridge

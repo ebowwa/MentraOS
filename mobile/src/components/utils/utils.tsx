@@ -84,7 +84,7 @@ export function OtaUpdateChecker() {
   return null
 }
 
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {AppState} from "react-native"

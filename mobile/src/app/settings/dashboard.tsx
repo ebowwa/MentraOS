@@ -13,7 +13,7 @@ import {
 } from "react-native"
 
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"

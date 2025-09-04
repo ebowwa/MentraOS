@@ -1,5 +1,5 @@
 import Config from "react-native-config"
-import coreCommunicator from "@/bridge/Bridge"
+import coreCommunicator from "@/bridge/MantleBridge"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"

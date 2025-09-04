@@ -2,7 +2,7 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
-import coreCommunicator from "@/bridge/Bridge"
+import coreCommunicator from "@/bridge/MantleBridge"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 

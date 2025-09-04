@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {supabase} from "@/supabase/supabaseClient"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"

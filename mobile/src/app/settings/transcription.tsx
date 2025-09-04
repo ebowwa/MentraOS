@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"

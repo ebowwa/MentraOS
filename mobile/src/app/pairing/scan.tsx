@@ -16,7 +16,7 @@ import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {MOCK_CONNECTION} from "@/consts"
 import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"

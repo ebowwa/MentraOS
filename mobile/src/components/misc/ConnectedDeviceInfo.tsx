@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle, TextStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {
   getGlassesClosedImage,

@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"

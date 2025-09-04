@@ -13,7 +13,7 @@ import {
   TextStyle,
 } from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {
   checkNotificationAccessSpecialPermission,

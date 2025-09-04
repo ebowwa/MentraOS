@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {StyleSheet, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"

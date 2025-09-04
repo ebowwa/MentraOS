@@ -1,7 +1,7 @@
 import React, {useCallback, useState} from "react"
 import {TouchableOpacity, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
-import bridge from "@/bridge/Bridge"
+import bridge from "@/bridge/MantleBridge"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
