@@ -44,7 +44,6 @@ fi
 # Copy Swift file to iOS project
 echo "🍎 Copying Swift file to iOS project..."
 if [ -f "$TEMP_DIR/mentraos_ble.pb.swift" ]; then
-    cp "$TEMP_DIR/mentraos_ble.pb.swift" "../mobile/ios/Source/subs/Protobuf/mcu_client/"
     cp "$TEMP_DIR/mentraos_ble.pb.swift" "../mobile/ios/Source/subs/"
     echo "✅ Swift file copied to iOS project"
 else
