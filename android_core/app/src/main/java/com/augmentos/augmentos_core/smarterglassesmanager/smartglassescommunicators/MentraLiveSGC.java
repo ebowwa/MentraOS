@@ -75,6 +75,7 @@ import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -3218,9 +3219,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             bleImgId = bleImgId.substring(0, dotIndex);
         }
 
+        boolean added = false;
+        boolean isComplete = false;
+        boolean isBlePhoto = false;
+
         BlePhotoTransfer photoTransfer = blePhotoTransfers.get(bleImgId);
+        Log.d(TAG, "📦 Photo transfer: " + photoTransfer);
         if (photoTransfer != null) {
             // This is a BLE photo transfer
+            isBlePhoto = true;
             Log.d(TAG, "📦 BLE photo transfer packet for requestId: " + photoTransfer.requestId);
 
             // Get or create session for this transfer
@@ -3231,9 +3238,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             }
 
             // Add packet to session
-            boolean added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
+            added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
+            isComplete = photoTransfer.session.isComplete;
 
-            if (added && photoTransfer.session.isComplete) {
+            if (added && isComplete) {
                 long transferEndTime = System.currentTimeMillis();
                 long totalDuration = transferEndTime - photoTransfer.phoneStartTime;
                 long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ?
@@ -3257,30 +3265,24 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Clean up - use the bleImgId without extension
                 blePhotoTransfers.remove(bleImgId);
             }
+        } else {
+            Log.d(TAG, "📦 Regular file transfer: " + packetInfo.fileName);
+            // Regular file transfer (not a BLE photo)
+            FileTransferSession session = activeFileTransfers.get(packetInfo.fileName);
+            if (session == null) {
+                // New file transfer
+                session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
+                activeFileTransfers.put(packetInfo.fileName, session);
 
-            return; // Exit after handling BLE photo
-        }
+                Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName +
+                      " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
+            }
 
-        // Regular file transfer (not a BLE photo)
-        FileTransferSession session = activeFileTransfers.get(packetInfo.fileName);
-        if (session == null) {
-            // New file transfer
-            session = new FileTransferSession(packetInfo.fileName, packetInfo.fileSize);
-            activeFileTransfers.put(packetInfo.fileName, session);
+            // Add packet to session
+            added = session.addPacket(packetInfo.packIndex, packetInfo.data);
+            isComplete = session.isComplete;
 
-            Log.d(TAG, "📦 Started new file transfer: " + packetInfo.fileName +
-                  " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
-        }
-
-        // Add packet to session
-        boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
-
-        if (added) {
-            // BES chip handles ACKs automatically
-            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
-
-            // Check if transfer is complete
-            if (session.isComplete) {
+            if (added && isComplete) {
                 Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
 
                 // Assemble and save the file
@@ -3292,10 +3294,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Remove from active transfers
                 activeFileTransfers.remove(packetInfo.fileName);
             }
+        }
+
+        // Send unified ACK/NACK for all transfer types
+        if (added) {
+            sendFileTransferAck(1, packetInfo.packIndex); // SUCCESS
+            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully" + 
+                      (isBlePhoto ? " (BLE photo)" : " (regular file)") + " - sending ACK");
         } else {
-            // Packet already received or invalid index
-            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
-            // BES chip handles ACKs automatically
+            sendFileTransferAck(0, packetInfo.packIndex); // FAILURE
+            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex + 
+                      (isBlePhoto ? " (BLE photo)" : " (regular file)") + " - sending NACK");
         }
     }
 
@@ -3505,6 +3514,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Sent BLE transfer complete notification: " + json.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer complete message", e);
+        }
+    }
+
+    /**
+     * Send file transfer acknowledgment to glasses
+     */
+    private void sendFileTransferAck(int state, int index) {
+        try {
+            String ackMessage = K900ProtocolUtils.createFileTransferAck(state, index);
+            if (ackMessage != null) {
+                Log.d(TAG, "📤 Sending file transfer ACK: state=" + state + ", index=" + index);
+                Log.d(TAG, "📤 ACK message: " + ackMessage);
+                
+                // Pack the ACK using K900 protocol directly (already has C-field structure)
+                byte[] packedData = K900ProtocolUtils.packDataToK900(ackMessage.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);
+                queueData(packedData);
+            } else {
+                Log.e(TAG, "❌ Failed to create file transfer ACK message");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending file transfer ACK", e);
         }
     }
 

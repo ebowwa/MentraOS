@@ -156,12 +156,9 @@ public class K900CommandHandler {
             if (bluetoothManager instanceof com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) {
                 com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
                     (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) bluetoothManager;
-                
-                // Convert index from 1-based to 0-based (K900 uses 1-based, our code expects 0-based)
-                int zeroBasedIndex = index - 1;
-                
+
                 // Call the file transfer acknowledgment handler
-                k900Manager.handleFileTransferAck(state, zeroBasedIndex);
+                k900Manager.handleFileTransferAck(state, index);
                 Log.d(TAG, "📦 File transfer ACK forwarded to K900BluetoothManager");
             } else {
                 Log.w(TAG, "📦 Bluetooth manager is not K900BluetoothManager, cannot handle file ACK");
