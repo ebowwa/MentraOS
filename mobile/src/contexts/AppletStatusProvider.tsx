@@ -300,7 +300,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 1500)
   }
 
-  // Listen for app started/stopped events from CoreCommunicator
+  // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
     GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)

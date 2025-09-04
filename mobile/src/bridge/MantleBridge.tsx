@@ -155,7 +155,7 @@ export class MantleBridge extends EventEmitter {
    * Gets the singleton instance of Bridge
    */
   public static getInstance(): MantleBridge {
-    if (!Bridge.instance) {
+    if (!MantleBridge.instance) {
       MantleBridge.instance = new MantleBridge()
     }
     return MantleBridge.instance
