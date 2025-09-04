@@ -121,7 +121,7 @@ struct ViewState {
     private var shouldSendTranscript = false
 
     override init() {
-        Core.log("Mentra: init()")
+        Bridge.log("Mentra: init()")
         vad = SileroVADStrategy()
         super.init()
 
@@ -132,13 +132,13 @@ struct ViewState {
         {
             transcriber = SherpaOnnxTranscriber(context: rootViewController)
         } else {
-            Core.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
+            Bridge.log("Failed to create SherpaOnnxTranscriber - no root view controller found")
         }
 
         // Initialize the transcriber
         if let transcriber = transcriber {
             transcriber.initialize()
-            Core.log("SherpaOnnxTranscriber fully initialized")
+            Bridge.log("SherpaOnnxTranscriber fully initialized")
         }
 
         Task {
@@ -156,7 +156,7 @@ struct ViewState {
     // MARK: - Public Methods (for React Native)
 
     func setup() {
-        Core.log("Mentra: setup()")
+        Bridge.log("Mentra: setup()")
         LocationManager.shared.setup()
         MediaManager.shared.setup()
 
@@ -173,7 +173,7 @@ struct ViewState {
     }
 
     func initManager(_ wearable: String) {
-        Core.log("Initializing manager for wearable: \(wearable)")
+        Bridge.log("Initializing manager for wearable: \(wearable)")
         if wearable.contains("G1") && g1Manager == nil {
             g1Manager = ERG1Manager.getInstance()
         } else if wearable.contains("Live") && liveManager == nil {
@@ -194,7 +194,7 @@ struct ViewState {
         if g1Manager != nil {
             g1Manager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log(
+                Bridge.log(
                     "G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")"
                 )
                 //      self.handleRequestStatus()
@@ -252,7 +252,7 @@ struct ViewState {
 
                 // Ensure we have enough data to process
                 guard rawLC3Data.count > 2 else {
-                    Core.log("Received invalid PCM data size: \(rawLC3Data.count)")
+                    Bridge.log("Received invalid PCM data size: \(rawLC3Data.count)")
                     return
                 }
 
@@ -261,12 +261,12 @@ struct ViewState {
 
                 // Ensure we have valid PCM data
                 guard lc3Data.count > 0 else {
-                    Core.log("No LC3 data after removing command bytes")
+                    Bridge.log("No LC3 data after removing command bytes")
                     return
                 }
 
                 if self.bypassVad || self.bypassVadForPCM {
-                    Core.log(
+                    Bridge.log(
                         "Mentra: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)"
                     )
                     checkSetVadStatus(speaking: true)
@@ -283,13 +283,13 @@ struct ViewState {
                 let pcmData = pcmConverter.decode(lc3Data) as Data
 
                 guard pcmData.count > 0 else {
-                    Core.log("PCM conversion resulted in empty data")
+                    Bridge.log("PCM conversion resulted in empty data")
                     return
                 }
 
                 // feed PCM to the VAD:
                 guard let vad = self.vad else {
-                    Core.log("VAD not initialized")
+                    Bridge.log("VAD not initialized")
                     return
                 }
 
@@ -304,7 +304,7 @@ struct ViewState {
 
                 vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
                     guard let self = self else { return }
-                    Core.log("VAD State: \(state)")
+                    Bridge.log("VAD State: \(state)")
                 }
 
                 let vadState = vad.currentState()
@@ -328,7 +328,7 @@ struct ViewState {
             frameManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
                 let isConnected = self.frameManager?.connectionState == "CONNECTED"
-                Core.log(
+                Bridge.log(
                     "Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")"
                 )
                 if isConnected {
@@ -352,7 +352,7 @@ struct ViewState {
         if liveManager != nil {
             liveManager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log(
+                Bridge.log(
                     "Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")"
                 )
                 if self.liveManager!.ready {
@@ -394,7 +394,7 @@ struct ViewState {
         if mach1Manager != nil {
             mach1Manager!.onConnectionStateChanged = { [weak self] in
                 guard let self = self else { return }
-                Core.log(
+                Bridge.log(
                     "Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")"
                 )
                 if self.mach1Manager!.ready {
@@ -434,7 +434,7 @@ struct ViewState {
         volume: Float,
         stopOtherAudio: Bool
     ) {
-        Core.log("AOS: playAudio bridge called for requestId: \(requestId)")
+        Bridge.log("AOS: playAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.playAudio(
@@ -446,14 +446,14 @@ struct ViewState {
     }
 
     @objc func stopAudio(_ requestId: String) {
-        Core.log("AOS: stopAudio bridge called for requestId: \(requestId)")
+        Bridge.log("AOS: stopAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.stopAudio(requestId: requestId)
     }
 
     @objc func stopAllAudio() {
-        Core.log("AOSManager: stopAllAudio bridge called")
+        Bridge.log("AOSManager: stopAllAudio bridge called")
 
         let audioManager = AudioManager.getInstance()
         audioManager.stopAllAudio()
@@ -511,7 +511,7 @@ struct ViewState {
 
                 // feed PCM to the VAD:
                 guard let vad = self.vad else {
-                    Core.log("VAD not initialized")
+                    Bridge.log("VAD not initialized")
                     return
                 }
 
@@ -545,7 +545,7 @@ struct ViewState {
                 vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
                     guard let self = self else { return }
                     //            self.handler?(state)
-                    Core.log("VAD State: \(state)")
+                    Bridge.log("VAD State: \(state)")
                 }
 
                 // encode the pcmData as LC3:
@@ -579,7 +579,7 @@ struct ViewState {
     // MARK: - ServerCommsCallback Implementation
 
     func handle_microphone_state_change(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
-        Core.log(
+        Bridge.log(
             "Mentra: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@"
         )
 
@@ -646,7 +646,7 @@ struct ViewState {
                 }
 
                 if !useGlassesMic, !useOnboardMic {
-                    Core.log(
+                    Bridge.log(
                         "Mentra: no mic to use! falling back to glasses mic!!!!! (this should not happen)"
                     )
                     useGlassesMic = true
@@ -677,9 +677,9 @@ struct ViewState {
     func onAppStarted(_ packageName: String) {
         // tell the server what pair of glasses we're using:
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
-        Core.sendAppStartedEvent(packageName)
+        Bridge.sendAppStartedEvent(packageName)
 
-        Core.log("Mentra: App started: \(packageName)")
+        Bridge.log("Mentra: App started: \(packageName)")
 
         if !defaultWearable.isEmpty, !isSomethingConnected() {
             handleConnectWearable(deviceName)
@@ -687,59 +687,59 @@ struct ViewState {
     }
 
     func onAppStopped(_ packageName: String) {
-        Core.log("Mentra: App stopped: \(packageName)")
-        Core.sendAppStoppedEvent(packageName)
+        Bridge.log("Mentra: App stopped: \(packageName)")
+        Bridge.sendAppStoppedEvent(packageName)
     }
 
     func onJsonMessage(_ message: [String: Any]) {
-        Core.log("Mentra: onJsonMessage: \(message)")
+        Bridge.log("Mentra: onJsonMessage: \(message)")
         liveManager?.sendJson(message)
     }
 
     func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
-        Core.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
+        Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
         liveManager?.requestPhoto(
             requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size
         )
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
-        Core.log("Mentra: onRtmpStreamStartRequest: \(message)")
+        Bridge.log("Mentra: onRtmpStreamStartRequest: \(message)")
         liveManager?.startRtmpStream(message)
     }
 
     func onRtmpStreamStop() {
-        Core.log("Mentra: onRtmpStreamStop")
+        Bridge.log("Mentra: onRtmpStreamStop")
         liveManager?.stopRtmpStream()
     }
 
     func onRtmpStreamKeepAlive(_ message: [String: Any]) {
-        Core.log("Mentra: onRtmpStreamKeepAlive: \(message)")
+        Bridge.log("Mentra: onRtmpStreamKeepAlive: \(message)")
         liveManager?.sendRtmpKeepAlive(message)
     }
 
     func onStartBufferRecording() {
-        Core.log("Mentra: onStartBufferRecording")
+        Bridge.log("Mentra: onStartBufferRecording")
         liveManager?.startBufferRecording()
     }
 
     func onStopBufferRecording() {
-        Core.log("Mentra: onStopBufferRecording")
+        Bridge.log("Mentra: onStopBufferRecording")
         liveManager?.stopBufferRecording()
     }
 
     func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
-        Core.log("Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
+        Bridge.log("Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
         liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
     }
 
     func onStartVideoRecording(_ requestId: String, _ save: Bool) {
-        Core.log("Mentra: onStartVideoRecording: requestId=\(requestId), save=\(save)")
+        Bridge.log("Mentra: onStartVideoRecording: requestId=\(requestId), save=\(save)")
         liveManager?.startVideoRecording(requestId: requestId, save: save)
     }
 
     func onStopVideoRecording(_ requestId: String) {
-        Core.log("Mentra: onStopVideoRecording: requestId=\(requestId)")
+        Bridge.log("Mentra: onStopVideoRecording: requestId=\(requestId)")
         liveManager?.stopVideoRecording(requestId: requestId)
     }
 
@@ -749,7 +749,7 @@ struct ViewState {
                 // Just check permissions - we no longer request them directly from Swift
                 // Permissions should already be granted via React Native UI flow
                 if !(micManager.checkPermissions()) {
-                    Core.log("Microphone permissions not granted. Cannot enable microphone.")
+                    Bridge.log("Microphone permissions not granted. Cannot enable microphone.")
                     return
                 }
 
@@ -818,7 +818,7 @@ struct ViewState {
             // TODO: config: remove
             let eventStr = currentViewState.eventStr
             if eventStr != "" {
-                Core.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+                Bridge.sendEvent(withName: "CoreMessageEvent", body: eventStr)
             }
 
             if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
@@ -846,20 +846,20 @@ struct ViewState {
             case "reference_card":
                 sendText(currentViewState.title + "\n\n" + currentViewState.text)
             case "bitmap_view":
-                Core.log("Mentra: Processing bitmap_view layout")
+                Bridge.log("Mentra: Processing bitmap_view layout")
                 guard let data = currentViewState.data else {
-                    Core.log("Mentra: ERROR: bitmap_view missing data field")
+                    Bridge.log("Mentra: ERROR: bitmap_view missing data field")
                     return
                 }
-                Core.log("Mentra: Processing bitmap_view with base64 data, length: \(data.count)")
+                Bridge.log("Mentra: Processing bitmap_view with base64 data, length: \(data.count)")
                 await self.g1Manager?.displayBitmap(base64ImageData: data)
                 await self.mach1Manager?.displayBitmap(base64ImageData: data)
             case "clear_view":
-                Core.log("Mentra: Processing clear_view layout - clearing display")
+                Bridge.log("Mentra: Processing clear_view layout - clearing display")
                 self.g1Manager?.clearDisplay()
                 self.mach1Manager?.clearDisplay()
             default:
-                Core.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
+                Bridge.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
             }
         }
     }
@@ -909,7 +909,7 @@ struct ViewState {
 
     func handle_display_event(_ event: [String: Any]) {
         guard let view = event["view"] as? String else {
-            Core.log("Mentra: invalid view")
+            Bridge.log("Mentra: invalid view")
             return
         }
         let isDashboard = view == "dashboard"
@@ -930,7 +930,7 @@ struct ViewState {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
             eventStr = String(data: jsonData, encoding: .utf8) ?? ""
         } catch {
-            Core.log("Mentra: Error converting to JSON: \(error)")
+            Bridge.log("Mentra: Error converting to JSON: \(error)")
         }
 
         let layout = event["layout"] as! [String: Any]
@@ -961,11 +961,11 @@ struct ViewState {
                     "repeat": layout["repeat"] as? Bool ?? true,
                 ]
                 newViewState.animationData = animationData
-                Core.log(
+                Bridge.log(
                     "Mentra: Parsed bitmap_animation with \(frames.count) frames, interval: \(interval)ms"
                 )
             } else {
-                Core.log("Mentra: ERROR: bitmap_animation missing frames or interval")
+                Bridge.log("Mentra: ERROR: bitmap_animation missing frames or interval")
             }
         }
 
@@ -981,7 +981,7 @@ struct ViewState {
             return
         }
 
-        Core.log(
+        Bridge.log(
             "Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
 
         viewStates[stateIndex] = newViewState
@@ -1007,8 +1007,8 @@ struct ViewState {
     func onRouteChange(
         reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription]
     ) {
-        Core.log("Mentra: onRouteChange: reason: \(reason)")
-        Core.log("Mentra: onRouteChange: inputs: \(availableInputs)")
+        Bridge.log("Mentra: onRouteChange: reason: \(reason)")
+        Bridge.log("Mentra: onRouteChange: inputs: \(availableInputs)")
 
         // Core.log the available inputs and see if any are an onboard mic:
         // for input in availableInputs {
@@ -1039,7 +1039,7 @@ struct ViewState {
     }
 
     func onInterruption(began: Bool) {
-        Core.log("Mentra: Interruption: \(began)")
+        Bridge.log("Mentra: Interruption: \(began)")
 
         onboardMicUnavailable = began
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
@@ -1055,7 +1055,7 @@ struct ViewState {
             // clear the screen after 3 seconds if the text is empty or a space:
             if powerSavingMode {
                 sendStateWorkItem?.cancel()
-                Core.log("Mentra: Clearing display after 3 seconds")
+                Bridge.log("Mentra: Clearing display after 3 seconds")
                 // if we're clearing the display, after a delay, send a clear command if not cancelled with another
                 let workItem = DispatchWorkItem { [weak self] in
                     guard let self = self else { return }
@@ -1090,7 +1090,7 @@ struct ViewState {
 
     // TODO: config: remove
     func setAuthCreds(_ token: String, _ userId: String) {
-        Core.log("Mentra: Setting core token to: \(token) for user: \(userId)")
+        Bridge.log("Mentra: Setting core token to: \(token) for user: \(userId)")
         setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
@@ -1125,7 +1125,7 @@ struct ViewState {
     }
 
     func handleSearchForCompatibleDeviceNames(_ modelName: String) {
-        Core.log("Mentra: Searching for compatible device names for: \(modelName)")
+        Bridge.log("Mentra: Searching for compatible device names for: \(modelName)")
         if modelName.contains("Simulated") {
             defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
             handleRequestStatus()
@@ -1214,13 +1214,13 @@ struct ViewState {
     }
 
     func startApp(_ target: String) {
-        Core.log("Mentra: Starting app: \(target)")
+        Bridge.log("Mentra: Starting app: \(target)")
         serverComms.startApp(packageName: target)
         handleRequestStatus()
     }
 
     func stopApp(_ target: String) {
-        Core.log("Mentra: Stopping app: \(target)")
+        Bridge.log("Mentra: Stopping app: \(target)")
         serverComms.stopApp(packageName: target)
         handleRequestStatus()
     }
@@ -1255,7 +1255,7 @@ struct ViewState {
         dashboardDepth = value
         Task {
             await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-            Core.log("Mentra: Set dashboard position to \(value)")
+            Bridge.log("Mentra: Set dashboard position to \(value)")
         }
         handleRequestStatus() // to update the UI
         saveSettings()
@@ -1265,7 +1265,7 @@ struct ViewState {
         dashboardHeight = value
         Task {
             await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-            Core.log("Mentra: Set dashboard position to \(value)")
+            Bridge.log("Mentra: Set dashboard position to \(value)")
         }
         handleRequestStatus() // to update the UI
         saveSettings()
@@ -1334,7 +1334,7 @@ struct ViewState {
     }
 
     func toggleUpdatingScreen(_ enabled: Bool) {
-        Core.log("Mentra: Toggling updating screen: \(enabled)")
+        Bridge.log("Mentra: Toggling updating screen: \(enabled)")
         if enabled {
             g1Manager?.RN_exit()
             isUpdatingScreen = true
@@ -1356,22 +1356,22 @@ struct ViewState {
     }
 
     func requestWifiScan() {
-        Core.log("Mentra: Requesting wifi scan")
+        Bridge.log("Mentra: Requesting wifi scan")
         liveManager?.requestWifiScan()
     }
 
     func sendWifiCredentials(_ ssid: String, _ password: String) {
-        Core.log("Mentra: Sending wifi credentials: \(ssid) \(password)")
+        Bridge.log("Mentra: Sending wifi credentials: \(ssid) \(password)")
         liveManager?.sendWifiCredentials(ssid, password: password)
     }
 
     func setGlassesHotspotState(_ enabled: Bool) {
-        Core.log("Mentra: 🔥 Setting glasses hotspot state: \(enabled)")
+        Bridge.log("Mentra: 🔥 Setting glasses hotspot state: \(enabled)")
         liveManager?.sendHotspotState(enabled)
     }
 
     func queryGalleryStatus() {
-        Core.log("Mentra: 📸 Querying gallery status from glasses")
+        Bridge.log("Mentra: 📸 Querying gallery status from glasses")
         liveManager?.queryGalleryStatus()
     }
 
@@ -1382,7 +1382,7 @@ struct ViewState {
     }
 
     @objc func handleCommand(_ command: String) {
-        Core.log("Mentra: Received command: \(command)")
+        Bridge.log("Mentra: Received command: \(command)")
 
         if !settingsLoaded {
             // Wait for settings to load with a timeout
@@ -1390,7 +1390,7 @@ struct ViewState {
             let result = settingsLoadedSemaphore.wait(timeout: timeout)
 
             if result == .timedOut {
-                Core.log("Warning: Settings load timed out, proceeding with default values")
+                Bridge.log("Warning: Settings load timed out, proceeding with default values")
             }
         }
 
@@ -1440,7 +1440,7 @@ struct ViewState {
 
         // Try to parse JSON
         guard let data = command.data(using: .utf8) else {
-            Core.log("Mentra: Could not convert command string to data")
+            Bridge.log("Mentra: Could not convert command string to data")
             return
         }
 
@@ -1450,7 +1450,7 @@ struct ViewState {
             {
                 // Extract command type
                 guard let commandString = jsonDict["command"] as? String else {
-                    Core.log("Mentra: Invalid command format: missing 'command' field")
+                    Bridge.log("Mentra: Invalid command format: missing 'command' field")
                     return
                 }
 
@@ -1465,7 +1465,7 @@ struct ViewState {
                     guard let params = params, let modelName = params["model_name"] as? String,
                           let deviceName = params["device_name"] as? String
                     else {
-                        Core.log("Mentra: connect_wearable invalid params")
+                        Bridge.log("Mentra: connect_wearable invalid params")
                         handleConnectWearable("")
                         break
                     }
@@ -1477,34 +1477,34 @@ struct ViewState {
                 case .searchForCompatibleDeviceNames:
                     guard let params = params, let modelName = params["model_name"] as? String
                     else {
-                        Core.log("Mentra: search_for_compatible_device_names invalid params")
+                        Bridge.log("Mentra: search_for_compatible_device_names invalid params")
                         break
                     }
                     handleSearchForCompatibleDeviceNames(modelName)
                 case .enableContextualDashboard:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: enable_contextual_dashboard invalid params")
+                        Bridge.log("Mentra: enable_contextual_dashboard invalid params")
                         break
                     }
                     enableContextualDashboard(enabled)
                 case .setPreferredMic:
                     guard let params = params, let mic = params["mic"] as? String else {
-                        Core.log("Mentra: set_preferred_mic invalid params")
+                        Bridge.log("Mentra: set_preferred_mic invalid params")
                         break
                     }
                     setPreferredMic(mic)
                 case .restartTranscriber:
-                    Core.log("Mentra: Restarting SherpaOnnxTranscriber via command")
+                    Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
                     transcriber?.restart()
                 case .setButtonMode:
                     guard let params = params, let mode = params["mode"] as? String else {
-                        Core.log("Mentra: set_button_mode invalid params")
+                        Bridge.log("Mentra: set_button_mode invalid params")
                         break
                     }
                     setButtonMode(mode)
                 case .setButtonPhotoSize:
                     guard let params = params, let size = params["size"] as? String else {
-                        Core.log("Mentra: set_button_photo_size invalid params")
+                        Bridge.log("Mentra: set_button_photo_size invalid params")
                         break
                     }
                     setButtonPhotoSize(size)
@@ -1514,31 +1514,31 @@ struct ViewState {
                           let height = params["height"] as? Int,
                           let fps = params["fps"] as? Int
                     else {
-                        Core.log("Mentra: set_button_video_settings invalid params")
+                        Bridge.log("Mentra: set_button_video_settings invalid params")
                         break
                     }
                     setButtonVideoSettings(width: width, height: height, fps: fps)
                 case .setButtonCameraLed:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: set_button_camera_led invalid params")
+                        Bridge.log("Mentra: set_button_camera_led invalid params")
                         break
                     }
                     setButtonCameraLed(enabled)
                 case .startApp:
                     guard let params = params, let target = params["target"] as? String else {
-                        Core.log("Mentra: start_app invalid params")
+                        Bridge.log("Mentra: start_app invalid params")
                         break
                     }
                     startApp(target)
                 case .stopApp:
                     guard let params = params, let target = params["target"] as? String else {
-                        Core.log("Mentra: stop_app invalid params")
+                        Bridge.log("Mentra: stop_app invalid params")
                         break
                     }
                     stopApp(target)
                 case .updateGlassesHeadUpAngle:
                     guard let params = params, let value = params["headUpAngle"] as? Int else {
-                        Core.log("Mentra: update_glasses_head_up_angle invalid params")
+                        Bridge.log("Mentra: update_glasses_head_up_angle invalid params")
                         break
                     }
                     updateGlassesHeadUpAngle(value)
@@ -1546,13 +1546,13 @@ struct ViewState {
                     guard let params = params, let value = params["brightness"] as? Int,
                           let autoBrightness = params["autoBrightness"] as? Bool
                     else {
-                        Core.log("Mentra: update_glasses_brightness invalid params")
+                        Bridge.log("Mentra: update_glasses_brightness invalid params")
                         break
                     }
                     updateGlassesBrightness(value, autoBrightness: autoBrightness)
                 case .updateGlassesHeight:
                     guard let params = params, let value = params["height"] as? Int else {
-                        Core.log("Mentra: update_glasses_height invalid params")
+                        Bridge.log("Mentra: update_glasses_height invalid params")
                         break
                     }
                     updateGlassesHeight(value)
@@ -1560,49 +1560,49 @@ struct ViewState {
                     showDashboard()
                 case .updateGlassesDepth:
                     guard let params = params, let value = params["depth"] as? Int else {
-                        Core.log("Mentra: update_glasses_depth invalid params")
+                        Bridge.log("Mentra: update_glasses_depth invalid params")
                         break
                     }
                     updateGlassesDepth(value)
                 case .enableSensing:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: enable_sensing invalid params")
+                        Bridge.log("Mentra: enable_sensing invalid params")
                         break
                     }
                     enableSensing(enabled)
                 case .enablePowerSavingMode:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: enable_power_saving_mode invalid params")
+                        Bridge.log("Mentra: enable_power_saving_mode invalid params")
                         break
                     }
                     enablePowerSavingMode(enabled)
                 case .enableAlwaysOnStatusBar:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: enable_always_on_status_bar invalid params")
+                        Bridge.log("Mentra: enable_always_on_status_bar invalid params")
                         break
                     }
                     enableAlwaysOnStatusBar(enabled)
                 case .bypassVad:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: bypass_vad invalid params")
+                        Bridge.log("Mentra: bypass_vad invalid params")
                         break
                     }
                     bypassVad(enabled)
                 case .bypassAudioEncoding:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: bypass_audio_encoding invalid params")
+                        Bridge.log("Mentra: bypass_audio_encoding invalid params")
                         break
                     }
                     bypassAudioEncoding = enabled
                 case .setMetricSystemEnabled:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: set_metric_system_enabled invalid params")
+                        Bridge.log("Mentra: set_metric_system_enabled invalid params")
                         break
                     }
                     setMetricSystemEnabled(enabled)
                 case .toggleUpdatingScreen:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: toggle_updating_screen invalid params")
+                        Bridge.log("Mentra: toggle_updating_screen invalid params")
                         break
                     }
                     toggleUpdatingScreen(enabled)
@@ -1612,23 +1612,23 @@ struct ViewState {
                     guard let params = params, let ssid = params["ssid"] as? String,
                           let password = params["password"] as? String
                     else {
-                        Core.log("Mentra: send_wifi_credentials invalid params")
+                        Bridge.log("Mentra: send_wifi_credentials invalid params")
                         break
                     }
                     sendWifiCredentials(ssid, password)
                 case .setHotspotState:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: set_hotspot_state invalid params")
+                        Bridge.log("Mentra: set_hotspot_state invalid params")
                         break
                     }
                     setGlassesHotspotState(enabled)
                 case .queryGalleryStatus:
-                    Core.log("Mentra: Querying gallery status")
+                    Bridge.log("Mentra: Querying gallery status")
                     queryGalleryStatus()
                 // TODO: config: remove
                 case .simulateHeadPosition:
                     guard let params = params, let position = params["position"] as? String else {
-                        Core.log("Mentra: simulate_head_position invalid params")
+                        Bridge.log("Mentra: simulate_head_position invalid params")
                         break
                     }
                     // Send to server
@@ -1641,7 +1641,7 @@ struct ViewState {
                           let buttonId = params["buttonId"] as? String,
                           let pressType = params["pressType"] as? String
                     else {
-                        Core.log("Mentra: simulate_button_press invalid params")
+                        Bridge.log("Mentra: simulate_button_press invalid params")
                         break
                     }
                     // Use existing sendButtonPress method
@@ -1650,25 +1650,25 @@ struct ViewState {
                     )
                 case .enforceLocalTranscription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Core.log("Mentra: enforce_local_transcription invalid params")
+                        Bridge.log("Mentra: enforce_local_transcription invalid params")
                         break
                     }
                     enforceLocalTranscription(enabled)
                 case .startBufferRecording:
-                    Core.log("Mentra: Starting buffer recording")
+                    Bridge.log("Mentra: Starting buffer recording")
                     liveManager?.startBufferRecording()
                 case .stopBufferRecording:
-                    Core.log("Mentra: Stopping buffer recording")
+                    Bridge.log("Mentra: Stopping buffer recording")
                     liveManager?.stopBufferRecording()
                 case .saveBufferVideo:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
                           let durationSeconds = params["duration_seconds"] as? Int
                     else {
-                        Core.log("Mentra: save_buffer_video invalid params")
+                        Bridge.log("Mentra: save_buffer_video invalid params")
                         break
                     }
-                    Core.log(
+                    Bridge.log(
                         "Mentra: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s"
                     )
                     liveManager?.saveBufferVideo(
@@ -1679,30 +1679,30 @@ struct ViewState {
                           let requestId = params["request_id"] as? String,
                           let save = params["save"] as? Bool
                     else {
-                        Core.log("Mentra: start_video_recording invalid params")
+                        Bridge.log("Mentra: start_video_recording invalid params")
                         break
                     }
-                    Core.log(
+                    Bridge.log(
                         "Mentra: Starting video recording: requestId=\(requestId), save=\(save)")
                     liveManager?.startVideoRecording(requestId: requestId, save: save)
                 case .stopVideoRecording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String
                     else {
-                        Core.log("Mentra: stop_video_recording invalid params")
+                        Bridge.log("Mentra: stop_video_recording invalid params")
                         break
                     }
-                    Core.log("Mentra: Stopping video recording: requestId=\(requestId)")
+                    Bridge.log("Mentra: Stopping video recording: requestId=\(requestId)")
                     liveManager?.stopVideoRecording(requestId: requestId)
                 case .unknown:
-                    Core.log("Mentra: Unknown command type: \(commandString)")
+                    Bridge.log("Mentra: Unknown command type: \(commandString)")
                     handleRequestStatus()
                 case .ping:
                     break
                 }
             }
         } catch {
-            Core.log("Mentra: Error parsing JSON command: \(error.localizedDescription)")
+            Bridge.log("Mentra: Error parsing JSON command: \(error.localizedDescription)")
         }
     }
 
@@ -1861,21 +1861,21 @@ struct ViewState {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
             }
         } catch {
-            Core.log("Mentra: Error converting to JSON: \(error)")
+            Bridge.log("Mentra: Error converting to JSON: \(error)")
         }
         saveSettings()
     }
 
     func triggerStatusUpdate() {
-        Core.log("🔄 Triggering immediate status update")
+        Bridge.log("🔄 Triggering immediate status update")
         handleRequestStatus()
     }
 
     private func playStartupSequence() {
-        Core.log("Mentra: playStartupSequence()")
+        Bridge.log("Mentra: playStartupSequence()")
         // Arrow frames for the animation
         let arrowFrames = ["↑", "↗", "↑", "↖"]
 
@@ -1997,14 +1997,14 @@ struct ViewState {
     }
 
     private func handleLiveReady() {
-        Core.log("Mentra: Mentra Live device ready")
+        Bridge.log("Mentra: Mentra Live device ready")
         isSearching = false
         defaultWearable = "Mentra Live"
         handleRequestStatus()
     }
 
     private func handleMach1Ready() {
-        Core.log("Mentra: Mach1 device ready")
+        Bridge.log("Mentra: Mach1 device ready")
         isSearching = false
         defaultWearable = "Mentra Mach1"
         handleRequestStatus()
@@ -2020,14 +2020,14 @@ struct ViewState {
     }
 
     private func handleDeviceDisconnected() {
-        Core.log("Mentra: Device disconnected")
+        Bridge.log("Mentra: Device disconnected")
         handle_microphone_state_change([], false)
         serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
 
     func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
-        Core.log(
+        Bridge.log(
             "Mentra: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)"
         )
 
@@ -2036,7 +2036,7 @@ struct ViewState {
         }
 
         if pendingWearable.contains("Simulated") {
-            Core.log(
+            Bridge.log(
                 "Mentra: Pending wearable is simulated, setting default wearable to Simulated Glasses"
             )
             defaultWearable = "Simulated Glasses"
@@ -2045,12 +2045,12 @@ struct ViewState {
         }
 
         if pendingWearable.isEmpty, defaultWearable.isEmpty {
-            Core.log("Mentra: No pending or default wearable, returning")
+            Bridge.log("Mentra: No pending or default wearable, returning")
             return
         }
 
         if pendingWearable.isEmpty, !defaultWearable.isEmpty {
-            Core.log("Mentra: No pending wearable, using default wearable: \(defaultWearable)")
+            Bridge.log("Mentra: No pending wearable, using default wearable: \(defaultWearable)")
             pendingWearable = defaultWearable
         }
 
@@ -2173,7 +2173,7 @@ struct ViewState {
     }
 
     func handle_update_settings(_ settings: [String: Any]) {
-        Core.log("Mentra: Received update settings: \(settings)")
+        Bridge.log("Mentra: Received update settings: \(settings)")
         // saveSettings()
 
         // update our settings with the new values:
@@ -2268,7 +2268,7 @@ struct ViewState {
             let result = settingsLoadedSemaphore.wait(timeout: timeout)
 
             if result == .timedOut {
-                Core.log("Mentra: Warning: Settings load timed out, proceeding with default values")
+                Bridge.log("Mentra: Warning: Settings load timed out, proceeding with default values")
             }
         }
 
@@ -2349,7 +2349,7 @@ struct ViewState {
         settingsLoaded = true
         settingsLoadedSemaphore.signal()
 
-        Core.log(
+        Bridge.log(
             "Mentra: Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), "
                 + "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)"
         )
@@ -2487,7 +2487,7 @@ struct ViewState {
 
             return allTransducerFilesPresent
         } catch {
-            Core.log("STT_ERROR: \(error.localizedDescription)")
+            Bridge.log("STT_ERROR: \(error.localizedDescription)")
             return false
         }
     }
@@ -2506,7 +2506,7 @@ struct ViewState {
             // Try to read compressed file
             guard let compressedData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath))
             else {
-                Core.log("EXTRACTION_ERROR: Failed to read compressed file")
+                Bridge.log("EXTRACTION_ERROR: Failed to read compressed file")
                 return false
             }
 
@@ -2561,7 +2561,7 @@ struct ViewState {
 
             return true
         } catch {
-            Core.log("EXTRACTION_ERROR: \(error.localizedDescription)")
+            Bridge.log("EXTRACTION_ERROR: \(error.localizedDescription)")
             return false
         }
     }
