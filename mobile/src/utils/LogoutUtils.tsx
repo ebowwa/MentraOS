@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {supabase} from "@/supabase/supabaseClient"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
@@ -53,7 +53,7 @@ export class LogoutUtils {
 
     try {
       // First try to disconnect any connected glasses
-      await coreCommunicator.sendDisconnectWearable()
+      await bridge.sendDisconnectWearable()
       console.log(`${this.TAG}: Disconnected glasses`)
     } catch (error) {
       console.warn(`${this.TAG}: Error disconnecting glasses:`, error)
@@ -61,7 +61,7 @@ export class LogoutUtils {
 
     try {
       // Then forget the glasses completely
-      await coreCommunicator.sendForgetSmartGlasses()
+      await bridge.sendForgetSmartGlasses()
       console.log(`${this.TAG}: Forgot glasses pairing`)
     } catch (error) {
       console.warn(`${this.TAG}: Error forgetting glasses:`, error)
@@ -125,7 +125,7 @@ export class LogoutUtils {
 
     try {
       // Delete core authentication secret key
-      await coreCommunicator.deleteAuthenticationSecretKey()
+      await bridge.deleteAuthenticationSecretKey()
       console.log(`${this.TAG}: Deleted core authentication secret key`)
     } catch (error) {
       console.error(`${this.TAG}: Error deleting auth secret key:`, error)
@@ -133,7 +133,7 @@ export class LogoutUtils {
 
     try {
       // Stop the core communicator service
-      coreCommunicator.stopService()
+      bridge.stopService()
       console.log(`${this.TAG}: Stopped core communicator service`)
     } catch (error) {
       console.error(`${this.TAG}: Error stopping core service:`, error)
@@ -149,7 +149,7 @@ export class LogoutUtils {
 
     try {
       // Clean up communicator resources
-      coreCommunicator.cleanup()
+      bridge.cleanup()
       console.log(`${this.TAG}: Cleaned up core communicator resources`)
     } catch (error) {
       console.error(`${this.TAG}: Error cleaning up communicator:`, error)
@@ -215,7 +215,7 @@ export class LogoutUtils {
 
     try {
       // Remove all core communicator event listeners
-      coreCommunicator.removeAllListeners("statusUpdateReceived")
+      bridge.removeAllListeners("statusUpdateReceived")
 
       // Emit a logout event for any components that need to reset
       GlobalEventEmitter.emit("USER_LOGGED_OUT")

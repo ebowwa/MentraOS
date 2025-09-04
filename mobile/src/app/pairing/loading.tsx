@@ -3,7 +3,7 @@ import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle, BackHand
 import {useRoute} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator, {CoreCommunicator} from "@/bridge/CoreCommunicator"
+import coreCommunicator, {CoreCommunicator} from "@/bridge/Bridge"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import GlassesPairingLoader from "@/components/misc/GlassesPairingLoader"
@@ -32,8 +32,8 @@ export default function GlassesPairingGuideScreen() {
 
   const handleForgetGlasses = useCallback(async () => {
     setPairingInProgress(false)
-    await coreCommunicator.sendDisconnectWearable()
-    await coreCommunicator.sendForgetSmartGlasses()
+    await bridge.sendDisconnectWearable()
+    await bridge.sendForgetSmartGlasses()
     clearHistory()
     router.dismissTo("/pairing/select-glasses-model")
   }, [clearHistory])
@@ -61,7 +61,7 @@ export default function GlassesPairingGuideScreen() {
   }, [handleForgetGlasses])
 
   const handlePairFailure = (error: string) => {
-    CoreCommunicator.getInstance().sendForgetSmartGlasses()
+    bridge.getInstance().sendForgetSmartGlasses()
     replace("/pairing/failure", {error: error, glassesModelName: glassesModelName})
   }
 

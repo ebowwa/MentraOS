@@ -4,15 +4,13 @@ import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
-
-import RestComms from "@/managers/RestComms"
 import {Button, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
@@ -107,10 +105,10 @@ export default function VersionUpdateScreen() {
 
       const useNewWsManager = false
       if (useNewWsManager) {
-        coreCommunicator.setup()
+        bridge.setup()
         socketComms.setAuthCreds(coreToken, uid)
       } else {
-        coreCommunicator.setAuthCreds(coreToken, uid)
+        bridge.setAuthCreds(coreToken, uid)
       }
 
       // Check onboarding status
@@ -187,7 +185,7 @@ export default function VersionUpdateScreen() {
   const handleResetUrl = async (): Promise<void> => {
     try {
       await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      await coreCommunicator.setServerUrl("")
+      await bridge.setServerUrl("")
       setIsUsingCustomUrl(false)
       await checkCloudVersion()
     } catch (error) {

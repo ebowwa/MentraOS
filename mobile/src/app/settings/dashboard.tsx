@@ -13,7 +13,7 @@ import {
 } from "react-native"
 
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -42,14 +42,14 @@ export default function DashboardSettingsScreen() {
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !isContextualDashboardEnabled
-    await coreCommunicator.sendToggleContextualDashboard(newVal)
+    await bridge.sendToggleContextualDashboard(newVal)
     setIsContextualDashboardEnabled(newVal)
   }
 
   const toggleMetricSystem = async () => {
     const newVal = !isMetricSystemEnabled
     try {
-      await coreCommunicator.sendSetMetricSystemEnabled(newVal)
+      await bridge.sendSetMetricSystemEnabled(newVal)
       setIsMetricSystemEnabled(newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
@@ -66,7 +66,7 @@ export default function DashboardSettingsScreen() {
     }
 
     setHeadUpAngleComponentVisible(false)
-    await coreCommunicator.setGlassesHeadUpAngle(newHeadUpAngle)
+    await bridge.setGlassesHeadUpAngle(newHeadUpAngle)
     setHeadUpAngle(newHeadUpAngle)
   }
 

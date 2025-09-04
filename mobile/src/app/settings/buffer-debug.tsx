@@ -2,7 +2,7 @@ import React, {useState} from "react"
 import {View} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import CoreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -17,7 +17,7 @@ export default function BufferDebugPage() {
 
   const handleStartStop = async () => {
     if (isBufferRecording) {
-      await CoreCommunicator.sendStopBufferRecording()
+      await bridge.sendStopBufferRecording()
       setIsBufferRecording(false)
       Toast.show({
         type: "success",
@@ -26,7 +26,7 @@ export default function BufferDebugPage() {
         visibilityTime: 2000,
       })
     } else {
-      await CoreCommunicator.sendStartBufferRecording()
+      await bridge.sendStartBufferRecording()
       setIsBufferRecording(true)
       Toast.show({
         type: "success",
@@ -51,7 +51,7 @@ export default function BufferDebugPage() {
     }
 
     const requestId = `buffer_${Date.now()}`
-    await CoreCommunicator.sendSaveBufferVideo(requestId, seconds)
+    await bridge.sendSaveBufferVideo(requestId, seconds)
     Toast.show({
       type: "success",
       text1: "Saving buffer video",
@@ -64,7 +64,7 @@ export default function BufferDebugPage() {
   const handleVideoStartStop = async () => {
     if (isVideoRecording) {
       if (videoRequestId) {
-        await CoreCommunicator.sendStopVideoRecording(videoRequestId)
+        await bridge.sendStopVideoRecording(videoRequestId)
         setIsVideoRecording(false)
         setVideoRequestId(null)
         Toast.show({
@@ -77,7 +77,7 @@ export default function BufferDebugPage() {
     } else {
       const requestId = `video_${Date.now()}`
       setVideoRequestId(requestId)
-      await CoreCommunicator.sendStartVideoRecording(requestId, true)
+      await bridge.sendStartVideoRecording(requestId, true)
       setIsVideoRecording(true)
       Toast.show({
         type: "success",

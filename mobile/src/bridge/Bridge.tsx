@@ -12,15 +12,14 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import SocketComms from "@/managers/SocketComms"
-import {getWsUrl} from "@/utils/SettingsHelper"
+import {getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
 
-export class CoreCommunicator extends EventEmitter {
-  private static instance: CoreCommunicator | null = null
+export class Bridge extends EventEmitter {
+  private static instance: Bridge | null = null
   private messageEventSubscription: any = null
   private validationInProgress: Promise<boolean> | null = null
   private reconnectionTimer: NodeJS.Timeout | null = null
@@ -153,13 +152,13 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   /**
-   * Gets the singleton instance of CoreCommunicator
+   * Gets the singleton instance of Bridge
    */
-  public static getInstance(): CoreCommunicator {
-    if (!CoreCommunicator.instance) {
-      CoreCommunicator.instance = new CoreCommunicator()
+  public static getInstance(): Bridge {
+    if (!Bridge.instance) {
+      Bridge.instance = new Bridge()
     }
-    return CoreCommunicator.instance
+    return Bridge.instance
   }
 
   /**
@@ -187,7 +186,7 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // set the backend server url
-    const backendServerUrl = await getWsUrl()
+    const backendServerUrl = await getRestUrl()
     await this.setServerUrl(backendServerUrl) // todo: config: remove
 
     this.sendSettings() // TODO: config: finish this
@@ -504,9 +503,9 @@ export class CoreCommunicator extends EventEmitter {
     this.isConnected = false
 
     // Reset the singleton instance
-    CoreCommunicator.instance = null
+    Bridge.instance = null
 
-    console.log("CoreCommunicator cleaned up")
+    console.log("Bridge cleaned up")
   }
 
   /* Command methods to interact with Core */
@@ -982,7 +981,7 @@ export class CoreCommunicator extends EventEmitter {
    */
   private async sendAudioPlayResponse(response: AudioPlayResponse) {
     console.log(
-      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
+      `Bridge: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
     )
     await this.sendData({
       command: "audio_play_response",
@@ -1024,11 +1023,12 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async queryGalleryStatus() {
-    console.log("[CoreCommunicator] Querying gallery status from glasses...")
+    console.log("[Bridge] Querying gallery status from glasses...")
     // Just send the command, the response will come through the event system
     return this.sendCommand("query_gallery_status")
   }
 }
 
 // Create and export the singleton instance
-export default CoreCommunicator.getInstance()
+const bridge = Bridge.getInstance()
+export default bridge

@@ -84,7 +84,7 @@ export function OtaUpdateChecker() {
   return null
 }
 
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {AppState} from "react-native"
@@ -105,7 +105,7 @@ export function Reconnect() {
             status.glasses_info?.model_name,
           )
           if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
-            await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
+            await bridge.sendConnectWearable(status.core_info.default_wearable)
           }
         }
       }

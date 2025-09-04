@@ -2,7 +2,7 @@ import React, {useState, useEffect, useRef} from "react"
 import {View, Text, ActivityIndicator, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
 import {Screen, Header, Button} from "@/components/ignite"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -85,7 +85,7 @@ export default function WifiConnectingScreen() {
   const attemptConnection = async () => {
     try {
       console.log("Attempting to send wifi credentials to Core", ssid, password)
-      await coreCommunicator.sendWifiCredentials(ssid, password)
+      await bridge.sendWifiCredentials(ssid, password)
 
       // Set timeout for connection attempt (20 seconds)
       connectionTimeoutRef.current = setTimeout(() => {
