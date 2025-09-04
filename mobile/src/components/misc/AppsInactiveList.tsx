@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"

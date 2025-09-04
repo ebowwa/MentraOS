@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useEffect, useRef, useState} from "react"
 import {WebView} from "react-native-webview"
 import Constants from "expo-constants"
-import BackendServerComms from "../backend_comms/BackendServerComms"
+import BackendServerComms from "../bridge/BackendServerComms"
 import {View} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
