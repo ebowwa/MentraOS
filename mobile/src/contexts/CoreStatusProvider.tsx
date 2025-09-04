@@ -1,13 +1,11 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
-import {Platform} from "react-native"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {INTENSE_LOGGING} from "@/consts"
+import RestComms from "@/managers/RestComms"
+import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -18,43 +16,41 @@ interface CoreStatusContextType {
 
 const CoreStatusContext = createContext<CoreStatusContextType | undefined>(undefined)
 
-let lastStatus: CoreStatus = CoreStatusParser.defaultStatus
-
 export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
   const [status, setStatus] = useState<CoreStatus>(() => {
     return CoreStatusParser.parseStatus({})
   })
 
-  const refreshStatus = (data: any) => {
+  const refreshStatus = useCallback((data: any) => {
     if (!(data && "status" in data)) {
       return
     }
 
     const parsedStatus = CoreStatusParser.parseStatus(data)
+    if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
 
-    if (INTENSE_LOGGING) console.log("Parsed status:", parsedStatus)
+    // only update the status if diff > 0
+    setStatus(prevStatus => {
+      const diff = deepCompare(prevStatus, parsedStatus)
+      if (diff.length === 0) {
+        console.log("CoreStatus: Status did not change")
+        return prevStatus // don't re-render
+      }
 
-    const diff = deepCompare(lastStatus, parsedStatus)
-    if (diff.length === 0) {
-      console.log("CoreStatusProvider: Status did not change ###############################################")
-      return
-    }
-
-    console.log("CoreStatusProvider: Status changed:", diff)
-
-    lastStatus = parsedStatus
-    setStatus(parsedStatus)
-  }
+      console.log("CoreStatus: Status changed:", diff)
+      return parsedStatus
+    })
+  }, [])
 
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
-    console.log("CoreStatusProvider: Initializing core connection @@@@@@@@@@@@@@@@@")
-    coreCommunicator.initialize()
+    console.log("CoreStatus: Initializing core connection")
+    bridge.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
 
   useEffect(() => {
@@ -63,10 +59,10 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
       refreshStatus(data)
     }
 
-    coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+    bridge.on("statusUpdateReceived", handleStatusUpdateReceived)
     return () => {
-      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
     }
   }, [])
 

@@ -22,7 +22,7 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import restComms from "@/managers/RestComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
@@ -54,7 +54,6 @@ import {translate} from "@/i18n"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
-  const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace, navigate} = useNavigationHistory()
@@ -111,7 +110,7 @@ export default function AppSettings() {
 
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
   useEffect(() => {
-    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true") {
+    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true" && appInfo?.isOnline !== false) {
       console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
       replace("/applet/webview", {
         webviewURL: appInfo.webviewURL,
@@ -142,6 +141,31 @@ export default function AppSettings() {
       if (appInfo.is_running) {
         optimisticallyStopApp(packageName)
         return
+      }
+
+      // If the app appears offline, confirm before proceeding
+      if (appInfo.isOnline === false) {
+        const developerName = (
+          " " +
+          ((serverAppInfo as any)?.organization?.name ||
+            (appInfo as any).orgName ||
+            (appInfo as any).developerId ||
+            "") +
+          " "
+        ).replace("  ", " ")
+        const proceed = await new Promise<boolean>(resolve => {
+          // Use the shared alert utility
+          showAlert(
+            "App is down for maintenance",
+            `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+            [
+              {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
+              {text: "Try Anyway", onPress: () => resolve(true)},
+            ],
+            {iconName: "alert-circle-outline", iconColor: theme.colors.palette.angry500},
+          )
+        })
+        if (!proceed) return
       }
 
       if (!(await checkAppHealthStatus(appInfo.packageName))) {
@@ -190,12 +214,12 @@ export default function AppSettings() {
               if (appInfo?.is_running) {
                 // Optimistically update UI first
                 optimisticallyStopApp(packageName)
-                await backendServerComms.stopApp(packageName)
+                await restComms.stopApp(packageName)
                 clearPendingOperation(packageName)
               }
 
               // Then uninstall it
-              await backendServerComms.uninstallApp(packageName)
+              await restComms.uninstallApp(packageName)
 
               // Show success message
               GlobalEventEmitter.emit("SHOW_BANNER", {
@@ -231,7 +255,7 @@ export default function AppSettings() {
     if (!hasCachedSettings) setSettingsLoading(true)
     const startTime = Date.now() // For profiling
     try {
-      const data = await backendServerComms.getAppSettings(packageName)
+      const data = await restComms.getAppSettings(packageName)
       const elapsed = Date.now() - startTime
       console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`)
       console.log("GOT TPA SETTING")
@@ -319,7 +343,7 @@ export default function AppSettings() {
       value: settingKey === key ? value : settingsState[settingKey],
     }))
 
-    backendServerComms
+    restComms
       .updateAppSetting(packageName, {key, value})
       .then(data => {
         console.log("Server update response:", data)
@@ -590,15 +614,15 @@ export default function AppSettings() {
             pointerEvents: "none",
           }}>
           <Text
-            text={appInfo?.name || appName}
             style={{
               fontSize: 17,
               fontWeight: "600",
               color: theme.colors.text,
             }}
             numberOfLines={1}
-            ellipsizeMode="tail"
-          />
+            ellipsizeMode="tail">
+            {appInfo?.name || (appName as string)}
+          </Text>
         </Animated.View>
       </View>
 
@@ -633,6 +657,24 @@ export default function AppSettings() {
               </View>
             </View>
           </View>
+
+          {appInfo.isOnline === false && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: theme.spacing.xs,
+                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                borderRadius: 8,
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: theme.spacing.xs,
+              }}>
+              <FontAwesome name="warning" size={16} color={theme.colors.error} />
+              <Text style={{color: theme.colors.error, flex: 1}}>
+                This app appears to be offline. Some actions may not work.
+              </Text>
+            </View>
+          )}
 
           <Divider variant="full" />
 

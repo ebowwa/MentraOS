@@ -1,19 +1,8 @@
 // YourAppsList.tsx
 import React, {useEffect, useRef, useState} from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  Easing,
-  Keyboard,
-} from "react-native"
+import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
@@ -26,7 +15,6 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {ThemedStyle} from "@/theme"
-import {TreeIcon} from "assets/icons/component/TreeIcon"
 import AppsHeader from "@/components/misc/AppsHeader"
 import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -159,7 +147,9 @@ export default function InactiveAppList({
             onPress: () => resolve(true),
           },
         ],
-        {icon: <TreeIcon size={24} />},
+        {
+          iconName: "tree",
+        },
       )
     })
   }
@@ -189,10 +179,28 @@ export default function InactiveAppList({
       return
     }
 
+    // If the app appears offline, confirm before proceeding
+    if (appInfo.isOnline === false) {
+      const developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
+      const shouldProceed = await new Promise<boolean>(resolve => {
+        showAlert(
+          "App is down for maintenance",
+          `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+          [
+            {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
+            {text: "Try Anyway", onPress: () => resolve(true)},
+          ],
+          {iconName: "alert-circle-outline", iconColor: theme.colors.warning},
+        )
+      })
+      if (!shouldProceed) {
+        return
+      }
+    }
+
+    // Optional live health check (keep but after offline confirmation)
     if (!(await checkAppHealthStatus(appInfo.packageName))) {
-      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-        {text: translate("common:ok")},
-      ])
+      showAlert("App not online", "Please try again later.", [{text: translate("common:ok")}])
       return
     }
 

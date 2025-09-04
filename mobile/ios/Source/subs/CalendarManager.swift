@@ -150,7 +150,7 @@ class CalendarManager {
             object: eventStore,
             queue: .main
         ) { [weak self] _ in
-            Core.log("Calendar database changed")
+            Bridge.log("Calendar database changed")
             self?.handleCalendarChanged()
         }
     }
@@ -163,6 +163,6 @@ class CalendarManager {
     }
 
     private func handleCalendarChanged() {
-        ServerComms.getInstance().sendCalendarEvents()
+        ServerComms.shared.sendCalendarEvents()
     }
 }

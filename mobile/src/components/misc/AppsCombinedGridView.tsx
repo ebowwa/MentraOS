@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useMemo, useEffect, useRef} from "react"
-import {View, ViewStyle, TextStyle, Dimensions, Platform} from "react-native"
+import {View, ViewStyle, TextStyle, Platform} from "react-native"
 import {TabView, SceneMap, TabBar} from "react-native-tab-view"
 import {AppsGridView} from "./AppsGridView"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -8,11 +8,11 @@ import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {ScrollView} from "react-native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
+import LoadingOverlay from "@/components/misc/LoadingOverlay"
 
 interface AppsCombinedGridViewProps {}
 
@@ -189,7 +189,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
     return (
       <View style={themed($emptyContainer)}>
         {/* <Text text={translate("home:noAppsInstalled")} style={themed($emptyText)} /> */}
-        {/* TODO: skeleton loader */}
+        <LoadingOverlay />
       </View>
     )
   }

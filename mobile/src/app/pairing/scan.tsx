@@ -16,8 +16,8 @@ import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
-import {MOCK_CONNECTION, SETTINGS_KEYS} from "@/consts"
+import bridge from "@/bridge/MantleBridge"
+import {MOCK_CONNECTION} from "@/consts"
 import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
@@ -58,10 +58,17 @@ export default function SelectGlassesBluetoothScreen() {
     searchResultsRef.current = searchResults
   }, [searchResults])
 
+  // Clear search results when screen comes into focus to prevent stale data
+  useFocusEffect(
+    React.useCallback(() => {
+      setSearchResults([])
+    }, [setSearchResults]),
+  )
+
   // Shared function to handle the forget glasses logic
   const handleForgetGlasses = useCallback(async () => {
-    await coreCommunicator.sendDisconnectWearable()
-    await coreCommunicator.sendForgetSmartGlasses()
+    await bridge.sendDisconnectWearable()
+    await bridge.sendForgetSmartGlasses()
     // Clear NavigationHistoryContext history to prevent issues with back navigation
     clearHistory()
     // Use dismissTo to properly go back to select-glasses-model and clear the stack
@@ -141,7 +148,7 @@ export default function SelectGlassesBluetoothScreen() {
             },
             {
               text: "Yes",
-              onPress: () => coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName), // Retry search
+              onPress: () => bridge.sendSearchForCompatibleDeviceNames(glassesModelName), // Retry search
             },
           ],
           {cancelable: false}, // Prevent closing the alert by tapping outside
@@ -165,8 +172,8 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     const initializeAndSearchForDevices = async () => {
       console.log("Searching for compatible devices for: ", glassesModelName)
-      // setSearchResults([])
-      coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName)
+      setSearchResults([])
+      bridge.sendSearchForCompatibleDeviceNames(glassesModelName)
     }
 
     if (Platform.OS === "ios") {
@@ -226,12 +233,12 @@ export default function SelectGlassesBluetoothScreen() {
     }
 
     // update the preferredmic to be the phone mic:
-    coreCommunicator.sendSetPreferredMic("phone")
+    bridge.sendSetPreferredMic("phone")
 
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {
       // give some time to show the loader (otherwise it's a bit jarring)
-      coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
+      bridge.sendConnectWearable(glassesModelName, deviceName)
     }, 2000)
     push("/pairing/loading", {glassesModelName: glassesModelName})
   }
