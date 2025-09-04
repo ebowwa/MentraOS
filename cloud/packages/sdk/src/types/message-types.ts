@@ -41,6 +41,8 @@ export enum GlassesToCloudMessageType {
 
   BUTTON_PRESS = StreamType.BUTTON_PRESS,
   HEAD_POSITION = StreamType.HEAD_POSITION,
+  IMU_DATA = StreamType.IMU_DATA,
+  IMU_GESTURE = StreamType.IMU_GESTURE,
   GLASSES_BATTERY_UPDATE = StreamType.GLASSES_BATTERY_UPDATE,
   PHONE_BATTERY_UPDATE = StreamType.PHONE_BATTERY_UPDATE,
   GLASSES_CONNECTION_STATE = StreamType.GLASSES_CONNECTION_STATE,
@@ -86,6 +88,13 @@ export enum CloudToGlassesMessageType {
   // Location Service
   SET_LOCATION_TIER = "set_location_tier",
   REQUEST_SINGLE_LOCATION = "request_single_location",
+
+  // IMU Service
+  IMU_SINGLE = "imu_single",
+  IMU_STREAM_START = "imu_stream_start",
+  IMU_STREAM_STOP = "imu_stream_stop",
+  IMU_SUBSCRIBE_GESTURE = "imu_subscribe_gesture",
+  IMU_UNSUBSCRIBE_GESTURE = "imu_unsubscribe_gesture",
 
   WEBSOCKET_ERROR = "websocket_error",
 }

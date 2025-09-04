@@ -10,6 +10,8 @@ export enum StreamType {
   // Hardware streams
   BUTTON_PRESS = "button_press",
   HEAD_POSITION = "head_position",
+  IMU_DATA = "imu_data",
+  IMU_GESTURE = "imu_gesture",
   GLASSES_BATTERY_UPDATE = "glasses_battery_update",
   PHONE_BATTERY_UPDATE = "phone_battery_update",
   GLASSES_CONNECTION_STATE = "glasses_connection_state",
@@ -80,6 +82,8 @@ export enum StreamCategory {
 export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.BUTTON_PRESS]: StreamCategory.HARDWARE,
   [StreamType.HEAD_POSITION]: StreamCategory.HARDWARE,
+  [StreamType.IMU_DATA]: StreamCategory.HARDWARE,
+  [StreamType.IMU_GESTURE]: StreamCategory.HARDWARE,
   [StreamType.GLASSES_BATTERY_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.PHONE_BATTERY_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.GLASSES_CONNECTION_STATE]: StreamCategory.HARDWARE,

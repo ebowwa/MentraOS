@@ -170,6 +170,48 @@ export interface RequestSingleLocation extends BaseMessage {
   correlationId: string; // To match the response with the poll request
 }
 
+//===========================================================
+// IMU Service Commands
+//===========================================================
+
+/**
+ * Request a single IMU reading from glasses
+ */
+export interface ImuSingleRequest extends BaseMessage {
+  type: CloudToGlassesMessageType.IMU_SINGLE;
+}
+
+/**
+ * Start IMU streaming from glasses
+ */
+export interface ImuStreamStart extends BaseMessage {
+  type: CloudToGlassesMessageType.IMU_STREAM_START;
+  rate_hz: number; // Sampling rate in Hz (1-100)
+  batch_ms: number; // Batching period in milliseconds (0-1000)
+}
+
+/**
+ * Stop IMU streaming from glasses
+ */
+export interface ImuStreamStop extends BaseMessage {
+  type: CloudToGlassesMessageType.IMU_STREAM_STOP;
+}
+
+/**
+ * Subscribe to IMU gesture detection
+ */
+export interface ImuGestureSubscribe extends BaseMessage {
+  type: CloudToGlassesMessageType.IMU_SUBSCRIBE_GESTURE;
+  gestures: string[]; // ["head_up", "head_down", "nod_yes", "shake_no"]
+}
+
+/**
+ * Unsubscribe from IMU gesture detection
+ */
+export interface ImuGestureUnsubscribe extends BaseMessage {
+  type: CloudToGlassesMessageType.IMU_UNSUBSCRIBE_GESTURE;
+}
+
 /**
  * Audio play request to glasses
  */
@@ -210,7 +252,12 @@ export type CloudToGlassesMessage =
   | StopRtmpStream
   | KeepRtmpStreamAlive
   | SetLocationTier
-  | RequestSingleLocation;
+  | RequestSingleLocation
+  | ImuSingleRequest
+  | ImuStreamStart
+  | ImuStreamStop
+  | ImuGestureSubscribe
+  | ImuGestureUnsubscribe;
 
 //===========================================================
 // Type guards
