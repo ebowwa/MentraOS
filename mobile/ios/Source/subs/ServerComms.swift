@@ -616,7 +616,7 @@ class ServerComms {
         audioSenderThread = Thread {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
-                    Core.log("ServerComms: polling audio chunk")
+                    // Core.log("ServerComms: polling audio chunk")
                     // check if we're connected to livekit:
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
