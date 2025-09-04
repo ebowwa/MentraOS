@@ -10,6 +10,8 @@ import {
   // Event data types
   ButtonPress,
   HeadPosition,
+  ImuData,
+  ImuGesture,
   PhoneNotification,
   TranscriptionData,
   TranslationData,
@@ -83,6 +85,8 @@ type EventType = ExtendedStreamType | keyof SystemEvents;
 export interface StreamDataTypes {
   [StreamType.BUTTON_PRESS]: ButtonPress;
   [StreamType.HEAD_POSITION]: HeadPosition;
+  [StreamType.IMU_DATA]: ImuData;
+  [StreamType.IMU_GESTURE]: ImuGesture;
   [StreamType.PHONE_NOTIFICATION]: PhoneNotification;
   [StreamType.TRANSCRIPTION]: TranscriptionData;
   [StreamType.TRANSLATION]: TranslationData;
@@ -202,6 +206,14 @@ export class EventManager {
 
   onHeadPosition(handler: Handler<HeadPosition>) {
     return this.addHandler(StreamType.HEAD_POSITION, handler);
+  }
+
+  onImuData(handler: Handler<ImuData>) {
+    return this.addHandler(StreamType.IMU_DATA, handler);
+  }
+
+  onImuGesture(handler: Handler<ImuGesture>) {
+    return this.addHandler(StreamType.IMU_GESTURE, handler);
   }
 
   onButtonPress(handler: Handler<ButtonPress>) {

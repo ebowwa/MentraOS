@@ -34,6 +34,8 @@ import {
   ExtendedStreamType,
   ButtonPress,
   HeadPosition,
+  ImuData,
+  ImuGesture,
   PhoneNotification,
   PhoneNotificationDismissed,
   TranscriptionData,
@@ -486,6 +488,24 @@ export class AppSession {
   onPhotoTaken(handler: (data: PhotoTaken) => void): () => void {
     this.subscribe(StreamType.PHOTO_TAKEN);
     return this.events.onPhotoTaken(handler);
+  }
+
+  /**
+   * 🎯 Listen for IMU sensor data events
+   * @param handler - Function to handle IMU data (accelerometer, gyroscope, magnetometer, quaternion, euler)
+   * @returns Cleanup function to remove the handler
+   */
+  onImuData(handler: (data: ImuData) => void): () => void {
+    return this.events.onImuData(handler);
+  }
+
+  /**
+   * 🎭 Listen for IMU gesture detection events
+   * @param handler - Function to handle gesture events (head_up, head_down, nod_yes, shake_no)
+   * @returns Cleanup function to remove the handler
+   */
+  onImuGesture(handler: (data: ImuGesture) => void): () => void {
+    return this.events.onImuGesture(handler);
   }
 
   // =====================================

@@ -95,6 +95,8 @@ export * from "./photo-data";
 export {
   ButtonPress,
   HeadPosition,
+  ImuData,
+  ImuGesture,
   GlassesBatteryUpdate,
   PhoneBatteryUpdate,
   GlassesConnectionState,
@@ -130,6 +132,11 @@ export {
   StartRtmpStream,
   StopRtmpStream,
   KeepRtmpStreamAlive,
+  ImuSingleRequest,
+  ImuStreamStart,
+  ImuStreamStop,
+  ImuGestureSubscribe,
+  ImuGestureUnsubscribe,
 } from "./messages/cloud-to-glasses";
 
 // From messages/app-to-cloud.ts
