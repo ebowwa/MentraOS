@@ -7,12 +7,12 @@ import {
   ImuGestureSubscribe,
   ImuGestureUnsubscribe,
 } from "@mentra/sdk";
-import { Logger } from "pino";
 import UserSession from "./UserSession";
 import { UserI } from "../../models/user.model";
 import { WebSocket } from "ws";
+import { logger as rootLogger } from "../logging/pino-logger";
 
-const logger = Logger({ name: "ImuService" });
+const logger = rootLogger.child({ service: "ImuService" });
 
 /**
  * Singleton service that manages IMU subscriptions and commands to glasses
