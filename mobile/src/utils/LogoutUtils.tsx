@@ -2,9 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import {supabase} from "@/supabase/supabaseClient"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
-import RestComms from "@/managers/RestComms"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import restComms from "@/managers/RestComms"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"
@@ -110,7 +110,7 @@ export class LogoutUtils {
 
     try {
       // Clear the core token from RestComms
-      RestComms.getInstance().setCoreToken(null)
+      restComms.setCoreToken(null)
       console.log(`${this.TAG}: Cleared backend core token`)
     } catch (error) {
       console.error(`${this.TAG}: Error clearing backend tokens:`, error)
@@ -251,7 +251,7 @@ export class LogoutUtils {
     try {
       // Check if any critical auth tokens remain
       const supabaseSession = await AsyncStorage.getItem("supabase.auth.session")
-      const coreToken = RestComms.getInstance().getCoreToken()
+      const coreToken = restComms.getCoreToken()
 
       const isLoggedOut = !supabaseSession && !coreToken
 

@@ -13,6 +13,7 @@ import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import RestComms from "@/managers/RestComms"
+import restComms from "@/managers/RestComms"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -22,7 +23,6 @@ export default function AppsActiveList({
   searchQuery?: string
 }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
-  const backendComms = RestComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
   const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)
@@ -133,7 +133,7 @@ export default function AppsActiveList({
 
     setIsLoading(true)
     try {
-      await backendComms.stopApp(packageName)
+      await restComms.stopApp(packageName)
       // Clear the pending operation since it completed successfully
       clearPendingOperation(packageName)
       // showToast()

@@ -16,7 +16,8 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import SocketComms from "@/managers/SocketComms"
+import restComms from "@/managers/RestComms"
+import socketComms from "@/managers/SocketComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -101,14 +102,13 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      const backend = RestComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken)
+      const coreToken = await restComms.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
       const useNewWsManager = false
       if (useNewWsManager) {
         coreCommunicator.setup()
-        SocketComms.getInstance().setAuthCreds(coreToken, uid)
+        socketComms.setAuthCreds(coreToken, uid)
       } else {
         coreCommunicator.setAuthCreds(coreToken, uid)
       }
@@ -136,7 +136,6 @@ export default function VersionUpdateScreen() {
     setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
-      const backendComms = RestComms.getInstance()
       const localVer = getLocalVersion()
       setLocalVersion(localVer)
 
@@ -147,7 +146,7 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      await backendComms.restRequest("/apps/version", null, {
+      await restComms.restRequest("/apps/version", null, {
         onSuccess: data => {
           const cloudVer = data.version
           setCloudVersion(cloudVer)

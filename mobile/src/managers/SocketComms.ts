@@ -1,9 +1,9 @@
 import Config from "react-native-config"
-import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -18,7 +18,7 @@ interface ThirdPartyCloudApp {
 class SocketComms {
   private static instance: SocketComms | null = null
 
-  private ws = WebSocketManager.getInstance()
+  private ws = wsManager
   private coreToken: string = ""
   public userid: string = ""
 
@@ -838,4 +838,5 @@ class SocketComms {
   }
 }
 
-export default SocketComms
+const socketComms = SocketComms.getInstance()
+export default socketComms

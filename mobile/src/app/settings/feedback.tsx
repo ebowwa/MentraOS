@@ -7,7 +7,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
-import RestComms from "@/managers/RestComms"
+import restComms from "@/managers/RestComms"
 
 export default function FeedbackPage() {
   const [feedbackText, setFeedbackText] = useState("")
@@ -18,7 +18,7 @@ export default function FeedbackPage() {
     console.log("Feedback submitted:", feedbackBody)
 
     try {
-      await RestComms.getInstance().sendFeedback(feedbackBody)
+      await restComms.sendFeedback(feedbackBody)
 
       showAlert(translate("feedback:thankYou"), translate("feedback:feedbackReceived"), [
         {

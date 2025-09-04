@@ -8,6 +8,7 @@ import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
+import restComms from "@/managers/RestComms"
 
 export type AppPermissionType =
   | "ALL"
@@ -86,7 +87,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [appStatus, setAppStatus] = useState<AppletInterface[]>([])
   const {user} = useAuth()
   const {theme} = useAppTheme()
-  const restComms = RestComms.getInstance()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})

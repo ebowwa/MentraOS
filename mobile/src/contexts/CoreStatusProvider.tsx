@@ -5,6 +5,7 @@ import RestComms from "@/managers/RestComms"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -49,7 +50,7 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return RestComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
 
   useEffect(() => {

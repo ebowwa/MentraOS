@@ -764,5 +764,5 @@ class RestComms {
 //     },
 //   })
 // }
-
-export default RestComms.getInstance()
+const restComms = RestComms.getInstance()
+export default restComms

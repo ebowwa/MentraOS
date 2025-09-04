@@ -11,6 +11,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import restComms from "@/managers/RestComms"
 
 export default function AppWebView() {
   //   const webviewURL = route.params?.webviewURL;
@@ -122,7 +123,6 @@ export default function AppWebView() {
       }
 
       try {
-        const restComms = RestComms.getInstance()
         const tempToken = await restComms.generateWebviewToken(packageName)
         let signedUserToken: string | undefined
         try {

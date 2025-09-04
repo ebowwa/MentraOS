@@ -22,7 +22,7 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import RestComms from "@/managers/RestComms"
+import restComms from "@/managers/RestComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
@@ -54,7 +54,6 @@ import {translate} from "@/i18n"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
-  const restComms = RestComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace, navigate} = useNavigationHistory()

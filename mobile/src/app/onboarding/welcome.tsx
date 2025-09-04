@@ -11,12 +11,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Button} from "@/components/ignite/Button"
 import {FontAwesome} from "@expo/vector-icons"
 import {Spacer} from "@/components/misc/Spacer"
+import restComms from "@/managers/RestComms"
 
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
-  const restComms = RestComms.getInstance()
 
   const stopAllApps = async () => {
     const runningApps = appStatus.filter(app => app.is_running)

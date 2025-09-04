@@ -14,6 +14,7 @@ import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import SocketComms from "@/managers/SocketComms"
 import {getWsUrl} from "@/utils/SettingsHelper"
+import socketComms from "@/managers/SocketComms"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -388,10 +389,10 @@ export class CoreCommunicator extends EventEmitter {
           })
           break
         case "ws_text":
-          SocketComms.getInstance().sendText(data.text)
+          socketComms.sendText(data.text)
           break
         case "ws_binary":
-          SocketComms.getInstance().sendBinary(data.binary)
+          socketComms.sendBinary(data.binary)
           break
         default:
           console.log("Unknown event type:", data.type)
