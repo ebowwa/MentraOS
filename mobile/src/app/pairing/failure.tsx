@@ -7,7 +7,7 @@ import {ThemedStyle} from "@/theme"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
-import bridge, {CoreCommunicator} from "@/bridge/MantleBridge"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n/translate"
 import {TxKeyPath} from "@/i18n"
 
