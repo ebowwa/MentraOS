@@ -523,6 +523,7 @@ struct ViewState {
                     //          emptyVadBuffer()
                     //          self.serverComms.sendAudioChunk(lc3Data)
                     if self.shouldSendPcmData {
+                        // Bridge.log("Mentra: Sending PCM data to server")
                         self.serverComms.sendAudioChunk(pcmData)
                     }
 

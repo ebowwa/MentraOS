@@ -15,6 +15,7 @@ public class LiveKitManager: NSObject {
     private let room: Room
     private var cancellables = Set<AnyCancellable>()
     private var audioTrack: LocalAudioTrack?
+    private var counter = 0
 
     public var enabled = false
 
@@ -173,7 +174,10 @@ public class LiveKitManager: NSObject {
             return
         }
 
-        Bridge.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
+        counter += 1
+        if counter % 100 == 0 {
+            Bridge.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
+        }
 
         LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
         //
