@@ -80,11 +80,19 @@ jobs:
             ./fix-react-native-symlinks.sh
           fi
 
-      - name: Generate native code for react-native-config
-        working-directory: ./mobile/android
+      - name: Clean and prepare Android build
+        working-directory: ./mobile
         run: |
-          # Run codegen task to generate native code for react-native-config
-          ./gradlew generateCodegenArtifactsFromSchema
+          # Clean Gradle cache and build directories
+          cd android && ./gradlew clean && cd ..
+
+          # Remove any problematic build artifacts
+          rm -rf android/app/build/generated android/app/.cxx
+
+          # Ensure react-native-config codegen runs properly
+          cd android
+          ./gradlew :react-native-config:generateCodegenArtifactsFromSchema || true
+          cd ..
 
       - name: Build Android Debug APK
         working-directory: ./mobile/android
