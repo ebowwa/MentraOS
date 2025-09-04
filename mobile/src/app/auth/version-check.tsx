@@ -5,9 +5,8 @@ import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
 
-import BackendServerComms from "@/bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {Button, Screen} from "@/components/ignite"
-import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
@@ -17,7 +16,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import ServerComms from "@/services/ServerComms"
+import SocketComms from "@/managers/SocketComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -102,14 +101,14 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      const backend = BackendServerComms.getInstance()
+      const backend = RestComms.getInstance()
       const coreToken = await backend.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
       const useNewWsManager = false
       if (useNewWsManager) {
         coreCommunicator.setup()
-        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+        SocketComms.getInstance().setAuthCreds(coreToken, uid)
       } else {
         coreCommunicator.setAuthCreds(coreToken, uid)
       }
@@ -137,7 +136,7 @@ export default function VersionUpdateScreen() {
     setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
-      const backendComms = BackendServerComms.getInstance()
+      const backendComms = RestComms.getInstance()
       const localVer = getLocalVersion()
       setLocalVersion(localVer)
 

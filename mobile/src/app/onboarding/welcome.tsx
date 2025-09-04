@@ -4,7 +4,7 @@ import {Screen} from "@/components/ignite"
 import {saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import BackendServerComms from "@/bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -16,14 +16,14 @@ export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
-  const backendComms = BackendServerComms.getInstance()
+  const restComms = RestComms.getInstance()
 
   const stopAllApps = async () => {
     const runningApps = appStatus.filter(app => app.is_running)
     for (const runningApp of runningApps) {
       optimisticallyStopApp(runningApp.packageName)
       try {
-        await backendComms.stopApp(runningApp.packageName)
+        await restComms.stopApp(runningApp.packageName)
         clearPendingOperation(runningApp.packageName)
       } catch (error) {
         console.error("stop app error:", error)

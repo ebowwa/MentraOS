@@ -22,7 +22,7 @@ import SelectSetting from "@/components/settings/SelectSetting"
 import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
 import TitleValueSetting from "@/components/settings/TitleValueSetting"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import BackendServerComms from "@/bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
@@ -54,7 +54,7 @@ import {translate} from "@/i18n"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
-  const backendServerComms = BackendServerComms.getInstance()
+  const restComms = RestComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace, navigate} = useNavigationHistory()
@@ -163,7 +163,7 @@ export default function AppSettings() {
               {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
               {text: "Try Anyway", onPress: () => resolve(true)},
             ],
-            {iconName: "alert-circle-outline", iconColor: theme.colors.warning},
+            {iconName: "alert-circle-outline", iconColor: theme.colors.palette.angry500},
           )
         })
         if (!proceed) return
@@ -215,12 +215,12 @@ export default function AppSettings() {
               if (appInfo?.is_running) {
                 // Optimistically update UI first
                 optimisticallyStopApp(packageName)
-                await backendServerComms.stopApp(packageName)
+                await restComms.stopApp(packageName)
                 clearPendingOperation(packageName)
               }
 
               // Then uninstall it
-              await backendServerComms.uninstallApp(packageName)
+              await restComms.uninstallApp(packageName)
 
               // Show success message
               GlobalEventEmitter.emit("SHOW_BANNER", {
@@ -256,7 +256,7 @@ export default function AppSettings() {
     if (!hasCachedSettings) setSettingsLoading(true)
     const startTime = Date.now() // For profiling
     try {
-      const data = await backendServerComms.getAppSettings(packageName)
+      const data = await restComms.getAppSettings(packageName)
       const elapsed = Date.now() - startTime
       console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`)
       console.log("GOT TPA SETTING")
@@ -344,7 +344,7 @@ export default function AppSettings() {
       value: settingKey === key ? value : settingsState[settingKey],
     }))
 
-    backendServerComms
+    restComms
       .updateAppSetting(packageName, {key, value})
       .then(data => {
         console.log("Server update response:", data)

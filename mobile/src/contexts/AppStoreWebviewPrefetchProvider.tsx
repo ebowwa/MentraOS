@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useEffect, useRef, useState} from "react"
 import {WebView} from "react-native-webview"
 import Constants from "expo-constants"
-import BackendServerComms from "../bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {View} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -35,7 +35,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
     try {
       const baseUrl = Constants.expoConfig?.extra?.MENTRAOS_APPSTORE_URL
-      const backendComms = BackendServerComms.getInstance()
+      const backendComms = RestComms.getInstance()
       const url = new URL(baseUrl)
       url.searchParams.set("theme", theme.isDark ? "dark" : "light")
 
@@ -80,7 +80,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
   useEffect(() => {
     // Check if we already have a core token
-    const backendComms = BackendServerComms.getInstance()
+    const backendComms = RestComms.getInstance()
     if (backendComms.getCoreToken()) {
       prefetchWebview().catch(error => {
         console.error("AppStoreWebviewPrefetchProvider: Error during initial prefetch:", error)

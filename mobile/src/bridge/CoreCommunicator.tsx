@@ -9,11 +9,11 @@ import {
 } from "./CoreServiceStarter"
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
-import BackendServerComms from "@/bridge/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
-import ServerComms from "@/services/ServerComms"
+import {CoreStatusParser} from "@/utils/CoreStatusParser"
+import SocketComms from "@/managers/SocketComms"
+import {getWsUrl} from "@/utils/SettingsHelper"
 
 const {Core, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Core)
@@ -186,8 +186,10 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // set the backend server url
-    const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
+    const backendServerUrl = await getWsUrl()
     await this.setServerUrl(backendServerUrl) // todo: config: remove
+
+    this.sendSettings() // TODO: config: finish this
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -386,10 +388,10 @@ export class CoreCommunicator extends EventEmitter {
           })
           break
         case "ws_text":
-          ServerComms.getInstance().sendText(data.text)
+          SocketComms.getInstance().sendText(data.text)
           break
         case "ws_binary":
-          ServerComms.getInstance().sendBinary(data.binary)
+          SocketComms.getInstance().sendBinary(data.binary)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -827,6 +829,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendSettings() {
+    return await this.sendData({
+      command: "set_settings",
+      params: {
+        // TODO: add settings
+      },
+    })
+  }
+
   async verifyAuthenticationSecretKey() {
     return await this.sendData({
       command: "verify_auth_secret_key",
@@ -1019,5 +1030,4 @@ export class CoreCommunicator extends EventEmitter {
 }
 
 // Create and export the singleton instance
-const coreCommunicator = CoreCommunicator.getInstance()
-export default coreCommunicator
+export default CoreCommunicator.getInstance()

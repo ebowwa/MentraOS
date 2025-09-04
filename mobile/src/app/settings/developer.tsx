@@ -17,7 +17,6 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import ServerComms from "@/services/ServerComms"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()

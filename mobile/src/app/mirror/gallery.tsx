@@ -22,7 +22,7 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import {shareFile} from "@/utils/FileUtils"
 import VideoItem from "@/components/misc/VideoItem"
 import PhotoItem from "@/components/misc/PhotoItem"
-import BackendServerComms from "@/bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {router} from "expo-router"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -70,7 +70,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
   const [refreshing, setRefreshing] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null)
   const [photoModalVisible, setPhotoModalVisible] = useState(false)
-  const backend = BackendServerComms.getInstance()
+  const backend = RestComms.getInstance()
   const {push} = useNavigationHistory()
 
   useEffect(() => {

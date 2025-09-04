@@ -1,7 +1,6 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
 import {View, ViewStyle, Animated, Easing} from "react-native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import BackendServerComms from "@/bridge/BackendServerComms"
 import EmptyAppsView from "../home/EmptyAppsView"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -13,6 +12,7 @@ import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import RestComms from "@/managers/RestComms"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -22,7 +22,7 @@ export default function AppsActiveList({
   searchQuery?: string
 }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
-  const backendComms = BackendServerComms.getInstance()
+  const backendComms = RestComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
   const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)

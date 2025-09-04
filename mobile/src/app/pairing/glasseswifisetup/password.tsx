@@ -6,7 +6,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
 

@@ -9,7 +9,7 @@ import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useCallback} from "react"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 // Enhanced network info type

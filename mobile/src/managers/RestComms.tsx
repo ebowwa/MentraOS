@@ -1,4 +1,3 @@
-// backend_comms/BackendServerComms.ts
 import axios, {AxiosRequestConfig} from "axios"
 import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -11,9 +10,9 @@ interface Callback {
   onFailure: (errorCode: number) => void
 }
 
-export default class BackendServerComms {
-  private static instance: BackendServerComms
-  private TAG = "BServerComms"
+class RestComms {
+  private static instance: RestComms
+  private TAG = "RestComms"
   private coreToken: string | null = null
 
   public async getServerUrl(): Promise<string> {
@@ -117,11 +116,11 @@ export default class BackendServerComms {
     // No need to set serverUrl here anymore
   }
 
-  public static getInstance(): BackendServerComms {
-    if (!BackendServerComms.instance) {
-      BackendServerComms.instance = new BackendServerComms()
+  public static getInstance(): RestComms {
+    if (!RestComms.instance) {
+      RestComms.instance = new RestComms()
     }
-    return BackendServerComms.instance
+    return RestComms.instance
   }
 
   public setCoreToken(token: string | null): void {
@@ -765,3 +764,5 @@ export default class BackendServerComms {
 //     },
 //   })
 // }
+
+export default RestComms.getInstance()

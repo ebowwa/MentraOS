@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   TouchableOpacity,
   Platform,
   Alert,
@@ -17,16 +16,14 @@ import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
-import {router} from "expo-router"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
-import {stat} from "react-native-fs"
 import {glassesFeatures} from "@/config/glassesFeatures"
 
 export default function DashboardSettingsScreen() {
@@ -85,7 +82,7 @@ export default function DashboardSettingsScreen() {
   // const fetchDashboardSettings = async () => {
   //   try {
   //     setIsLoading(true);
-  //     const data = await backendServerComms.getAppSettings('com.augmentos.dashboard');
+  //     const data = await restComms.getAppSettings('com.augmentos.dashboard');
   //     setServerSettings(data);
   //     const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
   //     if (contentSetting) {
@@ -102,7 +99,7 @@ export default function DashboardSettingsScreen() {
   //   try {
   //     setIsUpdating(true);
   //     setDashboardContent(value);
-  //     await backendServerComms.updateAppSetting('com.augmentos.dashboard', {
+  //     await restComms.updateAppSetting('com.augmentos.dashboard', {
   //       key: 'dashboard_content',
   //       value: value
   //     });

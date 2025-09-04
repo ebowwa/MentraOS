@@ -1,10 +1,7 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import {Platform} from "react-native"
+import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/bridge/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
+import {INTENSE_LOGGING} from "@/consts"
+import RestComms from "@/managers/RestComms"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
 import {deepCompare} from "@/utils/debugging"
@@ -50,9 +47,9 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
     coreCommunicator.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return RestComms.getInstance().getCoreToken()
   }, [])
 
   useEffect(() => {
