@@ -92,7 +92,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
           )}
           <Image
             source={{uri: app.logoURL}}
-            style={[themed($icon), {borderRadius: 60}]}
+            style={[themed($icon), {borderRadius: 60, width: style?.width ?? 56, height: style?.height ?? 56}]}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
@@ -109,9 +109,9 @@ const $container: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $icon: ThemedStyle<ImageStyle> = () => ({
+  width: "100%",
   height: "100%",
   resizeMode: "cover",
-  width: "100%",
 })
 
 const $appName: ThemedStyle<TextStyle> = ({colors, isDark}) => ({

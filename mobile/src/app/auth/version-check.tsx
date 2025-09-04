@@ -82,9 +82,18 @@ export default function VersionUpdateScreen() {
     }
   }
 
+  const checkLoggedIn = async (): Promise<void> => {
+    if (!user) {
+      replace("/auth/login")
+      return
+    }
+    handleTokenExchange()
+  }
+
   const handleTokenExchange = async (): Promise<void> => {
     setState("loading")
     setLoadingStatus(translate("versionCheck:connectingToServer"))
+
     try {
       const supabaseToken = session?.access_token
       if (!supabaseToken) {
@@ -150,7 +159,7 @@ export default function VersionUpdateScreen() {
             setState("outdated")
             return
           }
-          handleTokenExchange()
+          checkLoggedIn()
         },
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
