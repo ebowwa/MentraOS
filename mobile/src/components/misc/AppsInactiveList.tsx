@@ -1,19 +1,8 @@
 // YourAppsList.tsx
 import React, {useEffect, useRef, useState} from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  Easing,
-  Keyboard,
-} from "react-native"
+import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
@@ -26,7 +15,6 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {ThemedStyle} from "@/theme"
-import {TreeIcon} from "assets/icons/component/TreeIcon"
 import AppsHeader from "@/components/misc/AppsHeader"
 import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"

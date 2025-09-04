@@ -36,7 +36,7 @@ import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
@@ -430,7 +430,7 @@ export function GalleryScreen() {
   const handleRequestHotspot = async () => {
     transitionToState(GalleryState.REQUESTING_HOTSPOT)
     try {
-      await coreCommunicator.sendCommand("set_hotspot_state", {enabled: true})
+      await bridge.sendCommand("set_hotspot_state", {enabled: true})
       setGalleryOpenedHotspot(true)
       galleryOpenedHotspotRef.current = true
       console.log("[GalleryScreen] Gallery initiated hotspot")
@@ -447,7 +447,7 @@ export function GalleryScreen() {
   const handleStopHotspot = async () => {
     console.log("[GalleryScreen] Stopping hotspot...")
     try {
-      const result = await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
+      const result = await bridge.sendCommand("set_hotspot_state", {enabled: false})
       console.log("[GalleryScreen] Hotspot stop command sent")
       setGalleryOpenedHotspot(false)
       galleryOpenedHotspotRef.current = false

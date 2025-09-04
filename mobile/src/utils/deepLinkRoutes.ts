@@ -195,7 +195,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             setTimeout(() => {
               console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
               try {
-                navObject.replace("/")
+                navObject.replace("/auth/version-check")
                 console.log("[LOGIN DEBUG] router.replace called successfully")
               } catch (navError) {
                 console.error("[LOGIN DEBUG] Error calling router.replace:", navError)
@@ -204,13 +204,9 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             console.log("[LOGIN DEBUG] setTimeout scheduled")
             return // Don't do the navigation below
           }
-        } catch (err) {
-          console.error("Exception during setSession:", err)
-          console.error("[LOGIN DEBUG] setSession error details:", {
-            name: err.name,
-            message: err.message,
-            stack: err.stack,
-          })
+        } catch (e) {
+          console.error("Exception during setSession:", e)
+          console.error("[LOGIN DEBUG] setSession error details:", e)
         }
       }
 

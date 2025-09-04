@@ -3,7 +3,7 @@ import {View, Text, FlatList, TouchableOpacity, Alert} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 

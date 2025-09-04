@@ -18,11 +18,11 @@ import {translate} from "@/i18n"
 import {Spacer} from "./Spacer"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import showAlert from "@/utils/AlertUtils"
+import restComms from "@/managers/RestComms"
 
 interface OnboardingSpotlightProps {
   targetRef: React.RefObject<any>
@@ -108,8 +108,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
 
       // Start the Live Captions app directly
       try {
-        const backendComms = BackendServerComms.getInstance()
-        await backendComms.startApp(liveCaptionsPackageName)
+        await restComms.startApp(liveCaptionsPackageName)
 
         // Mark onboarding as completed
         await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)

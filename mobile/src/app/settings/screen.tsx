@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {StyleSheet, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/Bridge"
 import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -39,9 +39,9 @@ export default function ScreenSettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      coreCommunicator.toggleUpdatingScreen(true)
+      bridge.toggleUpdatingScreen(true)
       return () => {
-        coreCommunicator.toggleUpdatingScreen(false)
+        bridge.toggleUpdatingScreen(false)
       }
     }, []),
   )
@@ -58,23 +58,23 @@ export default function ScreenSettingsScreen() {
     }
 
     // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
-    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false)
+    await bridge.setGlassesBrightnessMode(newBrightness, false)
     setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
-    await coreCommunicator.setGlassesDepth(newDepth)
+    await bridge.setGlassesDepth(newDepth)
     setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
-    await coreCommunicator.setGlassesHeight(newHeight)
+    await bridge.setGlassesHeight(newHeight)
     setHeight(newHeight)
   }
 
   const toggleAutoBrightness = async () => {
     const newVal = !isAutoBrightnessEnabled
-    await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal)
+    await bridge.setGlassesBrightnessMode(brightness ?? 50, newVal)
     setIsAutoBrightnessEnabled(newVal)
   }
 
