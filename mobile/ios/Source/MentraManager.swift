@@ -43,6 +43,7 @@ struct ViewState {
     @objc var frameManager: FrameManager?
     var serverComms = ServerComms.shared
     var micManager = OnboardMicrophoneManager.shared
+    var livekit = LiveKitManager.shared
 
     private var lastStatusObj: [String: Any] = [:]
 
@@ -52,7 +53,6 @@ struct ViewState {
     private var defaultWearable: String = ""
     private var pendingWearable: String = ""
     private var deviceName: String = ""
-    private var shouldEnableMic: Bool = false
     private var contextualDashboard = true
     private var headUpAngle = 30
     private var brightness = 50
@@ -434,7 +434,7 @@ struct ViewState {
         volume: Float,
         stopOtherAudio: Bool
     ) {
-        Core.log("AOSManager: playAudio bridge called for requestId: \(requestId)")
+        Core.log("AOS: playAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.playAudio(
@@ -446,7 +446,7 @@ struct ViewState {
     }
 
     @objc func stopAudio(_ requestId: String) {
-        Core.log("AOSManager: stopAudio bridge called for requestId: \(requestId)")
+        Core.log("AOS: stopAudio bridge called for requestId: \(requestId)")
 
         let audioManager = AudioManager.getInstance()
         audioManager.stopAudio(requestId: requestId)
@@ -1034,7 +1034,7 @@ struct ViewState {
         //        default:
         //            break
         //        }
-
+        // TODO: re-enable this:
         // handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
     }
 

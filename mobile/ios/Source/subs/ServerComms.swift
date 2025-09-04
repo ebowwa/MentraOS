@@ -109,23 +109,6 @@ class ServerComms {
         audioBuffer.offer(audioData)
     }
 
-    private func sendConnectionInit(coreToken: String) {
-        do {
-            let initMsg: [String: Any] = [
-                "type": "connection_init",
-                "coreToken": coreToken,
-            ]
-
-            let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
-                Core.log("ServerComms: Sent connection_init message")
-            }
-        } catch {
-            Core.log("ServerComms: Error building connection_init JSON: \(error)")
-        }
-    }
-
     func sendVadStatus(_ isSpeaking: Bool) {
         let vadMsg: [String: Any] = [
             "type": "VAD",
@@ -432,9 +415,16 @@ class ServerComms {
 
         switch type {
         case "connection_ack":
-            startAudioSenderThread()
-            m.onAppStateChange(parseAppList(msg))
-            m.onConnectionAck()
+            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
+            MentraManager.getInstance().onConnectionAck()
+            let livekitData = msg["livekit"] as? [String: Any] ?? [:]
+            let url = livekitData["url"] as? String ?? ""
+            let token = livekitData["token"] as? String ?? ""
+            if !url.isEmpty, !token.isEmpty {
+                Core.log("ServerComms: Connecting to LiveKit: \(url)")
+                Core.log("ServerComms: LiveKit token: \(token)")
+                LiveKitManager.shared.connect(url: url, token: token)
+            }
 
         case "app_state_change":
             m.onAppStateChange(parseAppList(msg))
@@ -461,7 +451,7 @@ class ServerComms {
             // Convert string array to enum array
             var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
 
-            Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+            // Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
             m.handle_microphone_state_change(requiredData, bypassVad)
 
@@ -615,16 +605,6 @@ class ServerComms {
             stopAudioSenderThread()
             attemptReconnect()
         }
-
-        if status == .connected {
-            // Wait a second before sending connection_init (similar to the Java code)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.sendConnectionInit(coreToken: self.coreToken)
-
-                self.sendCalendarEvents()
-                self.sendLocationUpdates()
-            }
-        }
     }
 
     // MARK: - Audio Queue Sender Thread
@@ -636,7 +616,12 @@ class ServerComms {
         audioSenderThread = Thread {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
-                    if self.wsManager.isConnected() {
+                    // Core.log("ServerComms: polling audio chunk")
+                    // check if we're connected to livekit:
+                    if LiveKitManager.shared.enabled {
+                        LiveKitManager.shared.addPcm(chunk)
+                    } else if self.wsManager.isConnected() {
+                        // Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
                         self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit

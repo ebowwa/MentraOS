@@ -5,7 +5,7 @@ import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
 
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -17,6 +17,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
+import ServerComms from "@/services/ServerComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -96,7 +97,13 @@ export default function VersionUpdateScreen() {
       const coreToken = await backend.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
-      coreCommunicator.setAuthCreds(coreToken, uid)
+      const useNewWsManager = false
+      if (useNewWsManager) {
+        coreCommunicator.setup()
+        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+      } else {
+        coreCommunicator.setAuthCreds(coreToken, uid)
+      }
 
       // Check onboarding status
       const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
@@ -197,7 +204,7 @@ export default function VersionUpdateScreen() {
           iconColor: theme.colors.error,
           title: "Connection Error",
           description: isUsingCustomUrl
-            ? "Could not connect to the custom server. Please reset to default or check your connection."
+            ? "Could not connect to the custom server. Please try resetting the URL to the default or check your connection."
             : "Could not connect to the server. Please check your connection and try again.",
         }
 
@@ -262,37 +269,28 @@ export default function VersionUpdateScreen() {
 
           <View style={themed($buttonContainer)}>
             {state === "error" && (
-              <>
-                <Button
-                  onPress={checkCloudVersion}
-                  style={themed($primaryButton)}
-                  text={translate("versionCheck:retryConnection")}
-                />
-                <Spacer height={theme.spacing.md} />
-              </>
+              <Button
+                onPress={checkCloudVersion}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:retryConnection")}
+              />
             )}
 
             {state === "outdated" && (
-              <>
-                <Button
-                  onPress={handleUpdate}
-                  disabled={isUpdating}
-                  style={themed($primaryButton)}
-                  text={translate("versionCheck:update")}
-                />
-                <Spacer height={theme.spacing.md} />
-              </>
+              <Button
+                onPress={handleUpdate}
+                disabled={isUpdating}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:update")}
+              />
             )}
 
             {state === "error" && isUsingCustomUrl && (
-              <>
-                <Spacer height={theme.spacing.md} />
-                <Button
-                  onPress={handleResetUrl}
-                  style={themed($secondaryButton)}
-                  text={translate("versionCheck:resetUrl")}
-                />
-              </>
+              <Button
+                onPress={handleResetUrl}
+                style={themed($secondaryButton)}
+                text={translate("versionCheck:resetUrl")}
+              />
             )}
 
             {(state === "error" || state === "outdated") && (
@@ -367,6 +365,7 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
+  gap: spacing.md,
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = () => ({

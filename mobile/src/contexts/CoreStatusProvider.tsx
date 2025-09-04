@@ -3,7 +3,7 @@ import {Platform} from "react-native"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
 import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 

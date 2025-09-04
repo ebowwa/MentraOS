@@ -67,6 +67,7 @@ import Foundation
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
+            case setup
             case display_event
             case update_settings
             case microphone_state_change
@@ -92,6 +93,8 @@ import Foundation
 
                 // Process based on command type
                 switch commandType {
+                case .setup:
+                    m.setup()
                 // TODO: config: remove
                 case .set_server_url:
                     guard let params = params, let url = params["url"] as? String else {
