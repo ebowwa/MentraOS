@@ -28,8 +28,8 @@ public class LiveKitManager: NSObject {
         room.add(delegate: self)
 
         do {
-            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
-            //                        try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+//      LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
             //            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
             //            try LiveKit.AudioManager.shared.setManualRenderingMode(false)
         } catch {
@@ -59,7 +59,7 @@ public class LiveKitManager: NSObject {
 
                 // Create connect options
                 let connectOptions = ConnectOptions(
-                    enableMicrophone: false
+                    enableMicrophone: true
                 )
 
                 let roomOptions = RoomOptions(
@@ -78,7 +78,7 @@ public class LiveKitManager: NSObject {
 
                 // Setup custom audio source for PCM input
                 // try await setupCustomAudioTrack()
-//                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
+                //                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
                 //              Core.log("LiveKit: a: \(room.)")
                 //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
 
