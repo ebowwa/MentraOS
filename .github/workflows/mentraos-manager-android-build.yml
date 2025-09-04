@@ -80,6 +80,12 @@ jobs:
             ./fix-react-native-symlinks.sh
           fi
 
+      - name: Generate native code for react-native-config
+        working-directory: ./mobile/android
+        run: |
+          # Run codegen task to generate native code for react-native-config
+          ./gradlew generateCodegenArtifactsFromSchema
+
       - name: Build Android Debug APK
         working-directory: ./mobile/android
         run: ./gradlew assembleDebug
