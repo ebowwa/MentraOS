@@ -14,7 +14,7 @@ import {
   LayoutType,
   ViewType
 } from '@mentra/sdk';
-import { logger  } from '../../logging/pino-logger';
+import { logger  } from '../../../logging/pino-logger';
 import { DashboardManager } from '../DashboardManager';
 
 // Mock display manager

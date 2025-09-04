@@ -15,7 +15,7 @@ import UserSession from "../services/session/UserSession";
 import {
   authWithOptionalSession,
   optionalAuthWithOptionalSession,
-  OptionalUserSessionRequest,
+  RequestWithOptionalUserSession,
 } from "../middleware/client/client-auth-middleware";
 import { HardwareCompatibilityService } from "../services/session/HardwareCompatibilityService";
 import dotenv from "dotenv";
@@ -540,7 +540,7 @@ async function getAllApps(req: Request, res: Response) {
  * Get public apps
  */
 async function getPublicApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     let apps = await appService.getAllApps();
@@ -571,7 +571,7 @@ async function getPublicApps(req: Request, res: Response) {
  * Search apps by query
  */
 async function searchApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const query = req.query.q as string;
@@ -1175,7 +1175,7 @@ async function stopApp(req: Request, res: Response) {
  * Install app for user
  */
 async function installApp(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   const { packageName } = req.params;
   const userSession = request.userSession; // Get optional userSession from middleware
@@ -1269,7 +1269,7 @@ async function installApp(req: Request, res: Response) {
  * Uninstall app for user
  */
 async function uninstallApp(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
   const { packageName } = req.params;
 
   try {
@@ -1342,7 +1342,7 @@ async function uninstallApp(req: Request, res: Response) {
  * Get installed apps for user
  */
 async function getInstalledApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const user = request.user;
@@ -1487,7 +1487,7 @@ async function getAppDetails(req: Request, res: Response) {
 }
 
 async function getAvailableApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const organizationId = req.query.organizationId as string;

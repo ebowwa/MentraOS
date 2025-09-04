@@ -22,9 +22,9 @@ import {
   AppToCloudMessage,
   // UserSession
 } from "@mentra/sdk";
-import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../../core/app.service";
 import { Logger } from "pino";
-import UserSession from "../session/UserSession";
+import UserSession from "../UserSession";
 
 /**
  * Dashboard content from a App
@@ -61,7 +61,7 @@ interface DashboardConfig {
 export class DashboardManager {
   // Dashboard state
   private currentMode: DashboardMode | "none" = "none";
-  private alwaysOnEnabled: boolean = false;
+  private alwaysOnEnabled = false;
 
   // Content queues for each mode
   private mainContent: Map<string, AppContent> = new Map();
@@ -69,7 +69,7 @@ export class DashboardManager {
   private alwaysOnContent: Map<string, AppContent> = new Map();
 
   // Circular queue tracking for main dashboard
-  private mainContentRotationIndex: number = 0;
+  private mainContentRotationIndex = 0;
 
   // System dashboard content (managed by system.augmentos.dashboard App)
   private systemContent: SystemContent = {
