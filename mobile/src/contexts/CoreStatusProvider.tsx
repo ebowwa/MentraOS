@@ -1,7 +1,6 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
 import {INTENSE_LOGGING} from "@/consts"
-import RestComms from "@/managers/RestComms"
 import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
