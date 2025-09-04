@@ -115,6 +115,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonActionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DownloadProgressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.InstallationProgressEvent;
@@ -498,6 +499,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         batteryLevel = event.batteryLevel;
         ServerComms.getInstance().sendGlassesBatteryUpdate(event.batteryLevel, false, -1);
         sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe
+    public void onButtonActionEvent(ButtonActionEvent buttonActionEvent) {
+        ServerComms.getInstance().sendButtonActionEvent(buttonActionEvent.button, buttonActionEvent.event);
     }
 
     @Subscribe
