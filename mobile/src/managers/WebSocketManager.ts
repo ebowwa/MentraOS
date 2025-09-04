@@ -161,4 +161,5 @@ class WebSocketManager extends EventEmitter {
   }
 }
 
-export default WebSocketManager
+const wsManager = WebSocketManager.getInstance()
+export default wsManager

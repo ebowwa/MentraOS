@@ -1,15 +1,14 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import BackendServerComms from "../bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {AppState} from "react-native"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {getRestUrl, loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import coreCommunicator from "@/bridge/CoreCommunicator"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
+import restComms from "@/managers/RestComms"
 
 export type AppPermissionType =
   | "ALL"
@@ -88,7 +87,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [appStatus, setAppStatus] = useState<AppletInterface[]>([])
   const {user} = useAuth()
   const {theme} = useAppTheme()
-  const backendComms = BackendServerComms.getInstance()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
@@ -100,8 +98,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       return Promise.resolve()
     }
 
-    // Check if we have a core token from BackendServerComms
-    const coreToken = BackendServerComms.getInstance().getCoreToken()
+    // Check if we have a core token from RestComms
+    const coreToken = restComms.getCoreToken()
     console.log(
       "AppStatusProvider: Core token check - token exists:",
       !!coreToken,
@@ -114,7 +112,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     try {
-      const appsData = await BackendServerComms.getInstance().getApps()
+      const appsData = await restComms.getApps()
 
       // Merge existing running states with new data
       const mapped = appsData.map(app => {
@@ -162,7 +160,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       for (const runningApp of runningStandardApps) {
         optimisticallyStopApp(runningApp.packageName)
         try {
-          backendComms.stopApp(runningApp.packageName)
+          restComms.stopApp(runningApp.packageName)
           clearPendingOperation(runningApp.packageName)
         } catch (error) {
           console.error("Stop app error:", error)
@@ -185,7 +183,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     // actually start the app:
     {
       try {
-        await backendComms.startApp(packageName)
+        await restComms.startApp(packageName)
         clearPendingOperation(packageName)
         await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
@@ -248,7 +246,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     // actually stop the app:
     {
       try {
-        await backendComms.stopApp(packageName)
+        await restComms.stopApp(packageName)
         clearPendingOperation(packageName)
       } catch (error) {
         refreshAppStatus()
@@ -275,7 +273,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       if (!app) {
         return false
       }
-      const baseUrl = await BackendServerComms.getInstance().getServerUrl()
+      const baseUrl = await getRestUrl()
       // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
       const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
       const healthResponse = await fetch(healthUrl, {

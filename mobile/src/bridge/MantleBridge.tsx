@@ -6,20 +6,20 @@ import {
   isAugmentOsCoreInstalled,
   isLocationServicesEnabled as checkLocationServices,
   startExternalService,
-} from "./CoreServiceStarter"
+} from "@/bridge/CoreServiceStarter"
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
-import BackendServerComms from "@/bridge/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
-import ServerComms from "@/services/ServerComms"
+import {CoreStatusParser} from "@/utils/CoreStatusParser"
+import {getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import socketComms from "@/managers/SocketComms"
 
-const {Core, BridgeModule, CoreCommsService} = NativeModules
-const eventEmitter = new NativeEventEmitter(Core)
+const {Bridge, BridgeModule, CoreCommsService} = NativeModules
+const eventEmitter = new NativeEventEmitter(Bridge)
 
-export class CoreCommunicator extends EventEmitter {
-  private static instance: CoreCommunicator | null = null
+export class MantleBridge extends EventEmitter {
+  private static instance: MantleBridge | null = null
   private messageEventSubscription: any = null
   private validationInProgress: Promise<boolean> | null = null
   private reconnectionTimer: NodeJS.Timeout | null = null
@@ -152,13 +152,13 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   /**
-   * Gets the singleton instance of CoreCommunicator
+   * Gets the singleton instance of Bridge
    */
-  public static getInstance(): CoreCommunicator {
-    if (!CoreCommunicator.instance) {
-      CoreCommunicator.instance = new CoreCommunicator()
+  public static getInstance(): MantleBridge {
+    if (!Bridge.instance) {
+      MantleBridge.instance = new MantleBridge()
     }
-    return CoreCommunicator.instance
+    return MantleBridge.instance
   }
 
   /**
@@ -186,8 +186,10 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // set the backend server url
-    const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
+    const backendServerUrl = await getRestUrl()
     await this.setServerUrl(backendServerUrl) // todo: config: remove
+
+    this.sendSettings() // TODO: config: finish this
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -386,10 +388,10 @@ export class CoreCommunicator extends EventEmitter {
           })
           break
         case "ws_text":
-          ServerComms.getInstance().sendText(data.text)
+          socketComms.sendText(data.text)
           break
         case "ws_binary":
-          ServerComms.getInstance().sendBinary(data.binary)
+          socketComms.sendBinary(data.binary)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -501,9 +503,9 @@ export class CoreCommunicator extends EventEmitter {
     this.isConnected = false
 
     // Reset the singleton instance
-    CoreCommunicator.instance = null
+    Bridge.instance = null
 
-    console.log("CoreCommunicator cleaned up")
+    console.log("Bridge cleaned up")
   }
 
   /* Command methods to interact with Core */
@@ -827,6 +829,15 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendSettings() {
+    return await this.sendData({
+      command: "set_settings",
+      params: {
+        // TODO: add settings
+      },
+    })
+  }
+
   async verifyAuthenticationSecretKey() {
     return await this.sendData({
       command: "verify_auth_secret_key",
@@ -970,7 +981,7 @@ export class CoreCommunicator extends EventEmitter {
    */
   private async sendAudioPlayResponse(response: AudioPlayResponse) {
     console.log(
-      `CoreCommunicator: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
+      `Bridge: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
     )
     await this.sendData({
       command: "audio_play_response",
@@ -1012,12 +1023,12 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async queryGalleryStatus() {
-    console.log("[CoreCommunicator] Querying gallery status from glasses...")
+    console.log("[Bridge] Querying gallery status from glasses...")
     // Just send the command, the response will come through the event system
     return this.sendCommand("query_gallery_status")
   }
 }
 
 // Create and export the singleton instance
-const coreCommunicator = CoreCommunicator.getInstance()
-export default coreCommunicator
+const bridge = MantleBridge.getInstance()
+export default bridge

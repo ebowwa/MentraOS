@@ -1,5 +1,5 @@
 import {create} from "zustand"
-import {WebSocketStatus} from "@/services/WebSocketManager"
+import {WebSocketStatus} from "@/managers/WebSocketManager"
 
 interface ConnectionState {
   status: WebSocketStatus

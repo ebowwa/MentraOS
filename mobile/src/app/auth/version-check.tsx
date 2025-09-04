@@ -4,20 +4,18 @@ import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
-
-import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
-import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import ServerComms from "@/services/ServerComms"
+import restComms from "@/managers/RestComms"
+import socketComms from "@/managers/SocketComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -82,9 +80,18 @@ export default function VersionUpdateScreen() {
     }
   }
 
+  const checkLoggedIn = async (): Promise<void> => {
+    if (!user) {
+      replace("/auth/login")
+      return
+    }
+    handleTokenExchange()
+  }
+
   const handleTokenExchange = async (): Promise<void> => {
     setState("loading")
     setLoadingStatus(translate("versionCheck:connectingToServer"))
+
     try {
       const supabaseToken = session?.access_token
       if (!supabaseToken) {
@@ -93,16 +100,15 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      const backend = BackendServerComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken)
+      const coreToken = await restComms.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
       const useNewWsManager = false
       if (useNewWsManager) {
-        coreCommunicator.setup()
-        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+        bridge.setup()
+        socketComms.setAuthCreds(coreToken, uid)
       } else {
-        coreCommunicator.setAuthCreds(coreToken, uid)
+        bridge.setAuthCreds(coreToken, uid)
       }
 
       // Check onboarding status
@@ -128,7 +134,6 @@ export default function VersionUpdateScreen() {
     setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
-      const backendComms = BackendServerComms.getInstance()
       const localVer = getLocalVersion()
       setLocalVersion(localVer)
 
@@ -139,7 +144,7 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      await backendComms.restRequest("/apps/version", null, {
+      await restComms.restRequest("/apps/version", null, {
         onSuccess: data => {
           const cloudVer = data.version
           setCloudVersion(cloudVer)
@@ -150,7 +155,7 @@ export default function VersionUpdateScreen() {
             setState("outdated")
             return
           }
-          handleTokenExchange()
+          checkLoggedIn()
         },
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
@@ -180,7 +185,7 @@ export default function VersionUpdateScreen() {
   const handleResetUrl = async (): Promise<void> => {
     try {
       await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      await coreCommunicator.setServerUrl("")
+      await bridge.setServerUrl("")
       setIsUsingCustomUrl(false)
       await checkCloudVersion()
     } catch (error) {

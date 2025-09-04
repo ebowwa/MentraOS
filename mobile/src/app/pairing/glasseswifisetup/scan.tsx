@@ -2,14 +2,14 @@ import React, {useState, useEffect, useRef} from "react"
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
 import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
 import {Screen, Header, Button, Icon} from "@/components/ignite"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useCallback} from "react"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 // Enhanced network info type
@@ -167,7 +167,7 @@ export default function WifiScanScreen() {
       console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
 
       // Don't stop scanning, just retry silently
-      coreCommunicator.requestWifiScan().catch(error => {
+      bridge.requestWifiScan().catch(error => {
         console.error("⏱️ RETRY FAILED:", error)
       })
 
@@ -175,7 +175,7 @@ export default function WifiScanScreen() {
     }, 15000) // 15 second timeout
 
     try {
-      await coreCommunicator.requestWifiScan()
+      await bridge.requestWifiScan()
     } catch (error) {
       console.error("Error scanning for WiFi networks:", error)
       if (scanTimeoutRef.current) {

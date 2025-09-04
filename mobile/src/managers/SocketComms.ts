@@ -1,9 +1,9 @@
 import Config from "react-native-config"
-import WebSocketManager, {WebSocketStatus} from "./WebSocketManager"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import coreCommunicator from "@/bridge/MantleBridge"
 import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -15,10 +15,10 @@ interface ThirdPartyCloudApp {
   isRunning: boolean
 }
 
-class ServerComms {
-  private static instance: ServerComms | null = null
+class SocketComms {
+  private static instance: SocketComms | null = null
 
-  private ws = WebSocketManager.getInstance()
+  private ws = wsManager
   private coreToken: string = ""
   public userid: string = ""
 
@@ -38,21 +38,21 @@ class ServerComms {
     this.setupPeriodicTasks()
   }
 
-  // public static getInstance(): ServerComms {
-  //   if (!ServerComms.instance) {
-  //     ServerComms.instance = new ServerComms()
+  // public static getInstance(): SocketComms {
+  //   if (!SocketComms.instance) {
+  //     SocketComms.instance = new SocketComms()
   //   }
-  //   return ServerComms.instance
+  //   return SocketComms.instance
   // }
 
   public static getInstance(): any {
     const disableNewWsManager = false
     if (!disableNewWsManager) {
-      if (!ServerComms.instance) {
-        ServerComms.instance = new ServerComms()
+      if (!SocketComms.instance) {
+        SocketComms.instance = new SocketComms()
       }
 
-      return ServerComms.instance
+      return SocketComms.instance
     }
     return {
       restartConnection: () => {},
@@ -96,7 +96,7 @@ class ServerComms {
     // Datetime transmission every 60 seconds
     this.datetimeTimer = setInterval(() => {
       console.log("Periodic datetime transmission")
-      const isoDatetime = ServerComms.get_current_iso_datetime()
+      const isoDatetime = SocketComms.get_current_iso_datetime()
       this.send_user_datetime_to_backend(isoDatetime)
     }, 60 * 1000) // 60 seconds
   }
@@ -104,10 +104,10 @@ class ServerComms {
   // Connection Management
 
   private async connectWebsocket() {
-    console.log("ServerCommsTS: connectWebsocket()")
+    console.log("SocketCommsTS: connectWebsocket()")
     const url = await getWsUrl()
     if (!url) {
-      console.error(`ServerCommsTS: Invalid server URL`)
+      console.error(`SocketCommsTS: Invalid server URL`)
       return
     }
     this.ws.connect(url, this.coreToken)
@@ -132,7 +132,7 @@ class ServerComms {
   }
 
   private handleStatusChange(status: WebSocketStatus) {
-    console.log(`ServerCommsTS: handleStatusChange: ${status}`)
+    console.log(`SocketCommsTS: handleStatusChange: ${status}`)
 
     if (status === WebSocketStatus.DISCONNECTED || status === WebSocketStatus.ERROR) {
       this.attemptReconnect()
@@ -152,7 +152,7 @@ class ServerComms {
   }
 
   restartConnection() {
-    console.log(`ServerCommsTS: restartConnection`)
+    console.log(`SocketCommsTS: restartConnection`)
     if (this.ws.isConnected()) {
       this.ws.disconnect()
       this.connectWebsocket()
@@ -160,7 +160,7 @@ class ServerComms {
   }
 
   setAuthCreds(coreToken: string, userid: string) {
-    console.log(`ServerCommsTS: setAuthCreds(): ${coreToken}, ${userid}`)
+    console.log(`SocketCommsTS: setAuthCreds(): ${coreToken}, ${userid}`)
     this.coreToken = coreToken
     this.userid = userid
     saveSetting(SETTINGS_KEYS.core_token, coreToken)
@@ -171,7 +171,7 @@ class ServerComms {
     try {
       this.ws.sendText(text)
     } catch (error) {
-      console.log(`ServerCommsTS: Failed to send text: ${error}`)
+      console.log(`SocketCommsTS: Failed to send text: ${error}`)
     }
   }
 
@@ -203,7 +203,7 @@ class ServerComms {
 
   send_calendar_event(calendarItem: any) {
     if (!this.ws.isConnected()) {
-      console.log("ServerCommsTS: Cannot send calendar event: not connected.")
+      console.log("SocketCommsTS: Cannot send calendar event: not connected.")
       return
     }
 
@@ -221,7 +221,7 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building calendar_event JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building calendar_event JSON: ${error}`)
     }
   }
 
@@ -253,13 +253,13 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building location_update JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building location_update JSON: ${error}`)
     }
   }
 
   send_location_updates() {
     if (!this.ws.isConnected()) {
-      console.log("ServerCommsTS: Cannot send location updates: WebSocket not connected")
+      console.log("SocketCommsTS: Cannot send location updates: WebSocket not connected")
       return
     }
 
@@ -279,13 +279,13 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building glasses_connection_state JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building glasses_connection_state JSON: ${error}`)
     }
   }
 
   update_asr_config(languages: any[]) {
     if (!this.ws.isConnected()) {
-      console.log("ServerCommsTS: Cannot send ASR config: not connected.")
+      console.log("SocketCommsTS: Cannot send ASR config: not connected.")
       return
     }
 
@@ -298,7 +298,7 @@ class ServerComms {
       const jsonString = JSON.stringify(configMsg)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building config message: ${error}`)
+      console.log(`SocketCommsTS: Error building config message: ${error}`)
     }
   }
 
@@ -313,13 +313,13 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building core_status_update JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building core_status_update JSON: ${error}`)
     }
   }
 
   send_audio_play_response(requestId: string, success: boolean, error?: string, duration?: number) {
     console.log(
-      `ServerCommsTS: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
+      `SocketCommsTS: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
     )
 
     const message: any = {
@@ -334,9 +334,9 @@ class ServerComms {
     try {
       const jsonString = JSON.stringify(message)
       this.ws.sendText(jsonString)
-      console.log("ServerCommsTS: Sent audio play response to server")
+      console.log("SocketCommsTS: Sent audio play response to server")
     } catch (err) {
-      console.log(`ServerCommsTS: Failed to serialize audio play response: ${err}`)
+      console.log(`SocketCommsTS: Failed to serialize audio play response: ${err}`)
     }
   }
 
@@ -352,7 +352,7 @@ class ServerComms {
       const jsonString = JSON.stringify(msg)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building start_app JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building start_app JSON: ${error}`)
     }
   }
 
@@ -367,7 +367,7 @@ class ServerComms {
       const jsonString = JSON.stringify(msg)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building stop_app JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building stop_app JSON: ${error}`)
     }
   }
 
@@ -384,7 +384,7 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building button_press JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building button_press JSON: ${error}`)
     }
   }
 
@@ -400,7 +400,7 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building photo_response JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building photo_response JSON: ${error}`)
     }
   }
 
@@ -416,7 +416,7 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error building video_stream_response JSON: ${error}`)
+      console.log(`SocketCommsTS: Error building video_stream_response JSON: ${error}`)
     }
   }
 
@@ -431,34 +431,34 @@ class ServerComms {
       const jsonString = JSON.stringify(event)
       this.ws.sendText(jsonString)
     } catch (error) {
-      console.log(`ServerCommsTS: Error sending head position: ${error}`)
+      console.log(`SocketCommsTS: Error sending head position: ${error}`)
     }
   }
 
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
-    console.log("ServerCommsTS: connection ack", msg)
+    console.log("SocketCommsTS: connection ack", msg)
     this.parse_app_list(msg)
     // coreCommunicator.sendCommand("connection_ack")
   }
 
   private handle_app_state_change(msg: any) {
-    console.log("ServerCommsTS: app state change", msg)
+    console.log("SocketCommsTS: app state change", msg)
     this.parse_app_list(msg)
   }
 
   private handle_connection_error(msg: any) {
-    console.error("ServerCommsTS: connection error", msg)
+    console.error("SocketCommsTS: connection error", msg)
   }
 
   private handle_auth_error() {
-    console.error("ServerCommsTS: auth error")
+    console.error("SocketCommsTS: auth error")
   }
 
   private handle_microphone_state_change(msg: any) {
     const bypassVad = msg.bypassVad || false
     const requiredDataStrings = msg.requiredData || []
-    console.log(`ServerCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
+    console.log(`SocketCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
     coreCommunicator.sendCommand("microphone_state_change", {
       requiredData: requiredDataStrings,
       bypassVad,
@@ -473,11 +473,11 @@ class ServerComms {
   }
 
   private handle_audio_play_request(msg: any) {
-    console.log(`ServerCommsTS: Handling audio play request: ${JSON.stringify(msg)}`)
+    console.log(`SocketCommsTS: Handling audio play request: ${JSON.stringify(msg)}`)
     const requestId = msg.requestId
     if (!requestId) return
 
-    console.log(`ServerCommsTS: Handling audio play request for requestId: ${requestId}`)
+    console.log(`SocketCommsTS: Handling audio play request for requestId: ${requestId}`)
 
     const audioUrl = msg.audioUrl || ""
     const volume = msg.volume || 1.0
@@ -493,23 +493,23 @@ class ServerComms {
   }
 
   private handle_audio_stop_request() {
-    console.log("ServerCommsTS: Handling audio stop request")
+    console.log("SocketCommsTS: Handling audio stop request")
     // Forward to native audio handling
     coreCommunicator.sendCommand("audio_stop_request")
   }
 
   private handle_set_location_tier(msg: any) {
-    console.log("ServerCommsTS: DEBUG set_location_tier:", msg)
+    console.log("SocketCommsTS: DEBUG set_location_tier:", msg)
     const tier = msg.tier
     if (!tier) {
-      console.log("ServerCommsTS: No tier provided")
+      console.log("SocketCommsTS: No tier provided")
       return
     }
     coreCommunicator.sendCommand("set_location_tier", {tier})
   }
 
   private handle_request_single_location(msg: any) {
-    console.log("ServerCommsTS: DEBUG request_single_location:", msg)
+    console.log("SocketCommsTS: DEBUG request_single_location:", msg)
     if (msg.accuracy && msg.correlationId) {
       coreCommunicator.sendCommand("request_single_location", {
         accuracy: msg.accuracy,
@@ -521,16 +521,16 @@ class ServerComms {
   private handle_app_started(msg: any) {
     const packageName = msg.packageName
     if (!packageName) {
-      console.log("ServerCommsTS: No package name provided")
+      console.log("SocketCommsTS: No package name provided")
       return
     }
-    console.log(`ServerCommsTS: Received app_started message for package: ${msg.packageName}`)
+    console.log(`SocketCommsTS: Received app_started message for package: ${msg.packageName}`)
     coreCommunicator.sendCommand("app_started", {
       packageName: msg.packageName,
     })
   }
   private handle_app_stopped(msg: any) {
-    console.log(`ServerCommsTS: Received app_stopped message for package: ${msg.packageName}`)
+    console.log(`SocketCommsTS: Received app_stopped message for package: ${msg.packageName}`)
     coreCommunicator.sendCommand("app_stopped", {
       packageName: msg.packageName,
     })
@@ -570,12 +570,12 @@ class ServerComms {
   }
 
   private handle_keep_rtmp_stream_alive(msg: any) {
-    console.log(`ServerCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
+    console.log(`SocketCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
     coreCommunicator.sendCommand("keep_rtmp_stream_alive", msg)
   }
 
   private handle_save_buffer_video(msg: any) {
-    console.log(`ServerCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
+    console.log(`SocketCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
     const bufferRequestId = msg.requestId || `buffer_${Date.now()}`
     const durationSeconds = msg.durationSeconds || 30
     coreCommunicator.sendCommand("save_buffer_video", {
@@ -585,17 +585,17 @@ class ServerComms {
   }
 
   private handle_start_buffer_recording(msg: any) {
-    console.log("ServerCommsTS: Received START_BUFFER_RECORDING")
+    console.log("SocketCommsTS: Received START_BUFFER_RECORDING")
     coreCommunicator.sendCommand("start_buffer_recording")
   }
 
   private handle_stop_buffer_recording(msg: any) {
-    console.log("ServerCommsTS: Received STOP_BUFFER_RECORDING")
+    console.log("SocketCommsTS: Received STOP_BUFFER_RECORDING")
     coreCommunicator.sendCommand("stop_buffer_recording")
   }
 
   private handle_start_video_recording(msg: any) {
-    console.log(`ServerCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+    console.log(`SocketCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
     const videoRequestId = msg.requestId || `video_${Date.now()}`
     const save = msg.save !== false
     coreCommunicator.sendCommand("start_video_recording", {
@@ -605,7 +605,7 @@ class ServerComms {
   }
 
   private handle_stop_video_recording(msg: any) {
-    console.log(`ServerCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
+    console.log(`SocketCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
     const stopRequestId = msg.requestId || ""
     coreCommunicator.sendCommand("stop_video_recording", {
       requestId: stopRequestId,
@@ -616,7 +616,7 @@ class ServerComms {
   private handle_message(msg: any) {
     const type = msg.type
 
-    console.log(`ServerCommsTS: handle_incoming_message: ${type}`)
+    console.log(`SocketCommsTS: handle_incoming_message: ${type}`)
 
     switch (type) {
       case "connection_ack":
@@ -653,7 +653,7 @@ class ServerComms {
         break
 
       case "reconnect":
-        console.log("ServerCommsTS: TODO: Server is requesting a reconnect.")
+        console.log("SocketCommsTS: TODO: Server is requesting a reconnect.")
         break
 
       case "set_location_tier":
@@ -709,7 +709,7 @@ class ServerComms {
         break
 
       default:
-        console.log(`ServerCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
+        console.log(`SocketCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
     }
   }
 
@@ -723,7 +723,7 @@ class ServerComms {
     }
 
     try {
-      console.log(`ServerCommsTS: Sending datetime to: ${url}`)
+      console.log(`SocketCommsTS: Sending datetime to: ${url}`)
 
       const response = await fetch(url, {
         method: "POST",
@@ -735,14 +735,14 @@ class ServerComms {
 
       if (response.ok) {
         const responseText = await response.text()
-        console.log(`ServerCommsTS: Datetime transmission successful: ${responseText}`)
+        console.log(`SocketCommsTS: Datetime transmission successful: ${responseText}`)
       } else {
-        console.log(`ServerCommsTS: Datetime transmission failed. Response code: ${response.status}`)
+        console.log(`SocketCommsTS: Datetime transmission failed. Response code: ${response.status}`)
         const errorText = await response.text()
-        console.log(`ServerCommsTS: Error response: ${errorText}`)
+        console.log(`SocketCommsTS: Error response: ${errorText}`)
       }
     } catch (error) {
-      console.log(`ServerCommsTS: Exception during datetime transmission: ${error}`)
+      console.log(`SocketCommsTS: Exception during datetime transmission: ${error}`)
     }
   }
 
@@ -834,8 +834,9 @@ class ServerComms {
     this.ws.cleanup()
 
     // Reset instance
-    ServerComms.instance = null
+    SocketComms.instance = null
   }
 }
 
-export default ServerComms
+const socketComms = SocketComms.getInstance()
+export default socketComms

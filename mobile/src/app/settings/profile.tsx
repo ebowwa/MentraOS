@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import Icon from "react-native-vector-icons/FontAwesome"
-import BackendServerComms from "@/bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import {Button, Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -24,6 +24,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
 import {LogoutUtils} from "@/utils/LogoutUtils"
+import restComms from "@/managers/RestComms"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -148,7 +149,7 @@ export default function ProfileSettingsPage() {
 
     try {
       console.log("Profile: Requesting account deletion from server")
-      const response = await BackendServerComms.getInstance().requestAccountDeletion()
+      const response = await restComms.requestAccountDeletion()
 
       // Check if the response indicates success
       deleteRequestSuccessful = response && (response.success === true || response.status === "success")

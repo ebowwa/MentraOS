@@ -1,10 +1,11 @@
 import React, {createContext, useContext, useEffect, useRef, useState} from "react"
 import {WebView} from "react-native-webview"
 import Constants from "expo-constants"
-import BackendServerComms from "../bridge/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {View} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import restComms from "@/managers/RestComms"
 
 const STORE_PACKAGE_NAME = "org.augmentos.store"
 
@@ -35,25 +36,21 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
     try {
       const baseUrl = Constants.expoConfig?.extra?.MENTRAOS_APPSTORE_URL
-      const backendComms = BackendServerComms.getInstance()
       const url = new URL(baseUrl)
       url.searchParams.set("theme", theme.isDark ? "dark" : "light")
 
       // Check if core token exists before trying to generate webview tokens
-      if (!backendComms.getCoreToken()) {
+      if (!restComms.getCoreToken()) {
         console.error("AppStoreWebviewPrefetchProvider: No core token available, skipping token generation")
         setAppStoreUrl(url.toString())
         return
       }
 
-      const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME)
+      const tempToken = await restComms.generateWebviewToken(STORE_PACKAGE_NAME)
 
       let signedUserToken: string | undefined
       try {
-        signedUserToken = await backendComms.generateWebviewToken(
-          STORE_PACKAGE_NAME,
-          "generate-webview-signed-user-token",
-        )
+        signedUserToken = await restComms.generateWebviewToken(STORE_PACKAGE_NAME, "generate-webview-signed-user-token")
       } catch (error) {
         console.warn("AppStoreWebviewPrefetchProvider: Failed to generate signed user token:", error)
         signedUserToken = undefined
@@ -80,8 +77,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
   useEffect(() => {
     // Check if we already have a core token
-    const backendComms = BackendServerComms.getInstance()
-    if (backendComms.getCoreToken()) {
+    if (restComms.getCoreToken()) {
       prefetchWebview().catch(error => {
         console.error("AppStoreWebviewPrefetchProvider: Error during initial prefetch:", error)
       })

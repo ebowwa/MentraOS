@@ -47,7 +47,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
 
     func connect(url: URL, coreToken: String) {
-        Core.log("WebSocketManager: connect()")
+        Bridge.log("WebSocketManager: connect()")
         self.coreToken = coreToken
 
         // Disconnect existing connection if any, but don't update the disconnect status since we're connecting and don't want to trigger the reconnect handler:
@@ -86,13 +86,13 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // Send JSON message
     func sendText(_ text: String) {
         guard isConnected() else {
-            Core.log("WS: Cannot send message: WebSocket not connected")
+            Bridge.log("WS: Cannot send message: WebSocket not connected")
             return
         }
 
         webSocket?.send(.string(text)) { error in
             if let error = error {
-                Core.log("WS: Error sending text message: \(error)")
+                Bridge.log("WS: Error sending text message: \(error)")
             }
         }
     }
@@ -100,7 +100,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // Send binary data (for audio)
     func sendBinary(_ data: Data) {
         guard isConnected() else {
-            Core.log("WS: Cannot send binary data: WebSocket not connected")
+            Bridge.log("WS: Cannot send binary data: WebSocket not connected")
             return
         }
 
@@ -108,7 +108,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
 
         webSocket?.send(.data(data)) { error in
             if let error = error {
-                Core.log("WS: Error sending binary data: \(error)")
+                Bridge.log("WS: Error sending binary data: \(error)")
             }
         }
     }
@@ -140,7 +140,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
                 self.receiveMessage()
 
             case let .failure(error):
-                Core.log("WS: WebSocket receive error: \(error)")
+                Bridge.log("WS: WebSocket receive error: \(error)")
                 updateStatus(.error)
             }
         }
@@ -154,18 +154,18 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // MARK: - URLSessionWebSocketDelegate
 
     func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
-        Core.log("WS: WebSocket connection established")
+        Bridge.log("WS: WebSocket connection established")
         updateStatus(.connected)
     }
 
     func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
-        Core.log("WS: WebSocket connection closed with code: \(closeCode)")
+        Bridge.log("WS: WebSocket connection closed with code: \(closeCode)")
         updateStatus(.disconnected)
     }
 
     func urlSession(_: URLSession, task _: URLSessionTask, didCompleteWithError error: Error?) {
         if let error = error {
-            Core.log("WS: WebSocket task completed with error: \(error)")
+            Bridge.log("WS: WebSocket task completed with error: \(error)")
             updateStatus(.error)
         }
     }
