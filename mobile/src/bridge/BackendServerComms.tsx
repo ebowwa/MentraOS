@@ -726,6 +726,34 @@ export default class BackendServerComms {
       throw error
     }
   }
+
+  public async sendFeedback(feedbackBody: string): Promise<any> {
+    if (!this.coreToken) {
+      throw new Error("No core token available for authentication")
+    }
+
+    const baseUrl = await this.getServerUrl()
+    const url = `${baseUrl}/api/client/feedback`
+    const config: AxiosRequestConfig = {
+      method: "POST",
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.coreToken}`,
+      },
+      data: {body: feedbackBody},
+    }
+
+    try {
+      const response = await axios(config)
+      if (response.status !== 200) {
+        throw new Error(`Bad response: ${response.statusText}`)
+      }
+    } catch (error: any) {
+      console.error("Error sending feedback:", error.message || error)
+      throw error
+    }
+  }
 }
 // function showToast() {
 //   Toast.show({

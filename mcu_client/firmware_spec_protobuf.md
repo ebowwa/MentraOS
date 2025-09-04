@@ -919,19 +919,19 @@ Then, the glasses can emit:
 
 ### Button Event
 
-Triggered by hardware button press or release.
+Triggered by hardware button tap or hold events.
 
 #### 👓 Glasses → Phone
 
 ```
 [0x02][GlassesToPhone { button_event {
-  button: CENTER  // Options: CENTER, LEFT, RIGHT
-  state: DOWN     // Options: DOWN, UP
+  button: LEFT_BACK  // Options: LEFT_BACK, RIGHT_BACK
+  event: SINGLE_TAP     // Options: SINGLE_TAP, DOUBLE_TAP, TRIPLE_TAP, LONG_HOLD
 }}]
 ```
 
 - `button`: Based on physical layout.
-- `state`: Pressed (`DOWN`) or released (`UP`).
+- `event`: One of `SINGLE_TAP`, `DOUBLE_TAP`, `TRIPLE_TAP`, `LONG_HOLD`.
 
 ---
 

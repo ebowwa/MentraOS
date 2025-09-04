@@ -44,7 +44,11 @@ export default function PairingPrepScreen() {
     }
 
     // Always request Bluetooth permissions - required for Android 14+ foreground service
-    const needsBluetoothPermissions = true
+    let needsBluetoothPermissions = true
+    // we don't need bluetooth permissions for simulated glasses
+    if (glassesModelName.startsWith("Simulated") && Platform.OS === "ios") {
+      needsBluetoothPermissions = false
+    }
 
     try {
       // Check for Android-specific permissions

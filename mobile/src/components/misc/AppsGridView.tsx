@@ -9,43 +9,33 @@ import {translate} from "@/i18n"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
+import {AppletInterface, AppletPermission} from "@/contexts/AppletStatusProvider"
 
 // Constants at the top for easy configuration
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
 const POPOVER_ICON_SIZE = 32
-const EMPTY_APP_PLACEHOLDER = {packageName: "", name: ""} as const
-interface AppModel {
-  name: string
-  packageName: string
-  is_running?: boolean
-  type?: string
-  webviewURL?: string
-  publicUrl?: string
-  logoURL?: string
-  permissions?: any[]
-  compatibility?: {
-    isCompatible: boolean
-    message?: string
-  }
-  // New optional online flag provided by backend
-  isOnline?: boolean | null
-  developerName?: string
-}
+const EMPTY_APP_PLACEHOLDER = {
+  packageName: "",
+  name: "",
+  type: "standard",
+  logoURL: "",
+  permissions: [] as AppletPermission[],
+} as const
 
 interface AppsGridViewProps {
-  apps: AppModel[]
+  apps: AppletInterface[]
   onStartApp?: (packageName: string) => void
   onStopApp?: (packageName: string) => void
-  onOpenSettings?: (app: AppModel) => void
-  onOpenWebView?: (app: AppModel) => void
+  onOpenSettings?: (app: AppletInterface) => void
+  onOpenWebView?: (app: AppletInterface) => void
   title?: string
   isIncompatible?: boolean
 }
 
 // Separate component for the popover to improve performance and maintainability
 const AppPopover: React.FC<{
-  app: AppModel | null
+  app: AppletInterface | null
   visible: boolean
   anchorRef: React.Component | null
   onClose: () => void
@@ -68,7 +58,7 @@ const AppPopover: React.FC<{
       arrowSize={{width: 16, height: 8}}>
       <View style={themed($popoverContent)}>
         <View style={themed($popoverHeader)}>
-          <AppIcon app={app} isForegroundApp={app.type === "standard"} style={themed($popoverAppIcon)} />
+          <AppIcon app={app} style={themed($popoverAppIcon)} />
           <Text text={app.name} style={themed($popoverAppName)} numberOfLines={1} />
         </View>
 
@@ -104,8 +94,8 @@ const AppPopover: React.FC<{
 
 // Separate component for grid items to improve performance
 const GridItem: React.FC<{
-  item: AppModel
-  onPress: (app: AppModel) => void
+  item: AppletInterface
+  onPress: (app: AppletInterface) => void
   setRef: (ref: React.Component | null) => void
   themed: (style: any) => any
   theme: any
@@ -156,13 +146,13 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   onOpenWebView,
 }) => {
   const {themed, theme} = useAppTheme()
-  const [selectedApp, setSelectedApp] = useState<AppModel | null>(null)
+  const [selectedApp, setSelectedApp] = useState<AppletInterface | null>(null)
   const [popoverVisible, setPopoverVisible] = useState(false)
   const touchableRefs = useRef<Map<string, React.Component | null>>(new Map())
 
   // Maintenance dialog for offline apps
   const showMaintenanceDialog = useCallback(
-    (app: AppModel) => {
+    (app: AppletInterface) => {
       const developerName = (" " + (app.developerName || "") + " ").replace("  ", " ")
       Alert.alert(
         "App is down for maintenance",
@@ -200,7 +190,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   }, [apps])
 
   const handleAppPress = useCallback(
-    (app: AppModel) => {
+    (app: AppletInterface) => {
       const ref = touchableRefs.current.get(app.packageName)
       if (ref) {
         // If app is offline, show maintenance dialog instead of popover
@@ -275,7 +265,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
   )
 
   const renderAppItem = useCallback(
-    ({item}: {item: AppModel}) => (
+    ({item}: {item: AppletInterface}) => (
       <GridItem
         item={item}
         onPress={handleAppPress}
@@ -287,7 +277,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
     [handleAppPress, setItemRef, themed, theme],
   )
 
-  const keyExtractor = useCallback((item: AppModel, index: number) => {
+  const keyExtractor = useCallback((item: AppletInterface, index: number) => {
     return item.packageName || `empty-${index}`
   }, [])
 
