@@ -502,6 +502,24 @@ export class GlassesWebSocketService {
           sessionService.relayMessageToApps(userSession, message);
           break;
 
+        case GlassesToCloudMessageType.IMU_DATA:
+          userSession.logger.debug(
+            { service: SERVICE_NAME, message },
+            `IMU data received from glasses for user: ${userId}`,
+          );
+          // Relay IMU data to subscribed Apps
+          sessionService.relayMessageToApps(userSession, message);
+          break;
+
+        case GlassesToCloudMessageType.IMU_GESTURE:
+          userSession.logger.debug(
+            { service: SERVICE_NAME, message },
+            `IMU gesture received from glasses for user: ${userId}`,
+          );
+          // Relay IMU gesture to subscribed Apps
+          sessionService.relayMessageToApps(userSession, message);
+          break;
+
         // TODO(isaiah): Add other message type handlers as needed
         default:
           // For messages that don't need special handling, relay to Apps
