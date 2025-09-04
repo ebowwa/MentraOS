@@ -1,46 +1,131 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, ActivityIndicator, Platform} from "react-native"
+import {View, Text, ActivityIndicator, Platform, Linking} from "react-native"
 import Constants from "expo-constants"
 import semver from "semver"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import {router} from "expo-router"
+
+import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
+import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useDeeplink} from "@/contexts/DeeplinkContext"
+import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import coreCommunicator from "@/bridge/CoreCommunicator"
+import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
+import ServerComms from "@/services/ServerComms"
 
-// Icon component - adjust import based on your icon library
-import Icon from "react-native-vector-icons/MaterialCommunityIcons" // or your preferred icon library
-import {Linking} from "react-native"
-import {translate} from "@/i18n"
-import {Spacer} from "@/components/misc/Spacer"
+// Types
+type ScreenState = "loading" | "error" | "outdated" | "success"
+
+interface StatusConfig {
+  icon: string
+  iconColor: string
+  title: string
+  description: string
+}
+
+// Constants
+const APP_STORE_URL = "https://mentra.glass/os"
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
+const NAVIGATION_DELAY = 100
+const DEEPLINK_DELAY = 1000
 
 export default function VersionUpdateScreen() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [connectionError, setConnectionError] = useState(false)
-  const [isVersionMismatch, setIsVersionMismatch] = useState(false)
+  // Hooks
+  const {theme, themed} = useAppTheme()
+  const {user, session} = useAuth()
+  const {replace, getPendingRoute, setPendingRoute} = useNavigationHistory()
+  const {processUrl} = useDeeplink()
+
+  // State
+  const [state, setState] = useState<ScreenState>("loading")
   const [localVersion, setLocalVersion] = useState<string | null>(null)
   const [cloudVersion, setCloudVersion] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
-  const {replace} = useNavigationHistory()
-  const {theme, themed} = useAppTheme()
+  const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
+  const [errorType, setErrorType] = useState<"connection" | "auth" | null>(null)
+  const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
 
-  // Get local version from expo config
-  const getLocalVersion = () => {
+  // Helper Functions
+  const getLocalVersion = (): string | null => {
     try {
-      const version = Constants.expoConfig?.extra?.MENTRAOS_VERSION
-      console.log("Local version from expo config:", version)
-      return version || null
+      return Constants.expoConfig?.extra?.MENTRAOS_VERSION || null
     } catch (error) {
       console.error("Error getting local version:", error)
       return null
     }
   }
 
-  // Check the cloud version against local version
-  const checkCloudVersion = async () => {
-    setIsLoading(true)
-    setConnectionError(false)
+  const checkCustomUrl = async (): Promise<boolean> => {
+    const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    const isCustom = Boolean(customUrl?.trim())
+    setIsUsingCustomUrl(isCustom)
+    return isCustom
+  }
+
+  const navigateToDestination = async () => {
+    const pendingRoute = getPendingRoute()
+
+    if (pendingRoute) {
+      setPendingRoute(null)
+      setTimeout(() => processUrl(pendingRoute), DEEPLINK_DELAY)
+    } else {
+      setTimeout(() => {
+        router.dismissAll()
+        replace("/(tabs)/home")
+      }, NAVIGATION_DELAY)
+    }
+  }
+
+  const handleTokenExchange = async (): Promise<void> => {
+    setState("loading")
+    setLoadingStatus(translate("versionCheck:connectingToServer"))
+    try {
+      const supabaseToken = session?.access_token
+      if (!supabaseToken) {
+        setErrorType("auth")
+        setState("error")
+        return
+      }
+
+      const backend = BackendServerComms.getInstance()
+      const coreToken = await backend.exchangeToken(supabaseToken)
+      const uid = user?.email || user?.id
+
+      const useNewWsManager = false
+      if (useNewWsManager) {
+        coreCommunicator.setup()
+        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+      } else {
+        coreCommunicator.setAuthCreds(coreToken, uid)
+      }
+
+      // Check onboarding status
+      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+
+      if (!onboardingCompleted) {
+        replace("/onboarding/welcome")
+        return
+      }
+
+      await navigateToDestination()
+    } catch (error) {
+      console.error("Token exchange failed:", error)
+      await checkCustomUrl()
+      setErrorType("connection")
+      setState("error")
+    }
+  }
+
+  const checkCloudVersion = async (): Promise<void> => {
+    setState("loading")
+    setErrorType(null)
+    setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
       const backendComms = BackendServerComms.getInstance()
@@ -48,158 +133,184 @@ export default function VersionUpdateScreen() {
       setLocalVersion(localVer)
 
       if (!localVer) {
-        console.error("Failed to get local version from expo config")
-        setConnectionError(true)
-        setIsLoading(false)
+        console.error("Failed to get local version")
+        setErrorType("connection")
+        setState("error")
         return
       }
 
-      // Call the endpoint to get cloud version
       await backendComms.restRequest("/apps/version", null, {
         onSuccess: data => {
           const cloudVer = data.version
           setCloudVersion(cloudVer)
-          console.log(`Comparing local version (${localVer}) with cloud version (${cloudVer})`)
 
-          // Compare versions using semver
+          console.log(`Version check: local=${localVer}, cloud=${cloudVer}`)
+
           if (semver.lt(localVer, cloudVer)) {
-            console.log("A new version is available. Please update the app.")
-            setIsVersionMismatch(true)
-            setIsLoading(false)
+            setState("outdated")
             return
           }
-          // don't stop the loading, just continue to the core token exchange:
-          console.log("Local version is up-to-date.")
-          setIsVersionMismatch(false)
-          // less jarring
-          setTimeout(() => {
-            replace("/auth/core-token-exchange")
-          }, 100)
+          handleTokenExchange()
         },
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
-          setConnectionError(true)
-          setIsLoading(false)
+          setErrorType("connection")
+          setState("error")
         },
       })
     } catch (error) {
-      console.error("Error checking cloud version:", error)
-      setConnectionError(true)
-      setIsLoading(false)
+      console.error("Version check failed:", error)
+      setErrorType("connection")
+      setState("error")
     }
   }
 
-  // // Handle update button press
-  const handleUpdate = async () => {
+  const handleUpdate = async (): Promise<void> => {
     setIsUpdating(true)
     try {
-      let url = ""
-      // On mobile platforms, redirect to app store
-      if (Platform.OS === "ios") {
-        url = "https://mentra.glass/os"
-        console.log("Redirecting to App Store:", url)
-      } else if (Platform.OS === "android") {
-        url = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
-      }
-      console.log("Redirecting to store:", url)
-      Linking.openURL(url)
+      const url = Platform.OS === "ios" ? APP_STORE_URL : PLAY_STORE_URL
+      await Linking.openURL(url)
     } catch (error) {
-      console.error("Error handling update:", error)
+      console.error("Error opening store:", error)
     } finally {
       setIsUpdating(false)
     }
   }
 
-  // Check cloud version on mount
+  const handleResetUrl = async (): Promise<void> => {
+    try {
+      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      await coreCommunicator.setServerUrl("")
+      setIsUsingCustomUrl(false)
+      await checkCloudVersion()
+    } catch (error) {
+      console.error("Failed to reset URL:", error)
+    }
+  }
+
+  const getStatusConfig = (): StatusConfig => {
+    switch (state) {
+      case "error":
+        if (errorType === "auth") {
+          return {
+            icon: "account-alert",
+            iconColor: theme.colors.error,
+            title: "Authentication Error",
+            description: "Unable to authenticate. Please sign in again.",
+          }
+        }
+        return {
+          icon: "wifi-off",
+          iconColor: theme.colors.error,
+          title: "Connection Error",
+          description: isUsingCustomUrl
+            ? "Could not connect to the custom server. Please try resetting the URL to the default or check your connection."
+            : "Could not connect to the server. Please check your connection and try again.",
+        }
+
+      case "outdated":
+        return {
+          icon: "update",
+          iconColor: theme.colors.tint,
+          title: "Update Required",
+          description: "MentraOS is outdated. An update is required to continue using the application.",
+        }
+
+      default:
+        return {
+          icon: "check-circle",
+          iconColor: theme.colors.palette.primary500,
+          title: "Up to Date",
+          description: "MentraOS is up to date. Returning to home...",
+        }
+    }
+  }
+
+  // Effects
   useEffect(() => {
-    checkCloudVersion()
+    const init = async () => {
+      await checkCustomUrl()
+      await checkCloudVersion()
+    }
+    init()
   }, [])
 
-  if (isLoading) {
+  // Render
+  if (state === "loading") {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
-        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+        <View style={themed($centerContainer)}>
           <ActivityIndicator size="large" color={theme.colors.text} />
-          <Text style={themed($loadingText)}>{translate("versionCheck:checkingForUpdates")}</Text>
+          <Text style={themed($loadingText)}>{loadingStatus}</Text>
         </View>
       </Screen>
     )
   }
 
-  const getStatusIcon = () => {
-    if (connectionError) {
-      return <Icon name="wifi-off" size={80} color={theme.colors.error} />
-    } else if (isVersionMismatch) {
-      return <Icon name="update" size={80} color={theme.colors.tint} />
-    } else {
-      return <Icon name="check-circle" size={80} color={theme.colors.palette.primary500} />
-    }
-  }
-
-  const getStatusTitle = () => {
-    if (connectionError) return "Connection Error"
-    if (isVersionMismatch) return "Update Required"
-    return "Up to Date"
-  }
-
-  const getStatusDescription = () => {
-    if (connectionError) {
-      return "Could not connect to the server. Please check your connection and try again."
-    }
-    if (isVersionMismatch) {
-      return "MentraOS is outdated. An update is required to continue using the application."
-    }
-    return "MentraOS is up to date. Returning to home..."
-  }
+  const statusConfig = getStatusConfig()
 
   return (
-    <Screen preset="fixed" contentContainerStyle={themed($container)}>
+    <Screen preset="fixed" safeAreaEdges={["bottom"]}>
       <View style={themed($mainContainer)}>
         <View style={themed($infoContainer)}>
-          <View style={themed($iconContainer)}>{getStatusIcon()}</View>
-
-          <Text style={themed($title)}>{getStatusTitle()}</Text>
-
-          <Text style={themed($description)}>{getStatusDescription()}</Text>
-
-          {localVersion && <Text style={themed($versionText)}>Local: v{localVersion}</Text>}
-
-          {cloudVersion && <Text style={themed($versionText)}>Latest: v{cloudVersion}</Text>}
-        </View>
-
-        {(connectionError || isVersionMismatch) && (
-          <View style={themed($buttonContainer)}>
-            <Button
-              onPress={connectionError ? checkCloudVersion : handleUpdate}
-              disabled={isUpdating}
-              style={themed($primaryButton)}
-              text={connectionError ? translate("versionCheck:retryConnection") : translate("versionCheck:update")}
-            />
-
-            <Spacer height={theme.spacing.md} />
-
-            <Button
-              style={themed($secondaryButton)}
-              // textStyle={{color: theme.colors.text}}
-              RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
-              onPress={() => {
-                replace("/auth/core-token-exchange")
-              }}
-              tx="versionCheck:continueAnyways"
-            />
+          <View style={themed($iconContainer)}>
+            <Icon name={statusConfig.icon} size={80} color={statusConfig.iconColor} />
           </View>
-        )}
+
+          <Text style={themed($title)}>{statusConfig.title}</Text>
+          <Text style={themed($description)}>{statusConfig.description}</Text>
+
+          {state === "outdated" && (
+            <>
+              {localVersion && <Text style={themed($versionText)}>Local: v{localVersion}</Text>}
+              {cloudVersion && <Text style={themed($versionText)}>Latest: v{cloudVersion}</Text>}
+            </>
+          )}
+
+          <View style={themed($buttonContainer)}>
+            {state === "error" && (
+              <Button
+                onPress={checkCloudVersion}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:retryConnection")}
+              />
+            )}
+
+            {state === "outdated" && (
+              <Button
+                onPress={handleUpdate}
+                disabled={isUpdating}
+                style={themed($primaryButton)}
+                text={translate("versionCheck:update")}
+              />
+            )}
+
+            {state === "error" && isUsingCustomUrl && (
+              <Button
+                onPress={handleResetUrl}
+                style={themed($secondaryButton)}
+                text={translate("versionCheck:resetUrl")}
+              />
+            )}
+
+            {(state === "error" || state === "outdated") && (
+              <Button
+                style={themed($secondaryButton)}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
+                onPress={navigateToDestination}
+                tx="versionCheck:continueAnyways"
+              />
+            )}
+          </View>
+        </View>
       </View>
     </Screen>
   )
 }
 
-// Themed styles
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
+// Styles
+const $centerContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
   alignItems: "center",
 })
@@ -212,8 +323,6 @@ const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 
 const $mainContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  flexDirection: "column",
-  justifyContent: "space-between",
   padding: spacing.lg,
 })
 
@@ -228,18 +337,16 @@ const $iconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginBottom: spacing.xl,
 })
 
-const $title: ThemedStyle<TextStyle> = ({colors, spacing, typography}) => ({
+const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 28,
   fontWeight: "bold",
-  fontFamily: typography.primary.bold,
   textAlign: "center",
   marginBottom: spacing.md,
   color: colors.text,
 })
 
-const $description: ThemedStyle<TextStyle> = ({colors, spacing, typography}) => ({
+const $description: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 16,
-  fontFamily: typography.primary.normal,
   textAlign: "center",
   marginBottom: spacing.xl,
   lineHeight: 24,
@@ -247,9 +354,8 @@ const $description: ThemedStyle<TextStyle> = ({colors, spacing, typography}) => 
   color: colors.textDim,
 })
 
-const $versionText: ThemedStyle<TextStyle> = ({colors, spacing, typography}) => ({
+const $versionText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 14,
-  fontFamily: typography.primary.normal,
   textAlign: "center",
   marginBottom: spacing.xs,
   color: colors.textDim,
@@ -259,27 +365,15 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
+  gap: spacing.md,
 })
 
-const $primaryButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $primaryButton: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
 })
 
-const $secondaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: "100%",
   backgroundColor: colors.palette.primary200,
   color: colors.textAlt,
-})
-
-const $skipButtonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginTop: spacing.md,
-  width: "100%",
-  alignItems: "center",
-})
-
-const $skipButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: "transparent",
-  borderWidth: 1,
-  borderColor: colors.border,
-  width: "100%",
 })

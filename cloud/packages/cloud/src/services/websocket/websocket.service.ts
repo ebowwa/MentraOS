@@ -41,7 +41,7 @@ export class WebSocketService {
     this.glassesWss.on('connection', (ws, request) => {
       logger.info('New glasses WebSocket connection established');
       this.glassesHandler.handleConnection(ws, request).catch(error => {
-        logger.error(error,'Error handling glasses connection');
+        logger.error(error, 'Error handling glasses connection');
       });
     });
 
@@ -136,7 +136,11 @@ export class WebSocketService {
 
           try {
             // Extract JWT token from Authorization header for glasses
-            const coreToken = request.headers.authorization?.split(' ')[1];
+            const queryParams = url.searchParams;
+            const coreTokenQueryParam = queryParams.get("token");
+            const coreToken = request.headers.authorization?.split(' ')[1] || coreTokenQueryParam;
+            logger.debug({feature: "websocket"}, `Glasses core token: ${coreToken ? coreToken.substring(0, 10) + '...' : 'None'}`);
+            
             if (!coreToken) {
               logger.error('No core token provided in request headers');
               socket.write(
@@ -163,6 +167,16 @@ export class WebSocketService {
 
               // Attach the userId to the request for use by the handler
               (request as any).userId = userId;
+
+              // Check for LiveKit preference in headers
+              const livekitQueryParam = queryParams.get("livekit");
+              const livekitHeader = request.headers['livekit'];
+              const livekitPreference = livekitHeader === 'true' || livekitQueryParam === 'true';
+              (request as any).livekitRequested = livekitPreference;
+
+              if (livekitPreference) {
+                logger.info({ userId, feature: 'livekit' }, 'Client requested LiveKit transport');
+              }
 
               // If validation successful, proceed with connection
               this.glassesWss.handleUpgrade(request, socket, head, ws => {

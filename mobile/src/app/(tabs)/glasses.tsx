@@ -13,7 +13,7 @@ import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedG
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import semver from "semver"
 import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"

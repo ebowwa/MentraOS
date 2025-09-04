@@ -9,7 +9,7 @@ import {
 } from "./CoreServiceStarter"
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import BackendServerComms from "@/bridge/BackendServerComms"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
@@ -188,7 +188,6 @@ export class CoreCommunicator extends EventEmitter {
     // set the backend server url
     const backendServerUrl = await BackendServerComms.getInstance().getServerUrl()
     await this.setServerUrl(backendServerUrl) // todo: config: remove
-    await ServerComms.getInstance().setServerUrl(backendServerUrl) // todo: config: remove
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -303,6 +302,7 @@ export class CoreCommunicator extends EventEmitter {
           camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
       } else if ("glasses_display_event" in data) {
+        // TODO: config: remove
         GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
@@ -387,6 +387,9 @@ export class CoreCommunicator extends EventEmitter {
           break
         case "ws_text":
           ServerComms.getInstance().sendText(data.text)
+          break
+        case "ws_binary":
+          ServerComms.getInstance().sendBinary(data.binary)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -794,6 +797,12 @@ export class CoreCommunicator extends EventEmitter {
       params: {
         target: packageName,
       },
+    })
+  }
+
+  async setup() {
+    return await this.sendData({
+      command: "setup",
     })
   }
 

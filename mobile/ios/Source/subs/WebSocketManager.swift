@@ -61,6 +61,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
         // Create new WebSocket task with Authorization header
         var request = URLRequest(url: url)
         request.addValue("Bearer \(coreToken)", forHTTPHeaderField: "Authorization")
+        request.addValue("true", forHTTPHeaderField: "livekit")
         webSocket = session?.webSocketTask(with: request)
         webSocket?.resume()
 
@@ -85,13 +86,13 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // Send JSON message
     func sendText(_ text: String) {
         guard isConnected() else {
-            print("Cannot send message: WebSocket not connected")
+            Core.log("WS: Cannot send message: WebSocket not connected")
             return
         }
 
         webSocket?.send(.string(text)) { error in
             if let error = error {
-                print("Error sending text message: \(error)")
+                Core.log("WS: Error sending text message: \(error)")
             }
         }
     }
@@ -99,7 +100,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // Send binary data (for audio)
     func sendBinary(_ data: Data) {
         guard isConnected() else {
-            print("Cannot send binary data: WebSocket not connected")
+            Core.log("WS: Cannot send binary data: WebSocket not connected")
             return
         }
 
@@ -107,7 +108,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
 
         webSocket?.send(.data(data)) { error in
             if let error = error {
-                print("Error sending binary data: \(error)")
+                Core.log("WS: Error sending binary data: \(error)")
             }
         }
     }
@@ -139,7 +140,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
                 self.receiveMessage()
 
             case let .failure(error):
-                print("WebSocket receive error: \(error)")
+                Core.log("WS: WebSocket receive error: \(error)")
                 updateStatus(.error)
             }
         }
@@ -153,18 +154,18 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // MARK: - URLSessionWebSocketDelegate
 
     func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didOpenWithProtocol _: String?) {
-        print("WebSocket connection established")
+        Core.log("WS: WebSocket connection established")
         updateStatus(.connected)
     }
 
     func urlSession(_: URLSession, webSocketTask _: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason _: Data?) {
-        print("WebSocket connection closed with code: \(closeCode)")
+        Core.log("WS: WebSocket connection closed with code: \(closeCode)")
         updateStatus(.disconnected)
     }
 
     func urlSession(_: URLSession, task _: URLSessionTask, didCompleteWithError error: Error?) {
         if let error = error {
-            print("WebSocket task completed with error: \(error)")
+            Core.log("WS: WebSocket task completed with error: \(error)")
             updateStatus(.error)
         }
     }
