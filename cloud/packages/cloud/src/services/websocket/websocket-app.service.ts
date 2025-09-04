@@ -40,6 +40,7 @@ import { logger as rootLogger } from "../logging/pino-logger";
 import photoRequestService from "../core/photo-request.service";
 import e from "express";
 import { locationService } from "../core/location.service";
+import { imuService } from "../session/ImuManager";
 import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
 import App from "../../models/app.model";
 import { User } from "../../models/user.model";
@@ -750,6 +751,8 @@ export class AppWebSocketService {
         );
       if (updatedUser) {
         locationService.handleSubscriptionChange(updatedUser, userSession);
+        // Handle IMU subscription changes
+        imuService.handleSubscriptionChange(updatedUser, userSession);
       }
     } catch (error) {
       const errorMessage =
