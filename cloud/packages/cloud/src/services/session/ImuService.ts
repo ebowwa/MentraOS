@@ -19,6 +19,16 @@ const logger = rootLogger.child({ service: "ImuService" });
  * Follows the same pattern as LocationService for architectural consistency
  */
 class ImuService {
+  // Track current IMU state per user to prevent duplicate commands
+  private userImuState = new Map<
+    string,
+    {
+      hasDataSubscribers: boolean;
+      hasGestureSubscribers: boolean;
+      lastUpdate: number;
+    }
+  >();
+
   /**
    * Handle subscription changes for IMU streams
    * Called when apps subscribe/unsubscribe from IMU data or gestures
@@ -34,12 +44,43 @@ class ImuService {
     const imuGestureSubscribers =
       userSession.subscriptionManager.getSubscribedApps(StreamType.IMU_GESTURE);
 
+    const hasDataSubscribers = imuDataSubscribers.length > 0;
+    const hasGestureSubscribers = imuGestureSubscribers.length > 0;
+
+    // Get previous state to avoid duplicate commands
+    const previousState = this.userImuState.get(userId) || {
+      hasDataSubscribers: false,
+      hasGestureSubscribers: false,
+      lastUpdate: 0,
+    };
+
+    // Check if state actually changed
+    if (
+      previousState.hasDataSubscribers === hasDataSubscribers &&
+      previousState.hasGestureSubscribers === hasGestureSubscribers
+    ) {
+      logger.debug(
+        { userId, hasDataSubscribers, hasGestureSubscribers },
+        "IMU subscription state unchanged - no commands sent",
+      );
+      return;
+    }
+
+    // Update state tracking
+    this.userImuState.set(userId, {
+      hasDataSubscribers,
+      hasGestureSubscribers,
+      lastUpdate: Date.now(),
+    });
+
     logger.info(
       {
         userId,
         imuDataSubscribers: imuDataSubscribers.length,
         imuGestureSubscribers: imuGestureSubscribers.length,
         apps: [...imuDataSubscribers, ...imuGestureSubscribers],
+        previousState,
+        newState: { hasDataSubscribers, hasGestureSubscribers },
       },
       "Processing IMU subscription changes",
     );
@@ -56,47 +97,51 @@ class ImuService {
       return;
     }
 
-    // Handle gesture subscriptions
-    if (imuGestureSubscribers.length > 0) {
-      logger.info(
-        { userId, subscribers: imuGestureSubscribers },
-        "Apps subscribed to IMU gestures - enabling gesture detection on glasses",
-      );
+    // Handle gesture subscription changes only if state changed
+    if (previousState.hasGestureSubscribers !== hasGestureSubscribers) {
+      if (hasGestureSubscribers) {
+        logger.info(
+          { userId, subscribers: imuGestureSubscribers },
+          "Apps subscribed to IMU gestures - enabling gesture detection on glasses",
+        );
 
-      this._sendGestureSubscriptionCommand(userSession.websocket, [
-        "head_up",
-        "head_down",
-        "nod_yes",
-        "shake_no",
-      ]);
-    } else {
-      logger.info(
-        { userId },
-        "No apps subscribed to IMU gestures - disabling gesture detection on glasses",
-      );
+        this._sendGestureSubscriptionCommand(userSession.websocket, [
+          "head_up",
+          "head_down",
+          "nod_yes",
+          "shake_no",
+        ]);
+      } else {
+        logger.info(
+          { userId },
+          "No apps subscribed to IMU gestures - disabling gesture detection on glasses",
+        );
 
-      this._sendGestureUnsubscribeCommand(userSession.websocket);
+        this._sendGestureUnsubscribeCommand(userSession.websocket);
+      }
     }
 
-    // Handle data stream subscriptions
-    if (imuDataSubscribers.length > 0) {
-      logger.info(
-        { userId, subscribers: imuDataSubscribers },
-        "Apps subscribed to IMU data - starting data stream on glasses",
-      );
+    // Handle data stream subscription changes only if state changed
+    if (previousState.hasDataSubscribers !== hasDataSubscribers) {
+      if (hasDataSubscribers) {
+        logger.info(
+          { userId, subscribers: imuDataSubscribers },
+          "Apps subscribed to IMU data - starting data stream on glasses",
+        );
 
-      this._sendStreamStartCommand(
-        userSession.websocket,
-        50, // 50Hz sampling rate
-        100, // 100ms batching
-      );
-    } else {
-      logger.info(
-        { userId },
-        "No apps subscribed to IMU data - stopping data stream on glasses",
-      );
+        this._sendStreamStartCommand(
+          userSession.websocket,
+          50, // 50Hz sampling rate
+          100, // 100ms batching
+        );
+      } else {
+        logger.info(
+          { userId },
+          "No apps subscribed to IMU data - stopping data stream on glasses",
+        );
 
-      this._sendStreamStopCommand(userSession.websocket);
+        this._sendStreamStopCommand(userSession.websocket);
+      }
     }
   }
 
@@ -187,6 +232,17 @@ class ImuService {
       logger.debug("Sent IMU stream stop command to glasses");
     } catch (error) {
       logger.error({ error }, "Failed to send IMU stream stop command");
+    }
+  }
+
+  /**
+   * Clean up IMU state when user disconnects
+   * Called from UserSession cleanup
+   */
+  public cleanupUserState(userId: string): void {
+    if (this.userImuState.has(userId)) {
+      this.userImuState.delete(userId);
+      logger.debug({ userId }, "Cleaned up IMU state for disconnected user");
     }
   }
 
