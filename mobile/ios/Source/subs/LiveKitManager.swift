@@ -25,6 +25,8 @@ public class LiveKitManager: NSObject {
         room = Room()
         super.init()
 
+        room.add(delegate: self)
+
         do {
             LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
             //                        try LiveKit.AudioManager.shared.setManualRenderingMode(true)
@@ -76,7 +78,7 @@ public class LiveKitManager: NSObject {
 
                 // Setup custom audio source for PCM input
                 // try await setupCustomAudioTrack()
-                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
+//                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
                 //              Core.log("LiveKit: a: \(room.)")
                 //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
 
