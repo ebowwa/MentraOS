@@ -1383,7 +1383,7 @@ struct ViewState {
     }
 
     func restartTranscriber() {
-        Core.log("Mentra: Restarting SherpaOnnxTranscriber via command")
+        Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
         transcriber?.restart()
     }
 
