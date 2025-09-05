@@ -117,7 +117,7 @@ public class SherpaOnnxTranscriber {
                 // Wrap native call in try-catch to handle load failures gracefully
                 try {
                     // Still need to pass AssetManager, even though we're using file paths
-                    recognizer = new OnlineRecognizer(context.getAssets(), config);
+                    recognizer = new OnlineRecognizer(null, config);
                 } catch (RuntimeException e) {
                     Log.e(TAG, "Failed to create OnlineRecognizer - model file may be corrupted or incomplete", e);
                     recognizer = null;
