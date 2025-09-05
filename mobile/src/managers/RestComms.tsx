@@ -739,7 +739,7 @@ class RestComms {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${this.coreToken}`,
       },
-      data: {body: feedbackBody},
+      data: {feedback: feedbackBody},
     }
 
     try {
