@@ -446,7 +446,6 @@ class RestComms {
     try {
       // console.log(`${this.TAG}: Making axios request to ${url}`);
       const response = await axios(config)
-      console.log(`${this.TAG}: Received response with status: ${response.status}`)
 
       if (response.status === 200 && response.data) {
         // console.log(`${this.TAG}: Response data:`, response.data);
