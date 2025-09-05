@@ -221,4 +221,147 @@ public class ServiceUtils {
         
         return defaultValue;
     }
+    
+    // ---------------------------------------------
+    // Device Detection and Configuration Methods
+    // ---------------------------------------------
+    
+    /**
+     * Check if the device is a K900 variant
+     * Supports detection of all K900 device types including:
+     * - K900
+     * - K900Plus
+     * - K900PlusV2
+     * @param context Application context (optional, can be null)
+     * @return true if the device is a K900 variant, false otherwise
+     */
+    public static boolean isK900Device(Context context) {
+        try {
+            // Get device model from build properties
+            String model = android.os.Build.MODEL;
+            String product = android.os.Build.PRODUCT;
+            String display = android.os.Build.DISPLAY;
+            String fingerprint = android.os.Build.FINGERPRINT;
+            
+            Log.d(TAG, "Device detection - MODEL: " + model + 
+                      ", PRODUCT: " + product + 
+                      ", DISPLAY: " + display + 
+                      ", FINGERPRINT: " + fingerprint);
+            
+            // Check multiple build properties for K900 variants
+            String[] propsToCheck = {model, product, display, fingerprint};
+            
+            for (String prop : propsToCheck) {
+                if (prop != null && prop.toLowerCase().contains("k900")) {
+                    Log.i(TAG, "K900 device detected via property: " + prop);
+                    return true;
+                }
+            }
+            
+            // Additional check for XY glasses (alternate identifier)
+            if (model != null && model.toLowerCase().contains("xyglasses")) {
+                Log.i(TAG, "K900 device detected via XY glasses identifier");
+                return true;
+            }
+            
+            Log.d(TAG, "Not a K900 device - no matching identifiers found");
+            return false;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error detecting K900 device", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Determine the default rotation for the device based on hardware type
+     * @param context Application context (optional, can be null)
+     * @return Default rotation in degrees (0, 90, 180, or 270)
+     */
+    public static int determineDefaultRotationForDevice(Context context) {
+        try {
+            // Get device model and product for detailed detection
+            String model = android.os.Build.MODEL;
+            String product = android.os.Build.PRODUCT;
+            String display = android.os.Build.DISPLAY;
+            
+            Log.d(TAG, "Rotation detection - MODEL: " + model + 
+                      ", PRODUCT: " + product + 
+                      ", DISPLAY: " + display);
+            
+            // Check multiple build properties for device type
+            String[] propsToCheck = {model, product, display};
+            
+            for (String prop : propsToCheck) {
+                if (prop != null) {
+                    String propLower = prop.toLowerCase();
+                    
+                    // K900PlusV2 devices use 0 degrees (no rotation)
+                    if (propLower.contains("k900plusv2")) {
+                        Log.i(TAG, "K900PlusV2 detected - using 0° rotation");
+                        return 90;
+                    }
+                    
+                    // K900Plus (without V2) devices use 270 degrees
+                    if (propLower.contains("k900plus")) {
+                        Log.i(TAG, "K900Plus detected - using 270° rotation");
+                        return 180;
+                    }
+                    
+                    // Standard K900 devices use 270 degrees
+                    if (propLower.contains("k900")) {
+                        Log.i(TAG, "K900 detected - using 270° rotation");
+                        return 180;
+                    }
+                }
+            }
+            
+            // Default rotation for non-K900 devices
+            Log.d(TAG, "Non-K900 device detected - using default 0° rotation");
+            return 0;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error determining device rotation", e);
+            // Safe fallback
+            return 0;
+        }
+    }
+    
+    /**
+     * Get device type string for logging and debugging
+     * @param context Application context (optional, can be null)
+     * @return Human-readable device type string
+     */
+    public static String getDeviceTypeString(Context context) {
+        try {
+            String model = android.os.Build.MODEL;
+            String product = android.os.Build.PRODUCT;
+            
+            if (isK900Device(context)) {
+                // Try to determine specific K900 variant
+                String[] propsToCheck = {model, product, android.os.Build.DISPLAY};
+                
+                for (String prop : propsToCheck) {
+                    if (prop != null) {
+                        String propLower = prop.toLowerCase();
+                        if (propLower.contains("k900plusv2")) {
+                            return "K900PlusV2";
+                        }
+                        if (propLower.contains("k900plus")) {
+                            return "K900Plus";
+                        }
+                        if (propLower.contains("k900")) {
+                            return "K900";
+                        }
+                    }
+                }
+                return "K900 (variant unknown)";
+            } else {
+                return "Standard Android (" + model + ")";
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting device type string", e);
+            return "Unknown Device";
+        }
+    }
 } 
