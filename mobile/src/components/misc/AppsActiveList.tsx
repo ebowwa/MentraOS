@@ -158,6 +158,10 @@ export default function AppsActiveList({
     return (
       <>
         {runningApps.map((app, index) => {
+          // Ensure opacity value exists, create if missing
+          if (!opacities[app.packageName]) {
+            opacities[app.packageName] = new Animated.Value(1)
+          }
           const itemOpacity = opacities[app.packageName]
           return (
             <React.Fragment key={app.packageName}>
@@ -165,16 +169,22 @@ export default function AppsActiveList({
                 app={app}
                 isActive={true}
                 onTogglePress={() => {
-                  Animated.timing(itemOpacity, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                  }).start()
+                  if (itemOpacity) {
+                    Animated.timing(itemOpacity, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start()
 
-                  setTimeout(() => {
+                    setTimeout(() => {
+                      const pkg = app.packageName
+                      stopApp(pkg).then(() => {})
+                    }, 300)
+                  } else {
+                    // Fallback: stop app immediately if animation can't run
                     const pkg = app.packageName
                     stopApp(pkg).then(() => {})
-                  }, 300)
+                  }
                 }}
                 onSettingsPress={() => openAppSettings(app)}
                 opacity={itemOpacity}

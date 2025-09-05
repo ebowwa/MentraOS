@@ -870,11 +870,8 @@ export function GalleryScreen() {
                   color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
-                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus.total} items</Text>
+                <Text style={themed($syncButtonText)}>Sync {glassesGalleryStatus?.total} items</Text>
               </View>
-              <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
-                Tap to connect to glasses WiFi network
-              </Text>
             </View>
           )
 
