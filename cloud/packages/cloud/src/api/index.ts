@@ -3,6 +3,7 @@ import type { Application } from 'express';
 // New API routers under src/api/*
 import userSettingsApi from './client/user-settings.api';
 import feedbackApi from './client/feedback.api';
+import minVersionApi from './client/min-version.api';
 
 // Legacy route modules (to be migrated gradually)
 import appRoutes from "../routes/apps.routes";
@@ -37,6 +38,7 @@ export function registerApi(app: Application) {
   // New APIs (mounted under audience-specific prefixes)
   app.use('/api/client/user/settings', userSettingsApi);
   app.use('/api/client/feedback', feedbackApi);
+  app.use('/api/client/min-version', minVersionApi);
 
   // Legacy mounts (to be migrated)
   app.use("/api/apps", appRoutes);
