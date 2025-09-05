@@ -30,7 +30,6 @@ import com.reactnativecommunity.webview.RNCWebViewPackage
 import com.rnfs.RNFSPackage
 import com.brentvatne.react.ReactVideoPackage
 import fr.greweb.reactnativeviewshot.RNViewShotPackage
-import com.reactlibrary.createthumbnail.CreateThumbnailPackage
 import com.BV.LinearGradient.LinearGradientPackage
 
 import expo.modules.ApplicationLifecycleDispatcher
@@ -71,7 +70,6 @@ class MainApplication : Application(), ReactApplication {
             packages.add(ReactVideoPackage());
             packages.add(FileProviderPackage());
             packages.add(RNViewShotPackage());
-            packages.add(CreateThumbnailPackage());
             packages.add(SettingsNavigationPackage()); // Settings Navigation Package
             packages.add(AudioManagerPackage()); // Audio Manager Package
             return packages

@@ -15,6 +15,11 @@ export default function CloudConnection() {
   const cloudConnectionStatusAnim = useSharedValue(1)
   const [hideCloudConnection, setHideCloudConnection] = useState(true)
 
+  // Add delay logic for disconnection alerts
+  const [delayedStatus, setDelayedStatus] = useState<string | undefined>(status.core_info.cloud_connection_status)
+  const disconnectionTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const DISCONNECTION_DELAY = 3000 // 3 seconds delay
+
   /**
    * Return gradient colors based on the cloud connection status
    */
@@ -65,22 +70,49 @@ export default function CloudConnection() {
     }
   }
 
-  const {name: iconName, color: iconColor, label: statusLabel} = getIcon(status.core_info.cloud_connection_status)
+  const {
+    name: iconName,
+    color: iconColor,
+    label: statusLabel,
+  } = getIcon(delayedStatus || status.core_info.cloud_connection_status)
 
   useEffect(() => {
-    console.log("Cloud Connection Status:", status.core_info.cloud_connection_status)
-    // if it changes to CONNECTED, fade out the cloud connection status
-    if (status.core_info.cloud_connection_status === "CONNECTED") {
-      cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
-      setTimeout(() => {
-        setHideCloudConnection(true)
-      }, 500)
-      return
-    } else {
-      setHideCloudConnection(false)
+    const currentStatus = status.core_info.cloud_connection_status
+    console.log("CloudConnection: Status:", currentStatus)
+
+    // Clear any existing timer
+    if (disconnectionTimerRef.current) {
+      clearTimeout(disconnectionTimerRef.current)
+      disconnectionTimerRef.current = null
     }
-    // fade in the cloud connection status
-    cloudConnectionStatusAnim.value = withTiming(1, {duration: 500})
+
+    if (currentStatus === "DISCONNECTED") {
+      // Don't update delayedStatus immediately for DISCONNECTED - keep previous status
+      // Start timer to show disconnection after delay
+      disconnectionTimerRef.current = setTimeout(() => {
+        // Only show if still disconnected when timer fires
+        if (status.core_info.cloud_connection_status === "DISCONNECTED") {
+          setDelayedStatus(currentStatus)
+          cloudConnectionStatusAnim.value = withTiming(1, {duration: 500})
+          setTimeout(() => {
+            setHideCloudConnection(false)
+          }, 500)
+        }
+      }, DISCONNECTION_DELAY)
+    } else {
+      // For non-disconnected states, update immediately and hide badge
+      setDelayedStatus(currentStatus)
+      setHideCloudConnection(true)
+      cloudConnectionStatusAnim.value = withTiming(0, {duration: 500})
+    }
+
+    // Cleanup function
+    return () => {
+      if (disconnectionTimerRef.current) {
+        clearTimeout(disconnectionTimerRef.current)
+        disconnectionTimerRef.current = null
+      }
+    }
   }, [status.core_info.cloud_connection_status])
 
   // if (status.core_info.cloud_connection_status === "CONNECTED") {
@@ -94,7 +126,7 @@ export default function CloudConnection() {
   return (
     <Animated.View style={[themed($animatedContainer), {opacity: cloudConnectionStatusAnim}]}>
       <LinearGradient
-        colors={getGradientColors(status.core_info.cloud_connection_status)}
+        colors={getGradientColors(delayedStatus || status.core_info.cloud_connection_status)}
         style={themed($outerContainer)}>
         <View style={themed($innerContainer)}>
           <View style={themed($row)}>

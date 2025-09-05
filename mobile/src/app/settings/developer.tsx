@@ -2,13 +2,14 @@ import React, {useState, useEffect} from "react"
 import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
+import RouteButton from "@/components/ui/RouteButton"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -45,7 +46,7 @@ export default function DeveloperSettingsScreen() {
 
   const toggleBypassAudioEncodingForDebugging = async () => {
     const newSetting = !isBypassAudioEncodingForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
+    await bridge.sendToggleBypassAudioEncodingForDebugging(newSetting)
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
   }
 
@@ -82,7 +83,7 @@ export default function DeveloperSettingsScreen() {
         console.log("URL Test Successful:", response.data)
         // Save the URL if the test passes
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await coreCommunicator.setServerUrl(urlToTest)
+        await bridge.setServerUrl(urlToTest) // TODO: config: remove
         setSavedCustomUrl(urlToTest)
         await showAlert(
           "Success",
@@ -91,7 +92,7 @@ export default function DeveloperSettingsScreen() {
             {
               text: translate("common:ok"),
               onPress: () => {
-                replace("/auth/core-token-exchange")
+                replace("/init")
               },
             },
           ],
@@ -135,10 +136,17 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    await coreCommunicator.setServerUrl("") // Clear Android service override
+    await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
+    showAlert("Success", "Reset backend URL to default.", [
+      {
+        text: "OK",
+        onPress: () => {
+          replace("/init")
+        },
+      },
+    ])
   }
 
   // Triple-tap handler for Asia East button
@@ -179,7 +187,7 @@ export default function DeveloperSettingsScreen() {
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
       const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
@@ -211,6 +219,13 @@ export default function DeveloperSettingsScreen() {
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
+        <RouteButton
+          label="🎥 Buffer Recording Debug"
+          subtitle="Control 30-second video buffer on glasses"
+          onPress={() => push("/settings/buffer-debug")}
+        />
+
+        <Spacer height={theme.spacing.md} />
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
@@ -241,7 +256,7 @@ export default function DeveloperSettingsScreen() {
                 value={powerSavingMode}
                 onValueChange={async value => {
                   setPowerSavingMode(value)
-                  await coreCommunicator.sendTogglePowerSavingMode(value)
+                  await bridge.sendTogglePowerSavingMode(value)
                 }}
               />
               <Spacer height={theme.spacing.md} />

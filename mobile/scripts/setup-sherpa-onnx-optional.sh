@@ -46,7 +46,7 @@ mkdir -p "$IOS_MODEL_DIR" "$ANDROID_ASSETS_DIR" "$TMP_DIR"
 #################################
 # 1. Download XCFramework (iOS) #
 #################################
-XCF_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.6/sherpa-onnx-v1.12.6-ios.tar.bz2"
+XCF_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.8/sherpa-onnx-v1.12.8-ios.tar.bz2"
 if [[ ! -d "$IOS_PKG_DIR/sherpa-onnx.xcframework" ]]; then
   msg "📥 Downloading Sherpa-ONNX XCFramework …"
   curl -L "$XCF_URL" -o "$TMP_DIR/xcf.tar.bz2"
@@ -56,36 +56,6 @@ if [[ ! -d "$IOS_PKG_DIR/sherpa-onnx.xcframework" ]]; then
 else
   ok "✅ XCFramework already present"
 fi
-
-############################
-# 2. Download Model files  #
-############################
-MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile.tar.bz2"
-if [[ ! -f "$IOS_MODEL_DIR/encoder.onnx" ]]; then
-  msg "📥 Downloading Sherpa-ONNX model …"
-  curl -L "$MODEL_URL" -o "$TMP_DIR/model.tar.bz2"
-  tar -xjf "$TMP_DIR/model.tar.bz2" -C "$TMP_DIR"
-  SRC_DIR="$TMP_DIR/sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile"
-  mv "$SRC_DIR/decoder-epoch-99-avg-1.onnx" "$IOS_MODEL_DIR/decoder.onnx"
-  mv "$SRC_DIR/encoder-epoch-99-avg-1.onnx" "$IOS_MODEL_DIR/encoder.onnx"
-  mv "$SRC_DIR/joiner-epoch-99-avg-1.int8.onnx" "$IOS_MODEL_DIR/joiner.onnx"
-  mv "$SRC_DIR/tokens.txt" "$IOS_MODEL_DIR/tokens.txt"
-  ok "✅ Model files downloaded to iOS package"
-else
-  ok "✅ Model files already present for iOS"
-fi
-
-####################################
-# 3. Copy models into Android app  #
-####################################
-for f in encoder.onnx decoder.onnx joiner.onnx tokens.txt; do
-  if cp "$IOS_MODEL_DIR/$f" "$ANDROID_ASSETS_DIR/$f" 2>/dev/null; then
-    :
-  else
-    err "❌ Failed to copy $f to Android assets"
-  fi
-done
-ok "✅ Model files copied to $ANDROID_ASSETS_DIR"
 
 ################
 # 4. Cleanup   #

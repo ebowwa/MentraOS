@@ -481,6 +481,14 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                         return false;
                     }
                 }
+                
+                @Override
+                public boolean isBleTransferInProgress() {
+                    if (bluetoothManager != null) {
+                        return bluetoothManager.isFileTransferInProgress();
+                    }
+                    return false;
+                }
             });
         }
     }
@@ -1288,17 +1296,6 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
             }
         } else {
             Log.d(TAG, "Cannot send installation progress - not connected to BLE device");
-        }
-    }
-
-    /**
-     * Testing method that manually starts the WiFi setup process
-     * This can be called from an activity for testing purposes
-     */
-    public void testWifiSetup() {
-        if (networkManager != null) {
-            // Force hotspot to start with default config
-            networkManager.startHotspot(null, null);
         }
     }
 
@@ -2178,9 +2175,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                     boolean hotspotEnabled = dataToProcess.optBoolean("enabled", false);
 
                     if (hotspotEnabled) {
-                        String hotspotSsid = dataToProcess.optString("ssid", "");
-                        String hotspotPassword = dataToProcess.optString("password", "");
-                        networkManager.startHotspot(hotspotSsid, hotspotPassword);
+                        networkManager.startHotspot();
                     } else {
                         networkManager.stopHotspot();
                     }
@@ -2297,7 +2292,7 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                 case "hm_htsp":
                 case "mh_htsp":
                     Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
-                    networkManager.startHotspot("Mentra Live", "MentraLive");
+                    networkManager.startHotspot();
                     break;
 
                 case "cs_vdo":

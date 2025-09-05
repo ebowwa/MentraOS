@@ -1,21 +1,10 @@
 // YourAppsList.tsx
 import React, {useEffect, useRef, useState} from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  Easing,
-  Keyboard,
-} from "react-native"
+import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
@@ -26,7 +15,6 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {ThemedStyle} from "@/theme"
-import {TreeIcon} from "assets/icons/component/TreeIcon"
 import AppsHeader from "@/components/misc/AppsHeader"
 import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -159,7 +147,9 @@ export default function InactiveAppList({
             onPress: () => resolve(true),
           },
         ],
-        {icon: <TreeIcon size={24} />},
+        {
+          iconName: "tree",
+        },
       )
     })
   }
@@ -189,10 +179,28 @@ export default function InactiveAppList({
       return
     }
 
+    // If the app appears offline, confirm before proceeding
+    if (appInfo.isOnline === false) {
+      const developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
+      const shouldProceed = await new Promise<boolean>(resolve => {
+        showAlert(
+          "App is down for maintenance",
+          `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+          [
+            {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
+            {text: "Try Anyway", onPress: () => resolve(true)},
+          ],
+          {iconName: "alert-circle-outline", iconColor: theme.colors.warning},
+        )
+      })
+      if (!shouldProceed) {
+        return
+      }
+    }
+
+    // Optional live health check (keep but after offline confirmation)
     if (!(await checkAppHealthStatus(appInfo.packageName))) {
-      showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
-        {text: translate("common:ok")},
-      ])
+      showAlert("App not online", "Please try again later.", [{text: translate("common:ok")}])
       return
     }
 
@@ -251,7 +259,7 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.appType == "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running && app.type == "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -347,11 +355,9 @@ export default function InactiveAppList({
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              // @ts-ignore
-              is_foreground={app.appType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const isForegroundApp = app.appType == "standard"
+                const isForegroundApp = app.type == "standard"
                 const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp)
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates

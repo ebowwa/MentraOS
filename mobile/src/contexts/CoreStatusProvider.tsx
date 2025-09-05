@@ -1,77 +1,72 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
-import {Platform} from "react-native"
-import {AugmentOSParser, AugmentOSMainStatus} from "@/utils/AugmentOSStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
+import {INTENSE_LOGGING} from "@/consts"
+import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
 
-interface AugmentOSStatusContextType {
-  status: AugmentOSMainStatus
+interface CoreStatusContextType {
+  status: CoreStatus
   initializeCoreConnection: () => void
   refreshStatus: (data: any) => void
   getCoreToken: () => string | null
 }
 
-const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined)
-
-let lastStatus: AugmentOSMainStatus = AugmentOSParser.defaultStatus
+const CoreStatusContext = createContext<CoreStatusContextType | undefined>(undefined)
 
 export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
-  const [status, setStatus] = useState<AugmentOSMainStatus>(() => {
-    return AugmentOSParser.parseStatus({})
+  const [status, setStatus] = useState<CoreStatus>(() => {
+    return CoreStatusParser.parseStatus({})
   })
 
-  const refreshStatus = (data: any) => {
+  const refreshStatus = useCallback((data: any) => {
     if (!(data && "status" in data)) {
       return
     }
 
-    const parsedStatus = AugmentOSParser.parseStatus(data)
+    const parsedStatus = CoreStatusParser.parseStatus(data)
+    if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
 
-    if (INTENSE_LOGGING) console.log("Parsed status:", parsedStatus)
+    // only update the status if diff > 0
+    setStatus(prevStatus => {
+      const diff = deepCompare(prevStatus, parsedStatus)
+      if (diff.length === 0) {
+        console.log("CoreStatus: Status did not change")
+        return prevStatus // don't re-render
+      }
 
-    const diff = deepCompare(lastStatus, parsedStatus)
-    if (diff.length === 0) {
-      console.log("STATUS PROVIDER: Status did not change ###############################################")
-      return
-    }
-
-    console.log("STATUS PROVIDER: Status changed:", diff)
-
-    lastStatus = parsedStatus
-    setStatus(parsedStatus)
-  }
+      console.log("CoreStatus: Status changed:", diff)
+      return parsedStatus
+    })
+  }, [])
 
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
-    console.log("STATUS PROVIDER: Initializing core connection @@@@@@@@@@@@@@@@@")
-    coreCommunicator.initialize()
+    console.log("CoreStatus: Initializing core connection")
+    bridge.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
-
-  const handleStatusUpdateReceived = (data: any) => {
-    if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
-    refreshStatus(data)
-  }
 
   useEffect(() => {
-    coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    const handleStatusUpdateReceived = (data: any) => {
+      if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
+      refreshStatus(data)
+    }
+
+    bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+    bridge.on("statusUpdateReceived", handleStatusUpdateReceived)
     return () => {
-      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
     }
   }, [])
 
   return (
-    <AugmentOSStatusContext.Provider
+    <CoreStatusContext.Provider
       value={{
         initializeCoreConnection,
         status,
@@ -79,12 +74,12 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
         getCoreToken,
       }}>
       {children}
-    </AugmentOSStatusContext.Provider>
+    </CoreStatusContext.Provider>
   )
 }
 
 export const useCoreStatus = () => {
-  const context = useContext(AugmentOSStatusContext)
+  const context = useContext(CoreStatusContext)
   if (!context) {
     throw new Error("useStatus must be used within a StatusProvider")
   }

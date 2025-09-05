@@ -1,0 +1,2 @@
+
+add_subdirectory_ifdef(CONFIG_CUSTOM_HLS12VGA lcd)

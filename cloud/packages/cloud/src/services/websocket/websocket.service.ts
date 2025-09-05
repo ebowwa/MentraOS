@@ -137,8 +137,8 @@ export class WebSocketService {
           try {
             // Extract JWT token from Authorization header for glasses
             const queryParams = url.searchParams;
-            const token = queryParams.get("token");
-            const coreToken = request.headers.authorization?.split(' ')[1] || token;
+            const coreTokenQueryParam = queryParams.get("token");
+            const coreToken = request.headers.authorization?.split(' ')[1] || coreTokenQueryParam;
             logger.debug({feature: "websocket"}, `Glasses core token: ${coreToken ? coreToken.substring(0, 10) + '...' : 'None'}`);
             
             if (!coreToken) {
@@ -169,7 +169,9 @@ export class WebSocketService {
               (request as any).userId = userId;
 
               // Check for LiveKit preference in headers
-              const livekitPreference = request.headers['livekit'] === 'true';
+              const livekitQueryParam = queryParams.get("livekit");
+              const livekitHeader = request.headers['livekit'];
+              const livekitPreference = livekitHeader === 'true' || livekitQueryParam === 'true';
               (request as any).livekitRequested = livekitPreference;
 
               if (livekitPreference) {

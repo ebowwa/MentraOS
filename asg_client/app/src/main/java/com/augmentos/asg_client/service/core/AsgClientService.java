@@ -457,6 +457,35 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     @Override
     public void onHotspotStateChanged(boolean isEnabled) {
         Log.i(TAG, "📡 Hotspot state changed: " + (isEnabled ? "ENABLED" : "DISABLED"));
+        
+        // Send hotspot status update to phone
+        try {
+            if (serviceContainer != null && serviceContainer.getServiceManager() != null) {
+                var networkManager = serviceContainer.getServiceManager().getNetworkManager();
+                var commManager = serviceContainer.getCommunicationManager();
+                
+                if (networkManager != null && commManager != null) {
+                    // Build hotspot status JSON
+                    JSONObject hotspotStatus = new JSONObject();
+                    hotspotStatus.put("type", "hotspot_status_update");
+                    hotspotStatus.put("hotspot_enabled", isEnabled);
+                    
+                    if (isEnabled) {
+                        hotspotStatus.put("hotspot_ssid", networkManager.getHotspotSsid());
+                        hotspotStatus.put("hotspot_password", networkManager.getHotspotPassword());
+                        hotspotStatus.put("hotspot_gateway_ip", networkManager.getHotspotGatewayIp());
+                    }
+                    
+                    Log.d(TAG, "📡 🔥 Sending hotspot status update: " + hotspotStatus.toString());
+                    boolean sent = commManager.sendBluetoothResponse(hotspotStatus);
+                    Log.d(TAG, "📡 🔥 " + (sent ? "✅ Hotspot status sent successfully" : "❌ Failed to send hotspot status"));
+                } else {
+                    Log.w(TAG, "📡 🔥 Cannot send hotspot status - managers not available");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "📡 🔥 Error sending hotspot status update", e);
+        }
     }
 
     @Override
@@ -696,6 +725,20 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     return started;
                 } else {
                     Log.w(TAG, "⚠️ Bluetooth manager is null - cannot send file");
+                    return false;
+                }
+            }
+            
+            @Override
+            public boolean isBleTransferInProgress() {
+                Log.d(TAG, "📊 isBleTransferInProgress() called");
+                
+                if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
+                    boolean inProgress = serviceContainer.getServiceManager().getBluetoothManager().isFileTransferInProgress();
+                    Log.d(TAG, "📊 BLE transfer in progress: " + inProgress);
+                    return inProgress;
+                } else {
+                    Log.w(TAG, "⚠️ Bluetooth manager is null - cannot check transfer status");
                     return false;
                 }
             }

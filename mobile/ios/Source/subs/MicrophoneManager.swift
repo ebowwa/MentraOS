@@ -10,6 +10,8 @@ import Combine
 import Foundation
 
 class OnboardMicrophoneManager {
+    static let shared = OnboardMicrophoneManager()
+
     // MARK: - Properties
 
     /// Publisher for voice data
@@ -93,7 +95,7 @@ class OnboardMicrophoneManager {
     /// Manually set AirPods or another specific device as preferred input
     func setPreferredInputDevice(named deviceName: String) -> Bool {
         guard let availableInputs = AVAudioSession.sharedInstance().availableInputs else {
-            Core.log("No available inputs found")
+            Bridge.log("No available inputs found")
             return false
         }
 
@@ -103,16 +105,16 @@ class OnboardMicrophoneManager {
                 $0.portName.range(of: deviceName, options: .caseInsensitive) != nil
             })
         else {
-            Core.log("No input device found containing name: \(deviceName)")
+            Bridge.log("No input device found containing name: \(deviceName)")
             return false
         }
 
         do {
             try AVAudioSession.sharedInstance().setPreferredInput(preferredInput)
-            Core.log("Successfully set preferred input to: \(preferredInput.portName)")
+            Bridge.log("Successfully set preferred input to: \(preferredInput.portName)")
             return true
         } catch {
-            Core.log("Failed to set preferred input: \(error)")
+            Bridge.log("Failed to set preferred input: \(error)")
             return false
         }
     }
@@ -127,13 +129,13 @@ class OnboardMicrophoneManager {
 
         switch type {
         case .began:
-            Core.log("Audio session interrupted - another app took control")
+            Bridge.log("Audio session interrupted - another app took control")
             // Phone call started, pause recording
             if isRecording {
                 MentraManager.getInstance().onInterruption(began: true)
             }
         case .ended:
-            Core.log("Audio session interruption ended")
+            Bridge.log("Audio session interruption ended")
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
@@ -154,7 +156,7 @@ class OnboardMicrophoneManager {
             return
         }
 
-        Core.log("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        Bridge.log("MIC: handleRouteChange: \(reason)")
         MentraManager.getInstance().onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
@@ -214,7 +216,7 @@ class OnboardMicrophoneManager {
 
         // Safely get int16 data (won't be nil if buffer is in Int16 format)
         guard let int16Data = buffer.int16ChannelData else {
-            Core.log("Error: Buffer does not contain int16 data")
+            Bridge.log("Error: Buffer does not contain int16 data")
             return Data()
         }
 
@@ -235,7 +237,7 @@ class OnboardMicrophoneManager {
     func startRecording() -> Bool {
         // Ensure we're not already recording
         if isRecording {
-            Core.log("MIC: Microphone is already ON!")
+            // Core.log("MIC: Microphone is already ON!")
             return true
         }
 
@@ -248,7 +250,7 @@ class OnboardMicrophoneManager {
 
         // Check permissions first
         guard checkPermissions() else {
-            Core.log("MIC: Microphone permissions not granted")
+            Bridge.log("MIC: Microphone permissions not granted")
             return false
         }
 
@@ -274,7 +276,7 @@ class OnboardMicrophoneManager {
             // Activate the session BEFORE creating the engine
             try audioSession?.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            Core.log("MIC: Failed to set up audio session: \(error)")
+            Bridge.log("MIC: Failed to set up audio session: \(error)")
             return false
         }
 
@@ -283,7 +285,7 @@ class OnboardMicrophoneManager {
 
         // Safely get the input node
         guard let engine = audioEngine else {
-            Core.log("MIC: Failed to create audio engine")
+            Bridge.log("MIC: Failed to create audio engine")
             return false
         }
 
@@ -292,21 +294,21 @@ class OnboardMicrophoneManager {
 
         // Verify the node is valid before accessing its properties
         guard inputNode.engine != nil else {
-            Core.log("MIC: Input node is not properly attached to engine")
+            Bridge.log("MIC: Input node is not properly attached to engine")
             audioEngine = nil
             return false
         }
 
         // Check if the node has inputs available
         guard inputNode.numberOfInputs > 0 else {
-            Core.log("MIC: Input node has no available inputs")
+            Bridge.log("MIC: Input node has no available inputs")
             audioEngine = nil
             return false
         }
 
         // Get the native input format - typically 48kHz floating point samples
         let inputFormat = inputNode.inputFormat(forBus: 0)
-        Core.log("MIC: Input format: \(inputFormat)")
+        Bridge.log("MIC: Input format: \(inputFormat)")
 
         // Set up a converter node if you need 16-bit PCM
         let converter = AVAudioConverter(
@@ -315,12 +317,12 @@ class OnboardMicrophoneManager {
                 commonFormat: .pcmFormatInt16,
                 sampleRate: 16000,
                 channels: 1,
-                interleaved: true
+                interleaved: false
             )!
         )
 
         guard let converter = converter else {
-            Core.log("MIC: converter is nil")
+            Bridge.log("MIC: converter is nil")
             // audioEngine = nil
             return false
         }
@@ -353,7 +355,7 @@ class OnboardMicrophoneManager {
             )
 
             guard status == .haveData && error == nil else {
-                Core.log("MIC: Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
+                Bridge.log("MIC: Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
                 return
             }
 
@@ -366,10 +368,10 @@ class OnboardMicrophoneManager {
         // Start the audio engine
         do {
             try audioEngine?.start()
-            Core.log("MIC: Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
+            Bridge.log("MIC: Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
             return true
         } catch {
-            Core.log("MIC: Failed to start audio engine: \(error)")
+            Bridge.log("MIC: Failed to start audio engine: \(error)")
             return false
         }
     }
@@ -395,7 +397,7 @@ class OnboardMicrophoneManager {
         audioEngine = nil
         audioSession = nil
 
-        Core.log("MIC: Stopped recording")
+        Bridge.log("MIC: Stopped recording")
     }
 
     // MARK: - Cleanup

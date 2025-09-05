@@ -2,13 +2,13 @@ import React, {useState, useEffect, useRef} from "react"
 import {View, Text, ActivityIndicator, TouchableOpacity} from "react-native"
 import {useLocalSearchParams, router} from "expo-router"
 import {Screen, Header, Button} from "@/components/ignite"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import ActionButton from "@/components/ui/ActionButton"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Ionicons, MaterialIcons} from "@expo/vector-icons"
 
@@ -46,7 +46,8 @@ export default function WifiConnectingScreen() {
           failureGracePeriodRef.current = null
         }
 
-        // Save credentials on successful connection only if checkbox was checked
+        // Save credentials ONLY on successful connection if checkbox was checked
+        // This ensures we never save wrong passwords
         if (password && rememberPassword) {
           WifiCredentialsService.saveCredentials(ssid, password, true)
           WifiCredentialsService.updateLastConnected(ssid)
@@ -84,7 +85,7 @@ export default function WifiConnectingScreen() {
   const attemptConnection = async () => {
     try {
       console.log("Attempting to send wifi credentials to Core", ssid, password)
-      await coreCommunicator.sendWifiCredentials(ssid, password)
+      await bridge.sendWifiCredentials(ssid, password)
 
       // Set timeout for connection attempt (20 seconds)
       connectionTimeoutRef.current = setTimeout(() => {

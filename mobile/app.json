@@ -17,13 +17,13 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 41,
+      "versionCode": 43,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
       },
       "allowBackup": false,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE"],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE", "CHANGE_WIFI_STATE"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -77,6 +77,9 @@
       },
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.networking.wifi-info": true
       }
     },
     "plugins": [
@@ -88,7 +91,10 @@
           "image": "./assets/splash/splash.png",
           "imageWidth": 300,
           "resizeMode": "contain",
-          "backgroundColor": "#191015"
+          "backgroundColor": "#f3f6f4",
+          "dark": {
+            "backgroundColor": "#051523"
+          }
         }
       ],
       "expo-router",

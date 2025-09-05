@@ -7,7 +7,7 @@ import {ThemedStyle} from "@/theme"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
-import {CoreCommunicator} from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n/translate"
 import {TxKeyPath} from "@/i18n"
 
@@ -15,7 +15,7 @@ export default function PairingFailureScreen() {
   const {themed, theme} = useAppTheme()
   const {clearHistory, replace, clearHistoryAndGoHome} = useNavigationHistory()
 
-  const {error}: {error: string} = useLocalSearchParams()
+  const {error, glassesModelName}: {error: string; glassesModelName?: string} = useLocalSearchParams()
 
   const fadeInOpacity = useSharedValue(0)
   const slideUpTranslate = useSharedValue(50)
@@ -31,7 +31,7 @@ export default function PairingFailureScreen() {
   }, [])
 
   const handleRetry = () => {
-    CoreCommunicator.getInstance().sendForgetSmartGlasses()
+    bridge.sendForgetSmartGlasses()
     clearHistory()
     replace("/pairing/select-glasses-model")
   }
@@ -51,7 +51,11 @@ export default function PairingFailureScreen() {
 
         <Text tx="pairing:pairingFailed" preset="heading" style={themed($title)} />
 
-        <Text text={translate(error as TxKeyPath)} preset="default" style={themed($description)} />
+        <Text
+          text={translate(error as TxKeyPath, {glassesModel: glassesModelName || "glasses"})}
+          preset="default"
+          style={themed($description)}
+        />
 
         <View style={themed($buttonContainer)}>
           <Button tx="pairing:tryAgain" preset="filled" onPress={handleRetry} style={themed($button)} />

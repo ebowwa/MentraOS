@@ -30,11 +30,11 @@ func convertEKEventToCalendarItem(_ event: EKEvent) -> CalendarItem {
 }
 
 class CalendarManager {
+    static let shared = CalendarManager()
     private let eventStore = EKEventStore()
     private var calendarObserver: NSObjectProtocol?
-    private var onCalendarChanged: (() -> Void)?
 
-    init() {
+    private init() {
         setupCalendarChangeObserver()
         // Start monitoring for authorization status changes
         NotificationCenter.default.addObserver(
@@ -48,10 +48,6 @@ class CalendarManager {
     deinit {
         removeCalendarChangeObserver()
         NotificationCenter.default.removeObserver(self, name: NSNotification.Name(rawValue: "EKAuthorizationStatusDidChangeNotification"), object: nil)
-    }
-
-    func setCalendarChangedCallback(_ callback: @escaping () -> Void) {
-        onCalendarChanged = callback
     }
 
     // Handle authorization status changes
@@ -154,7 +150,7 @@ class CalendarManager {
             object: eventStore,
             queue: .main
         ) { [weak self] _ in
-            print("Calendar database changed")
+            Bridge.log("Calendar database changed")
             self?.handleCalendarChanged()
         }
     }
@@ -167,9 +163,6 @@ class CalendarManager {
     }
 
     private func handleCalendarChanged() {
-        // Call the calendar changed callback if set
-        if let callback = onCalendarChanged {
-            callback()
-        }
+        ServerComms.shared.sendCalendarEvents()
     }
 }

@@ -314,8 +314,8 @@ Turn onboard microphone on or off.
 }}]
 ```
 
-* `success: true` → microphone state was updated
-* `success: false` → operation failed
+- `success: true` → microphone state was updated
+- `success: false` → operation failed
 
 ---
 
@@ -339,8 +339,8 @@ Request whether the glasses microphone is currently enabled.
 }}]
 ```
 
-* `enabled: true` → microphone is currently on
-* `enabled: false` → microphone is currently off
+- `enabled: true` → microphone is currently on
+- `enabled: false` → microphone is currently off
 
 ---
 
@@ -357,14 +357,14 @@ Enable or disable the glasses Voice Activity Detection.
 #### 👓 Glasses → Phone
 
 ```
-[0x02][PhoneToGlasses { set_vad_enabled {
+[0x02][GlassesToPhone { vad_configured {
   msg_id: "vad_001"
-  enabled: true
+  success: true
 }}]
 ```
 
-* `success: true` → VAD state was updated
-* `success: false` → operation failed
+- `success: true` → VAD state was updated
+- `success: false` → operation failed
 
 ---
 
@@ -387,8 +387,8 @@ Adjust glasses Voice Activity Detection sensitivity threshold (0–100).
 }}]
 ```
 
-* `success: true` → VAD updated successfully
-* `success: false` → operation failed
+- `success: true` → VAD updated successfully
+- `success: false` → operation failed
 
 ---
 
@@ -414,8 +414,8 @@ Request whether the glasses Voice Activity Detection is enabled and what the cur
 }}]
 ```
 
-* `enabled`: `true` if VAD is currently active, `false` otherwise
-* `sensitivity`: integer 0–100, current detection threshold
+- `enabled`: `true` if VAD is currently active, `false` otherwise
+- `sensitivity`: integer 0–100, current detection threshold
 
 ---
 
@@ -919,19 +919,19 @@ Then, the glasses can emit:
 
 ### Button Event
 
-Triggered by hardware button press or release.
+Triggered by hardware button tap or hold events.
 
 #### 👓 Glasses → Phone
 
 ```
 [0x02][GlassesToPhone { button_event {
-  button: CENTER  // Options: CENTER, LEFT, RIGHT
-  state: DOWN     // Options: DOWN, UP
+  button: LEFT_BACK  // Options: LEFT_BACK, RIGHT_BACK
+  event: SINGLE_TAP     // Options: SINGLE_TAP, DOUBLE_TAP, TRIPLE_TAP, LONG_HOLD
 }}]
 ```
 
 - `button`: Based on physical layout.
-- `state`: Pressed (`DOWN`) or released (`UP`).
+- `event`: One of `SINGLE_TAP`, `DOUBLE_TAP`, `TRIPLE_TAP`, `LONG_HOLD`.
 
 ---
 

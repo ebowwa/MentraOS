@@ -2,6 +2,7 @@ package com.augmentos.asg_client.camera;
 
 import com.augmentos.asg_client.io.media.core.CircularVideoBufferInternal;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 
 import android.annotation.SuppressLint;
@@ -37,6 +38,8 @@ import android.util.Log;
 import android.util.Range;
 import android.util.Rational;
 import android.util.Size;
+import android.util.SparseIntArray;
+import android.view.Display;
 import android.view.Surface;
 
 import com.augmentos.asg_client.settings.VideoSettings;
@@ -125,7 +128,16 @@ public class CameraNeo extends LifecycleService {
 
     // Auto-exposure settings for better photo quality - now dynamic
     private static final int JPEG_QUALITY = 90; // High quality JPEG
-    private static final int JPEG_ORIENTATION = 270; // Standard orientation
+    
+    // Dynamic JPEG orientation mapping based on device rotation
+    private static final SparseIntArray JPEG_ORIENTATION = new SparseIntArray();
+    
+    static {
+        JPEG_ORIENTATION.append(0, 90);
+        JPEG_ORIENTATION.append(90, 0);
+        JPEG_ORIENTATION.append(180, 270);
+        JPEG_ORIENTATION.append(270, 180);
+    }
     
     // Camera keep-alive settings
     private static final long CAMERA_KEEP_ALIVE_MS = 3000; // Keep camera open for 3 seconds after photo
@@ -148,6 +160,51 @@ public class CameraNeo extends LifecycleService {
     private int[] availableAfModes;
     private float minimumFocusDistance;
     private boolean hasAutoFocus;
+    
+    /**
+     * Get the current display rotation in degrees
+     * Uses device-specific rotation mapping for K900 variants
+     * @return Display rotation (0, 90, 180, or 270 degrees)
+     */
+    private int getDisplayRotation() {
+        // Use device-specific default rotation for K900 variants
+        int deviceDefaultRotation = ServiceUtils.determineDefaultRotationForDevice(this);
+        String deviceType = ServiceUtils.getDeviceTypeString(this);
+        
+        Log.d(TAG, "📱 Device type: " + deviceType + ", Default rotation: " + deviceDefaultRotation + "°");
+        
+        // For K900 devices, use the device-specific rotation
+        if (ServiceUtils.isK900Device(this)) {
+            Log.d(TAG, "🔄 Using K900-specific rotation: " + deviceDefaultRotation + "°");
+            return deviceDefaultRotation;
+        }
+        
+        // For standard Android devices, use system display rotation
+        WindowManager windowManager = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+        if (windowManager != null) {
+            Display display = windowManager.getDefaultDisplay();
+            switch (display.getRotation()) {
+                case Surface.ROTATION_0:
+                    Log.d(TAG, "🔄 System display rotation: 0°");
+                    return 0;
+                case Surface.ROTATION_90:
+                    Log.d(TAG, "🔄 System display rotation: 90°");
+                    return 90;
+                case Surface.ROTATION_180:
+                    Log.d(TAG, "🔄 System display rotation: 180°");
+                    return 180;
+                case Surface.ROTATION_270:
+                    Log.d(TAG, "🔄 System display rotation: 270°");
+                    return 270;
+                default:
+                    Log.d(TAG, "🔄 System display rotation: default 0°");
+                    return 0;
+            }
+        }
+        
+        Log.w(TAG, "⚠️ WindowManager unavailable - using device default: " + deviceDefaultRotation + "°");
+        return deviceDefaultRotation; // Fallback to device-specific rotation
+    }
 
     /**
      * SIMPLIFIED AUTOEXPOSURE SYSTEM
@@ -1330,8 +1387,10 @@ public class CameraNeo extends LifecycleService {
             mediaRecorder.setAudioSamplingRate(44100);
             mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 
-            // Set standard orientation
-            mediaRecorder.setOrientationHint(JPEG_ORIENTATION);
+            // Set dynamic orientation based on device rotation
+            int displayOrientation = getDisplayRotation();
+            int videoOrientation = JPEG_ORIENTATION.get(displayOrientation, 0);
+            mediaRecorder.setOrientationHint(videoOrientation);
 
             // Prepare the recorder
             mediaRecorder.prepare();
@@ -1541,7 +1600,10 @@ public class CameraNeo extends LifecycleService {
             if (!forVideo) {
                 // Photo-specific settings
                 previewBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) JPEG_QUALITY);
-                previewBuilder.set(CaptureRequest.JPEG_ORIENTATION, JPEG_ORIENTATION);
+                int displayOrientation = getDisplayRotation();
+                int jpegOrientation = JPEG_ORIENTATION.get(displayOrientation, 90);
+                previewBuilder.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation);
+                Log.d(TAG, "Setting JPEG orientation: " + jpegOrientation + " for display orientation: " + displayOrientation);
             }
 
             CameraCaptureSession.StateCallback sessionStateCallback = new CameraCaptureSession.StateCallback() {
@@ -1567,7 +1629,7 @@ public class CameraNeo extends LifecycleService {
                                 Log.d(TAG, "Camera ready, processing " + globalRequestQueue.size() + " queued requests");
                                 // Don't call processNextPhotoRequest here as it might try to reopen camera
                                 // Instead, start the preview and then trigger the first photo
-                                PhotoRequest firstRequest = globalRequestQueue.peek();
+                                PhotoRequest firstRequest = globalRequestQueue.poll(); // Changed from peek() to poll() to remove from queue
                                 if (firstRequest != null) {
                                     // Set up for the first queued photo
                                     if (firstRequest.callback == null && callbackRegistry.containsKey(firstRequest.requestId)) {
@@ -1576,6 +1638,8 @@ public class CameraNeo extends LifecycleService {
                                     sPhotoCallback = firstRequest.callback;
                                     pendingPhotoPath = firstRequest.filePath;
                                     pendingRequestedSize = firstRequest.size;
+                                    // Store LED state from request
+                                    pendingLedEnabled = firstRequest.enableLed;
                                 }
                             }
                         }
@@ -2336,7 +2400,10 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
             stillBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
             stillBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) JPEG_QUALITY);
-            stillBuilder.set(CaptureRequest.JPEG_ORIENTATION, JPEG_ORIENTATION);
+            int displayOrientation = getDisplayRotation();
+            int jpegOrientation = JPEG_ORIENTATION.get(displayOrientation, 90);
+            stillBuilder.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation);
+            Log.d(TAG, "Capturing photo with JPEG orientation: " + jpegOrientation + " for display orientation: " + displayOrientation);
 
             // Capture the photo immediately
             cameraCaptureSession.capture(stillBuilder.build(), new CameraCaptureSession.CaptureCallback() {

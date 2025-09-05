@@ -5,12 +5,13 @@ import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
 import {SafeAreaView} from "react-native-safe-area-context"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import restComms from "@/managers/RestComms"
 
 export default function AppWebView() {
   //   const webviewURL = route.params?.webviewURL;
@@ -122,11 +123,10 @@ export default function AppWebView() {
       }
 
       try {
-        const backendComms = BackendServerComms.getInstance()
-        const tempToken = await backendComms.generateWebviewToken(packageName)
+        const tempToken = await restComms.generateWebviewToken(packageName)
         let signedUserToken: string | undefined
         try {
-          signedUserToken = await backendComms.generateWebviewToken(packageName, "generate-webview-signed-user-token")
+          signedUserToken = await restComms.generateWebviewToken(packageName, "generate-webview-signed-user-token")
         } catch (error) {
           console.warn("Failed to generate signed user token:", error)
           signedUserToken = undefined
@@ -140,7 +140,7 @@ export default function AppWebView() {
           url.searchParams.set("aos_signed_user_token", signedUserToken)
         }
         if (cloudApiUrl) {
-          const checksum = await backendComms.hashWithApiKey(cloudApiUrl, packageName)
+          const checksum = await restComms.hashWithApiKey(cloudApiUrl, packageName)
           url.searchParams.set("cloudApiUrl", cloudApiUrl)
           url.searchParams.set("cloudApiUrlChecksum", checksum)
         }

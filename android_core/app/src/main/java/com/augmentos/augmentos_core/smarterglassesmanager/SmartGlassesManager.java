@@ -34,6 +34,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.ASR_FRAMEWORKS;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.BrilliantLabsFrame;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
@@ -826,10 +827,22 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator.requestWifiScan();
         }
     }
+    
+    public void queryGalleryStatus() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.queryGalleryStatus();
+        }
+    }
 
     public void sendWifiCredentials(String ssid, String password) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.sendWifiCredentials(ssid, password);
+        }
+    }
+
+    public void sendHotspotState(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendHotspotState(enabled);
         }
     }
 
@@ -915,7 +928,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
 
-        boolean isMicrophoneEnabled = requiredData.contains(SpeechRequiredDataType.PCM);
+        boolean isMicrophoneEnabled = requiredData.size() > 0;
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
@@ -1072,7 +1085,8 @@ public class SmartGlassesManager extends Service {
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),
                         new AudioWearable(),
-                        new VirtualWearable()
+                        new VirtualWearable(),
+                        new BrilliantLabsFrame()
                 )
         );
 

@@ -1,7 +1,7 @@
 const en = {
   deviceSettings: {
     glassesNeededForGlassesMic: "Connect glasses to enable",
-    phoneMic: "Phone Microphone",
+    systemMic: "System Microphone",
     glassesMic: "Glasses Microphone",
     cameraButtonAction: "Camera Button Action",
     takeGalleryPhoto: "Take Gallery Photo",
@@ -20,6 +20,9 @@ const en = {
     update: "Update",
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
+    continueAnyways: "Continue Anyways",
+    resetUrl: "Reset to Default URL",
+    connectingToServer: "Connecting to server...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
@@ -167,7 +170,7 @@ const en = {
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
     enforceLocalTranscription: "Enforce Local Transcription",
-    enforceLocalTranscriptionSubtitle: "Enforce the use of edge transcription.",
+    enforceLocalTranscriptionSubtitle: "Transcribe audio locally instead of in the cloud.",
     sensingLabel: "Enable Sensors",
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
@@ -217,6 +220,8 @@ const en = {
     newUi: "New UI",
     newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
     loggingOutMessage: "We're logging you out...",
+    themeSettings: "Theme Settings",
+    feedback: "Give Feedback",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -308,7 +313,8 @@ const en = {
   errors: {
     appNotOnlineTitle: "App Not Online",
     appNotOnlineMessage: "This app is not online. Please try again later.",
-    pairingBatteryTooLow: "The battery on your glasses is too low to pair. Please charge your glasses and try again.",
+    pairingBatteryTooLow:
+      "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} and try again.",
   },
   common: {
     ok: "OK",
@@ -357,6 +363,14 @@ const en = {
     mirror: "Mirror",
     store: "Store",
     account: "Account",
+  },
+  feedback: {
+    thankYou: "Thank You!",
+    feedbackReceived: "Your feedback has been received.",
+    submitFeedback: "Submit Feedback",
+    shareYourThoughts: "Share your thoughts, suggestions, or report issues...",
+    giveFeedback: "Give Feedback",
+    errorSendingFeedback: "There was an error sending your feedback. Please try again.",
   },
 }
 

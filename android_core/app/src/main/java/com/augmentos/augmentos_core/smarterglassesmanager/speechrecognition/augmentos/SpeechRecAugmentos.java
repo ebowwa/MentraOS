@@ -82,6 +82,16 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         initSherpaTranscriber();
     }
 
+    public void restartTranscriber() {
+        new Thread(() -> {
+            try {
+                sherpaTranscriber.restart();
+                Log.d(TAG, "Sherpa-ONNX transcriber restarted successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error restarting Sherpa-ONNX transcriber", e);
+            }}, "SpeechRecAugmentos_restartAsync").start();
+    }
+
     /**
      * Initialize Sherpa ONNX Transcriber and set up the listener
      */
@@ -412,6 +422,18 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     public void destroy() {
         Log.d(TAG, "Destroying Speech Recognition Service");
         vadRunning = false;
+        
+        // Properly shut down Sherpa transcriber to avoid native resource issues
+        if (sherpaTranscriber != null) {
+            try {
+                Log.d(TAG, "Shutting down Sherpa ONNX transcriber");
+                sherpaTranscriber.shutdown();
+                sherpaTranscriber = null;
+            } catch (Exception e) {
+                Log.e(TAG, "Error shutting down Sherpa transcriber", e);
+            }
+        }
+        
         //ServerComms.getInstance().disconnectWebSocket();
     }
 

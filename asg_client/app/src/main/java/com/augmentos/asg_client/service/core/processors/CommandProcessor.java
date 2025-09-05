@@ -25,9 +25,12 @@ import com.augmentos.asg_client.service.core.handlers.RtmpCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.WifiCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.BatteryCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.ImuCommandHandler;
+import com.augmentos.asg_client.service.core.handlers.GalleryCommandHandler;
 
 import org.json.JSONObject;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * CommandProcessor - Orchestrates command processing following SOLID principles.
@@ -40,6 +43,10 @@ import org.json.JSONObject;
  */
 public class CommandProcessor {
     private static final String TAG = "CommandProcessor";
+    
+    // Duplicate detection
+    private static final long DUPLICATE_WINDOW_MS = TimeUnit.SECONDS.toMillis(10);
+    private final ConcurrentHashMap<Long, Long> processedMessageIds = new ConcurrentHashMap<>();
 
     // Core dependencies (Dependency Inversion Principle)
     private final Context context;
@@ -136,6 +143,14 @@ public class CommandProcessor {
             }
 
             Log.d(TAG, "📊 Command data extracted - Type: " + commandData.type() + ", MessageID: " + commandData.messageId() + ", Data: " + commandData.data());
+
+            // Check for duplicate message ID
+            if (isDuplicateMessage(commandData.messageId())) {
+                Log.i(TAG, "🔄 Duplicate message detected (ID: " + commandData.messageId() + "), sending ACK but skipping processing");
+                // Still send ACK so phone stops retrying
+                sendAcknowledgment(commandData);
+                return;
+            }
 
             // Send acknowledgment if required
             sendAcknowledgment(commandData);
@@ -254,7 +269,7 @@ public class CommandProcessor {
         try {
             Log.d(TAG, "📝 Registering command handlers...");
 
-            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder));
+            commandHandlerRegistry.registerHandler(new PhoneReadyCommandHandler(communicationManager, stateManager, responseBuilder, serviceManager));
             Log.d(TAG, "✅ Registered PhoneReadyCommandHandler");
 
             commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
@@ -289,6 +304,9 @@ public class CommandProcessor {
 
             commandHandlerRegistry.registerHandler(new ImuCommandHandler(context, responseSender));
             Log.d(TAG, "✅ Registered ImuCommandHandler");
+            
+            commandHandlerRegistry.registerHandler(new GalleryCommandHandler(serviceManager, communicationManager));
+            Log.d(TAG, "✅ Registered GalleryCommandHandler");
 
             Log.i(TAG, "✅ Successfully registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
 
@@ -344,4 +362,31 @@ public class CommandProcessor {
         }
     }
 
+    /**
+     * Check if a message ID has been recently processed (duplicate detection).
+     * Also cleans up old entries to prevent memory growth.
+     */
+    private boolean isDuplicateMessage(long messageId) {
+        if (messageId == -1) {
+            // No message ID, can't track duplicates
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+        
+        // Clean up old entries periodically (entries older than duplicate window)
+        processedMessageIds.entrySet().removeIf(entry -> 
+            now - entry.getValue() > DUPLICATE_WINDOW_MS
+        );
+
+        // Check if we've seen this message ID recently
+        Long previousTime = processedMessageIds.put(messageId, now);
+        
+        if (previousTime != null && (now - previousTime) < DUPLICATE_WINDOW_MS) {
+            // We've seen this message ID within the duplicate window
+            return true;
+        }
+        
+        return false;
+    }
 } 

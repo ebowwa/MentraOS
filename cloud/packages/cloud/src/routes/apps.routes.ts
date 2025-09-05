@@ -10,11 +10,12 @@ import App, { AppI } from "../models/app.model";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { DeveloperProfile, AppType } from "@mentra/sdk";
 import { logger as rootLogger } from "../services/logging/pino-logger";
+import * as AppUptimeService from "../services/core/app-uptime.service";
 import UserSession from "../services/session/UserSession";
 import {
   authWithOptionalSession,
   optionalAuthWithOptionalSession,
-  OptionalUserSessionRequest,
+  RequestWithOptionalUserSession,
 } from "../middleware/client/client-auth-middleware";
 import { HardwareCompatibilityService } from "../services/session/HardwareCompatibilityService";
 import dotenv from "dotenv";
@@ -393,9 +394,39 @@ async function getAllApps(req: Request, res: Response) {
         userSession,
         user,
       );
+
+      // Enrich with organization/developer profile and display name
+      let finalApps = enhancedApps as any[];
+      try {
+        finalApps = await batchEnrichAppsWithProfiles(enhancedApps as any[]);
+      } catch (e) {
+        logger.warn(
+          { e },
+          "Failed to enrich apps with organization/developer profile (apiKey branch)",
+        );
+      }
+
+      // Attach latest online status for each app
+      try {
+        const packageNames = finalApps.map((a: any) => a.packageName);
+        const latestStatuses =
+          await AppUptimeService.getLatestStatusesForPackages(packageNames);
+        const statusMap = new Map<string, boolean>(
+          latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+        );
+        for (const app of finalApps as any[]) {
+          (app as any).isOnline = statusMap.get(app.packageName);
+        }
+      } catch (e) {
+        logger.warn(
+          { e },
+          "Failed to attach latest online statuses (apiKey branch)",
+        );
+      }
+
       return res.json({
         success: true,
-        data: enhancedApps,
+        data: finalApps,
       });
     }
 
@@ -465,9 +496,36 @@ async function getAllApps(req: Request, res: Response) {
       userSession,
       user,
     );
+
+    // Enrich with organization/developer profile and display name
+    let finalApps = enhancedApps as any[];
+    try {
+      finalApps = await batchEnrichAppsWithProfiles(enhancedApps as any[]);
+    } catch (e) {
+      logger.warn(
+        { e },
+        "Failed to enrich apps with organization/developer profile",
+      );
+    }
+
+    // Attach latest online status for each app
+    try {
+      const packageNames = finalApps.map((a: any) => a.packageName);
+      const latestStatuses =
+        await AppUptimeService.getLatestStatusesForPackages(packageNames);
+      const statusMap = new Map<string, boolean>(
+        latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+      );
+      for (const app of finalApps as any[]) {
+        (app as any).isOnline = statusMap.get(app.packageName);
+      }
+    } catch (e) {
+      logger.warn({ e }, "Failed to attach latest online statuses");
+    }
+
     res.json({
       success: true,
-      data: enhancedApps,
+      data: finalApps,
     });
   } catch (error) {
     logger.error({ error }, "Error fetching apps");
@@ -482,7 +540,7 @@ async function getAllApps(req: Request, res: Response) {
  * Get public apps
  */
 async function getPublicApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     let apps = await appService.getAllApps();
@@ -513,7 +571,7 @@ async function getPublicApps(req: Request, res: Response) {
  * Search apps by query
  */
 async function searchApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const query = req.query.q as string;
@@ -647,6 +705,18 @@ async function getAppByPackage(req: Request, res: Response) {
 
     // Add uninstallable property for store frontend
     (appObj as any).uninstallable = isUninstallable(packageName);
+
+    // Attach latest online status for this app
+    try {
+      const latestStatuses =
+        await AppUptimeService.getLatestStatusesForPackages([packageName]);
+      const statusMap = new Map<string, boolean>(
+        latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+      );
+      (appObj as any).isOnline = statusMap.get(packageName);
+    } catch (e) {
+      logger.warn({ e, packageName }, "Failed to attach latest online status");
+    }
 
     res.json({
       success: true,
@@ -1105,7 +1175,7 @@ async function stopApp(req: Request, res: Response) {
  * Install app for user
  */
 async function installApp(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   const { packageName } = req.params;
   const userSession = request.userSession; // Get optional userSession from middleware
@@ -1199,7 +1269,7 @@ async function installApp(req: Request, res: Response) {
  * Uninstall app for user
  */
 async function uninstallApp(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
   const { packageName } = req.params;
 
   try {
@@ -1272,7 +1342,7 @@ async function uninstallApp(req: Request, res: Response) {
  * Get installed apps for user
  */
 async function getInstalledApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const user = request.user;
@@ -1417,7 +1487,7 @@ async function getAppDetails(req: Request, res: Response) {
 }
 
 async function getAvailableApps(req: Request, res: Response) {
-  const request = req as OptionalUserSessionRequest;
+  const request = req as RequestWithOptionalUserSession;
 
   try {
     const organizationId = req.query.organizationId as string;
@@ -1445,43 +1515,46 @@ async function getAvailableApps(req: Request, res: Response) {
       );
     }
 
-    // Enhance apps with organization profiles
-    const enhancedApps = await Promise.all(
-      apps.map(async (app) => {
-        // Convert app to plain object for modification and type as AppWithDeveloperProfile
-        const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+    // Attach latest online status and hide offline published apps for users who haven't installed them
+    try {
+      const packageNames = apps.map((a) => a.packageName);
+      const latestStatuses =
+        await AppUptimeService.getLatestStatusesForPackages(packageNames);
+      const statusMap = new Map<string, boolean>(
+        latestStatuses.map((s) => [s.packageName, Boolean(s.onlineStatus)]),
+      );
 
-        // Add organization profile if the app has an organizationId
-        try {
-          if (app.organizationId) {
-            const Organization =
-              require("../models/organization.model").Organization;
-            const org = await Organization.findById(app.organizationId);
-            if (org) {
-              appObj.developerProfile = org.profile || {};
-              appObj.orgName = org.name;
-            }
+      // Determine installed apps for authenticated users
+      const installedSet = new Set<string>();
+      try {
+        const user =
+          request.user ||
+          (request.email ? await User.findByEmail(request.email) : null);
+        if (user?.installedApps) {
+          for (const inst of user.installedApps) {
+            installedSet.add(inst.packageName);
           }
-          // Fallback to developer profile for backward compatibility
-          else if (app.developerId) {
-            const developer = await User.findByEmail(app.developerId);
-            if (developer && developer.profile) {
-              appObj.developerProfile = developer.profile;
-              appObj.orgName =
-                developer.profile.company || developer.email.split("@")[0];
-            }
-          }
-        } catch (err) {
-          logger.error(
-            `Error fetching profile for app ${app.packageName}:`,
-            err,
-          );
-          // Continue without profile
         }
+      } catch (_e) {
+        // ignore
+      }
 
-        return appObj;
-      }),
-    );
+      // Filter and annotate
+      apps = apps.filter((app) => {
+        const isOnline = statusMap.get(app.packageName);
+        (app as any).isOnline = isOnline !== false; // default true if unknown
+        if (app.appStoreStatus === "PUBLISHED" && isOnline === false) {
+          // Keep if user already installed, else hide from store
+          return installedSet.has(app.packageName);
+        }
+        return true;
+      });
+    } catch (e) {
+      logger.warn({ e }, "Failed to determine latest app online statuses");
+    }
+
+    // Enhance apps with organization profiles in batch
+    const enhancedApps = await batchEnrichAppsWithProfiles(apps as any[]);
 
     // Return the enhanced apps with success flag
     res.json({
@@ -1526,6 +1599,94 @@ router.get("/:packageName", getAppByPackage);
 // Device-specific operations - use unified auth
 router.post("/:packageName/start", unifiedAuthMiddleware, startApp);
 router.post("/:packageName/stop", unifiedAuthMiddleware, stopApp);
+
+// Helper to batch-enrich apps with organization/developer profile and display name
+/**
+ * Batch-enriches a list of apps with organization profile or legacy developer profile.
+ * Minimizes database calls by:
+ *  - Collecting unique organizationIds and developer emails
+ *  - Performing bulk queries to Organizations and Users
+ *  - Mapping results back to each app
+ *
+ * Returns plain objects with added fields: developerProfile, orgName, developerName.
+ */
+async function batchEnrichAppsWithProfiles(
+  appsInput: Array<any>,
+): Promise<Array<any>> {
+  // Normalize to plain objects to avoid mutating Mongoose docs
+  const apps = appsInput.map((a: any) => (a as any).toObject?.() || a);
+
+  // Collect unique organization ids and developer emails
+  const orgIdSet = new Set<string>();
+  const developerEmailSet = new Set<string>();
+
+  for (const app of apps) {
+    if (app.organizationId) {
+      try {
+        orgIdSet.add(String(app.organizationId));
+      } catch (_e) {
+        // ignore malformed ids
+      }
+    } else if (app.developerId) {
+      developerEmailSet.add(String(app.developerId).toLowerCase());
+    }
+  }
+
+  // Bulk fetch organizations and users
+  let orgMap = new Map<string, any>();
+  let userMap = new Map<string, any>();
+
+  try {
+    if (orgIdSet.size > 0) {
+      const Organization = require("../models/organization.model").Organization;
+      const orgs = await Organization.find({
+        _id: { $in: Array.from(orgIdSet) },
+      }).lean();
+      orgMap = new Map(orgs.map((o: any) => [String(o._id), o]));
+    }
+  } catch (e) {
+    logger.warn({ e }, "Failed to batch-load organizations for app enrichment");
+  }
+
+  try {
+    if (developerEmailSet.size > 0) {
+      const users = await User.find({
+        email: { $in: Array.from(developerEmailSet) },
+      }).lean();
+      userMap = new Map(
+        users.map((u: any) => [String(u.email).toLowerCase(), u]),
+      );
+    }
+  } catch (e) {
+    logger.warn({ e }, "Failed to batch-load users for app enrichment");
+  }
+
+  // Apply enrichment
+  return apps.map((app: any) => {
+    const enriched = { ...app } as any;
+
+    if (app.organizationId) {
+      const key = String(app.organizationId);
+      const org = orgMap.get(key);
+      if (org) {
+        enriched.developerProfile = org.profile || {};
+        enriched.orgName = org.name;
+        enriched.developerName = org.name;
+      }
+    } else if (app.developerId) {
+      const user = userMap.get(String(app.developerId).toLowerCase());
+      if (user && user.profile) {
+        const displayName =
+          user.profile.company || String(user.email).split("@")[0];
+        enriched.developerProfile = user.profile;
+        enriched.orgName = displayName;
+        enriched.developerName = displayName;
+      }
+    }
+
+    return enriched;
+  });
+}
 
 // Helper to enhance apps with running/foreground state and activity data
 /**

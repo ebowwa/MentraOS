@@ -1,29 +1,9 @@
 import React, { memo, useState } from "react";
-import {
-  Lock,
-  Camera,
-  Cpu,
-  Mic,
-  Speaker,
-  Wifi,
-  RotateCw,
-  CircleDot,
-  Lightbulb,
-} from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button } from "./ui/button";
-import { AppI, HardwareType, HardwareRequirementLevel } from "../types";
+import { AppI } from "../types";
 
-// Hardware icon mapping
-const hardwareIcons: Record<HardwareType, React.ReactNode> = {
-  [HardwareType.CAMERA]: <Camera className="h-3 w-3" />,
-  [HardwareType.DISPLAY]: <Cpu className="h-3 w-3" />,
-  [HardwareType.MICROPHONE]: <Mic className="h-3 w-3" />,
-  [HardwareType.SPEAKER]: <Speaker className="h-3 w-3" />,
-  [HardwareType.IMU]: <RotateCw className="h-3 w-3" />,
-  [HardwareType.BUTTON]: <CircleDot className="h-3 w-3" />,
-  [HardwareType.LIGHT]: <Lightbulb className="h-3 w-3" />,
-  [HardwareType.WIFI]: <Wifi className="h-3 w-3" />,
-};
+// ... existing code ...
 
 interface AppCardProps {
   app: AppI;
@@ -142,32 +122,6 @@ const AppCard: React.FC<AppCardProps> = memo(
             >
               {app.name}
             </h3>
-
-            {/* Hardware Requirements */}
-            {app.hardwareRequirements &&
-              app.hardwareRequirements.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {app.hardwareRequirements.map((req, index) => (
-                    <div
-                      key={index}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
-                        req.level === HardwareRequirementLevel.REQUIRED
-                          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      }`}
-                      title={
-                        req.description ||
-                        `${req.level === HardwareRequirementLevel.REQUIRED ? "Required" : "Optional"} hardware`
-                      }
-                    >
-                      {hardwareIcons[req.type]}
-                      <span className="text-[10px] uppercase font-medium tracking-wider">
-                        {req.type.toLowerCase()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
 
             {app.description && (
               <p

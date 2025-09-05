@@ -3,8 +3,6 @@ import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
-
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
@@ -14,7 +12,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
@@ -151,7 +149,9 @@ export default function SettingsPage() {
             onPress={() => push("/settings/transcription")}
           />
 
-          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
+          <RouteButton label={translate("settings:themeSettings")} onPress={() => push("/settings/theme")} />
+
+          <RouteButton label={translate("settings:feedback")} onPress={() => push("/settings/feedback")} />
 
           {devMode && (
             <>
@@ -159,12 +159,6 @@ export default function SettingsPage() {
                 label={translate("settings:developerSettings")}
                 // subtitle={translate("settings:developerSettingsSubtitle")}
                 onPress={() => push("/settings/developer")}
-              />
-
-              <RouteButton
-                label="🎥 Buffer Recording Debug"
-                subtitle="Control 30-second video buffer on glasses"
-                onPress={() => push("/settings/buffer-debug")}
               />
             </>
           )}

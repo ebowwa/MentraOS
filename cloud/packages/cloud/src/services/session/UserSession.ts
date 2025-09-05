@@ -18,7 +18,7 @@ import AppManager from "./AppManager";
 import AudioManager from "./AudioManager";
 import MicrophoneManager from "./MicrophoneManager";
 import DisplayManager from "../layout/DisplayManager6.1";
-import { DashboardManager } from "../dashboard";
+import { DashboardManager } from "./dashboard";
 import VideoManager from "./VideoManager";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";

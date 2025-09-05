@@ -22,7 +22,7 @@ import Icon from "react-native-vector-icons/MaterialIcons"
 import {shareFile} from "@/utils/FileUtils"
 import VideoItem from "@/components/misc/VideoItem"
 import PhotoItem from "@/components/misc/PhotoItem"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import restComms from "@/managers/RestComms"
 import {router} from "expo-router"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -70,7 +70,6 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
   const [refreshing, setRefreshing] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null)
   const [photoModalVisible, setPhotoModalVisible] = useState(false)
-  const backend = BackendServerComms.getInstance()
   const {push} = useNavigationHistory()
 
   useEffect(() => {
@@ -211,7 +210,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
     try {
       setIsLoading(true)
 
-      const response = await backend.getGalleryPhotos()
+      const response = await restComms.getGalleryPhotos()
       if (response && response.success && response.photos) {
         setGalleryPhotos(response.photos)
 
@@ -308,7 +307,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
         )
       } else {
         // Generic error
-        showAlert("Sharing Error", "Failed to share the video. Please try again.", undefined, {
+        showAlert("Sharing Error", "Failed to share the video. Please try again.", [], {
           iconName: "error",
           iconColor: "#FF3B30",
         })
@@ -323,10 +322,10 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
       const fileName = filePath.split("/").pop() || ""
 
       // Navigate to our custom video player screen
-      push({pathname: "/mirror/video-player", params: {filePath: filePath, fileName: fileName}})
+      push("/mirror/video-player", {filePath: filePath, fileName: fileName})
     } catch (error) {
       console.error("Error playing video:", error)
-      showAlert("Playback Error", "Unable to play the video. Please try again.", undefined, {
+      showAlert("Playback Error", "Unable to play the video. Please try again.", [], {
         iconName: "error",
         iconColor: "#FF3B30",
       })
@@ -355,14 +354,14 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
                 if (Platform.OS === "android") {
                   ToastAndroid.show("Recording deleted", ToastAndroid.SHORT)
                 } else {
-                  showAlert("Success", "Recording deleted successfully", undefined, {
+                  showAlert("Success", "Recording deleted successfully", [], {
                     iconName: "check-circle",
                     iconColor: "#4CAF50",
                   })
                 }
               } catch (error) {
                 console.error("Error deleting video:", error)
-                showAlert("Error", "Failed to delete the recording", undefined, {
+                showAlert("Error", "Failed to delete the recording", [], {
                   iconName: "error",
                   iconColor: "#FF3B30",
                 })
@@ -377,7 +376,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
       )
     } catch (error) {
       console.error("Error deleting video:", error)
-      showAlert("Delete Error", "Failed to delete the video", undefined, {
+      showAlert("Delete Error", "Failed to delete the video", [], {
         iconName: "error",
         iconColor: "#FF3B30",
       })
@@ -407,19 +406,19 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
             style: "destructive",
             onPress: async () => {
               try {
-                await backend.deleteGalleryPhoto(photoId)
+                await restComms.deleteGalleryPhoto(photoId)
                 await loadGalleryPhotos()
                 if (Platform.OS === "android") {
                   ToastAndroid.show("Photo deleted", ToastAndroid.SHORT)
                 } else {
-                  showAlert("Success", "Photo deleted successfully", undefined, {
+                  showAlert("Success", "Photo deleted successfully", [], {
                     iconName: "check-circle",
                     iconColor: "#4CAF50",
                   })
                 }
               } catch (error) {
                 console.error("Error deleting photo:", error)
-                showAlert("Error", "Failed to delete the photo", undefined, {
+                showAlert("Error", "Failed to delete the photo", [], {
                   iconName: "error",
                   iconColor: "#FF3B30",
                 })
@@ -434,7 +433,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
       )
     } catch (error) {
       console.error("Error deleting photo:", error)
-      showAlert("Delete Error", "Failed to delete the photo", undefined, {
+      showAlert("Delete Error", "Failed to delete the photo", [], {
         iconName: "error",
         iconColor: "#FF3B30",
       })
@@ -500,7 +499,6 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({isDa
               <VideoItem
                 key={`video-${index}`}
                 videoPath={item.contentUrl}
-                isDarkTheme={isDarkTheme}
                 onPlayVideo={playVideo}
                 onShareVideo={shareVideo}
                 onDeleteVideo={deleteVideo}
@@ -734,7 +732,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  // Removed shareButton and deleteButton hardcoded colors - using VideoItem/PhotoItem components with theme support
 })
 
 export default GlassesRecordingsGallery

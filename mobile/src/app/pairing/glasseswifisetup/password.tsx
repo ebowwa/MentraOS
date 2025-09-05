@@ -6,7 +6,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import WifiCredentialsService from "@/utils/WifiCredentialsService"
+import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
 
@@ -56,12 +56,9 @@ export default function WifiPasswordScreen() {
       return
     }
 
-    // Handle password saving based on checkbox state
-    if (rememberPassword && password) {
-      // Save credentials if checkbox is checked
-      await WifiCredentialsService.saveCredentials(ssid, password, true)
-    } else if (!rememberPassword) {
-      // Remove saved credentials if checkbox is unchecked
+    // Don't save credentials here - only save after successful connection
+    // If user unchecked "Remember Password", remove any existing saved credentials
+    if (!rememberPassword) {
       await WifiCredentialsService.removeCredentials(ssid)
     }
 

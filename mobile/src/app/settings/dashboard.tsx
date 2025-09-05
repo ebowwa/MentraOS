@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   TouchableOpacity,
   Platform,
   Alert,
@@ -14,19 +13,17 @@ import {
 } from "react-native"
 
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
-import {router} from "expo-router"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
-import {stat} from "react-native-fs"
 import {glassesFeatures} from "@/config/glassesFeatures"
 
 export default function DashboardSettingsScreen() {
@@ -45,14 +42,14 @@ export default function DashboardSettingsScreen() {
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !isContextualDashboardEnabled
-    await coreCommunicator.sendToggleContextualDashboard(newVal)
+    await bridge.sendToggleContextualDashboard(newVal)
     setIsContextualDashboardEnabled(newVal)
   }
 
   const toggleMetricSystem = async () => {
     const newVal = !isMetricSystemEnabled
     try {
-      await coreCommunicator.sendSetMetricSystemEnabled(newVal)
+      await bridge.sendSetMetricSystemEnabled(newVal)
       setIsMetricSystemEnabled(newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
@@ -69,7 +66,7 @@ export default function DashboardSettingsScreen() {
     }
 
     setHeadUpAngleComponentVisible(false)
-    await coreCommunicator.setGlassesHeadUpAngle(newHeadUpAngle)
+    await bridge.setGlassesHeadUpAngle(newHeadUpAngle)
     setHeadUpAngle(newHeadUpAngle)
   }
 
@@ -85,7 +82,7 @@ export default function DashboardSettingsScreen() {
   // const fetchDashboardSettings = async () => {
   //   try {
   //     setIsLoading(true);
-  //     const data = await backendServerComms.getAppSettings('com.augmentos.dashboard');
+  //     const data = await restComms.getAppSettings('com.augmentos.dashboard');
   //     setServerSettings(data);
   //     const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
   //     if (contentSetting) {
@@ -102,7 +99,7 @@ export default function DashboardSettingsScreen() {
   //   try {
   //     setIsUpdating(true);
   //     setDashboardContent(value);
-  //     await backendServerComms.updateAppSetting('com.augmentos.dashboard', {
+  //     await restComms.updateAppSetting('com.augmentos.dashboard', {
   //       key: 'dashboard_content',
   //       value: value
   //     });
