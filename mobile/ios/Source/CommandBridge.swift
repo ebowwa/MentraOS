@@ -71,6 +71,7 @@ import Foundation
             case display_event
             case update_settings
             case microphone_state_change
+            case restart_transcriber
             case unknown
         }
 
@@ -377,6 +378,7 @@ import Foundation
                         Bridge.log("CommandBridge: microphone_state_change invalid params")
                         break
                     }
+
                     let bypassVad = msg["bypassVad"] as? Bool ?? false
                     var requiredDataStrings: [String] = []
                     if let requiredDataArray = msg["requiredData"] as? [String] {
@@ -395,6 +397,8 @@ import Foundation
                         break
                     }
                     m.handle_update_settings(params)
+                case .restart_transcriber:
+                    m.restartTranscriber()
                 }
             }
         } catch {

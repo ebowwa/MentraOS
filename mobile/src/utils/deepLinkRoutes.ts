@@ -18,14 +18,18 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.replace("/(tabs)/home")
+      // Don't navigate to home without authentication
+      // Let the app's index route handle the navigation logic
+      navObject.replace("/")
     },
+    requiresAuth: false, // Let index.tsx handle auth checking
   },
   {
     pattern: "/home",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
       navObject.replace("/(tabs)/home")
     },
+    requiresAuth: true, // Require auth for explicit /home navigation
   },
 
   // Settings routes

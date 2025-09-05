@@ -615,7 +615,7 @@ struct ViewState {
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
-        micEnabled = shouldSendPcmData
+        micEnabled = !requiredData.isEmpty
 
         // Handle microphone state change if needed
         Task {
@@ -1380,6 +1380,11 @@ struct ViewState {
         Task {
             await self.g1Manager?.RN_showDashboard()
         }
+    }
+
+    func restartTranscriber() {
+        Core.log("Mentra: Restarting SherpaOnnxTranscriber via command")
+        transcriber?.restart()
     }
 
     @objc func handleCommand(_ command: String) {
