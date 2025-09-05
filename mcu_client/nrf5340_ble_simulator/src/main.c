@@ -7,70 +7,44 @@
 /** @file
  *  @brief Nordic UART Bridge Service (NUS) sample
  */
+#include <dk_buttons_and_leds.h>
+#include <nrfx_clock.h>
+#include <soc.h>
+#include <stdio.h>
+#include <string.h>
 #include <uart_async_adapter.h>
-
-#include <zephyr/types.h>
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/uart.h>
-#include <zephyr/usb/usb_device.h>
-
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/bluetooth/uuid.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
-#include <soc.h>
-
-#include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/uuid.h>
-#include <zephyr/bluetooth/gatt.h>
-#include <zephyr/bluetooth/hci.h>
-
-#include "mentra_ble_service.h"
-#include "protobuf_handler.h"
-#include "pdm_audio_stream.h"
-#include "bsp_log.h"
-#include "mos_lvgl_display.h"  // Working LVGL display integration
-#include "display/lcd/a6m_0011.h"
-
-#include <dk_buttons_and_leds.h>
-
-#include <zephyr/settings/settings.h>
-
-#include <stdio.h>
-#include <string.h>
-
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/uart.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <nrfx_clock.h>
+#include <zephyr/settings/settings.h>
+#include <zephyr/types.h>
+#include <zephyr/usb/usb_device.h>
 
+#include "bsp_log.h"
+#include "display/lcd/a6m_0011.h"
+#include "mentra_ble_service.h"
+#include "mos_lvgl_display.h"  // Working LVGL display integration
+#include "pdm_audio_stream.h"
+#include "protobuf_handler.h"
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-static int hfclock_config_and_start(void)
-{
-	int ret;
-	/* Use this to turn on 128 MHz clock for cpu_app */
-	ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
-	ret -= NRFX_ERROR_BASE_NUM;
-	if (ret)
-	{
-		return ret;
-	}
-	nrfx_clock_hfclk_start();
-	while (!nrfx_clock_hfclk_is_running())
-	{
-	}
-	return 0;
-}
-// 初始化高频时钟128Mhz运行模式
-SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
-
 #define STACKSIZE 2048
-#define PRIORITY 7
+#define PRIORITY  7
 
-#define DEVICE_NAME CONFIG_BT_DEVICE_NAME
-#define DEVICE_NAME_LEN	(sizeof(DEVICE_NAME) - 1)
+#define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
 
-#define RUN_STATUS_LED DK_LED1
+#define RUN_STATUS_LED         DK_LED1
 #define RUN_LED_BLINK_INTERVAL 1000
 
 #define CON_STATUS_LED DK_LED2
@@ -79,45 +53,47 @@ SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 #define KEY_PASSKEY_REJECT DK_BTN2_MSK
 
 // **NEW: Updated button mappings to avoid SPI pin conflicts (P0.08/P0.09)**
-#define KEY_BATTERY_CYCLE DK_BTN1_MSK           // Button 1: Cycle battery 0-100% + toggle charging
-#define KEY_SCREEN_TOGGLE DK_BTN2_MSK           // Button 2: Cycle LVGL test patterns
+#define KEY_BATTERY_CYCLE DK_BTN1_MSK                  // Button 1: Cycle battery 0-100% + toggle charging
+#define KEY_SCREEN_TOGGLE DK_BTN2_MSK                  // Button 2: Cycle LVGL test patterns
 #define KEY_PATTERN_CYCLE (DK_BTN1_MSK | DK_BTN2_MSK)  // Button 1+2: Cycle LVGL patterns
 
 // **DISABLED: Buttons 3 & 4 conflict with SPI4 pins (P0.08 SCK, P0.09 MOSI)**
 // #define KEY_BUTTON3 DK_BTN3_MSK              // P0.08 - conflicts with SPI4 SCK
 // #define KEY_BUTTON4 DK_BTN4_MSK              // P0.09 - conflicts with SPI4 MOSI
 
-#define UART_BUF_SIZE 240
+#define UART_BUF_SIZE           240
 #define UART_WAIT_FOR_BUF_DELAY K_MSEC(50)
-#define UART_WAIT_FOR_RX 50
+#define UART_WAIT_FOR_RX        50
 
 static K_SEM_DEFINE(ble_init_ok, 0, 1);
 
 static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
-static struct k_work adv_work;
+static struct k_work   adv_work;
 
-static const struct device *uart = DEVICE_DT_GET(DT_CHOSEN(nordic_nus_uart));
+static const struct device *uart = NULL;//DEVICE_DT_GET(DT_CHOSEN(nordic_nus_uart));
 static struct k_work_delayable uart_work;
-
-struct uart_data_t {
-	void *fifo_reserved;
-	uint8_t data[UART_BUF_SIZE];
-	uint16_t len;
+const struct gpio_dt_spec es_power_en = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), es_power_en_gpios);
+const struct gpio_dt_spec mic_pwr_en  = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), mic_pwr_en_gpios); 
+struct uart_data_t
+{
+    void    *fifo_reserved;
+    uint8_t  data[UART_BUF_SIZE];
+    uint16_t len;
 };
-static uint16_t payload_mtu   = 20;
-static bool     ble_connected = false; 
+static uint16_t        payload_mtu   = 20;
+static bool            ble_connected = false;
 static struct bt_conn *my_current_conn;
 static K_FIFO_DEFINE(fifo_uart_tx_data);
 static K_FIFO_DEFINE(fifo_uart_rx_data);
 
-static char dynamic_device_name[32] = "NexSim";
-static struct bt_data ad[] = {
-	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA(BT_DATA_NAME_COMPLETE, "NexSim", 6),
+static char           dynamic_device_name[32] = "NexSim";
+static struct bt_data ad[]                    = {
+    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+    BT_DATA(BT_DATA_NAME_COMPLETE, "NexSim", 6),
 };
 static struct bt_data sd[] = {
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_MENTRA_VAL),
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_MENTRA_VAL),
 };
 
 static void setup_dynamic_advertising(void)
@@ -290,10 +266,10 @@ static void uart_work_handler(struct k_work *item)
 
 static bool uart_test_async_api(const struct device *dev)
 {
-	const struct uart_driver_api *api =
-			(const struct uart_driver_api *)dev->api;
+	// const struct uart_driver_api *api =
+	// 		(const struct uart_driver_api *)dev->api;
 
-	return (api->callback_set != NULL);
+	// return (api->callback_set != NULL);
 }
 
 static int uart_init(void)
@@ -733,8 +709,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **DEBUG: Enhanced button logging to identify spurious events**
 	if (has_changed != 0) {
-		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
-		        button_state, has_changed, buttons);
+		// LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
+		//         button_state, has_changed, buttons);
 	}
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
@@ -809,7 +785,34 @@ static void configure_gpio(void)
 		LOG_ERR("Cannot init LEDs (err: %d)", err);
 	}
 }
-
+int init_user_gpio(void)
+{
+	int err;
+	if (!gpio_is_ready_dt(&es_power_en))
+	{
+		LOG_ERR("GPIO port for es_power_en not ready");
+		return -1;
+	}
+	err = gpio_pin_configure_dt(&es_power_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+	if (err != 0)
+	{
+		LOG_ERR("es_power_en config error: %d", err);
+		return err;
+	}
+	if (!gpio_is_ready_dt(&mic_pwr_en))
+    {
+        LOG_ERR("GPIO mic_pwr_en not ready");
+        return -1;
+    }
+	err = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+    if (err != 0)
+    {
+        LOG_ERR("mic_pwr_en config error: %d", err);
+        return err;
+    }
+	LOG_INF("User GPIOs configured successfully");
+	return 0;
+}
 int main(void)
 {
 	int blink_status = 0;
@@ -819,7 +822,8 @@ int main(void)
 	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
 
 	configure_gpio();
-
+	
+	init_user_gpio();
 	// **NEW: Log updated button functionality (avoiding SPI4 conflicts)**
 	LOG_INF("� Button controls updated (avoiding SPI4 pin conflicts):");
 	LOG_INF("   � Button 1: Cycle battery 0→100%% + toggle charging");
@@ -836,10 +840,10 @@ int main(void)
 	// Set initial brightness to 50%
 	protobuf_set_brightness_level(50);
 
-	err = uart_init();
-	if (err) {
-		error();
-	}
+	// err = uart_init();
+	// if (err) {
+	// 	error();
+	// }
 
 	if (IS_ENABLED(CONFIG_BT_NUS_SECURITY_ENABLED)) {
 		err = bt_conn_auth_cb_register(&conn_auth_callbacks);
@@ -891,14 +895,14 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
-        // Initialize LVGL display system with working driver implementation
-        printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
-        
-        // Start the LVGL display thread first!
-        printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
-        lvgl_display_thread();
-        printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-
+	// Initialize LVGL display system with working driver implementation
+	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	
+	// Start the LVGL display thread first!
+	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	lvgl_display_thread();
+	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+#if 0
         // Give the thread a moment to initialize
         k_msleep(100);
         
@@ -940,7 +944,7 @@ int main(void)
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here
         LOG_INF("LVGL demo thread will start automatically");
-
+#endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
 
@@ -949,6 +953,23 @@ int main(void)
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
 	}
 }
+static int hfclock_config_and_start(void)
+{
+    int ret;
+    /* Use this to turn on 128 MHz clock for cpu_app */
+    ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
+    ret -= NRFX_ERROR_BASE_NUM;
+    if (ret)
+    {
+        return ret;
+    }
+    nrfx_clock_hfclk_start();
+    while (!nrfx_clock_hfclk_is_running())
+    {
+    }
+    return 0;
+}
+SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 void ble_write_thread(void)
 {
@@ -987,5 +1008,4 @@ void ble_write_thread(void)
 	}
 }
 
-K_THREAD_DEFINE(ble_write_thread_id, STACKSIZE, ble_write_thread, NULL, NULL,
-		NULL, PRIORITY, 0, 0);
+K_THREAD_DEFINE(ble_write_thread_id, STACKSIZE, ble_write_thread, NULL, NULL, NULL, PRIORITY, 0, 0);

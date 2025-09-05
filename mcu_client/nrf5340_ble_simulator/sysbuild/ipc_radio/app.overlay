@@ -1,0 +1,15 @@
+/ {
+	/delete-node/ aliases;
+};
+/delete-node/ &button0;
+/delete-node/ &button1;
+/delete-node/ &button2;
+/delete-node/ &button3;
+/delete-node/ &led0;
+/delete-node/ &led1;
+/delete-node/ &led2;
+/delete-node/ &led3;
+
+&uart0 {
+	status = "disabled";
+};

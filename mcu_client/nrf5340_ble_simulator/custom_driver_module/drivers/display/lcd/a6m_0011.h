@@ -116,4 +116,6 @@ int a6m_0011_draw_horizontal_grayscale_pattern(void);
 int a6m_0011_draw_vertical_grayscale_pattern(void);
 
 int a6m_0011_draw_chess_pattern(void);
+
+int a6m_0011_set_gray16_mode(void);
 #endif // A6M_0011_H

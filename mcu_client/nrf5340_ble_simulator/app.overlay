@@ -6,11 +6,14 @@
 
 / {
 	chosen {
-		nordic,nus-uart = &uart0;
+		// nordic,nus-uart = &uart0;
 		/* Use A6M_0011 projector display */
 		zephyr,display = &a6m_0011;
 	};
-	
+	zephyr,user {
+		es_power_en-gpios = <&gpio1 00 GPIO_ACTIVE_HIGH>;
+		mic_pwr_en-gpios  = <&gpio0 04 GPIO_ACTIVE_HIGH>;
+	};
 	pwmleds {
 		compatible = "pwm-leds";
 		
@@ -23,14 +26,6 @@
 	
 	aliases {
 		pwm-led3 = &pwm_led3;
-	};
-
-	/* Dummy display for testing (until projector driver properly integrated) */
-	dummy_display: dummy_display {
-		compatible = "zephyr,dummy-dc";
-		width = <640>;
-		height = <480>;
-		status = "okay";
 	};
 };
 
@@ -75,7 +70,7 @@
 	pinctrl-0 = <&spi4_default>;
 	pinctrl-1 = <&spi4_sleep>;
 	pinctrl-names = "default", "sleep";
-
+	cs-gpios = < &gpio0 0 GPIO_ACTIVE_HIGH >; // P0.00 as CS
 	a6m_0011: a6m_0011@0 {
 		compatible = "zephyr,custom-a6m_0011";
 		reg = <0>;
@@ -133,11 +128,14 @@ dmic_dev: &pdm0 {
 	pinctrl-names = "default";
 	// clock-source = "ACLK";
 };
-&gpio_fwd {
-	// status = "disabled";// 将管脚控制权保留在应用核; Keep the control of the pins within the application core
-	/delete-node/ uart;// 将管脚控制权保留在应用核; Keep the control of the pins within the application core
-
+&uart0 {
+	status = "disabled";
 };
+&gpio_fwd {
+	status = "disabled";
+	/delete-node/ uart;
+};
+
 /delete-node/ &mx25r64;
 &qspi {
 	status = "okay";

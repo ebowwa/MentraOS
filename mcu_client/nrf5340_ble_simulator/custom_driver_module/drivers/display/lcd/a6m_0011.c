@@ -1,13 +1,15 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-28 11:31:02
- * @LastEditTime : 2025-09-03 17:02:30
+ * @LastEditTime : 2025-09-04 19:36:53
  * @FilePath     : a6m_0011.c
  * @Description  :
  *
  *  Copyright (c) MentraOS Contributors 2025
  *  SPDX-License-Identifier: Apache-2.0
  */
+
+#include "a6m_0011.h"
 
 #include <stdio.h>
 #include <zephyr/device.h>
@@ -17,7 +19,6 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/types.h>
-#include "a6m_0011.h"
 
 #define LOG_MODULE_NAME CUSTOM_A6M_0011
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -32,9 +33,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 const struct device *dev_a6m_0011 = DEVICE_DT_GET(DT_INST(0, DT_DRV_COMPAT));
 static K_SEM_DEFINE(a6m_0011_init_sem, 0, 1);
 
-#define LVGL_TICK_MS 5
-// The maximum number of rows written each time can be adjusted according to config lv z vdb size;
-#define MAX_LINES_PER_WRITE 48  // 每次写入的最大行数; The maximum number of rows written each time
+#define MAX_LINES_PER_WRITE 192  // 每次写入的最大行数; The maximum number of rows written each time
 void a6m_0011_init_sem_give(void)
 {
     k_sem_give(&a6m_0011_init_sem);
@@ -58,7 +57,7 @@ static int write_reg_side(const struct device *dev, const struct gpio_dt_spec *c
     }
 
     const a6m_0011_config *cfg = dev->config;
-    uint8_t tx[3];
+    uint8_t  tx[3];
     tx[0] = A6M_0011_LCD_WRITE_ADDRESS;
     tx[1] = reg;
     tx[2] = val;
@@ -101,8 +100,7 @@ int a6m_0011_set_shift(move_mode mode, uint8_t steps)
     switch (mode)
     {
         case MOVE_DEFAULT:
-            reg = A6M_0011_LCD_HD_REG; /* HD/VD 随便写，写两次都覆盖; HD/VD can be written freely. Writing twice will
-                                          overwrite the previous content. */
+            reg = A6M_0011_LCD_HD_REG; /* HD/VD 随便写，写两次都覆盖; HD/VD can be written freely. Writing twice will overwrite the previous content. */
             val_l = A6M_0011_SHIFT_CENTER;
             val_r = A6M_0011_SHIFT_CENTER;
             break;
@@ -121,8 +119,7 @@ int a6m_0011_set_shift(move_mode mode, uint8_t steps)
 
         case MOVE_UP:
             reg   = A6M_0011_LCD_VD_REG;
-            val_l = A6M_0011_SHIFT_CENTER
-                    - steps; /* 上移，左右同步；Move upwards, synchronously on the left and right. */
+            val_l = A6M_0011_SHIFT_CENTER - steps; /* 上移，左右同步；Move upwards, synchronously on the left and right. */
             val_r = A6M_0011_SHIFT_CENTER - steps;
             break;
 
@@ -144,13 +141,14 @@ int a6m_0011_set_shift(move_mode mode, uint8_t steps)
 
     return err1 ?: err2;
 }
+
 /**
- * Send data via SPI
- * @param dev      SPI device handle
- * @param data     Pointer to the data buffer to send
- * @param size     Number of bytes to send
- * @param retries  Number of retries on failure
- * @return         0 on success, negative value on error
+ * send all data via SPI with retries
+ * @param dev    Device handle
+ * @param data   Pointer to data buffer
+ * @param size   Size of data buffer in bytes
+ * @param retries Number of retries on failure
+ * @return 0 on success, negative error code on failure
  */
 static int a6m_0011_transmit_all(const struct device *dev, const uint8_t *data, size_t size, int retries)
 {
@@ -160,16 +158,11 @@ static int a6m_0011_transmit_all(const struct device *dev, const uint8_t *data, 
         return -EINVAL;
     }
 
-    // **NEW: Add SPI speed measurement for debugging**
-    static uint32_t transfer_count = 0;
-    int64_t         start_time     = k_uptime_get();
-    transfer_count++;
-
     int                    err    = -1;
     const a6m_0011_config *cfg    = dev->config;
-    struct spi_buf         tx_buf = {
-                .buf = data,
-                .len = size,
+    struct spi_buf tx_buf = {
+        .buf = data,
+        .len = size,
     };
     struct spi_buf_set tx = {
         .buffers = &tx_buf,
@@ -181,7 +174,6 @@ static int a6m_0011_transmit_all(const struct device *dev, const uint8_t *data, 
     {
         gpio_pin_set_dt(&cfg->left_cs, 0);   // Select left CS (active LOW)
         gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
-
         err = spi_write_dt(&cfg->spi, &tx);
         gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
         gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
@@ -191,28 +183,32 @@ static int a6m_0011_transmit_all(const struct device *dev, const uint8_t *data, 
             LOG_INF("SPI write to left failed (attempt %d/%d): %d", i + 1, retries + 1, err);
             continue;
         }
-        if (err == 0)
+        else
         {
-            // **NEW: Calculate and log SPI transfer performance**
-            int64_t  end_time         = k_uptime_get();
-            int64_t  transfer_time_ms = end_time - start_time;
-            uint32_t bytes_per_sec    = (transfer_time_ms > 0) ? (size * 1000) / transfer_time_ms : 0;
-            float effective_speed_mhz = (float)(size * 8) / (transfer_time_ms * 1000.0f);  // bits per microsecond = MHz
-
-            // Log every 100th transfer to avoid spam
-            if (transfer_count % 100 == 0)
-            {
-                LOG_INF("📊 SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)",
-                         transfer_count, size, transfer_time_ms, (float)bytes_per_sec / 1000000.0f,
-                         effective_speed_mhz);
-            }
-
             return 0; /* 成功; Success */
         }
-        k_msleep(1); /* 短暂延迟; Short delay */
-        LOG_INF("SPI write to right failed (attempt %d/%d): %d", i + 1, retries + 1, err);
     }
     return err;
+}
+/**
+ * @brief Switch video format to GRAY16 (4-bit per pixel) via Bank0 register 0xBE.
+ *        Bus stays 1-line SPI; only pixel depth becomes 4-bit (2 pixels per byte).
+ *
+ * Datasheet: Bank0 0xBE: 0x82=GRAY256, 0x84=GRAY16.
+ */
+int a6m_0011_set_gray16_mode(void)
+{
+    /* Bank0 0xBE = 0x84 (GRAY16) */
+    int ret = a6m_0011_write_reg(0xBE, 0x84);
+    if (ret == 0)
+    {
+        LOG_INF("A6M_0011 video format -> GRAY16 (4-bit/pixel) set OK");
+    }
+    else
+    {
+        LOG_ERR("Set GRAY16 failed, ret=%d", ret);
+    }
+    return ret;
 }
 
 /**
@@ -243,152 +239,203 @@ static int a6m_0011_blanking_off(struct device *dev)
 {
     return 0;
 }
+#if 1
+
+/* ================== I1→I4 查表（一次性构建） ================== */ 
+// LUT for I1→I4 (one-time construction)
+static uint32_t s_i1_to_i4_LUT[256];
+static bool     s_i1_to_i4_LUT_built = false;
+
+/* 构建 LUT：输入 1 字节（8 像素，MSB→LSB），输出 4 字节（8 个 4bit 像素：两像素/字节） */
+// Build LUT: input 1 byte (8 pixels, MSB→LSB), output 4 bytes (8 4bit pixels: two pixels/byte)
+static void a6m_build_i1_to_i4_lut(void)
+{
+    for (int b = 0; b < 256; b++) 
+    {
+        /* 逐位展开成 4bit 灰度（0x0 或 0xF） */
+        // Expand bit by bit into 4bit grayscale (0x0 or 0xF)
+        uint8_t px[8];
+        for (int i = 0; i < 8; i++) 
+        {
+            uint8_t bit = (uint8_t)((b >> (7 - i)) & 0x01);
+            uint8_t nib = bit ? 0x00 : 0x0F;  /* 位=0亮（默认） 位=1暗 ; bit=0 bright (default) bit=1 dark */
+            px[i] = nib;
+        }
+        /* 打包成 4 个字节（高4位=左像素，低4位=右像素） */
+        // Pack into 4 bytes (high 4 bits = left pixel, low 4 bits = right pixel)
+        uint32_t pack =
+            ((uint32_t)((px[0] << 4) | px[1]) << 24) |
+            ((uint32_t)((px[2] << 4) | px[3]) << 16) |
+            ((uint32_t)((px[4] << 4) | px[5]) << 8)  |
+            ((uint32_t)((px[6] << 4) | px[7]) << 0);
+        s_i1_to_i4_LUT[b] = pack;
+    }
+    s_i1_to_i4_LUT_built = true;
+}
+/* ================== 按行转换：I1(1bpp, MSB-first) -> I4(两像素/字节) ================== */
+// ================== Line-by-line conversion: I1(1bpp, MSB-first) -> I4(two pixels/byte) ==================
+/**
+ * @Description: Pack a line of 1bpp pixels into 4bpp using LUT
+ * @param src_row  Pointer to source row (1bpp, MSB-first)
+ * @param width    Width of the row in pixels
+ * @param dst_row  Pointer to destination row (4bpp, two pixels/byte)
+ * @return         None
+ */
+static inline void a6m_pack_i1_to_i4_line_lut(const uint8_t *src_row,
+                                              uint16_t width,
+                                              uint8_t *dst_row)
+{
+    /* 每 8 像素（1 字节）→ LUT 输出 4 字节 ; Every 8 pixels (1 byte) → LUT outputs 4 bytes */
+    uint16_t full_groups = (uint16_t)(width / 8U);
+    uint16_t tail_pixels = (uint16_t)(width % 8U);
+    uint16_t out = 0;
+
+    for (uint16_t g = 0; g < full_groups; g++) 
+    {
+        uint32_t pack = s_i1_to_i4_LUT[src_row[g]];
+        dst_row[out + 0] = (uint8_t)(pack >> 24);
+        dst_row[out + 1] = (uint8_t)(pack >> 16);
+        dst_row[out + 2] = (uint8_t)(pack >> 8);
+        dst_row[out + 3] = (uint8_t)(pack >> 0);
+        out += 4;
+    }
+
+    /* 收尾：不足 8 像素（最多 7），两两拼一个字节 ; Tail: less than 8 pixels (up to 7), two by two spliced into one byte */
+    if (tail_pixels) 
+    {
+        /* 起始 bit 索引（相对这个组的 8bit 块）; Starting bit index (relative to the 8bit block of this group) */
+        uint16_t start_bit = (uint16_t)(full_groups * 8U);
+        uint8_t  cur_byte  = src_row[full_groups]; /* 安全：调用方保证源行有足够字节 ; Safe: the caller ensures that the source line has enough bytes */
+
+        /* 从 start_bit 开始逐像素取位 */
+        // Take bits pixel by pixel starting from start_bit
+        uint8_t nib0 = 0, nib1 = 0, have0 = 0;
+        for (uint16_t i = 0; i < tail_pixels; i++) 
+        {
+            /* 计算这个像素在 cur_byte 中的 bit 位置：MSB-first */
+            // Calculate the bit position of this pixel in cur_byte: MSB-first
+            uint16_t bit_index = (uint16_t)((start_bit + i) % 8U);
+            if (bit_index == 0 && i != 0) 
+            {
+                /* 跨到下一源字节 */
+                // Cross to the next source byte
+                cur_byte = src_row[full_groups + (i / 8U)];
+            }
+            uint8_t bit = (cur_byte >> (7 - bit_index)) & 0x01;
+            uint8_t nib = bit ? 0x00 : 0x0F;
+            if (!have0) 
+            {
+                nib0 = nib; have0 = 1;
+            } 
+            else 
+            {
+                nib1 = nib; have0 = 0;
+                dst_row[out++] = (uint8_t)((nib0 << 4) | (nib1 & 0x0F));
+            }
+        }
+        /* 若尾巴是奇数个像素，补最后一个半字节（右像素=0x0）
+        If the tail is an odd number of pixels, add the last half byte (right pixel = 0x0) */
+        if (have0) 
+        {
+            dst_row[out++] = (uint8_t)(nib0 << 4);
+        }
+    }
+}
+
 /**
  * @Description: Write pixel data to the display
  * @param dev   Device handle
  * @param x     X coordinate (must be 0)
  * @param y     Y coordinate (starting row)
  * @param desc  Buffer descriptor
- * @param buf   Pointer to pixel data buffer    
+ * @param buf   Pointer to pixel data buffer
  * @return      0 on success, negative value on error
  */
-#if 1
 static int a6m_0011_write(const struct device *dev, const uint16_t x, const uint16_t y,
                           const struct display_buffer_descriptor *desc, const void *buf)
 {
     const a6m_0011_config *cfg    = dev->config;
     a6m_0011_data         *data   = dev->data;
-    const uint16_t         width  = desc->width;
-    const uint16_t         height = desc->height;
-    const uint16_t         pitch  = desc->pitch;
-    int                    ret    = 0;
+    const uint16_t         width  = desc->width;  
+    const uint16_t         height = desc->height;  
+    const uint16_t         pitch  = desc->pitch;  /* 源缓冲每行像素（通常=width）; Source buffer pixels per line (usually = width) */
 
-    static uint32_t write_call_count = 0;
-    write_call_count++;
-
-    // LOG_INF("🎨 a6m_0011_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)",
-    //	write_call_count, x, y, width, height, pitch);
-
-    // Disable verbose buffer analysis logging
-    // LOG_INF("📊 LVGL Buffer Analysis:");
-    // LOG_INF("  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
-    // LOG_INF("  - dst_stride: %d bytes (expanded)", cfg->screen_width);
-    // LOG_INF("  - Total bytes to send: %d", height * cfg->screen_width);
-
-    // Disable hex dump logging
-    // const uint8_t *debug_src = (const uint8_t *)buf;
-    // BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
-
-    // **SAFETY CHECK: Implement chunked transfers for large displays**
-    uint32_t       total_pixels         = width * height;
-    const uint32_t MAX_PIXELS_PER_CHUNK = 32000;  // 32K pixels max per transfer
-
-    if (total_pixels > MAX_PIXELS_PER_CHUNK)
+    if (x != 0) 
     {
-        // LOG_INF("🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
-
-        // Calculate chunk size - process in horizontal strips
-        uint16_t chunk_height = MAX_PIXELS_PER_CHUNK / width;
-        if (chunk_height > height)
-            chunk_height = height;
-
-        // LOG_INF("📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
-
-        // Process in chunks
-        int ret = 0;
-        for (uint16_t y_offset = 0; y_offset < height; y_offset += chunk_height)
-        {
-            uint16_t current_chunk_height = chunk_height;
-            if (y_offset + chunk_height > height)
-            {
-                current_chunk_height = height - y_offset;
-            }
-
-            // LOG_INF("🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
-
-            // Create a descriptor for this chunk
-            struct display_buffer_descriptor chunk_desc = {
-                .buf_size = current_chunk_height * ((width + 7) / 8),
-                .width    = width,
-                .height   = current_chunk_height,
-                .pitch    = pitch,
-            };
-
-            // Calculate source buffer offset for this chunk
-            const uint8_t *src_buffer = (const uint8_t *)buf;
-            const uint8_t *chunk_src  = src_buffer + (y_offset * ((width + 7) / 8));
-
-            // Recursively call ourselves with the smaller chunk
-            ret = a6m_0011_write(dev, x, y + y_offset, &chunk_desc, chunk_src);
-            if (ret != 0)
-            {
-                LOG_WRN("❌ Chunk transfer failed at y=%d: %d", y + y_offset, ret);
-                return ret;
-            }
-
-            // Small delay between chunks to prevent overwhelming the system
-            k_msleep(1);
-        }
-
-        // LOG_INF("✅ Chunked transfer completed successfully!");
-        return 0;
+        LOG_WRN("a6m_0011_write: x must be 0 (x=%u)", x);
+        return -ENOTSUP;
     }
-
-    // LOG_INF("✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
-
-    // if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
-    if (y + height > cfg->screen_height)
+    if ((y + height) > cfg->screen_height || width > cfg->screen_width) 
     {
-        LOG_WRN("❌ Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", y, height,
-                 cfg->screen_height);
+        LOG_WRN("a6m_0011_write: OOB w=%u h=%u y=%u (scr %ux%u)",
+                width, height, y, cfg->screen_width, cfg->screen_height);
         return -ENOTSUP;
     }
 
-    const uint8_t *src        = (const uint8_t *)buf;
-    uint8_t       *dst        = data->tx_buf_bulk + 4;
-    const uint16_t src_stride = (width + 7) / 8;
-    const uint16_t dst_stride = cfg->screen_width;
-
-    // 每像素1bit展开为 0x00 / 0xFF
-    // Expand 1bit per pixel to 0x00 / 0xFF
-    for (uint16_t row = 0; row < height; row++)
+    /* 首次构建 LUT ; Build LUT for the first time */
+    if (!s_i1_to_i4_LUT_built) 
     {
-        // LVGL缓冲区起始地址 + 偏移量 * 每行字节数（1b = 1像素）
-        // Expand LVGL buffer to 0x00 / 0xFF (1b = 1 pixel)
-        const uint8_t *src_row = src + row * src_stride;
-        // 缓冲区起始地址 + 偏移量 * 每行字节数（1B = 1 像素）
-        // Buffer starting address + offset * bytes per row (1B = 1 pixel)
-        uint8_t *dst_row = dst + row * dst_stride;
-        for (uint16_t col = 0; col < width; col++)  // 处理一行数据像素点; Process pixel points in a row of data
-        {
-            // 读取LVGL源数据字节(1b = 1像素)展开为0x00/0xFF（1B = 1像素）
-            // Read LVGL source data byte (1b = 1 pixel) expanded to 0x00/0xFF (1B = 1 pixel)
-            uint8_t byte = src_row[col / 8];
-            // 读取1bit数据 按照MSB位序读取
-            // Read 1bit data, read according to MSB bit order
-            uint8_t bit = (byte >> (7 - (col % 8))) & 0x01;
-            // 亮：0xFF，暗：0x00 ; Bright: 0xFF, Dark: 0x00
-            dst_row[col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
-            // dst_row[col] = bit ? COLOR_BRIGHT : BACKGROUND_COLOR;
-        }
+        a6m_build_i1_to_i4_lut();
+        LOG_INF("a6m_0011_write: I1->I4 LUT built");
     }
-    a6m_0011_write_multiple_rows_cmd(dev, y, y + height - 1);
 
-    uint8_t *tx_buf = data->tx_buf_bulk;
-    tx_buf[0]       = A6M_0011_LCD_DATA_REG;
-    tx_buf[1]       = (A6M_0011_LCD_CMD_REG >> 16) & 0xFF;
-    tx_buf[2]       = (A6M_0011_LCD_CMD_REG >> 8) & 0xFF;
-    tx_buf[3]       = A6M_0011_LCD_CMD_REG & 0xFF;
+    const uint8_t *src             = (const uint8_t *)buf; /* 1bpp 源 ; 1bpp source */
+    const uint16_t src_stride_bytes= (uint16_t)((pitch + 7U) / 8U);
+    const uint16_t i4_bytes_per_ln = (uint16_t)((cfg->screen_width + 1U) / 2U); /* 320 */
+    uint8_t       *tx              = data->tx_buf_bulk;
+    uint8_t       *dst_base        = tx + 4;
 
-    ret = a6m_0011_transmit_all(dev, tx_buf, 4 + height * dst_stride, 1);
-    if (ret != 0)
+    /* 设置行窗口 ; Set row window */
+    a6m_0011_write_multiple_rows_cmd(dev, y, (uint16_t)(y + height - 1U));
+
+    /* 写数据前缀（1线 SPI：0x02 + 0x00 0x2C/0x3C 0x00） */
+    // write data prefix (1-line SPI: 0x02 + 0x00 0x2C/0x3C 0x00)
+    tx[0] = A6M_0011_LCD_DATA_REG;
+    tx[1] = (uint8_t)((A6M_0011_LCD_CMD_REG >> 16) & 0xFF);
+    tx[2] = (uint8_t)((A6M_0011_LCD_CMD_REG >>  8) & 0xFF);
+    tx[3] = (uint8_t)( A6M_0011_LCD_CMD_REG        & 0xFF);
+
+    /* 逐行 LUT 转换 → I4 行（不足 320B 的右侧补 0） */
+    // Line-by-line LUT conversion → I4 line (right side of less than 320B is filled with 0)
+    for (uint16_t row = 0; row < height; row++) 
     {
-        LOG_ERR("SPI transmit failed: %d", ret);  // SPI传输失败；SPI transmission failed
+        const uint8_t *src_row = src      + (uint32_t)row * src_stride_bytes;
+        uint8_t       *dst_row = dst_base + (uint32_t)row * i4_bytes_per_ln;
+
+        /* 先清整行，确保右侧补零 */
+        // First clear the entire line to ensure that the right side is filled with zeros
+        memset(dst_row, 0x00, i4_bytes_per_ln);
+
+        /* 把本区域 width 像素打包到行左侧（单位：像素），两像素/字节 */
+        // Pack the width pixels of this area to the left side of the line (unit: pixel), two pixels/byte
+        a6m_pack_i1_to_i4_line_lut(src_row, width, dst_row);
     }
-    return ret;
+
+    const uint32_t payload_bytes = (uint32_t)height * (uint32_t)i4_bytes_per_ln;
+    const uint32_t bytes_to_send = 4U + payload_bytes;
+
+    int ret = a6m_0011_transmit_all(dev, tx, bytes_to_send, 1);
+    #if 0//TEST LOG
+    const int64_t t0 = k_uptime_get();
+    ret              = a6m_0011_transmit_all(dev, tx, bytes_to_send, 1);
+    const int64_t t1 = k_uptime_get();
+    const uint32_t ms   = (uint32_t)(t1 - t0);
+    const uint32_t kBps = (ms ? (bytes_to_send * 1000U / ms / 1024U) : 0U);
+    const uint32_t Mbps = (ms ? (bytes_to_send * 8U / ms / 1000U) : 0U);
+    LOG_INF("a6m_0011_write[I1->I4, %uB/line] = [%u]ms, lines[%u], bytes[%u]B, rate≈[%u]KB/s (%uMbit/s)",
+            line_bytes_min, ms, height, bytes_to_send, kBps, Mbps);
+    #endif
+
+    if (ret)
+    {
+        LOG_ERR("a6m_0011_write: SPI transmit failed: %d", ret);
+        return ret;
+    }
+    
+
+    return 0;
 }
 #endif
-
 static int a6m_0011_read(struct device *dev, int x, int y, const struct display_buffer_descriptor *desc, void *buf)
 {
     return -ENOTSUP;
@@ -438,7 +485,7 @@ int a6m_0011_set_mirror(mirror_mode_t mode)
 
             cmd[1] = A6M_0011_LCD_VERTICAL_MIRROR_REG;
             cmd[2] = 0x00;
-            err |= a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
+            err    |= a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
             break;
 
         case MIRROR_HORZ:
@@ -466,7 +513,7 @@ int a6m_0011_set_mirror(mirror_mode_t mode)
 
             cmd[1] = A6M_0011_LCD_VERTICAL_MIRROR_REG;
             cmd[2] = A6M_0011_MIRROR_ENABLE;
-            err |= a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
+            err   |= a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
             break;
         default:
             LOG_ERR("Unsupported mirror mode: %d", mode);
@@ -490,7 +537,7 @@ int a6m_0011_write_reg(uint8_t reg, uint8_t param)
     cmd[0]         = A6M_0011_LCD_WRITE_ADDRESS;
     cmd[1]         = reg;
     cmd[2]         = param;
-    int ret = a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
+    int ret        = a6m_0011_transmit_all(dev_a6m_0011, cmd, sizeof(cmd), 1);
     return ret;
 }
 /**
@@ -500,7 +547,7 @@ int a6m_0011_write_reg(uint8_t reg, uint8_t param)
  */
 int a6m_0011_read_reg(int mode, uint8_t reg)
 {
-    if (mode < 0 || mode > 1) 
+    if (mode < 0 || mode > 1)
     {
         LOG_WRN("Invalid mode err!!!");
         return -EINVAL;
@@ -511,10 +558,10 @@ int a6m_0011_read_reg(int mode, uint8_t reg)
     cmd[1] = reg;
     cmd[2] = 0;
     uint8_t rx_buff[10] = {0};
-    const a6m_0011_config *cfg = dev_a6m_0011->config;
-    struct spi_buf         buf = {
-                        .buf = cmd,
-                        .len = sizeof(cmd),
+    const a6m_0011_config *cfg  = dev_a6m_0011->config;
+    struct spi_buf buf = {
+        .buf = cmd,
+        .len = sizeof(cmd),
     };
     struct spi_buf_set tx_set = {
         .buffers = &buf,
@@ -614,37 +661,35 @@ int a6m_0011_clear_screen(bool color_on)
     const a6m_0011_config *cfg  = dev_a6m_0011->config;
     a6m_0011_data         *data = dev_a6m_0011->data;
 
-    const uint16_t width = cfg->screen_width;
-    // const uint16_t height = cfg->screen_height;
-    const uint16_t height = SCREEN_HEIGHT;
+    uint16_t width  = cfg->screen_width;
+    uint16_t height = SCREEN_HEIGHT;
     // Clear MAX_LINES_PER_WRITE lines each time
     uint8_t *tx_buf          = data->tx_buf_bulk;
     uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
     uint16_t total_lines     = height;
 
-    uint8_t fill_byte = color_on ? 0xFF : 0x00;
-
-    // LOG_INF("🧹 a6m_0011_clear_screen: color_on=%s, fill_byte=0x%02X",
-    //	color_on ? "true" : "false", fill_byte);
-    // LOG_INF("  - Screen: %dx%d pixels", width, height);
-    // LOG_INF("  - Total bytes per frame: %d", width * height);
+    uint8_t  nib               = color_on ? 0x0F : 0x00;// 4-bit color value (0x0F=white, 0x00=black)
+    uint8_t  fill_byte         = (uint8_t)((nib << 4) | nib);
+    uint16_t i4_bytes_per_line = (width + 1U) / 2U;
 
     for (uint16_t y = 0; y < total_lines; y += lines_per_batch)
     {
         uint16_t batch_lines = MIN(lines_per_batch, total_lines - y);
 
-        // Build data command (LCD Locality + Address)
         a6m_0011_write_multiple_rows_cmd(dev_a6m_0011, y, y + batch_lines - 1);
         tx_buf[0] = A6M_0011_LCD_DATA_REG;
         tx_buf[1] = (A6M_0011_LCD_CMD_REG >> 16) & 0xFF;
         tx_buf[2] = (A6M_0011_LCD_CMD_REG >> 8) & 0xFF;
         tx_buf[3] = A6M_0011_LCD_CMD_REG & 0xFF;
 
-        memset(&tx_buf[4], fill_byte, batch_lines * width);
-        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * width, 1);
+        for (uint16_t line = 0; line < batch_lines; line++)
+        {
+            memset(&tx_buf[4 + line * i4_bytes_per_line], fill_byte, i4_bytes_per_line);
+        }
+        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * i4_bytes_per_line, 1);
         if (ret != 0)
         {
-            LOG_INF("a6m_0011_transmit_all failed! (%d)", ret);
+            LOG_ERR("a6m_0011_transmit_all failed! (%d)", ret);
             return ret;
         }
     }
@@ -668,12 +713,12 @@ int a6m_0011_draw_horizontal_grayscale_pattern(void)
     const a6m_0011_config *cfg  = dev_a6m_0011->config;
     a6m_0011_data         *data = dev_a6m_0011->data;
 
-    const uint16_t width  = SCREEN_WIDTH;
-    const uint16_t height = SCREEN_HEIGHT;
-
+    uint16_t width             = cfg->screen_width;
+    uint16_t height            = cfg->screen_height;
+    uint16_t i4_bytes_per_line = (width + 1u) / 2u; /* 320 */
     // 8 grayscale levels: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
-    const uint8_t  gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
-    const uint16_t stripe_width   = width / 8;  // 80 pixels per stripe
+    uint8_t  gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
+    uint16_t stripe_width   = width / 8;  // 80 pixels per stripe
 
     uint8_t *tx_buf          = data->tx_buf_bulk;
     uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
@@ -691,22 +736,24 @@ int a6m_0011_draw_horizontal_grayscale_pattern(void)
         tx_buf[2] = (A6M_0011_LCD_CMD_REG >> 8) & 0xFF;
         tx_buf[3] = A6M_0011_LCD_CMD_REG & 0xFF;
 
-        // Fill data for this batch of lines
         for (uint16_t line = 0; line < batch_lines; line++)
         {
-            uint8_t *line_start = &tx_buf[4 + line * width];
-
-            // Fill each stripe with its corresponding gray level
-            for (int stripe = 0; stripe < 8; stripe++)
+            uint8_t *dst = &tx_buf[4 + line * i4_bytes_per_line];
+            uint16_t out = 0;
+            for (uint16_t x = 0; x < width; x += 2u)
             {
-                uint16_t start_x = stripe * stripe_width;
-                uint16_t end_x   = (stripe == 7) ? width : (stripe + 1) * stripe_width;  // Handle remainder
+                uint16_t s0 = (uint16_t)(x / stripe_width);
+                if (s0 > 7) s0 = 7;
+                uint16_t s1 = (uint16_t)((x + 1u) / stripe_width);
+                if (s1 > 7) s1 = 7;
+                uint8_t g0_4 = (uint8_t)(gray_levels[s0] >> 4);
+                uint8_t g1_4 = (uint8_t)(gray_levels[s1] >> 4);
 
-                memset(&line_start[start_x], gray_levels[stripe], end_x - start_x);
+                dst[out++] = (uint8_t)((g0_4 << 4) | (g1_4 & 0x0F));
             }
         }
 
-        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * width, 1);
+        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * i4_bytes_per_line, 1);
         if (ret != 0)
         {
             LOG_WRN("a6m_0011_transmit_all failed! (%d)", ret);
@@ -733,12 +780,12 @@ int a6m_0011_draw_vertical_grayscale_pattern(void)
     const a6m_0011_config *cfg  = dev_a6m_0011->config;
     a6m_0011_data         *data = dev_a6m_0011->data;
 
-    const uint16_t width  = SCREEN_WIDTH;
-    const uint16_t height = SCREEN_HEIGHT;
-
+    uint16_t width             = cfg->screen_width;
+    uint16_t height            = cfg->screen_height;
+    uint16_t i4_bytes_per_line = (width + 1u) / 2u; /* 320 */
     // 8 grayscale levels: 0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF
-    const uint8_t  gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
-    const uint16_t stripe_height  = height / 8;  // 60 lines per stripe
+    uint8_t  gray_levels[8] = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xDB, 0xFF};
+    uint16_t stripe_height  = height / 8;  // 60 lines per stripe
 
     uint8_t *tx_buf          = data->tx_buf_bulk;
     uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
@@ -747,31 +794,27 @@ int a6m_0011_draw_vertical_grayscale_pattern(void)
 
     for (uint16_t y = 0; y < height; y += lines_per_batch)
     {
-        uint16_t batch_lines = MIN(lines_per_batch, height - y);
+        uint16_t batch_lines = (y + lines_per_batch <= height) ? lines_per_batch : (height - y);
+        a6m_0011_write_multiple_rows_cmd(dev_a6m_0011, y, (uint16_t)(y + batch_lines - 1));
 
-        // Build data command header
-        a6m_0011_write_multiple_rows_cmd(dev_a6m_0011, y, y + batch_lines - 1);
         tx_buf[0] = A6M_0011_LCD_DATA_REG;
         tx_buf[1] = (A6M_0011_LCD_CMD_REG >> 16) & 0xFF;
         tx_buf[2] = (A6M_0011_LCD_CMD_REG >> 8) & 0xFF;
         tx_buf[3] = A6M_0011_LCD_CMD_REG & 0xFF;
 
-        // Fill data for this batch of lines
         for (uint16_t line = 0; line < batch_lines; line++)
         {
-            uint16_t current_y  = y + line;
-            uint8_t  gray_level = gray_levels[current_y / stripe_height];
+            uint16_t current_y = y + line;
+            uint16_t band = (uint16_t)(current_y / stripe_height);
+            if (band > 7) band = 7;
 
-            // Handle the last stripe which might have different height due to remainder
-            if (current_y / stripe_height >= 8)
-            {
-                gray_level = gray_levels[7];  // Use last gray level for remainder
-            }
+            uint8_t g4 = (uint8_t)(gray_levels[band] >> 4);
+            uint8_t b  = (uint8_t)((g4 << 4) | g4); /* 两像素同灰度 */
 
-            memset(&tx_buf[4 + line * width], gray_level, width);
+            uint8_t *dst = &tx_buf[4 + line * i4_bytes_per_line];
+            memset(dst, b, i4_bytes_per_line);
         }
-
-        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * width, 1);
+        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * i4_bytes_per_line, 1);
         if (ret != 0)
         {
             LOG_WRN("a6m_0011_transmit_all failed! (%d)", ret);
@@ -798,41 +841,52 @@ int a6m_0011_draw_chess_pattern(void)
     const a6m_0011_config *cfg  = dev_a6m_0011->config;
     a6m_0011_data         *data = dev_a6m_0011->data;
 
-    const uint16_t width       = SCREEN_WIDTH;
-    const uint16_t height      = SCREEN_HEIGHT;
-    const uint16_t square_size = 40;  // 40x40 pixel squares
-
-    uint8_t *tx_buf          = data->tx_buf_bulk;
-    uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
+    uint16_t width             = cfg->screen_width;
+    uint16_t height            = cfg->screen_height;
+    uint16_t square_size       = 40;                // 40x40 pixel squares
+    uint16_t i4_bytes_per_line = (width + 1u) / 2u; /* 320 */
+    uint8_t *tx_buf            = data->tx_buf_bulk;
+    uint16_t lines_per_batch   = MAX_LINES_PER_WRITE;
 
     LOG_INF("🎨 Drawing chess pattern (%dx%d squares)", square_size, square_size);
-
     for (uint16_t y = 0; y < height; y += lines_per_batch)
     {
-        uint16_t batch_lines = MIN(lines_per_batch, height - y);
+        uint16_t batch_lines = (y + lines_per_batch <= height) ? lines_per_batch : (height - y);
 
-        // Build data command header
-        a6m_0011_write_multiple_rows_cmd(dev_a6m_0011, y, y + batch_lines - 1);
+        a6m_0011_write_multiple_rows_cmd(dev_a6m_0011, y, (uint16_t)(y + batch_lines - 1));
+
         tx_buf[0] = A6M_0011_LCD_DATA_REG;
         tx_buf[1] = (A6M_0011_LCD_CMD_REG >> 16) & 0xFF;
         tx_buf[2] = (A6M_0011_LCD_CMD_REG >> 8) & 0xFF;
         tx_buf[3] = A6M_0011_LCD_CMD_REG & 0xFF;
 
-        // Fill data for this batch of lines
         for (uint16_t line = 0; line < batch_lines; line++)
         {
             uint16_t current_y = y + line;
-            uint16_t row       = current_y / square_size;
+            uint16_t row_block = (uint16_t)(current_y / square_size);
 
-            for (uint16_t x = 0; x < width; x++)
+            uint8_t *dst = &tx_buf[4 + line * i4_bytes_per_line];
+            uint16_t out = 0;
+
+            for (uint16_t x = 0; x < width; x += 2u)
             {
-                uint16_t col                 = x / square_size;
-                bool     is_white            = (row + col) % 2 == 0;
-                tx_buf[4 + line * width + x] = is_white ? 0xFF : 0x00;
+                uint16_t col_block0 = (uint16_t)(x / square_size);
+                bool     white0     = (((row_block + col_block0) & 1u) == 0u);
+                uint8_t  px0_4      = white0 ? 0x0F : 0x00;
+
+                uint8_t px1_4 = 0x00;
+                if (x + 1u < width)
+                {
+                    uint16_t col_block1 = (uint16_t)((x + 1u) / square_size);
+                    bool white1 = (((row_block + col_block1) & 1u) == 0u);
+                    px1_4 = white1 ? 0x0F : 0x00;
+                }
+
+                dst[out++] = (uint8_t)((px0_4 << 4) | (px1_4 & 0x0F));
             }
         }
 
-        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * width, 1);
+        int ret = a6m_0011_transmit_all(dev_a6m_0011, tx_buf, 4 + batch_lines * i4_bytes_per_line, 1);
         if (ret != 0)
         {
             LOG_WRN("a6m_0011_transmit_all failed! (%d)", ret);
@@ -857,12 +911,12 @@ static int a6m_0011_init(const struct device *dev)
 {
     a6m_0011_config *cfg  = (a6m_0011_config *)dev->config;
     a6m_0011_data   *data = (a6m_0011_data *)dev->data;
-    int ret;
+    int              ret;
     // **NEW: Log SPI configuration for debugging**
     LOG_INF("🚀 A6M_0011 SPI Configuration:");
     LOG_INF("  - Device: %s", cfg->spi.bus->name);
     LOG_INF("  - Max Frequency: %d Hz (%.2f MHz)", cfg->spi.config.frequency,
-             (float)cfg->spi.config.frequency / 1000000.0f);
+            (float)cfg->spi.config.frequency / 1000000.0f);
     LOG_INF("  - Operation Mode: 0x%08X", cfg->spi.config.operation);
     LOG_INF("  - Slave ID: %d", cfg->spi.config.slave);
 
@@ -901,7 +955,7 @@ static int a6m_0011_init(const struct device *dev)
         LOG_ERR("GPIO v0_9 device not ready");
         return -ENODEV;
     }
-    /****************************************************************** */
+    /*******************************************************/
     ret = gpio_pin_configure_dt(&cfg->left_cs, GPIO_OUTPUT);
     if (ret < 0)
     {
@@ -1004,8 +1058,7 @@ static int a6m_0011_init(const struct device *dev)
 }
 /********************************************************************************/
 
-/* 驱动API注册 */
-// static const struct display_driver_api a6m_0011_driver_api =
+/* 驱动API注册; Driver API registration */
 static DEVICE_API(display, a6m_0011_api) = {
     .blanking_on      = a6m_0011_blanking_on,
     .blanking_off     = a6m_0011_blanking_off,
@@ -1015,29 +1068,31 @@ static DEVICE_API(display, a6m_0011_api) = {
     .get_framebuffer  = a6m_0011_get_framebuffer,   // 获取帧缓冲区；Get framebuffer
     .get_capabilities = a6m_0011_get_capabilities,  // 获取显示能力；Get display capabilities
 };
-#define CUSTOM_a6m_0011_DEFINE(inst)                                                                               \
-    /* 静态数组定义 */                                                                                             \
-    static uint8_t         a6m_0011_bulk_tx_buffer_##inst[4 + MAX_LINES_PER_WRITE * DT_INST_PROP(inst, width)];    \
-    static a6m_0011_config a6m_0011_config_##inst = {                                                              \
-        .spi           = SPI_DT_SPEC_INST_GET(inst, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8U), 0U), \
-        .left_cs       = GPIO_DT_SPEC_INST_GET(inst, left_cs_gpios),                                               \
-        .right_cs      = GPIO_DT_SPEC_INST_GET(inst, right_cs_gpios),                                              \
-        .reset         = GPIO_DT_SPEC_INST_GET(inst, reset_gpios),                                                 \
-        .vcom          = GPIO_DT_SPEC_INST_GET(inst, vcom_gpios),                                                  \
-        .v1_8          = GPIO_DT_SPEC_INST_GET(inst, v1_8_gpios),                                                  \
-        .v0_9          = GPIO_DT_SPEC_INST_GET(inst, v0_9_gpios),                                                  \
-        .screen_width  = DT_INST_PROP(inst, width),                                                                \
-        .screen_height = DT_INST_PROP(inst, height),                                                               \
-    };                                                                                                             \
-                                                                                                                   \
-    static a6m_0011_data a6m_0011_data_##inst = {                                                                  \
-        .tx_buf_bulk   = a6m_0011_bulk_tx_buffer_##inst,                                                           \
-        .screen_width  = DT_INST_PROP(inst, width),                                                                \
-        .screen_height = DT_INST_PROP(inst, height),                                                               \
-        .initialized   = false,                                                                                    \
-    };                                                                                                             \
-                                                                                                                   \
-    DEVICE_DT_INST_DEFINE(inst, a6m_0011_init, NULL, &a6m_0011_data_##inst, &a6m_0011_config_##inst, POST_KERNEL,  \
+/* 每行 I4 字节数：两像素/字节 ; Number of I4 bytes per line: two pixels/byte */
+#define A6M_I4_BYTES_PER_LINE(w) (((w) + 1U) / 2U)
+#define CUSTOM_a6m_0011_DEFINE(inst)                                                                                \
+    static uint8_t                                                                                                  \
+        a6m_0011_bulk_tx_buffer_##inst[4 + MAX_LINES_PER_WRITE * A6M_I4_BYTES_PER_LINE(DT_INST_PROP(inst, width))]; \
+    static a6m_0011_config a6m_0011_config_##inst = {                                                               \
+        .spi           = SPI_DT_SPEC_INST_GET(inst, SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB | SPI_WORD_SET(8U), 0U),  \
+        .left_cs       = GPIO_DT_SPEC_INST_GET(inst, left_cs_gpios),                                                \
+        .right_cs      = GPIO_DT_SPEC_INST_GET(inst, right_cs_gpios),                                               \
+        .reset         = GPIO_DT_SPEC_INST_GET(inst, reset_gpios),                                                  \
+        .vcom          = GPIO_DT_SPEC_INST_GET(inst, vcom_gpios),                                                   \
+        .v1_8          = GPIO_DT_SPEC_INST_GET(inst, v1_8_gpios),                                                   \
+        .v0_9          = GPIO_DT_SPEC_INST_GET(inst, v0_9_gpios),                                                   \
+        .screen_width  = DT_INST_PROP(inst, width),                                                                 \
+        .screen_height = DT_INST_PROP(inst, height),                                                                \
+    };                                                                                                              \
+                                                                                                                    \
+    static a6m_0011_data a6m_0011_data_##inst = {                                                                   \
+        .tx_buf_bulk   = a6m_0011_bulk_tx_buffer_##inst,                                                            \
+        .screen_width  = DT_INST_PROP(inst, width),                                                                 \
+        .screen_height = DT_INST_PROP(inst, height),                                                                \
+        .initialized   = false,                                                                                     \
+    };                                                                                                              \
+                                                                                                                    \
+    DEVICE_DT_INST_DEFINE(inst, a6m_0011_init, NULL, &a6m_0011_data_##inst, &a6m_0011_config_##inst, POST_KERNEL,   \
                           CONFIG_DISPLAY_INIT_PRIORITY, &a6m_0011_api);
 
 /* 为每个状态为"okay"的设备树节点创建实例；Create an instance for each device tree node with the status "okay"*/
