@@ -1,13 +1,10 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import {Platform} from "react-native"
+import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/bridge/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {INTENSE_LOGGING} from "@/consts"
+import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -47,12 +44,12 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
     console.log("CoreStatus: Initializing core connection")
-    coreCommunicator.initialize()
+    bridge.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
 
   useEffect(() => {
@@ -61,10 +58,10 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
       refreshStatus(data)
     }
 
-    coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+    bridge.on("statusUpdateReceived", handleStatusUpdateReceived)
     return () => {
-      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      bridge.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
     }
   }, [])
 

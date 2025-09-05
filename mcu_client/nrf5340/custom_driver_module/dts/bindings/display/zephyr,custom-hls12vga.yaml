@@ -1,4 +1,3 @@
-
 description: HLS12VGA SPI display controller
 
 compatible: "zephyr,custom-hls12vga"
@@ -40,9 +39,8 @@ properties:
     type: int
     required: true
     description: Display width in pixels
-  
+
   height:
     type: int
     required: true
     description: Display height in pixels
-  

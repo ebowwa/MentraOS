@@ -13,7 +13,7 @@ import {
   TextStyle,
 } from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {
   checkNotificationAccessSpecialPermission,
@@ -144,7 +144,7 @@ export default function PrivacySettingsScreen() {
 
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled
-    await coreCommunicator.sendToggleSensing(newSensing)
+    await bridge.sendToggleSensing(newSensing)
     setIsSensingEnabled(newSensing)
   }
 

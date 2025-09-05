@@ -75,7 +75,7 @@ class SherpaOnnxTranscriber {
                 if fileManager.fileExists(atPath: ctcModelPath) {
                     // CTC model detected
                     modelType = "ctc"
-                    Core.log("Detected CTC model at \(customPath)")
+                    Bridge.log("Detected CTC model at \(customPath)")
 
                     // Create CTC model config using Zipformer2Ctc
                     var nemoCtc = sherpaOnnxOnlineNemoCtcModelConfig(
@@ -107,7 +107,7 @@ class SherpaOnnxTranscriber {
                 } else if fileManager.fileExists(atPath: transducerEncoderPath) {
                     // Transducer model detected
                     modelType = "transducer"
-                    Core.log("Detected transducer model at \(customPath)")
+                    Bridge.log("Detected transducer model at \(customPath)")
 
                     let decoderPath = (customPath as NSString).appendingPathComponent("decoder.onnx")
                     let joinerPath = (customPath as NSString).appendingPathComponent("joiner.onnx")
@@ -213,10 +213,10 @@ class SherpaOnnxTranscriber {
             startProcessingTask()
             isRunning = true
 
-            Core.log("Sherpa-ONNX ASR initialized successfully with \(modelType) model")
+            Bridge.log("Sherpa-ONNX ASR initialized successfully with \(modelType) model")
 
         } catch {
-            Core.log("Failed to initialize Sherpa-ONNX: \(error.localizedDescription)")
+            Bridge.log("Failed to initialize Sherpa-ONNX: \(error.localizedDescription)")
         }
     }
 
@@ -243,7 +243,7 @@ class SherpaOnnxTranscriber {
      */
     func acceptAudio(pcm16le: Data) {
         guard isRunning else {
-            Core.log("⚠️ Ignoring audio - transcriber not running")
+            Bridge.log("⚠️ Ignoring audio - transcriber not running")
             return
         }
 
@@ -262,7 +262,7 @@ class SherpaOnnxTranscriber {
             // Keep queue size manageable
             if self.pcmBuffers.count > Self.QUEUE_CAPACITY {
                 let removedBuffer = self.pcmBuffers.removeFirst()
-                Core.log("⚠️ Audio queue overflow - dropped buffer of \(removedBuffer.count) bytes")
+                Bridge.log("⚠️ Audio queue overflow - dropped buffer of \(removedBuffer.count) bytes")
             }
         }
     }
@@ -271,7 +271,7 @@ class SherpaOnnxTranscriber {
      * Start a background task to continuously consume audio and decode using Sherpa.
      */
     private func startProcessingTask() {
-        Core.log("🚀 Starting Sherpa-ONNX processing task...")
+        Bridge.log("🚀 Starting Sherpa-ONNX processing task...")
 
         processingQueue = DispatchQueue(label: "com.augmentos.sherpaonnx.processor", qos: .userInitiated)
 
@@ -288,7 +288,7 @@ class SherpaOnnxTranscriber {
      * Pulls audio from queue, feeds into Sherpa, emits partial/final results.
      */
     private func runLoop() {
-        Core.log("🔄 Sherpa-ONNX processing loop started")
+        Bridge.log("🔄 Sherpa-ONNX processing loop started")
 
         while isRunning {
             // Pull data from queue
@@ -306,7 +306,7 @@ class SherpaOnnxTranscriber {
                 defer { objc_sync_exit(self) }
 
                 guard let recognizer = recognizer else {
-                    Core.log("⚠️ Recognizer not available, skipping audio chunk")
+                    Bridge.log("⚠️ Recognizer not available, skipping audio chunk")
                     continue
                 }
 
@@ -346,7 +346,7 @@ class SherpaOnnxTranscriber {
                         }
                     }
                 } catch {
-                    Core.log("❌ Error processing audio: \(error.localizedDescription)")
+                    Bridge.log("❌ Error processing audio: \(error.localizedDescription)")
                 }
             } else {
                 // Sleep briefly to avoid tight CPU loop if no audio is available
@@ -354,7 +354,7 @@ class SherpaOnnxTranscriber {
             }
         }
 
-        Core.log("ASR processing thread stopped")
+        Bridge.log("ASR processing thread stopped")
     }
 
     /**
@@ -387,7 +387,7 @@ class SherpaOnnxTranscriber {
      * This shuts down the processing thread and releases Sherpa-ONNX resources.
      */
     func shutdown() {
-        Core.log("🛑 Shutting down SherpaOnnxTranscriber...")
+        Bridge.log("🛑 Shutting down SherpaOnnxTranscriber...")
 
         isRunning = false
         processingTask?.cancel()
@@ -398,7 +398,7 @@ class SherpaOnnxTranscriber {
 
         // The recognizer will be automatically cleaned up by ARC when set to nil
         if recognizer != nil {
-            Core.log("🧹 Cleaning up Sherpa-ONNX recognizer")
+            Bridge.log("🧹 Cleaning up Sherpa-ONNX recognizer")
             recognizer = nil
         }
 
@@ -406,12 +406,12 @@ class SherpaOnnxTranscriber {
         pcmQueue.sync {
             let remainingBuffers = self.pcmBuffers.count
             if remainingBuffers > 0 {
-                Core.log("🗑️ Clearing \(remainingBuffers) remaining audio buffers")
+                Bridge.log("🗑️ Clearing \(remainingBuffers) remaining audio buffers")
             }
             self.pcmBuffers.removeAll()
         }
 
-        Core.log("✅ SherpaOnnxTranscriber shutdown complete")
+        Bridge.log("✅ SherpaOnnxTranscriber shutdown complete")
     }
 
     /**
@@ -419,7 +419,7 @@ class SherpaOnnxTranscriber {
      * Shuts down existing resources, clears buffers, and reinitializes the recognizer.
      */
     func restart() {
-        Core.log("♻️ Restarting SherpaOnnxTranscriber...")
+        Bridge.log("♻️ Restarting SherpaOnnxTranscriber...")
         shutdown()
         initialize()
     }
@@ -435,19 +435,19 @@ class SherpaOnnxTranscriber {
 
         // First check if we have a custom model path
         if let customPath = customModelPath {
-            Core.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
+            Bridge.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
 
             // Check for tokens.txt (required for all models)
             let tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
             guard fileManager.fileExists(atPath: tokensPath) else {
-                Core.log("❌ Missing tokens.txt at custom path")
+                Bridge.log("❌ Missing tokens.txt at custom path")
                 return false
             }
 
             // Check for CTC model
             let ctcModelPath = (customPath as NSString).appendingPathComponent("model.int8.onnx")
             if fileManager.fileExists(atPath: ctcModelPath) {
-                Core.log("✅ CTC model files found at custom path")
+                Bridge.log("✅ CTC model files found at custom path")
                 return true
             }
 
@@ -463,16 +463,16 @@ class SherpaOnnxTranscriber {
             }
 
             if allTransducerFilesPresent {
-                Core.log("✅ Transducer model files found at custom path")
+                Bridge.log("✅ Transducer model files found at custom path")
                 return true
             }
 
-            Core.log("❌ No complete model found at custom path")
+            Bridge.log("❌ No complete model found at custom path")
             return false
         }
 
         // Fall back to checking bundle (transducer only for backwards compatibility)
-        Core.log("Checking for Sherpa-ONNX model files in bundle...")
+        Bridge.log("Checking for Sherpa-ONNX model files in bundle...")
 
         let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
         for fileName in requiredFiles {
@@ -480,12 +480,12 @@ class SherpaOnnxTranscriber {
             guard components.count == 2,
                   Bundle.main.path(forResource: components[0], ofType: components[1]) != nil
             else {
-                Core.log("❌ Missing model file in bundle: \(fileName)")
+                Bridge.log("❌ Missing model file in bundle: \(fileName)")
                 return false
             }
         }
 
-        Core.log("✅ All Sherpa-ONNX model files found in bundle")
+        Bridge.log("✅ All Sherpa-ONNX model files found in bundle")
         return true
     }
 }

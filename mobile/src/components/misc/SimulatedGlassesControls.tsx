@@ -1,7 +1,7 @@
 import React, {useCallback, useState} from "react"
 import {TouchableOpacity, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
-import CoreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -28,7 +28,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   const setDashboardPosition = async (isHeadUp: boolean) => {
     console.log("SimulatedGlassesControls: setting dashboard position to", isHeadUp ? "up" : "down")
     try {
-      await CoreCommunicator.simulateHeadPosition(isHeadUp ? "up" : "down")
+      await bridge.simulateHeadPosition(isHeadUp ? "up" : "down")
     } catch (error) {
       console.error("SimulatedGlassesControls: Error details:", error)
     }
@@ -42,7 +42,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   const handleButtonPress = async (pressType: "short" | "long") => {
     console.log(`SimulatedGlassesControls: Button ${pressType} press triggered`)
     try {
-      const result = await CoreCommunicator.simulateButtonPress("camera", pressType)
+      const result = await bridge.simulateButtonPress("camera", pressType)
       console.log(`SimulatedGlassesControls: Button ${pressType} press command sent successfully, result:`, result)
     } catch (error) {
       console.error("Failed to simulate button press:", error)

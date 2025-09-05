@@ -114,8 +114,21 @@ public class SherpaOnnxTranscriber {
                 config.setDecodingMethod("greedy_search");
                 config.setEnableEndpoint(true);
                 
-                // Still need to pass AssetManager, even though we're using file paths
-                recognizer = new OnlineRecognizer(context.getAssets(), config);
+                // Wrap native call in try-catch to handle load failures gracefully
+                try {
+                    // Still need to pass AssetManager, even though we're using file paths
+                    recognizer = new OnlineRecognizer(null, config);
+                } catch (RuntimeException e) {
+                    Log.e(TAG, "Failed to create OnlineRecognizer - model file may be corrupted or incomplete", e);
+                    recognizer = null;
+                    stream = null;
+                    return; // Exit early - model loading failed
+                } catch (UnsatisfiedLinkError e) {
+                    Log.e(TAG, "Native library error creating OnlineRecognizer", e);
+                    recognizer = null;
+                    stream = null;
+                    return; // Exit early - native library issue
+                }
                 
             } else {
                 // No model available - transcription disabled
@@ -137,6 +150,27 @@ public class SherpaOnnxTranscriber {
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize Sherpa-ONNX", e);
+            
+            // Clean up any partially initialized resources
+            if (stream != null) {
+                try {
+                    stream.release();
+                } catch (Exception releaseEx) {
+                    Log.e(TAG, "Error releasing stream after initialization failure", releaseEx);
+                }
+                stream = null;
+            }
+            
+            if (recognizer != null) {
+                try {
+                    recognizer.release();
+                } catch (Exception releaseEx) {
+                    Log.e(TAG, "Error releasing recognizer after initialization failure", releaseEx);
+                }
+                recognizer = null;
+            }
+            
+            running.set(false);
         }
     }
 
@@ -362,10 +396,18 @@ public class SherpaOnnxTranscriber {
             return false;
         }
         
-        // Check for CTC model
+        // Check for CTC model - also verify it's readable and has non-zero size
         File ctcModelFile = new File(path, "model.int8.onnx");
         if (ctcModelFile.exists()) {
-            Log.i(TAG, "CTC model found at: " + path);
+            if (!ctcModelFile.canRead()) {
+                Log.e(TAG, "CTC model file exists but is not readable: " + ctcModelFile.getAbsolutePath());
+                return false;
+            }
+            if (ctcModelFile.length() == 0) {
+                Log.e(TAG, "CTC model file exists but is empty: " + ctcModelFile.getAbsolutePath());
+                return false;
+            }
+            Log.i(TAG, "CTC model found at: " + path + " (size: " + ctcModelFile.length() + " bytes)");
             return true;
         }
         
@@ -375,6 +417,16 @@ public class SherpaOnnxTranscriber {
         for (String fileName : transducerFiles) {
             File file = new File(path, fileName);
             if (!file.exists()) {
+                allTransducerFilesPresent = false;
+                break;
+            }
+            if (!file.canRead()) {
+                Log.e(TAG, "Transducer file exists but is not readable: " + file.getAbsolutePath());
+                allTransducerFilesPresent = false;
+                break;
+            }
+            if (file.length() == 0) {
+                Log.e(TAG, "Transducer file exists but is empty: " + file.getAbsolutePath());
                 allTransducerFilesPresent = false;
                 break;
             }

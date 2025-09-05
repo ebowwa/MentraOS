@@ -314,7 +314,7 @@ enum GlassesError: Error {
         // leftGlassUUID = nil
         // rightGlassUUID = nil
 
-        Core.log("G1: ERG1Manager deinitialized")
+        Bridge.log("G1: ERG1Manager deinitialized")
     }
 
     // MARK: - Serial Number and Color Detection
@@ -402,8 +402,8 @@ enum GlassesError: Error {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                Core.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
+                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Bridge.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
 
                 // Trigger status update to include serial number in status JSON
                 DispatchQueue.main.async {
@@ -411,14 +411,14 @@ enum GlassesError: Error {
                 }
             }
         } catch {
-            Core.log("G1: Error creating serial number JSON: \(error)")
+            Bridge.log("G1: Error creating serial number JSON: \(error)")
         }
     }
 
     // @@@ REACT NATIVE FUNCTIONS @@@
 
     @objc func RN_setSearchId(_ searchId: String) {
-        Core.log("G1: SETTING SEARCH_ID: \(searchId)")
+        Bridge.log("G1: SETTING SEARCH_ID: \(searchId)")
         DEVICE_SEARCH_ID = searchId
     }
 
@@ -435,16 +435,16 @@ enum GlassesError: Error {
 
             self.isDisconnecting = false // reset intentional disconnect flag
             guard centralManager!.state == .poweredOn else {
-                Core.log("G1: Attempting to scan but bluetooth is not powered on.")
+                Bridge.log("G1: Attempting to scan but bluetooth is not powered on.")
                 return false
             }
 
             // send our already connected devices to RN:
             let devices = getConnectedDevices()
-            Core.log("G1: connnectedDevices.count: (\(devices.count))")
+            Bridge.log("G1: connnectedDevices.count: (\(devices.count))")
             for device in devices {
                 if let name = device.name {
-                    Core.log("G1: Connected to device: \(name)")
+                    Bridge.log("G1: Connected to device: \(name)")
                     if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
                         leftPeripheral = device
                         device.delegate = self
@@ -460,7 +460,7 @@ enum GlassesError: Error {
 
             // First try: Connect by UUID (works in background)
             if connectByUUID() {
-                Core.log("G1: 🔄 Found and attempting to connect to stored glasses UUIDs")
+                Bridge.log("G1: 🔄 Found and attempting to connect to stored glasses UUIDs")
                 // Wait for connection to complete - no need to scan
                 return true
             }
@@ -487,15 +487,15 @@ enum GlassesError: Error {
 
     // connect to glasses we've discovered:
     @objc func RN_connectGlasses() -> Bool {
-        Core.log("RN_connectGlasses()")
+        Bridge.log("RN_connectGlasses()")
 
         if let side = leftPeripheral {
-            Core.log("G1: connecting to left glass: \(side.name ?? "(unknown)")")
+            Bridge.log("G1: connecting to left glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 
         if let side = rightPeripheral {
-            Core.log("G1: connecting to right glass: \(side.name ?? "(unknown)")")
+            Bridge.log("G1: connecting to right glass: \(side.name ?? "(unknown)")")
             centralManager!.connect(side, options: nil)
         }
 
@@ -504,7 +504,7 @@ enum GlassesError: Error {
             return false
         }
 
-        Core.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
+        Bridge.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
         // setReadiness(left: true, right: true)
         //    startHeartbeatTimer();
         RN_stopScan()
@@ -689,13 +689,13 @@ enum GlassesError: Error {
         if left != nil {
             leftReady = left!
             if !prevLeftReady, leftReady {
-                Core.log("Left ready!")
+                Bridge.log("Left ready!")
             }
         }
         if right != nil {
             rightReady = right!
             if !prevRightReady, rightReady {
-                Core.log("Right ready!")
+                Bridge.log("Right ready!")
             }
         }
 
@@ -708,7 +708,7 @@ enum GlassesError: Error {
 
     @objc func RN_stopScan() {
         centralManager!.stopScan()
-        Core.log("G1: Stopped scanning for devices")
+        Bridge.log("G1: Stopped scanning for devices")
     }
 
     @objc func RN_getSerialNumberInfo() -> [String: Any] {
@@ -744,7 +744,7 @@ enum GlassesError: Error {
         leftPeripheral = nil
         rightPeripheral = nil
         setReadiness(left: false, right: false)
-        Core.log("G1: Disconnected from glasses")
+        Bridge.log("G1: Disconnected from glasses")
     }
 
     // @@@ END REACT NATIVE FUNCTIONS
@@ -815,7 +815,7 @@ enum GlassesError: Error {
 
         while attempts < maxAttempts, !success {
             if attempts > 0 {
-                Core.log("G1: trying again to send to:\(side): \(attempts)")
+                Bridge.log("G1: trying again to send to:\(side): \(attempts)")
             }
             let data = Data(chunks[0])
             // CoreCommsService.log("SEND (\(side)) \(data.hexEncodedString())")
@@ -854,7 +854,7 @@ enum GlassesError: Error {
             let firstFewBytes = String(Data(lastChunk).hexEncodedString().prefix(16)).uppercased()
             // don't log if it starts with 25 (heartbeat):
             if lastChunk[0] != Commands.BLE_REQ_HEARTBEAT.rawValue {
-                Core.log("SEND (\(side)) \(firstFewBytes)")
+                Bridge.log("SEND (\(side)) \(firstFewBytes)")
             }
 
 //      if (lastChunk[0] == 0x4E) {
@@ -880,7 +880,7 @@ enum GlassesError: Error {
 
             attempts += 1
             if !success, attempts >= maxAttempts {
-                Core.log("G1: ❌ Command timed out!")
+                Bridge.log("G1: ❌ Command timed out!")
                 startReconnectionTimer()
                 break
             }
@@ -895,7 +895,7 @@ enum GlassesError: Error {
     // Process a single number with timeouts
     private func processCommand(_ command: BufferedCommand) async {
         if command.chunks.isEmpty {
-            Core.log("G1: @@@ chunks was empty! @@@")
+            Bridge.log("G1: @@@ chunks was empty! @@@")
             return
         }
 
@@ -934,7 +934,7 @@ enum GlassesError: Error {
     func startHeartbeatTimer() {
         // Check if a timer is already running
         if heartbeatTimer != nil, heartbeatTimer!.isValid {
-            Core.log("G1: Heartbeat timer already running")
+            Bridge.log("G1: Heartbeat timer already running")
             return
         }
 
@@ -1003,7 +1003,7 @@ enum GlassesError: Error {
 
         let side = peripheral == leftPeripheral ? "L" : "R"
         let s = peripheral == leftPeripheral ? "L" : "R"
-        Core.log("G1: RECV (\(s)) \(data.hexEncodedString())")
+        Bridge.log("G1: RECV (\(s)) \(data.hexEncodedString())")
 
         switch Commands(rawValue: command) {
         case .BLE_REQ_INIT:
@@ -1041,7 +1041,7 @@ enum GlassesError: Error {
         case .UNK_2:
             handleAck(from: peripheral, success: true)
         case .BLE_REQ_HEARTBEAT:
-            Core.log("heartbeatCounter: \(heartbeatCounter) data[1]: \(data[1])")
+            Bridge.log("heartbeatCounter: \(heartbeatCounter) data[1]: \(data[1])")
             handleAck(from: peripheral, success: data[1] == heartbeatCounter - 1)
         case .BLE_REQ_BATTERY:
             // TODO: ios handle semaphores correctly here
@@ -1065,12 +1065,12 @@ enum GlassesError: Error {
             // if left, update left battery level, if right, update right battery level
             if peripheral == leftPeripheral {
                 if leftBatteryLevel != batteryPercent {
-                    Core.log("G1: Left glass battery: \(batteryPercent)%")
+                    Bridge.log("G1: Left glass battery: \(batteryPercent)%")
                     leftBatteryLevel = batteryPercent
                 }
             } else if peripheral == rightPeripheral {
                 if rightBatteryLevel != batteryPercent {
-                    Core.log("G1: Right glass battery: \(batteryPercent)%")
+                    Bridge.log("G1: Right glass battery: \(batteryPercent)%")
                     rightBatteryLevel = batteryPercent
                 }
             }
@@ -1087,66 +1087,66 @@ enum GlassesError: Error {
             let order = data[1]
             switch DeviceOrders(rawValue: order) {
             case .HEAD_UP:
-                Core.log("G1: HEAD_UP")
+                Bridge.log("G1: HEAD_UP")
                 isHeadUp = true
             case .HEAD_UP2:
-                Core.log("G1: HEAD_UP2")
+                Bridge.log("G1: HEAD_UP2")
                 isHeadUp = true
             // case .HEAD_DOWN:
             //   CoreCommsService.log("HEAD_DOWN")
             //   isHeadUp = false
             //   break
             case .HEAD_DOWN2:
-                Core.log("G1: HEAD_DOWN2")
+                Bridge.log("G1: HEAD_DOWN2")
                 isHeadUp = false
             case .ACTIVATED:
-                Core.log("G1: ACTIVATED")
+                Bridge.log("G1: ACTIVATED")
             case .SILENCED:
-                Core.log("G1: SILENCED")
+                Bridge.log("G1: SILENCED")
             case .DISPLAY_READY:
-                Core.log("G1: DISPLAY_READY")
+                Bridge.log("G1: DISPLAY_READY")
             //        sendInitCommand(to: peripheral)// experimental
             case .TRIGGER_FOR_AI:
-                Core.log("G1: TRIGGER AI")
+                Bridge.log("G1: TRIGGER AI")
             case .TRIGGER_FOR_STOP_RECORDING:
-                Core.log("G1: STOP RECORDING")
+                Bridge.log("G1: STOP RECORDING")
             case .TRIGGER_CHANGE_PAGE:
-                Core.log("G1: TRIGGER_CHANGE_PAGE")
+                Bridge.log("G1: TRIGGER_CHANGE_PAGE")
             case .CASE_REMOVED:
-                Core.log("G1: REMOVED FROM CASE")
+                Bridge.log("G1: REMOVED FROM CASE")
                 caseRemoved = true
             case .CASE_REMOVED2:
-                Core.log("G1: REMOVED FROM CASE2")
+                Bridge.log("G1: REMOVED FROM CASE2")
                 caseRemoved = true
             case .CASE_OPEN:
                 caseOpen = true
                 caseRemoved = false
-                Core.log("G1: CASE OPEN")
+                Bridge.log("G1: CASE OPEN")
             case .CASE_CLOSED:
                 caseOpen = false
                 caseRemoved = false
-                Core.log("G1: CASE CLOSED")
+                Bridge.log("G1: CASE CLOSED")
             case .CASE_CHARGING_STATUS:
                 guard data.count >= 3 else { break }
                 let status = data[2]
                 if status == 0x01 {
                     caseCharging = true
-                    Core.log("G1: CASE CHARGING")
+                    Bridge.log("G1: CASE CHARGING")
                 } else {
                     caseCharging = false
-                    Core.log("G1: CASE NOT CHARGING")
+                    Bridge.log("G1: CASE NOT CHARGING")
                 }
             case .CASE_CHARGE_INFO:
-                Core.log("G1: CASE CHARGE INFO")
+                Bridge.log("G1: CASE CHARGE INFO")
                 guard data.count >= 3 else { break }
                 if Int(data[2]) != -1 {
                     caseBatteryLevel = Int(data[2])
-                    Core.log("G1: Case battery level: \(caseBatteryLevel)%")
+                    Bridge.log("G1: Case battery level: \(caseBatteryLevel)%")
                 } else {
-                    Core.log("G1: Case battery level was -1")
+                    Bridge.log("G1: Case battery level was -1")
                 }
             case .DOUBLE_TAP:
-                Core.log("G1: DOUBLE TAP / display turned off")
+                Bridge.log("G1: DOUBLE TAP / display turned off")
             //        Task {
             ////          RN_sendText("DOUBLE TAP DETECTED")
             ////          queueChunks([[UInt8(0x00), UInt8(0x01)]])
@@ -1159,7 +1159,7 @@ enum GlassesError: Error {
                 break
             }
         default:
-            Core.log("G1: received from G1(not handled): \(data.hexEncodedString())")
+            Bridge.log("G1: received from G1(not handled): \(data.hexEncodedString())")
         }
     }
 }
@@ -1176,7 +1176,7 @@ extension ERG1Manager {
         ]
         let whitelistJson = createWhitelistJson(apps: apps)
 
-        Core.log("G1: Creating chunks for hardcoded whitelist: \(whitelistJson)")
+        Bridge.log("G1: Creating chunks for hardcoded whitelist: \(whitelistJson)")
 
         // Convert JSON to bytes and split into chunks
         return createWhitelistChunks(json: whitelistJson)
@@ -1214,7 +1214,7 @@ extension ERG1Manager {
                 return "{}"
             }
         } catch {
-            Core.log("G1: Error creating whitelist JSON: \(error.localizedDescription)")
+            Bridge.log("G1: Error creating whitelist JSON: \(error.localizedDescription)")
             return "{}"
         }
     }
@@ -1227,7 +1227,7 @@ extension ERG1Manager {
         let totalChunks = Int(ceil(Double(jsonData.count) / Double(MAX_CHUNK_SIZE)))
         var chunks: [Data] = []
 
-        Core.log("G1: jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
+        Bridge.log("G1: jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
 
         for i in 0 ..< totalChunks {
             let start = i * MAX_CHUNK_SIZE
@@ -1380,7 +1380,7 @@ extension ERG1Manager {
             }
 
             if peripheral == nil || characteristic == nil {
-                Core.log("G1: ⚠️ peripheral/characteristic not found, resuming immediately")
+                Bridge.log("G1: ⚠️ peripheral/characteristic not found, resuming immediately")
                 //        continuation.resume()
                 continuation.resume(returning: false)
                 return
@@ -1407,7 +1407,7 @@ extension ERG1Manager {
 
                 if let pendingContinuation = pendingContinuation {
                     let elapsed = Date().timeIntervalSince(startTime) * 1000
-                    Core.log("G1: ⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
+                    Bridge.log("G1: ⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
                     pendingContinuation.resume(returning: false)
                 }
             }
@@ -1454,7 +1454,7 @@ extension ERG1Manager {
     }
 
     @objc func RN_sendWhitelist() {
-        Core.log("G1: RN_sendWhitelist()")
+        Bridge.log("G1: RN_sendWhitelist()")
         let whitelistChunks = getWhitelistChunks()
         queueChunks(whitelistChunks, sendLeft: true, sendRight: true, sleepAfterMs: 100)
     }
@@ -1476,7 +1476,7 @@ extension ERG1Manager {
     }
 
     func setBrightness(_ level: UInt8, autoMode: Bool = false) async -> Bool {
-        Core.log("G1: setBrightness()")
+        Bridge.log("G1: setBrightness()")
         // Ensure level is between 0x00 and 0x29 (0-41)
         var lvl: UInt8 = level
         if level > 0x29 {
@@ -1523,14 +1523,14 @@ extension ERG1Manager {
     }
 
     func setHeadUpAngle(_ angle: UInt8) async -> Bool {
-        Core.log("G1: setHeadUpAngle()")
+        Bridge.log("G1: setHeadUpAngle()")
         let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
         queueChunks([command])
         return true
     }
 
     func getBatteryStatus() {
-        Core.log("G1: getBatteryStatus()")
+        Bridge.log("G1: getBatteryStatus()")
         let command: [UInt8] = [Commands.BLE_REQ_BATTERY.rawValue, 0x01]
         queueChunks([command])
     }
@@ -1595,7 +1595,7 @@ extension ERG1Manager {
     }
 
     func setMicEnabled(enabled: Bool) async -> Bool {
-        Core.log("G1: setMicEnabled() \(enabled)")
+        Bridge.log("G1: setMicEnabled() \(enabled)")
         var micOnData = Data()
         micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
         if enabled {
@@ -1618,20 +1618,20 @@ extension ERG1Manager {
 
     func displayBitmap(base64ImageData: String) async -> Bool {
         guard let bmpData = Data(base64Encoded: base64ImageData) else {
-            Core.log("G1: Failed to decode base64 image data")
+            Bridge.log("G1: Failed to decode base64 image data")
             return false
         }
 
-        Core.log("G1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
+        Bridge.log("G1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
         let invertedBmpData = invertBmpPixels(bmpData)
         let result = await sendBmp(bmpData: invertedBmpData)
-        Core.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
+        Bridge.log("G1: 🖼️ Single frame: Transmission \(result ? "SUCCESS" : "FAILED")")
         return result
     }
 
     /// Clear display using MentraOS's 0x18 command (exit to dashboard)
     func clearDisplay() {
-        Core.log("G1: RN_clearDisplay() - Using 0x18 exit command")
+        Bridge.log("G1: RN_clearDisplay() - Using 0x18 exit command")
         Task {
             // Send 0x18 to both glasses (MentraOS's clear method)
 
@@ -1691,7 +1691,7 @@ extension ERG1Manager {
 
     private func invertBmpPixels(_ bmpData: Data) -> Data {
         guard bmpData.count > 62 else {
-            Core.log("G1: BMP data too small to contain pixel data")
+            Bridge.log("G1: BMP data too small to contain pixel data")
             return bmpData
         }
 
@@ -1708,7 +1708,7 @@ extension ERG1Manager {
             invertedData.append(invertedByte)
         }
 
-        Core.log("G1: Inverted BMP pixels: \(pixelData.count) bytes processed")
+        Bridge.log("G1: Inverted BMP pixels: \(pixelData.count) bytes processed")
         return invertedData
     }
 
@@ -1722,7 +1722,7 @@ extension ERG1Manager {
         frameSequence += 1
         lastFrameTime = currentTime
 
-        Core.log("G1: 🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
+        Bridge.log("G1: 🎬 Frame \(frameSequence): \(String(format: "%.0f", timeSinceLastFrame * 1000))ms since last frame")
 
         // MentraOS constants - exact match
         let packLen = 194 // Exact chunk size from MentraOS
@@ -1748,14 +1748,14 @@ extension ERG1Manager {
             if index < 600 { // First 3 chunks (194 * 3 = 582)
                 let chunkSample = Array(singlePack.prefix(20))
                 let chunkHex = chunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-                Core.log("G1: 🔍 Chunk creation - index \(index), sample: \(chunkHex)")
+                Bridge.log("G1: 🔍 Chunk creation - index \(index), sample: \(chunkHex)")
             }
 
             multiPacks.append(singlePack)
             index += packLen
         }
 
-        Core.log("G1: Created \(multiPacks.count) packs from BMP data (MentraOS format)")
+        Bridge.log("G1: Created \(multiPacks.count) packs from BMP data (MentraOS format)")
 
         var chunks: [[UInt8]] = []
 
@@ -1910,7 +1910,7 @@ extension ERG1Manager {
         crcCommand.append(UInt8((crcValue >> 8) & 0xFF))
         crcCommand.append(UInt8(crcValue & 0xFF))
 
-        Core.log("G1: Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
+        Bridge.log("G1: Sending CRC command, CRC value: \(String(format: "%08x", crcValue))")
 
         // Send CRC with retry
         for attempt in 0 ..< maxAttempts {
@@ -1920,13 +1920,13 @@ extension ERG1Manager {
             try? await Task.sleep(nanoseconds: UInt64(timeoutMs * 1_000_000))
 
             // For now, assume success (in a real implementation, you'd check for ACK)
-            Core.log("G1: CRC command sent successfully")
+            Bridge.log("G1: CRC command sent successfully")
             return true
 
-            Core.log("G1: CRC command failed, attempt \(attempt + 1)")
+            Bridge.log("G1: CRC command failed, attempt \(attempt + 1)")
         }
 
-        Core.log("G1: Failed to send CRC command after \(maxAttempts) attempts")
+        Bridge.log("G1: Failed to send CRC command after \(maxAttempts) attempts")
         return false
     }
 }
@@ -1986,10 +1986,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
                 if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                    Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
                 }
             } catch {
-                Core.log("Error converting to JSON: \(error)")
+                Bridge.log("Error converting to JSON: \(error)")
             }
         }
     }
@@ -1999,21 +1999,21 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         guard let name = peripheral.name else { return }
         guard name.contains("Even G1") else { return }
 
-        Core.log("G1: found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+        Bridge.log("G1: found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
 
         // Only process serial number for devices that match our search ID
         if name.contains(DEVICE_SEARCH_ID) {
             // Extract manufacturer data to decode serial number
             if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
-                Core.log("G1: 📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
+                Bridge.log("G1: 📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
 
                 // Try to decode serial number from manufacturer data
                 if let decodedSerial = decodeSerialFromManufacturerData(manufacturerData) {
-                    Core.log("G1: 📱 Decoded serial number: \(decodedSerial)")
+                    Bridge.log("G1: 📱 Decoded serial number: \(decodedSerial)")
 
                     // Decode style and color from serial number
                     let (style, color) = ERG1Manager.decodeEvenG1SerialNumber(decodedSerial)
-                    Core.log("G1: 📱 Style: \(style), Color: \(color)")
+                    Bridge.log("G1: 📱 Style: \(style), Color: \(color)")
 
                     // Store the information
                     glassesSerialNumber = decodedSerial
@@ -2023,18 +2023,18 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
                     // Emit the serial number information
                     emitSerialNumberInfo(serialNumber: decodedSerial, style: style, color: color)
                 } else {
-                    Core.log("G1: 📱 Could not decode serial number from manufacturer data")
+                    Bridge.log("G1: 📱 Could not decode serial number from manufacturer data")
                 }
             } else {
-                Core.log("G1: 📱 No manufacturer data found in advertisement")
+                Bridge.log("G1: 📱 No manufacturer data found in advertisement")
             }
         }
 
         if name.contains("_L_"), name.contains(DEVICE_SEARCH_ID) {
-            Core.log("G1: Found left arm: \(name)")
+            Bridge.log("G1: Found left arm: \(name)")
             leftPeripheral = peripheral
         } else if name.contains("_R_"), name.contains(DEVICE_SEARCH_ID) {
-            Core.log("G1: Found right arm: \(name)")
+            Bridge.log("G1: Found right arm: \(name)")
             rightPeripheral = peripheral
         }
 
@@ -2047,26 +2047,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        Core.log("G1: centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
+        Bridge.log("G1: centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
         peripheral.delegate = self
         peripheral.discoverServices([UART_SERVICE_UUID])
 
         // Store the UUIDs for future reconnection
         if peripheral == leftPeripheral || (peripheral.name?.contains("_L_") ?? false) {
-            Core.log("G1: 🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
+            Bridge.log("G1: 🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
             leftGlassUUID = peripheral.identifier
             leftPeripheral = peripheral
         }
 
         if peripheral == rightPeripheral || (peripheral.name?.contains("_R_") ?? false) {
-            Core.log("G1: 🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
+            Bridge.log("G1: 🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
             rightGlassUUID = peripheral.identifier
             rightPeripheral = peripheral
         }
 
         // Update the last connection timestamp
         lastConnectionTimestamp = Date()
-        Core.log("G1: Connected to peripheral: \(peripheral.name ?? "Unknown")")
+        Bridge.log("G1: Connected to peripheral: \(peripheral.name ?? "Unknown")")
 
         // Emit connection event
         let isLeft = peripheral == leftPeripheral
@@ -2089,7 +2089,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error _: (any Error)?) {
         let side = peripheral == leftPeripheral ? "LEFT" : peripheral == rightPeripheral ? "RIGHT" : "unknown"
-        Core.log("G1: @@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
+        Bridge.log("G1: @@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
 
         // only reconnect if we're not intentionally disconnecting:
         if isDisconnecting {
@@ -2106,7 +2106,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func startReconnectionTimer() {
-        Core.log("G1: Starting reconnection timer")
+        Bridge.log("G1: Starting reconnection timer")
         // Cancel any existing timer
         stopReconnectionTimer()
 
@@ -2150,19 +2150,19 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc func connectByUUID() -> Bool {
         // don't do this if we don't have a search id set:
         if DEVICE_SEARCH_ID == "NOT_SET" || DEVICE_SEARCH_ID.isEmpty {
-            Core.log("G1: 🔵 No DEVICE_SEARCH_ID set, skipping connect by UUID")
+            Bridge.log("G1: 🔵 No DEVICE_SEARCH_ID set, skipping connect by UUID")
             return false
         }
 
-        Core.log("G1: 🔵 Attempting to connect by UUID")
+        Bridge.log("G1: 🔵 Attempting to connect by UUID")
         var foundAny = false
 
         if let leftUUID = leftGlassUUID {
-            Core.log("G1: 🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
+            Bridge.log("G1: 🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
             let leftDevices = centralManager!.retrievePeripherals(withIdentifiers: [leftUUID])
 
             if let leftDevice = leftDevices.first {
-                Core.log("G1: 🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
+                Bridge.log("G1: 🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
                 foundAny = true
                 leftPeripheral = leftDevice
                 leftDevice.delegate = self
@@ -2174,11 +2174,11 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
 
         if let rightUUID = rightGlassUUID {
-            Core.log("G1: 🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
+            Bridge.log("G1: 🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
             let rightDevices = centralManager!.retrievePeripherals(withIdentifiers: [rightUUID])
 
             if let rightDevice = rightDevices.first {
-                Core.log("G1: 🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
+                Bridge.log("G1: 🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
                 foundAny = true
                 rightPeripheral = rightDevice
                 rightDevice.delegate = self
@@ -2193,17 +2193,17 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc private func attemptReconnection() {
-        Core.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
+        Bridge.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
         // Check if we're already connected
         if g1Ready {
-            Core.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
+            Bridge.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
             stopReconnectionTimer()
             return
         }
 
         // Check if we've exceeded maximum attempts
         if maxReconnectionAttempts > 0, reconnectionAttempts >= maxReconnectionAttempts {
-            Core.log("G1: Maximum reconnection attempts reached. Stopping reconnection timer.")
+            Bridge.log("G1: Maximum reconnection attempts reached. Stopping reconnection timer.")
             stopReconnectionTimer()
             return
         }
@@ -2240,17 +2240,17 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
                         let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
                         peripheral.writeValue(value, for: descriptor)
                     } else {
-                        Core.log("PROC_QUEUE - descriptor not found")
+                        Bridge.log("PROC_QUEUE - descriptor not found")
                     }
                 }
             }
 
             // Mark the services as ready
             if peripheral == leftPeripheral {
-                Core.log("G1: Left glass services discovered and ready")
+                Bridge.log("G1: Left glass services discovered and ready")
                 setReadiness(left: true, right: nil)
             } else if peripheral == rightPeripheral {
-                Core.log("G1: Right glass services discovered and ready")
+                Bridge.log("G1: Right glass services discovered and ready")
                 setReadiness(left: nil, right: true)
             }
         }
@@ -2259,26 +2259,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     // called whenever bluetooth is initialized / turned on or off:
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
-            Core.log("G1: Bluetooth was powered on")
+            Bridge.log("G1: Bluetooth was powered on")
             setReadiness(left: false, right: false)
             // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
             if DEVICE_SEARCH_ID != "NOT_SET", !DEVICE_SEARCH_ID.isEmpty {
                 startScan()
             }
         } else {
-            Core.log("G1: Bluetooth was turned off.")
+            Bridge.log("G1: Bluetooth was turned off.")
         }
     }
 
     // called when we get data from the glasses:
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("G1: Error updating value for characteristic: \(error.localizedDescription)")
+            Bridge.log("G1: Error updating value for characteristic: \(error.localizedDescription)")
             return
         }
 
         guard let data = characteristic.value else {
-            Core.log("G1: Characteristic value is nil.")
+            Bridge.log("G1: Characteristic value is nil.")
             return
         }
 
@@ -2289,7 +2289,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     // L/R Synchronization - Handle BLE write completions
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("G1: ❌ BLE write error for \(peripheral.name ?? "unknown"): \(error.localizedDescription)")
+            Bridge.log("G1: ❌ BLE write error for \(peripheral.name ?? "unknown"): \(error.localizedDescription)")
         } else {
             // Only log successful writes every 10th operation to avoid spam
             // if writeCompletionCount % 10 == 0 {

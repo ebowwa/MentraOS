@@ -20,7 +20,7 @@ class Mach1Manager: UltraliteBaseViewController {
     @Published var ready: Bool = false {
         didSet {
             if oldValue != ready {
-                Core.log("MACH1: connection_state_changed: \(ready)")
+                Bridge.log("MACH1: connection_state_changed: \(ready)")
                 onConnectionStateChanged?()
             }
         }
@@ -42,7 +42,7 @@ class Mach1Manager: UltraliteBaseViewController {
         if setupDone { return }
         isConnectedListener = BondListener(listener: { [weak self] value in
             guard let self = self else { return }
-            Core.log("MACH1: isConnectedListener: \(value)")
+            Bridge.log("MACH1: isConnectedListener: \(value)")
 
             if value {
                 // Try to request control
@@ -54,7 +54,7 @@ class Mach1Manager: UltraliteBaseViewController {
                     maxNumTaps: 3
                 )
 
-                Core.log("MACH1: gotControl: \(gotControl ?? false)")
+                Bridge.log("MACH1: gotControl: \(gotControl ?? false)")
                 if batteryLevel != -1 {
                     ready = true
                 }
@@ -65,7 +65,7 @@ class Mach1Manager: UltraliteBaseViewController {
 
         batteryLevelListener = BondListener(listener: { [weak self] value in
             guard let self = self else { return }
-            Core.log("MACH1: batteryLevelListener: \(value)")
+            Bridge.log("MACH1: batteryLevelListener: \(value)")
             batteryLevel = value
             ready = true
         })
@@ -77,19 +77,19 @@ class Mach1Manager: UltraliteBaseViewController {
             object: nil
         )
 
-        Core.log("MACH1: setup done")
+        Bridge.log("MACH1: setup done")
         setupDone = true
     }
 
     // Handle the tap event
     @objc func handleTapEvent(_ notification: Notification) {
         guard let userInfo = notification.userInfo else {
-            Core.log("MACH1: handleTapEvent: no userInfo")
+            Bridge.log("MACH1: handleTapEvent: no userInfo")
             return
         }
 
         guard let tap = userInfo["tap"] else {
-            Core.log("MACH1: handleTapEvent: no tap")
+            Bridge.log("MACH1: handleTapEvent: no tap")
             return
         }
 
@@ -112,7 +112,7 @@ class Mach1Manager: UltraliteBaseViewController {
     }
 
     func linked(unk _: UltraliteSDK.Ultralite?) {
-        Core.log("Mach1Manager: Linked")
+        Bridge.log("Mach1Manager: Linked")
         UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
         UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
     }
@@ -126,8 +126,8 @@ class Mach1Manager: UltraliteBaseViewController {
 
         let gotControl = currentDevice?.requestControl(layout: UltraliteSDK.Ultralite.Layout.textBottomLeftAlign, timeout: 0, hideStatusBar: true, showTapAnimation: true, maxNumTaps: 3)
 
-        Core.log("MACH1: gotControl: \(gotControl ?? false)")
-        Core.log("MACH1: control is nil \(gotControl == nil)")
+        Bridge.log("MACH1: gotControl: \(gotControl ?? false)")
+        Bridge.log("MACH1: control is nil \(gotControl == nil)")
 
         UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
         UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
@@ -139,12 +139,12 @@ class Mach1Manager: UltraliteBaseViewController {
 
         if !isLinked {
             if peripheral == nil {
-                Core.log("Mach1Manager: No peripheral found or stored with ID: \(id)")
+                Bridge.log("Mach1Manager: No peripheral found or stored with ID: \(id)")
                 CONNECTING_DEVICE = id
                 UltraliteManager.shared.startScan(callback: foundDevice2)
                 return
             }
-            Core.log("Mach1Manager: Connecting to peripheral with ID: \(id)")
+            Bridge.log("Mach1Manager: Connecting to peripheral with ID: \(id)")
             UltraliteManager.shared.link(device: peripheral!, callback: linked)
             UltraliteManager.shared.currentDevice?.isConnected.bind(listener: isConnectedListener!)
             UltraliteManager.shared.currentDevice?.batteryLevel.bind(listener: batteryLevelListener!)
@@ -154,13 +154,13 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func clearDisplay() {
         guard let device = UltraliteManager.shared.currentDevice else {
-            Core.log("Mach1Manager: No current device")
+            Bridge.log("Mach1Manager: No current device")
             ready = false
             return
         }
 
         if !device.isConnected.value {
-            Core.log("Mach1Manager: Device not connected")
+            Bridge.log("Mach1Manager: Device not connected")
             ready = false
             return
         }
@@ -180,18 +180,18 @@ class Mach1Manager: UltraliteBaseViewController {
     func sendTextWall(_ text: String) {
         //    displayTextWall(text)
         guard let device = UltraliteManager.shared.currentDevice else {
-            Core.log("Mach1Manager: No current device")
+            Bridge.log("Mach1Manager: No current device")
             ready = false
             return
         }
 
         if !device.isConnected.value {
-            Core.log("Mach1Manager: Device not connected")
+            Bridge.log("Mach1Manager: Device not connected")
             ready = false
             return
         }
 
-        Core.log("MACH1: Sending text: \(text)")
+        Bridge.log("MACH1: Sending text: \(text)")
 
         device.sendText(text: text)
         device.canvas.commit()
@@ -199,18 +199,18 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func sendDoubleTextWall(_ topText: String, _ bottomText: String) {
         guard let device = UltraliteManager.shared.currentDevice else {
-            Core.log("Mach1Manager: No current device")
+            Bridge.log("Mach1Manager: No current device")
             ready = false
             return
         }
 
         if !device.isConnected.value {
-            Core.log("Mach1Manager: Device not connected")
+            Bridge.log("Mach1Manager: Device not connected")
             ready = false
             return
         }
 
-        Core.log("MACH1: Sending double text wall - top: \(topText), bottom: \(bottomText)")
+        Bridge.log("MACH1: Sending double text wall - top: \(topText), bottom: \(bottomText)")
 
         // Clean the text (remove any special characters if needed)
         let cleanedTopText = topText
@@ -251,16 +251,16 @@ class Mach1Manager: UltraliteBaseViewController {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
             }
         } catch {
-            Core.log("Error converting to JSON: \(error)")
+            Bridge.log("Error converting to JSON: \(error)")
         }
     }
 
     func foundDevice(_ device: CBPeripheral) {
         // log the found devices:
-        Core.log(device.name ?? "Unknown Device")
+        Bridge.log(device.name ?? "Unknown Device")
 
         guard let name = device.name else { return }
 
@@ -295,10 +295,10 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func findCompatibleDevices() {
         setup()
-        Core.log("@@@@@@@@@@@@@@@@@@@@@ FINDING COMPATIBLE DEVICES @@@@@@@@@@@@@@@@@@@@@@")
+        Bridge.log("@@@@@@@@@@@@@@@@@@@@@ FINDING COMPATIBLE DEVICES @@@@@@@@@@@@@@@@@@@@@@")
         UltraliteManager.shared.setBluetoothManger()
         let scanResult = UltraliteManager.shared.startScan(callback: foundDevice)
-        Core.log("Mach1: \(scanResult)")
+        Bridge.log("Mach1: \(scanResult)")
         if scanResult == UltraliteSDK.UltraliteManager.BluetoothScanResult.BLUETOOTH_PERMISSION_NEEDED {
             // call this function again in 5 seconds:
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
@@ -309,15 +309,15 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func displayBitmap(base64ImageData: String) async -> Bool {
         guard let bmpData = Data(base64Encoded: base64ImageData) else {
-            Core.log("MACH1: Failed to decode base64 image data")
+            Bridge.log("MACH1: Failed to decode base64 image data")
             return false
         }
 
-        Core.log("MACH1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
+        Bridge.log("MACH1: ✅ Successfully decoded base64 image data to \(bmpData.count) bytes")
 
         // Convert data to UIImage
         guard let uiImage = UIImage(data: bmpData) else {
-            Core.log("MACH1: Failed to create UIImage from data")
+            Bridge.log("MACH1: Failed to create UIImage from data")
             return false
         }
 
@@ -331,22 +331,22 @@ class Mach1Manager: UltraliteBaseViewController {
         guard let resizedImage = resizedImage,
               let cgImage = resizedImage.cgImage
         else {
-            Core.log("MACH1: Failed to resize image or get CGImage")
+            Bridge.log("MACH1: Failed to resize image or get CGImage")
             return false
         }
 
         guard let device = UltraliteManager.shared.currentDevice else {
-            Core.log("MACH1: No current device")
+            Bridge.log("MACH1: No current device")
             MentraManager.getInstance().forgetSmartGlasses()
             return false
         }
 
         if !device.isConnected.value {
-            Core.log("MACH1: Device not connected")
+            Bridge.log("MACH1: Device not connected")
             return false
         }
 
-        Core.log("MACH1: Sending bitmap")
+        Bridge.log("MACH1: Sending bitmap")
 
         // Draw the background image at position (50, 80)
         //      device.canvas.drawBackground(image: cgImage, x: 50, y: 80)
@@ -362,7 +362,7 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func setBrightness(_ brightness: Int) {
         guard let device = UltraliteManager.shared.currentDevice else {
-            Core.log("Mach1Manager: No current device")
+            Bridge.log("Mach1Manager: No current device")
             ready = false
             return
         }
@@ -414,7 +414,7 @@ class Mach1Manager: UltraliteBaseViewController {
     }
 
     override func onTapEvent(taps: Int) {
-        Core.log("MACH1: Tap Event: \(taps)")
+        Bridge.log("MACH1: Tap Event: \(taps)")
         //    draw()
     }
 }

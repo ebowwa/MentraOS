@@ -36,7 +36,7 @@ import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
@@ -430,7 +430,7 @@ export function GalleryScreen() {
   const handleRequestHotspot = async () => {
     transitionToState(GalleryState.REQUESTING_HOTSPOT)
     try {
-      await coreCommunicator.sendCommand("set_hotspot_state", {enabled: true})
+      await bridge.sendCommand("set_hotspot_state", {enabled: true})
       setGalleryOpenedHotspot(true)
       galleryOpenedHotspotRef.current = true
       console.log("[GalleryScreen] Gallery initiated hotspot")
@@ -447,7 +447,7 @@ export function GalleryScreen() {
   const handleStopHotspot = async () => {
     console.log("[GalleryScreen] Stopping hotspot...")
     try {
-      const result = await coreCommunicator.sendCommand("set_hotspot_state", {enabled: false})
+      const result = await bridge.sendCommand("set_hotspot_state", {enabled: false})
       console.log("[GalleryScreen] Hotspot stop command sent")
       setGalleryOpenedHotspot(false)
       galleryOpenedHotspotRef.current = false
@@ -550,7 +550,10 @@ export function GalleryScreen() {
 
   // Retry hotspot connection
   const retryHotspotConnection = () => {
-    if (!hotspotSsid || !hotspotPassword || !hotspotGatewayIp) return
+    if (!hotspotSsid || !hotspotPassword || !hotspotGatewayIp) {
+      handleRequestHotspot()
+      return
+    }
 
     transitionToState(GalleryState.WAITING_FOR_WIFI_PROMPT)
     connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
@@ -559,7 +562,7 @@ export function GalleryScreen() {
   // Query gallery status
   const queryGlassesGalleryStatus = () => {
     console.log("[GalleryScreen] Querying glasses gallery status...")
-    coreCommunicator
+    bridge
       .queryGalleryStatus()
       .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
   }
@@ -651,7 +654,6 @@ export function GalleryScreen() {
   useEffect(() => {
     if (galleryState === GalleryState.MEDIA_AVAILABLE) {
       console.log("[GalleryScreen] Media available, requesting hotspot")
-      // handleRequestHotspot()
       transitionToState(GalleryState.USER_CANCELLED_WIFI)
     }
   }, [galleryState])
@@ -724,7 +726,7 @@ export function GalleryScreen() {
       if (!galleryOpenedHotspot) return
 
       console.log("[GalleryScreen] Gallery unmounting - closing hotspot")
-      coreCommunicator
+      bridge
         .sendCommand("set_hotspot_state", {enabled: false})
         .then(() => console.log("[GalleryScreen] Closed hotspot on exit"))
         .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
@@ -823,6 +825,7 @@ export function GalleryScreen() {
     if (!shouldShowSyncButton) return null
 
     const statusContent = () => {
+      console.log("[GalleryScreen] Rendering status content for state:", galleryState)
       switch (galleryState) {
         case GalleryState.REQUESTING_HOTSPOT:
           return (
@@ -857,7 +860,7 @@ export function GalleryScreen() {
           )
 
         case GalleryState.USER_CANCELLED_WIFI:
-          if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
+          // if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
           return (
             <View>
               <View style={themed($syncButtonRow)}>
@@ -867,11 +870,8 @@ export function GalleryScreen() {
                   color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
-                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus.total} items</Text>
+                <Text style={themed($syncButtonText)}>Sync {glassesGalleryStatus?.total} items</Text>
               </View>
-              <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
-                Tap to join "{hotspotSsid}" network
-              </Text>
             </View>
           )
 
