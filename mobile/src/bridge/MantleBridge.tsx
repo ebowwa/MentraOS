@@ -391,7 +391,12 @@ export class MantleBridge extends EventEmitter {
           socketComms.sendText(data.text)
           break
         case "ws_binary":
-          socketComms.sendBinary(data.binary)
+          const binaryString = atob(data.binary)
+          const bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          socketComms.sendBinary(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)

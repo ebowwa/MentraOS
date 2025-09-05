@@ -63,6 +63,12 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("ws_text", body: data)
     }
 
+    static func sendWSBinary(_ data: Data) {
+        let base64String = data.base64EncodedString()
+        let body = ["binary": base64String]
+        Bridge.sendTypedMessage("ws_binary", body: body)
+    }
+
     static func sendTypedMessage(_ type: String, body: [String: Any]) {
         var body = body
         body["type"] = type

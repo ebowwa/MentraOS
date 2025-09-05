@@ -620,13 +620,17 @@ class ServerComms {
                     // check if we're connected to livekit:
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
+                        // } else {
+                        //     Bridge.sendBinary(chunk)
+                        // }
                     } else if self.wsManager.isConnected() {
                         // Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
                         self.wsManager.sendBinary(chunk)
                     } else {
-                        // Re-enqueue the chunk if not connected, then wait a bit
-                        self.audioBuffer.offer(chunk)
-                        Thread.sleep(forTimeInterval: 0.1)
+                        // // Re-enqueue the chunk if not connected, then wait a bit
+                        // self.audioBuffer.offer(chunk)
+                        // Thread.sleep(forTimeInterval: 0.1)
+                        Bridge.sendBinary(chunk)
                     }
                 } else {
                     // No data in queue, wait a bit

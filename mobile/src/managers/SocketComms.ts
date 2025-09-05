@@ -175,6 +175,14 @@ class SocketComms {
     }
   }
 
+  sendBinary(data: ArrayBuffer | Uint8Array) {
+    try {
+      this.ws.sendBinary(data)
+    } catch (error) {
+      console.log(`SocketCommsTS: Failed to send binary: ${error}`)
+    }
+  }
+
   // SERVER COMMANDS
   // these are public functions that can be called from anywhere to notify the server of something:
   // should all be prefixed with send_
