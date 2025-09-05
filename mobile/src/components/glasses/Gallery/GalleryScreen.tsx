@@ -541,6 +541,11 @@ export function GalleryScreen() {
       ) {
         console.log("[GalleryScreen] User cancelled WiFi connection")
         transitionToState(GalleryState.USER_CANCELLED_WIFI)
+      } else if (error?.message?.includes("user has to enable wifi manually")) {
+        // Android 10+ requires manual WiFi enable
+        setErrorMessage("Please enable WiFi in your device settings first")
+        showAlert("WiFi Required", "Please enable WiFi in your device settings and try again", [{text: "OK"}])
+        transitionToState(GalleryState.USER_CANCELLED_WIFI)
       } else {
         setErrorMessage(error?.message || "Failed to connect to hotspot")
         transitionToState(GalleryState.ERROR)
@@ -870,7 +875,20 @@ export function GalleryScreen() {
                   color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
-                <Text style={themed($syncButtonText)}>Sync {glassesGalleryStatus?.total} items</Text>
+                <Text style={themed($syncButtonText)}>
+                  Sync {glassesGalleryStatus?.total}{" "}
+                  {glassesGalleryStatus?.photos > 0 && glassesGalleryStatus?.videos > 0
+                    ? glassesGalleryStatus?.total === 1
+                      ? "item"
+                      : "items"
+                    : glassesGalleryStatus?.photos > 0
+                      ? glassesGalleryStatus?.photos === 1
+                        ? "photo"
+                        : "photos"
+                      : glassesGalleryStatus?.videos === 1
+                        ? "video"
+                        : "videos"}
+                </Text>
               </View>
             </View>
           )
@@ -1127,7 +1145,7 @@ const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   color: colors.text,
 })
 
-const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   position: "absolute",
   bottom: spacing.xl,
   left: spacing.lg,
@@ -1139,11 +1157,15 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderColor: colors.border,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
-  shadowColor: "#000",
-  shadowOffset: {width: 0, height: 2},
-  shadowOpacity: 0.15,
-  shadowRadius: 3.84,
-  elevation: 5,
+  ...(isDark
+    ? {}
+    : {
+        shadowColor: "#000",
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.15,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }),
 })
 
 const $syncButtonContent: ThemedStyle<ViewStyle> = () => ({
