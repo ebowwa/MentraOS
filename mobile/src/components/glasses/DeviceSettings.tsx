@@ -544,7 +544,7 @@ export default function DeviceSettings() {
       {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
-          variant="destructive"
+          variant="warning"
           onPress={() => {
             bridge.sendDisconnectWearable()
           }}

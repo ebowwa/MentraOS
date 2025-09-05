@@ -8,7 +8,6 @@ import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import HomeIcon from "assets/icons/navbar/HomeIcon"
-import MirrorIcon from "assets/icons/navbar/MirrorIcon"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
 import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
@@ -26,7 +25,7 @@ export default function Layout() {
   const {push, replace} = useNavigationHistory()
 
   const showLabel = false
-  const iconFocusedColor = theme.colors.text
+  const iconFocusedColor = theme.colors.primary
   const iconInactiveColor = theme.colors.textDim
 
   const pressCount = useRef(0)
@@ -112,8 +111,8 @@ export default function Layout() {
             backgroundColor: "transparent",
           },
         ],
-        tabBarActiveTintColor: theme.colors.text,
-        tabBarInactiveTintColor: theme.colors.textDim,
+        tabBarActiveTintColor: iconFocusedColor,
+        tabBarInactiveTintColor: iconInactiveColor,
         tabBarLabelStyle: themed($tabBarLabel),
         tabBarItemStyle: themed($tabBarItem),
         tabBarLabelPosition: "below-icon",
@@ -130,16 +129,33 @@ export default function Layout() {
               top: 0,
               bottom: 0,
               borderTopColor: theme.colors.separator,
-              borderTopWidth: 1,
+              // borderTopWidth: 1,
               overflow: "hidden",
             }}>
+            <LinearGradient
+              colors={[
+                `${theme.colors.separator}30`, // 19% opacity
+                `${theme.colors.separator}00`, // 0% opacity (transparent)
+                `#FF000080`, // 50% opacity
+                "#FF0000",
+              ]}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                height: 14, // Same as your original borderTopWidth
+              }}
+              start={{x: 0, y: 0}}
+              end={{x: 0, y: 1}}
+            />
             <LinearGradient
               colors={[theme.colors.backgroundStart, theme.colors.backgroundEnd]}
               style={{
                 position: "absolute",
                 left: 0,
                 right: 0,
-                top: 0,
+                top: 14,
                 bottom: 0,
               }}
               start={{x: 0, y: 0}}

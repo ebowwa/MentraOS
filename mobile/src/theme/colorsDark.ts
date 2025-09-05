@@ -116,16 +116,17 @@ export const colors = {
   border: palette.primary200,
 
   // Primary colors
-  tint: palette.primary700,
+  tint: palette.primary800,
   tintInactive: palette.neutral300,
   separator: palette.neutral300,
 
   // Error states
   error: palette.angry500,
   errorBackground: palette.angry100,
+  warning: palette.accent300,
 
   // Common:
-  primary: palette.primary300,
+  primary: palette.primary700,
   secondary: palette.secondary300,
   accent: palette.accent300,
 

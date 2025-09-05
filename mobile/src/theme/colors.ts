@@ -1,14 +1,24 @@
 const palette = {
   // Neutrals
-  neutral100: "#FFFFFF",
-  neutral200: "#F4F2F1",
-  neutral300: "#D7CEC9",
-  neutral400: "#B6ACA6",
+  // neutral100: "#FFFFFF",
+  // neutral200: "#F4F2F1",
+  // neutral300: "#D7CEC9",
+  // neutral400: "#B6ACA6",
+  // neutral500: "#978F8A",
+  // neutral600: "#564E4A",
+  // neutral700: "#3C3836",
+  // neutral800: "#191015",
+  // neutral900: "#000000",
+
+  neutral900: "#FFFFFF",
+  neutral800: "#F4F2F1",
+  neutral700: "#D7CEC9",
+  neutral600: "#B6ACA6",
   neutral500: "#978F8A",
-  neutral600: "#564E4A",
-  neutral700: "#3C3836",
-  neutral800: "#191015",
-  neutral900: "#000000",
+  neutral400: "#564E4A",
+  neutral300: "#3C3836",
+  neutral200: "#191015",
+  neutral100: "#000000",
 
   // Primary
   primary900: "#F4E0D9",
@@ -82,19 +92,19 @@ const palette = {
 } as const
 
 const unique = {
-  backgroundStart: palette.neutral100,
-  backgroundEnd: palette.neutral200,
+  backgroundStart: palette.neutral900,
+  backgroundEnd: palette.neutral800,
 
   // Switch/toggle states
   switchTrackOff: palette.lightPurple1,
   switchTrackOn: palette.purpleBlue7,
-  switchThumb: palette.neutral100,
-  switchThumbOn: palette.neutral100,
-  switchThumbOff: palette.neutral100,
+  switchThumb: palette.neutral900,
+  switchThumbOn: palette.neutral900,
+  switchThumbOff: palette.neutral900,
   switchBorder: palette.purpleBlue3,
 
   // Slider states
-  sliderThumb: palette.neutral700,
+  sliderThumb: palette.neutral300,
   sliderTrackActive: palette.primary300,
   sliderTrackInactive: palette.neutral300,
 } as const
@@ -103,28 +113,29 @@ export const colors = {
   palette,
 
   // Text colors
-  text: palette.neutral900,
-  textDim: palette.neutral700,
-  textAlt: palette.neutral200,
+  text: palette.neutral100,
+  textDim: palette.neutral300,
+  textAlt: palette.neutral800,
 
   // Backgrounds
-  background: palette.neutral200,
-  backgroundAlt: palette.neutral300,
+  background: palette.neutral800,
+  backgroundAlt: palette.neutral700,
 
   // Borders
-  border: palette.neutral200,
+  border: palette.neutral700,
 
   // Primary colors
   tint: palette.primary500,
-  tintInactive: palette.neutral300,
-  separator: palette.neutral300,
+  tintInactive: palette.neutral700,
+  separator: palette.neutral700,
 
   // Error states
   error: palette.angry500,
   errorBackground: palette.angry100,
+  warning: palette.accent300,
 
   // Common:
-  primary: palette.primary600,
+  primary: palette.primary300,
   secondary: palette.secondary600,
   accent: palette.accent500,
 

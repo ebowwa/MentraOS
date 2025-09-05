@@ -243,7 +243,7 @@ export default function InitScreen() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={themed($centerContainer)}>
-          <ActivityIndicator size="large" color={theme.colors.text} />
+          <ActivityIndicator size="large" color={theme.colors.tint} />
           <Text style={themed($loadingText)}>{loadingStatus}</Text>
         </View>
       </Screen>
