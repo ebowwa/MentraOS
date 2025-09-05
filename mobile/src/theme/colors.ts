@@ -82,66 +82,21 @@ const palette = {
 } as const
 
 const unique = {
-  // // Tab bar colors
-  // tabBarGradientEnd: palette.blueTintedWhite,
-  // altTabBarGradientEnd: palette.neutral200,
-
-  // // Warning colors
-  // warningBackground: palette.warningPink,
-  // warningBackgroundDestructive: palette.warningPinkStrong,
-  // warningBorderDestructive: palette.warningPinkBorder,
-  // warningPink: palette.angry600,
-
-  // // Input states
-  // inputBorderHighlight: palette.mediumBlue,
-
-  // // Button pill variants
-  // buttonPillIcon: palette.primary200,
-  // buttonPillIconText: palette.darkText2,
-
-  // // Gallery
-  // galleryBg: palette.neutral200,
-
-  // // Switch/toggle states
-  // switchTrackOff: palette.lightPurple1,
-  // switchTrackOn: palette.purpleBlue7,
-  // switchThumb: palette.neutral100,
-  // switchThumbOn: palette.neutral100,
-  // switchThumbOff: palette.neutral100,
-  // switchBorder: palette.purpleBlue3,
-  // switchBorderWidth: 2,
-
-  // // Slider states
-  // sliderThumb: palette.gray700,
-  // sliderTrackActive: palette.primary300,
-  // sliderTrackInactive: palette.neutral300,
-
-  // // Tab bar states
-  // tabBarIconActive: palette.purpleBlue3,
-  // tabBarTextActive: palette.purpleBlue5,
-  // tabBarIconInactive: palette.purpleGray1,
-  // tabBarTextInactive: palette.purpleGray2,
-
-  // // List items
-  // chevron: palette.purpleGray3,
-
-  // // Tags
-  // foregroundTagBackground: palette.tagBackground,
-  // foregroundTagText: palette.purpleBlue6,
-
-  // // Status indicators
-  // statusIcon: palette.purpleGray1,
-  // statusText: palette.darkText1,
-
-  // // Search
-  // searchIcon: palette.purpleBlue3,
-
-  // // Backgrounds
-  // backgroundGradient1: palette.neutral600,
-  // backgroundGradient2: palette.primary100,
-
   backgroundStart: palette.neutral100,
   backgroundEnd: palette.neutral200,
+
+  // Switch/toggle states
+  switchTrackOff: palette.lightPurple1,
+  switchTrackOn: palette.purpleBlue7,
+  switchThumb: palette.neutral100,
+  switchThumbOn: palette.neutral100,
+  switchThumbOff: palette.neutral100,
+  switchBorder: palette.purpleBlue3,
+
+  // Slider states
+  sliderThumb: palette.neutral700,
+  sliderTrackActive: palette.primary300,
+  sliderTrackInactive: palette.neutral300,
 } as const
 
 export const colors = {
@@ -172,8 +127,6 @@ export const colors = {
   primary: palette.primary600,
   secondary: palette.secondary600,
   accent: palette.accent500,
-
-  // ...semantic,
 
   ...unique,
 } as const

@@ -74,7 +74,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
               // Add purple border in light theme to match toggle styling
               ...(!theme.isDark && {
                 borderColor: theme.colors.switchBorder,
-                borderWidth: theme.colors.switchBorderWidth,
+                borderWidth: 2,
                 shadowColor: "#000",
                 shadowOffset: {
                   width: 0,

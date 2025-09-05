@@ -63,7 +63,10 @@ public class LiveKitManager: NSObject {
                 )
 
                 let roomOptions = RoomOptions(
-                    defaultAudioCaptureOptions: AudioCaptureOptions(),
+                    //                    defaultAudioCaptureOptions: AudioCaptureOptions(
+//
+//                    ),
+                    defaultAudioCaptureOptions: AudioCaptureOptions.noProcessing,
                     suspendLocalVideoTracksInBackground: false
                 )
 

@@ -86,63 +86,18 @@ const unique = {
   backgroundStart: "#090A14",
   backgroundEnd: "#080D33",
 
-  // // Tab bar gradients
-  // tabBarGradientEnd: palette.darkBlue2,
-  // altTabBarGradientEnd: palette.darkBlue4,
+  // Switch/toggle states
+  switchTrackOff: palette.purpleGray1,
+  switchTrackOn: palette.purpleBlue4,
+  switchThumb: palette.neutral100,
+  switchThumbOn: palette.white,
+  switchThumbOff: palette.lightPurple1,
+  switchBorder: palette.transparent,
 
-  // // Warning colors
-  // warningBackground: palette.warningPink,
-  // warningBackgroundDestructive: palette.warningPinkStrong,
-  // warningBorderDestructive: palette.warningPinkBorder,
-  // warningPink: palette.angry600,
-
-  // // Input states
-  // inputBorderHighlight: palette.primary500,
-
-  // // Button pill variants
-  // buttonPillPrimary: palette.primary500,
-  // buttonPillSecondary: palette.transparent,
-  // buttonPillSecondaryBorder: palette.purpleGray2,
-  // buttonPillIcon: palette.darkPurple1,
-  // buttonPillPrimaryText: palette.darkPurple2,
-  // buttonPillSecondaryText: palette.lightText,
-  // buttonPillIconText: palette.white,
-
-  // // Gallery
-  // galleryBg: palette.darkGray,
-
-  // // Switch/toggle states
-  // switchTrackOff: palette.purpleGray1,
-  // switchTrackOn: palette.purpleBlue4,
-  // switchThumb: palette.neutral100,
-  // switchThumbOn: palette.white,
-  // switchThumbOff: palette.lightPurple1,
-  // switchBorder: palette.transparent,
-  // switchBorderWidth: 0,
-
-  // // Slider states
-  // sliderThumb: palette.white,
-  // sliderTrackActive: palette.purpleBlue4,
-  // sliderTrackInactive: palette.purpleGray1,
-
-  // // Tab bar states
-  // tabBarIconActive: palette.white,
-  // tabBarTextActive: palette.white,
-  // tabBarIconInactive: palette.neutral600,
-  // tabBarTextInactive: palette.neutral600,
-
-  // // Tags
-  // tagBackground: palette.darkBlue5,
-
-  // // Status indicators
-  // statusIcon: palette.lightPurple1,
-  // statusText: palette.lightPurple1,
-
-  // // Checkmark
-  // checkmark: palette.primary100,
-
-  // // Search
-  // searchIcon: palette.neutral800,
+  // Slider states
+  sliderThumb: palette.white,
+  sliderTrackActive: palette.purpleBlue4,
+  sliderTrackInactive: palette.purpleGray1,
 } as const
 
 export const colors = {
@@ -174,16 +129,5 @@ export const colors = {
   secondary: palette.secondary300,
   accent: palette.accent300,
 
-  // Tab bar
-  backgroundStart: unique.backgroundStart,
-  backgroundEnd: unique.backgroundEnd,
-  // tabBarBackground2: palette.primary400,
-  // tabBarBackground: palette.neutral200,
-  // altTabBarBackground1: palette.primary200,
-  // altTabBarBackground2: palette.primary500,
-  // tabBarIconActive: ,
-  // tabBarTextActive: palette.white,
-  // tabBarIconInactive: palette.neutral600,
-  // tabBarTextInactive: palette.neutral600,
-  // ...semantic,
+  ...unique,
 } as const
