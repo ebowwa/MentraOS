@@ -389,7 +389,7 @@ export default function DeviceSettings() {
                 paddingTop: theme.spacing.xs,
               }}
               onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
               <MaterialCommunityIcons
                 name="check"
                 size={24}
