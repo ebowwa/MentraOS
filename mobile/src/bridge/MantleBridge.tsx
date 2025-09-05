@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
 const {Bridge, BridgeModule, CoreCommsService} = NativeModules
@@ -836,9 +836,9 @@ export class MantleBridge extends EventEmitter {
 
   async sendSettings() {
     return await this.sendData({
-      command: "set_settings",
+      command: "update_settings",
       params: {
-        // TODO: add settings
+        ...getCoreSettings(),
       },
     })
   }
