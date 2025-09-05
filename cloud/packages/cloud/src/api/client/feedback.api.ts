@@ -8,9 +8,9 @@ import { authWithUser, RequestWithUser } from "../../middleware/client/client-au
 
 const router = Router();
 
-// API Endpoints // /api/client/*
-router.post("/feedback", authWithUser, submitFeedback);
-router.post("/feedback/test", authWithUser, submitFeedbackTest);
+// API Endpoints // /api/client/feedback*
+router.post("/", authWithUser, submitFeedback);
+router.post("/test", authWithUser, submitFeedbackTest);
 
 // Handler functions
 // Get all settings for a user
