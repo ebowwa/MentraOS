@@ -490,14 +490,14 @@ export class AppSession {
     return this.events.onPhotoTaken(handler);
   }
 
-  /**
-   * 🎯 Listen for IMU sensor data events
-   * @param handler - Function to handle IMU data (accelerometer, gyroscope, magnetometer, quaternion, euler)
-   * @returns Cleanup function to remove the handler
-   */
-  onImuData(handler: (data: ImuData) => void): () => void {
-    return this.events.onImuData(handler);
-  }
+  // /**
+  //  * 🎯 Listen for IMU sensor data events
+  //  * @param handler - Function to handle IMU data (accelerometer, gyroscope, magnetometer, quaternion, euler)
+  //  * @returns Cleanup function to remove the handler
+  //  */
+  // onImuData(handler: (data: ImuData) => void): () => void {
+  //   return this.events.onImuData(handler);
+  // }
 
   /**
    * 🎭 Listen for IMU gesture detection events
