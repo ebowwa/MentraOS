@@ -121,7 +121,7 @@ class SocketComms {
 
     // If after some time we're still not connected, run this function again
     setTimeout(() => {
-      if (this.ws.isActuallyConnected()) {
+      if (this.ws.isConnected()) {
         this.reconnectionAttempts = 0
         this.reconnecting = false
         return
@@ -148,7 +148,7 @@ class SocketComms {
   }
 
   isWebSocketConnected(): boolean {
-    return this.ws.isActuallyConnected()
+    return this.ws.isConnected()
   }
 
   restartConnection() {

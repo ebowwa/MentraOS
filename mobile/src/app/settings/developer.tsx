@@ -92,7 +92,7 @@ export default function DeveloperSettingsScreen() {
             {
               text: translate("common:ok"),
               onPress: () => {
-                replace("/auth/version-check")
+                replace("/init")
               },
             },
           ],
@@ -143,7 +143,7 @@ export default function DeveloperSettingsScreen() {
       {
         text: "OK",
         onPress: () => {
-          replace("/auth/version-check")
+          replace("/init")
         },
       },
     ])

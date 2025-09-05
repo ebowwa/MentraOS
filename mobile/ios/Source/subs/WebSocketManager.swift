@@ -76,10 +76,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
 
     func isConnected() -> Bool {
-        return webSocket != nil && webSocket?.state == .running
-    }
-
-    func isActuallyConnected() -> Bool {
+        // return webSocket != nil && webSocket?.state == .running
         return previousStatus == .connected
     }
 

@@ -898,7 +898,7 @@ struct ViewState {
         }
 
         placeholders["$CONNECTION_STATUS$"] =
-            serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
+            WebSocketManager.shared.isConnected() ? "Connected" : "Disconnected"
 
         var result = text
         for (key, value) in placeholders {
@@ -1810,7 +1810,7 @@ struct ViewState {
         ]
 
         let cloudConnectionStatus =
-            serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
+            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
         // let cloudConnectionStatus = self.serverComms.wsManager.status
 
         let coreInfo: [String: Any] = [

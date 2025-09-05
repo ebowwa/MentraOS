@@ -32,8 +32,9 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
+const useNewWsManager = false
 
-export default function VersionUpdateScreen() {
+export default function InitScreen() {
   // Hooks
   const {theme, themed} = useAppTheme()
   const {user, session} = useAuth()
@@ -103,7 +104,6 @@ export default function VersionUpdateScreen() {
       const coreToken = await restComms.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
-      const useNewWsManager = false
       if (useNewWsManager) {
         bridge.setup()
         socketComms.setAuthCreds(coreToken, uid)
