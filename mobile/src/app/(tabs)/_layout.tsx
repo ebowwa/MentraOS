@@ -26,8 +26,8 @@ export default function Layout() {
   const {push, replace} = useNavigationHistory()
 
   const showLabel = false
-  const iconFocusedColor = theme.colors.tabBarIconActive
-  const whiteColor = "#fff"
+  const iconFocusedColor = theme.colors.text
+  const iconInactiveColor = theme.colors.textDim
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
@@ -112,8 +112,8 @@ export default function Layout() {
             backgroundColor: "transparent",
           },
         ],
-        tabBarActiveTintColor: theme.colors.tabBarTextActive,
-        tabBarInactiveTintColor: theme.colors.tabBarTextInactive,
+        tabBarActiveTintColor: theme.colors.text,
+        tabBarInactiveTintColor: theme.colors.textDim,
         tabBarLabelStyle: themed($tabBarLabel),
         tabBarItemStyle: themed($tabBarItem),
         tabBarLabelPosition: "below-icon",
@@ -134,7 +134,7 @@ export default function Layout() {
               overflow: "hidden",
             }}>
             <LinearGradient
-              colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
+              colors={[theme.colors.backgroundStart, theme.colors.backgroundEnd]}
               style={{
                 position: "absolute",
                 left: 0,
@@ -157,9 +157,10 @@ export default function Layout() {
           //   <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
           // ),
           tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
             return (
               <TouchableOpacity onLongPress={handleHomeLongPress} onPress={() => replace("/home")}>
-                <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+                <HomeIcon size={28} color={mColor} />
               </TouchableOpacity>
             )
           },
@@ -171,9 +172,10 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <SolarLineIconsSet4 size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-          ),
+          tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
+            return <SolarLineIconsSet4 size={28} color={mColor} />
+          },
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
@@ -193,9 +195,10 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <StoreIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-          ),
+          tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
+            return <StoreIcon size={28} color={mColor} />
+          },
           tabBarLabel: translate("navigation:store"),
         }}
       />
@@ -205,9 +208,10 @@ export default function Layout() {
           href: "/settings",
           headerShown: false,
           tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
             return (
               <TouchableOpacity onPress={handleQuickPress}>
-                <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+                <UserIcon size={28} color={mColor} />
               </TouchableOpacity>
             )
           },

@@ -28,7 +28,7 @@ const setImperativeTheming = async (theme: Theme) => {
   if (Platform.OS === "ios") {
     SystemUI.setBackgroundColorAsync(theme.colors.background)
   } else {
-    SystemUI.setBackgroundColorAsync(theme.colors.tabBarBackground1)
+    SystemUI.setBackgroundColorAsync(theme.colors.backgroundStart)
   }
 }
 

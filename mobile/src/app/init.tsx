@@ -273,32 +273,24 @@ export default function InitScreen() {
           <View style={themed($buttonContainer)}>
             {state === "error" && (
               <Button
+                preset="primary"
                 onPress={checkCloudVersion}
                 style={themed($primaryButton)}
-                text={translate("versionCheck:retryConnection")}
+                tx="versionCheck:retryConnection"
               />
             )}
 
             {state === "outdated" && (
-              <Button
-                onPress={handleUpdate}
-                disabled={isUpdating}
-                style={themed($primaryButton)}
-                text={translate("versionCheck:update")}
-              />
+              <Button preset="primary" onPress={handleUpdate} disabled={isUpdating} tx="versionCheck:update" />
             )}
 
             {state === "error" && isUsingCustomUrl && (
-              <Button
-                onPress={handleResetUrl}
-                style={themed($secondaryButton)}
-                text={translate("versionCheck:resetUrl")}
-              />
+              <Button preset="secondary" onPress={handleResetUrl} text={translate("versionCheck:resetUrl")} />
             )}
 
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
-                style={themed($secondaryButton)}
+                preset="accent"
                 RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyways"
@@ -368,7 +360,7 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
-  gap: spacing.md,
+  gap: spacing.xl,
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = () => ({

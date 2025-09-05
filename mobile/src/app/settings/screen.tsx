@@ -78,16 +78,6 @@ export default function ScreenSettingsScreen() {
     setIsAutoBrightnessEnabled(newVal)
   }
 
-  // Switch track colors
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
   // Fixed slider props to avoid warning
   const sliderProps = {
     style: [styles.slider],
