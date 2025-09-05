@@ -297,6 +297,14 @@ export class AsgCameraApiClient {
     }
   }
 
+  async deleteGalleryPhoto(photoId: string): Promise<any> {
+    const response = await this.makeRequest<any>(`/api/gallery/${photoId}`, {
+      method: "DELETE",
+    })
+    console.log("Photo deleted successfully:", photoId)
+    return response
+  }
+
   /**
    * Get the gallery photos array with proper URL construction
    */

@@ -48,6 +48,7 @@ export default function InitScreen() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
   const [errorType, setErrorType] = useState<"connection" | "auth" | null>(null)
+  const [canSkipUpdate, setCanSkipUpdate] = useState(false)
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
 
   // Helper Functions
@@ -144,25 +145,22 @@ export default function InitScreen() {
         return
       }
 
-      await restComms.restRequest("/apps/version", null, {
-        onSuccess: data => {
-          const cloudVer = data.version
-          setCloudVersion(cloudVer)
-
-          console.log(`Version check: local=${localVer}, cloud=${cloudVer}`)
-
-          if (semver.lt(localVer, cloudVer)) {
-            setState("outdated")
-            return
-          }
-          checkLoggedIn()
-        },
-        onFailure: errorCode => {
-          console.error("Failed to fetch cloud version:", errorCode)
-          setErrorType("connection")
-          setState("error")
-        },
-      })
+      try {
+        const {required, recommended} = await restComms.getMinimumClientVersion()
+        setCloudVersion(recommended)
+        console.log(`Version check: local=${localVer}, cloud=${required}`)
+        if (semver.lt(localVer, recommended)) {
+          setState("outdated")
+          setCanSkipUpdate(!semver.lt(localVer, required))
+          return
+        }
+        checkLoggedIn()
+      } catch (error) {
+        console.error("Failed to fetch cloud version:", error)
+        setErrorType("connection")
+        setState("error")
+        return
+      }
     } catch (error) {
       console.error("Version check failed:", error)
       setErrorType("connection")
@@ -218,7 +216,7 @@ export default function InitScreen() {
           icon: "update",
           iconColor: theme.colors.tint,
           title: "Update Required",
-          description: "MentraOS is outdated. An update is required to continue using the application.",
+          description: "MentraOS is outdated. Please update to continue using the application.",
         }
 
       default:
@@ -298,7 +296,7 @@ export default function InitScreen() {
               />
             )}
 
-            {(state === "error" || state === "outdated") && (
+            {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
                 RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
