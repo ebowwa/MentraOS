@@ -9,33 +9,21 @@ import {useFocusEffect} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import SliderSetting from "@/components/settings/SliderSetting"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 export default function ScreenSettingsScreen() {
-  const {status} = useCoreStatus()
   const {theme, themed} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
-  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
-  const [depth, setDepth] = useState<number | null>(status.glasses_settings.dashboard_depth)
-  const [height, setHeight] = useState<number | null>(status.glasses_settings.dashboard_height)
+  const [depth, setDepth] = useState<number | null>(null)
+  const [height, setHeight] = useState<number | null>(null)
 
-  // -- Effects --
+  // load settings:
   useEffect(() => {
-    setBrightness(status.glasses_settings.brightness)
-  }, [status.glasses_settings.brightness])
-
-  useEffect(() => {
-    setIsAutoBrightnessEnabled(status.glasses_settings.auto_brightness)
-  }, [status.glasses_settings.auto_brightness])
-
-  useEffect(() => {
-    setDepth(status.glasses_settings.dashboard_depth)
-  }, [status.glasses_settings.dashboard_depth])
-
-  useEffect(() => {
-    setHeight(status.glasses_settings.dashboard_height)
-  }, [status.glasses_settings.dashboard_height])
+    loadSetting(SETTINGS_KEYS.dashboard_depth).then(setDepth)
+    loadSetting(SETTINGS_KEYS.dashboard_height).then(setHeight)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
@@ -58,24 +46,21 @@ export default function ScreenSettingsScreen() {
     }
 
     // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
-    await bridge.setGlassesBrightnessMode(newBrightness, false)
+    await bridge.setGlassesBrightnessMode(newBrightness, false) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.brightness, newBrightness)
     setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
-    await bridge.setGlassesDepth(newDepth)
+    await bridge.setGlassesDepth(newDepth) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.dashboard_depth, newDepth)
     setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
-    await bridge.setGlassesHeight(newHeight)
+    await bridge.setGlassesHeight(newHeight) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.dashboard_height, newHeight)
     setHeight(newHeight)
-  }
-
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled
-    await bridge.setGlassesBrightnessMode(brightness ?? 50, newVal)
-    setIsAutoBrightnessEnabled(newVal)
   }
 
   // Switch track colors
