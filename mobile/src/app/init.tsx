@@ -9,7 +9,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {getSettingDefault, loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
@@ -64,7 +64,8 @@ export default function InitScreen() {
 
   const checkCustomUrl = async (): Promise<boolean> => {
     const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    const isCustom = Boolean(customUrl?.trim())
+    const defaultUrl = await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const isCustom = customUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
   }
@@ -199,8 +200,9 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      await bridge.setServerUrl("")
+      const defaultUrl = (await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
+      await bridge.setServerUrl(defaultUrl)
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {
