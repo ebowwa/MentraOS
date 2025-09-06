@@ -942,7 +942,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
 
-        boolean isMicrophoneEnabled = requiredData.contains(SpeechRequiredDataType.PCM) || requiredData.contains((SpeechRequiredDataType.PCM_OR_TRANSCRIPTION));
+        boolean isMicrophoneEnabled = requiredData.size() > 0;
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic

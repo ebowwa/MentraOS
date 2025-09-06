@@ -1,11 +1,13 @@
 // AppIcon.tsx
-import React from "react"
-import {View, StyleSheet, TouchableOpacity, ViewStyle, ImageStyle, TextStyle, Platform} from "react-native"
+import React, {useEffect, useState} from "react"
+import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle, Platform, ActivityIndicator} from "react-native"
 import {Image} from "expo-image"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
+import {SquircleView} from "expo-squircle-view"
+import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 interface AppIconProps {
   app: AppletInterface
@@ -19,6 +21,16 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
+  const [usingNewUI, setUsingNewUI] = useState(false)
+
+  useEffect(() => {
+    const check = async () => {
+      const newUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      setUsingNewUI(newUI)
+    }
+    check()
+  }, [])
+
   return (
     <WrapperComponent
       onPress={onClick}
@@ -26,24 +38,47 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      <View
-        style={{
-          overflow: "hidden",
-          alignItems: "center",
-          justifyContent: "center",
-          width: style?.width ?? 56,
-          height: style?.height ?? 56,
-          borderRadius: (style?.width ?? 56) / 2, // Make it a perfect circle
-        }}>
-        <Image
-          source={{uri: app.logoURL}}
-          style={themed($icon)}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-      </View>
-
+      {Platform.OS === "ios" && usingNewUI ? (
+        <SquircleView
+          cornerSmoothing={100}
+          preserveSmoothing={true}
+          style={{
+            overflow: "hidden", // use as a mask
+            alignItems: "center",
+            justifyContent: "center",
+            width: style?.width ?? 56,
+            height: style?.height ?? 56,
+            borderRadius: style?.borderRadius ?? theme.spacing.md,
+          }}>
+          {app.loading && (
+            <View style={themed($loadingContainer)}>
+              <ActivityIndicator size="large" color={theme.colors.palette.white} />
+            </View>
+          )}
+          <Image
+            source={{uri: app.logoURL}}
+            style={themed($icon)}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        </SquircleView>
+      ) : (
+        <>
+          {app.loading && usingNewUI && (
+            <View style={themed($loadingContainer)}>
+              <ActivityIndicator size="large" color={theme.colors.tint} />
+            </View>
+          )}
+          <Image
+            source={{uri: app.logoURL}}
+            style={[themed($icon), {borderRadius: 60, width: style?.width ?? 56, height: style?.height ?? 56}]}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        </>
+      )}
       {showLabel && <Text text={app.name} style={themed($appName)} numberOfLines={2} />}
     </WrapperComponent>
   )
@@ -53,10 +88,22 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   overflow: "hidden",
 })
 
+const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 10,
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+})
+
 const $icon: ThemedStyle<ImageStyle> = () => ({
+  width: "100%",
   height: "100%",
   resizeMode: "cover",
-  width: "100%",
 })
 
 const $appName: ThemedStyle<TextStyle> = ({colors, isDark}) => ({

@@ -1,32 +1,18 @@
-import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, TextStyle, ScrollView} from "react-native"
-import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
-import type {NavigationProp} from "@react-navigation/native"
+import React, {useRef, PropsWithChildren, useState, useEffect} from "react"
+import {Animated, ScrollView} from "react-native"
 import {Header, Screen} from "@/components/ignite"
-import {
-  ConnectedDeviceInfo,
-  ConnectDeviceButton,
-  ConnectedGlasses,
-  SplitDeviceInfo,
-} from "@/components/misc/ConnectedDeviceInfo"
+import {ConnectDeviceButton, ConnectedGlasses} from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
-import BackendServerComms from "@/backend_comms/BackendServerComms"
-import semver from "semver"
-import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
-import {loadSetting} from "@/utils/SettingsHelper"
 
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
 import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import RouteButton from "@/components/ui/RouteButton"
 import {glassesFeatures} from "@/config/glassesFeatures"
 
 interface AnimatedSectionProps extends PropsWithChildren {

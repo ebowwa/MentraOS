@@ -2,7 +2,7 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import coreCommunicator from "@/bridge/MantleBridge"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 
@@ -77,14 +77,15 @@ class STTModelManager {
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
     },
-    "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8": {
-      id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
-      displayName: "Multilingual (EN/DE/ES/FR/RU)",
-      fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
-      size: 102261698, // Actual size: 102MB
-      type: "ctc",
-      requiredFiles: ["model.int8.onnx", "tokens.txt"],
-    },
+    // NOTE (yash): commenting this one for now because sherpa doesn't provide the language for multilingual models. And our current cloud architecture depends on the language
+    // "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8": {
+    //   id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+    //   displayName: "Multilingual (EN/DE/ES/FR/RU)",
+    //   fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+    //   size: 102261698, // Actual size: 102MB
+    //   type: "ctc",
+    //   requiredFiles: ["model.int8.onnx", "tokens.txt"],
+    // },
     // "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17": {
     //   id: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
     //   displayName: "Multilingual",

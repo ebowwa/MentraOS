@@ -109,4 +109,36 @@ export const getWsUrl = async (): Promise<string> => {
   return wsUrl
 }
 
+// return an object populated with settings that the core should have:
+export const getCoreSettings = async (): Promise<any> => {
+  const coreSettings = [
+    SETTINGS_KEYS.sensing_enabled,
+    SETTINGS_KEYS.power_saving_mode,
+    SETTINGS_KEYS.always_on_status_bar,
+    SETTINGS_KEYS.bypass_vad_for_debugging,
+    SETTINGS_KEYS.bypass_audio_encoding_for_debugging,
+    SETTINGS_KEYS.metric_system_enabled,
+    SETTINGS_KEYS.enforce_local_transcription,
+    SETTINGS_KEYS.button_press_mode,
+    SETTINGS_KEYS.default_wearable,
+    SETTINGS_KEYS.preferred_mic,
+    SETTINGS_KEYS.contextual_dashboard_enabled,
+    SETTINGS_KEYS.head_up_angle,
+    SETTINGS_KEYS.brightness,
+    SETTINGS_KEYS.auto_brightness,
+    SETTINGS_KEYS.dashboard_height,
+    SETTINGS_KEYS.dashboard_depth,
+    SETTINGS_KEYS.button_mode,
+    SETTINGS_KEYS.button_photo_size,
+  ]
+
+  const coreSettingsObj: any = {}
+
+  for (const setting of coreSettings) {
+    coreSettingsObj[setting] = await loadSetting(setting)
+  }
+
+  return coreSettings
+}
+
 export {saveSetting, loadSetting}

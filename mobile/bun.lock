@@ -48,7 +48,7 @@
         "react-native-bottom-tabs": "^0.9.2",
         "react-native-canvas": "^0.1.40",
         "react-native-circular-progress": "^1.4.1",
-        "react-native-config": "^1.5.5",
+        "react-native-config": "1.5.5",
         "react-native-drawer-layout": "^4.1.11",
         "react-native-elements": "^3.4.3",
         "react-native-fs": "^2.20.0",
@@ -77,6 +77,7 @@
         "react-native-wifi-reborn": "^4.13.6",
         "semver": "^7.7.2",
         "tar-js": "^0.3.0",
+        "zustand": "^5.0.8",
       },
       "devDependencies": {
         "@babel/core": "^7.27.4",
@@ -2563,6 +2564,8 @@
     "yn": ["yn@3.1.1", "", {}, "sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q=="],
 
     "yocto-queue": ["yocto-queue@0.1.0", "", {}, "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q=="],
+
+    "zustand": ["zustand@5.0.8", "", { "peerDependencies": { "@types/react": ">=18.0.0", "immer": ">=9.0.6", "react": ">=18.0.0", "use-sync-external-store": ">=1.2.0" }, "optionalPeers": ["@types/react", "immer", "react", "use-sync-external-store"] }, "sha512-gyPKpIaxY9XcO2vSMrLbiER7QMAMGOQZVRdJ6Zi782jkbzZygq5GI9nG8g+sMgitRtndwaBSl7uiqC49o1SSiw=="],
 
     "@babel/core/semver": ["semver@6.3.1", "", { "bin": "bin/semver.js" }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 

@@ -11,7 +11,7 @@ extend google.protobuf.FileOptions {
 }
 
 // Set current schema version here (bump on any schema change).
-option (mentra_schema_version) = 1;
+option (mentra_schema_version) = 2;
 
 // ============================================
 // Base Message Types
@@ -443,17 +443,18 @@ message Vector3 {
 
 message ButtonEvent {
   enum Button {
-    CENTER = 0;
-    LEFT = 1;
-    RIGHT = 2;
+    LEFT_BACK = 0;
+    RIGHT_BACK = 1;
   }
   Button button = 1;
 
-  enum State {
-    UP = 0;
-    DOWN = 1;
+  enum Event {
+    SINGLE_TAP = 0;
+    DOUBLE_TAP = 1;
+    TRIPLE_TAP = 2;
+    LONG_HOLD = 3;
   }
-  State state = 2;
+  Event event = 2;
 }
 
 message HeadGesture {

@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle, TextStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {
   getGlassesClosedImage,
@@ -43,7 +43,7 @@ export const ConnectDeviceButton = () => {
 
     try {
       // Check that Bluetooth and Location are enabled/granted
-      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+      const requirementsCheck = await bridge.checkConnectivityRequirements()
 
       if (!requirementsCheck.isReady) {
         // Show alert about missing requirements with "Turn On" button
@@ -82,7 +82,7 @@ export const ConnectDeviceButton = () => {
       // Connectivity check passed, proceed with connection
       console.log("Connecting to glasses:", status.core_info.default_wearable)
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        await coreCommunicator.sendConnectWearable(
+        await bridge.sendConnectWearable(
           status.core_info.default_wearable,
           status.core_info.default_wearable_name as string,
           status.core_info.default_wearable_address as string,
@@ -100,7 +100,7 @@ export const ConnectDeviceButton = () => {
     console.log("Disconnecting wearable")
 
     try {
-      await coreCommunicator.sendDisconnectWearable()
+      await bridge.sendDisconnectWearable()
     } catch (error) {}
   }
 

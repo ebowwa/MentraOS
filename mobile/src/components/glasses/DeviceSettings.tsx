@@ -15,7 +15,7 @@ import {
 
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -174,7 +174,7 @@ export default function DeviceSettings() {
     console.log("Disconnecting wearable")
 
     try {
-      await coreCommunicator.sendDisconnectWearable()
+      await bridge.sendDisconnectWearable()
     } catch (error) {}
   }
 
@@ -213,12 +213,12 @@ export default function DeviceSettings() {
     }
 
     setPreferredMic(val)
-    await coreCommunicator.sendSetPreferredMic(val)
+    await bridge.sendSetPreferredMic(val)
   }
 
   const setButtonModeWithSave = async (mode: string) => {
     setButtonMode(mode)
-    await coreCommunicator.sendSetButtonMode(mode)
+    await bridge.sendSetButtonMode(mode)
   }
 
   const confirmForgetGlasses = () => {
@@ -230,7 +230,7 @@ export default function DeviceSettings() {
         {
           text: translate("common:yes"),
           onPress: () => {
-            coreCommunicator.sendForgetSmartGlasses()
+            bridge.sendForgetSmartGlasses()
           },
         },
       ],
@@ -343,7 +343,7 @@ export default function DeviceSettings() {
             value={autoBrightness}
             onValueChange={value => {
               setAutoBrightness(value)
-              coreCommunicator.setGlassesBrightnessMode(brightness, value)
+              bridge.setGlassesBrightnessMode(brightness, value)
             }}
             containerStyle={{
               paddingHorizontal: 0,
@@ -369,7 +369,7 @@ export default function DeviceSettings() {
                 min={0}
                 max={100}
                 onValueSet={value => {
-                  coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
+                  bridge.setGlassesBrightnessMode(value, autoBrightness)
                 }}
                 containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
                 disableBorder
@@ -400,7 +400,7 @@ export default function DeviceSettings() {
                 paddingTop: theme.spacing.xs,
               }}
               onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
               <MaterialCommunityIcons
                 name="check"
                 size={24}
@@ -547,7 +547,7 @@ export default function DeviceSettings() {
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
           onPress={() => {
-            coreCommunicator.sendDisconnectWearable()
+            bridge.sendDisconnectWearable()
           }}
         />
       )}

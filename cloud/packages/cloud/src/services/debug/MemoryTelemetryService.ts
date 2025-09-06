@@ -61,7 +61,7 @@ export class MemoryTelemetryService {
 
   constructor(
     logger: Logger = rootLogger.child({ service: "MemoryTelemetry" }),
-    intervalMs = 10_000,
+    intervalMs = 1_000 * 60 * 10, // every 10 minutes
   ) {
     this.logger = logger;
     this.intervalMs = intervalMs;

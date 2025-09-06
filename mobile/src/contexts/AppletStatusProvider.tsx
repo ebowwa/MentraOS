@@ -1,15 +1,14 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import BackendServerComms from "../backend_comms/BackendServerComms"
+import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {AppState} from "react-native"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {getRestUrl, loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import coreCommunicator from "@/bridge/CoreCommunicator"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
+import restComms from "@/managers/RestComms"
 
 export type AppPermissionType =
   | "ALL"
@@ -55,7 +54,7 @@ export interface AppletInterface {
   }
   permissions: AppletPermission[]
   is_running?: boolean
-  is_loading?: boolean
+  loading?: boolean
   compatibility?: {
     isCompatible: boolean
     missingRequired: Array<{
@@ -88,20 +87,19 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   const [appStatus, setAppStatus] = useState<AppletInterface[]>([])
   const {user} = useAuth()
   const {theme} = useAppTheme()
-  const backendComms = BackendServerComms.getInstance()
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
 
-  const refreshAppStatus = async () => {
+  const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
     if (!user) {
       console.log("AppStatusProvider: No user, clearing app status")
       return Promise.resolve()
     }
 
-    // Check if we have a core token from BackendServerComms
-    const coreToken = BackendServerComms.getInstance().getCoreToken()
+    // Check if we have a core token from RestComms
+    const coreToken = restComms.getCoreToken()
     console.log(
       "AppStatusProvider: Core token check - token exists:",
       !!coreToken,
@@ -114,7 +112,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     try {
-      const appsData = await BackendServerComms.getInstance().getApps()
+      const appsData = await restComms.getApps()
 
       // Merge existing running states with new data
       const mapped = appsData.map(app => {
@@ -130,7 +128,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           permissions: app.permissions,
           webviewURL: app.webviewURL,
           is_running: app.is_running,
-          is_loading: false,
+          loading: false,
           // @ts-ignore include server-provided latest status if present
           isOnline: (app as any).isOnline,
         }
@@ -149,15 +147,10 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     } catch (err) {
       console.error("AppStatusProvider: Error fetching apps:", err)
     }
-  }
+  }, [user])
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {
-    await doStartApp(packageName, appType)
-  }
-
-  // Extracted actual start logic
-  const doStartApp = async (packageName: string, appType?: string) => {
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
@@ -167,7 +160,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       for (const runningApp of runningStandardApps) {
         optimisticallyStopApp(runningApp.packageName)
         try {
-          backendComms.stopApp(runningApp.packageName)
+          restComms.stopApp(runningApp.packageName)
           clearPendingOperation(runningApp.packageName)
         } catch (error) {
           console.error("Stop app error:", error)
@@ -176,28 +169,21 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       }
     }
 
-    // optimistically start the app:
-    {
-      // Record that we have a pending start operation
-      pendingOperations.current[packageName] = "start"
+    // check if using new UI:
+    const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
 
-      // Set a timeout to clear this operation after 10 seconds (in case callback never happens)
-      setTimeout(() => {
-        if (pendingOperations.current[packageName] === "start") {
-          delete pendingOperations.current[packageName]
-        }
-      }, 20000)
-
-      setAppStatus(currentStatus => {
-        // Then update the target app to be running
+    setAppStatus(currentStatus => {
+      // Then update the target app to be running
+      if (!usingNewUI) {
         return currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: true} : app))
-      })
-    }
+      }
+      return currentStatus.map(app => (app.packageName === packageName ? {...app, loading: true} : app))
+    })
 
     // actually start the app:
     {
       try {
-        await backendComms.startApp(packageName)
+        await restComms.startApp(packageName)
         clearPendingOperation(packageName)
         await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
@@ -223,6 +209,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus()
       }
     }
+
+    // after 3 seconds, refresh the app status:
+    setTimeout(() => {
+      refreshAppStatus()
+    }, 2000)
   }
 
   // Optimistically update app status when stopping an app
@@ -239,21 +230,34 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      setAppStatus(currentStatus =>
-        currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false} : app)),
-      )
+      const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+
+      if (!usingNewUI) {
+        setAppStatus(currentStatus =>
+          currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false} : app)),
+        )
+      } else {
+        setAppStatus(currentStatus =>
+          currentStatus.map(app => (app.packageName === packageName ? {...app, loading: true} : app)),
+        )
+      }
     }
 
     // actually stop the app:
     {
       try {
-        await backendComms.stopApp(packageName)
+        await restComms.stopApp(packageName)
         clearPendingOperation(packageName)
       } catch (error) {
         refreshAppStatus()
         console.error("Stop app error:", error)
       }
     }
+
+    // after 3 seconds, refresh the app status:
+    setTimeout(() => {
+      refreshAppStatus()
+    }, 2000)
   }
 
   // When an app start/stop operation succeeds, clear the pending operation
@@ -269,7 +273,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       if (!app) {
         return false
       }
-      const baseUrl = await BackendServerComms.getInstance().getServerUrl()
+      const baseUrl = await getRestUrl()
       // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
       const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
       const healthResponse = await fetch(healthUrl, {
@@ -296,7 +300,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 1500)
   }
 
-  // Listen for app started/stopped events from CoreCommunicator
+  // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
     GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
@@ -305,6 +309,15 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
     }
   }, [])
+
+  // refresh app status until loaded:
+  useEffect(() => {
+    if (appStatus.length > 0) return
+    const interval = setInterval(() => {
+      refreshAppStatus()
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [appStatus.length])
 
   return (
     <AppStatusContext.Provider
