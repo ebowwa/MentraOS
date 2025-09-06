@@ -79,7 +79,7 @@ const saveSetting = async (key: string, value: any): Promise<void> => {
     const jsonValue = JSON.stringify(value)
     await AsyncStorage.setItem(key, jsonValue)
     if (CORE_SETTINGS_KEYS.includes(key)) {
-      bridge.sendSingleSetting({[key]: value})
+      bridge.updateSettings({[key]: value})
     }
   } catch (error) {
     console.error(`Failed to save setting (${key}):`, error)
