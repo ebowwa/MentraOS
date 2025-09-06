@@ -74,12 +74,18 @@ export default function InitScreen() {
     if (pendingRoute) {
       setPendingRoute(null)
       setTimeout(() => processUrl(pendingRoute), DEEPLINK_DELAY)
-    } else {
-      setTimeout(() => {
-        router.dismissAll()
-        replace("/(tabs)/home")
-      }, NAVIGATION_DELAY)
+      return
     }
+
+    if (!user) {
+      replace("/auth/login")
+      return
+    }
+
+    setTimeout(() => {
+      router.dismissAll()
+      replace("/(tabs)/home")
+    }, NAVIGATION_DELAY)
   }
 
   const checkLoggedIn = async (): Promise<void> => {
