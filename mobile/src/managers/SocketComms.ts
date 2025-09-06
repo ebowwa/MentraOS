@@ -1,6 +1,6 @@
 import Config from "react-native-config"
 import coreCommunicator from "@/bridge/MantleBridge"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {getRestUrl, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
@@ -84,21 +84,20 @@ class SocketComms {
   }
 
   private setupPeriodicTasks() {
-    // Calendar sync every hour
-    this.calendarSyncTimer = setInterval(
-      () => {
-        console.log("Periodic calendar sync")
-        this.send_calendar_events()
-      },
-      60 * 60 * 1000,
-    ) // 1 hour
-
-    // Datetime transmission every 60 seconds
-    this.datetimeTimer = setInterval(() => {
-      console.log("Periodic datetime transmission")
-      const isoDatetime = SocketComms.get_current_iso_datetime()
-      this.send_user_datetime_to_backend(isoDatetime)
-    }, 60 * 1000) // 60 seconds
+    // // Calendar sync every hour
+    // this.calendarSyncTimer = setInterval(
+    //   () => {
+    //     console.log("Periodic calendar sync")
+    //     this.send_calendar_events()
+    //   },
+    //   60 * 60 * 1000,
+    // ) // 1 hour
+    // // Datetime transmission every 60 seconds
+    // this.datetimeTimer = setInterval(() => {
+    //   console.log("Periodic datetime transmission")
+    //   const isoDatetime = SocketComms.get_current_iso_datetime()
+    //   this.send_user_datetime_to_backend(isoDatetime)
+    // }, 60 * 1000) // 60 seconds
   }
 
   // Connection Management
@@ -718,39 +717,6 @@ class SocketComms {
 
       default:
         console.log(`SocketCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
-    }
-  }
-
-  // Helper methods
-  async send_user_datetime_to_backend(isoDatetime: string) {
-    const url = `${this.getServerUrlForRest()}/api/user-data/set-datetime`
-
-    const body = {
-      coreToken: this.coreToken,
-      datetime: isoDatetime,
-    }
-
-    try {
-      console.log(`SocketCommsTS: Sending datetime to: ${url}`)
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (response.ok) {
-        const responseText = await response.text()
-        console.log(`SocketCommsTS: Datetime transmission successful: ${responseText}`)
-      } else {
-        console.log(`SocketCommsTS: Datetime transmission failed. Response code: ${response.status}`)
-        const errorText = await response.text()
-        console.log(`SocketCommsTS: Error response: ${errorText}`)
-      }
-    } catch (error) {
-      console.log(`SocketCommsTS: Exception during datetime transmission: ${error}`)
     }
   }
 

@@ -834,11 +834,11 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async sendSettings() {
+  async updateSettings(settings: any) {
     return await this.sendData({
       command: "update_settings",
       params: {
-        ...getCoreSettings(),
+        ...settings,
       },
     })
   }
