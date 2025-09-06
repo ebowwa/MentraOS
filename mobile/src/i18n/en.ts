@@ -23,6 +23,8 @@ const en = {
     continueAnyway: "Continue Anyway",
     resetUrl: "Switch to Default Server",
     connectingToServer: "Connecting to server...",
+    retrying: "Retrying...",
+    resetting: "Resetting...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",

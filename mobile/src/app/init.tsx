@@ -64,7 +64,7 @@ export default function InitScreen() {
 
   const checkCustomUrl = async (): Promise<boolean> => {
     const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    const isCustom = Boolean(customUrl?.trim())
+    const isCustom = customUrl && customUrl.trim() !== "" && customUrl.indexOf("global") == -1
     setIsUsingCustomUrl(isCustom)
     return isCustom
   }
