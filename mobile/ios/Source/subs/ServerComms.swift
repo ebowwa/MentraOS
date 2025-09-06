@@ -207,10 +207,10 @@ class ServerComms {
         }
 
 //        if let locationData = LocationManager.shared.getCurrentLocation() {
-//            Core.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+//            Bridge.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
 //            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
 //        } else {
-//            Core.log("ServerComms: Cannot send location update: No location data available")
+//            Bridge.log("ServerComms: Cannot send location update: No location data available")
 //        }
     }
 
@@ -447,7 +447,7 @@ class ServerComms {
             // Convert string array to enum array
             var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
 
-            // Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+            // Bridge.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
 
             m.handle_microphone_state_change(requiredData, bypassVad)
 
@@ -612,12 +612,12 @@ class ServerComms {
         audioSenderThread = Thread {
             while self.audioSenderRunning {
                 if let chunk = self.audioBuffer.poll() {
-                    // Core.log("ServerComms: polling audio chunk")
+                    // Bridge.log("ServerComms: polling audio chunk")
                     // check if we're connected to livekit:
                     if LiveKitManager.shared.enabled {
                         LiveKitManager.shared.addPcm(chunk)
                     } else if self.wsManager.isConnected() {
-                        // Core.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
+                        // Bridge.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
                         self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
@@ -663,7 +663,7 @@ class ServerComms {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = jsonData
 
-            // Core.log("ServerComms: Sending datetime to: \(url)")
+            // Bridge.log("ServerComms: Sending datetime to: \(url)")
 
             URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {

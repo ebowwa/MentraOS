@@ -994,7 +994,7 @@ enum GlassesError: Error {
 
         if let continuation = continuation {
             continuation.resume(returning: true)
-            // Core.log("✅ ACK received for \(side) side, resuming continuation")
+            // Bridge.log("✅ ACK received for \(side) side, resuming continuation")
         }
     }
 
@@ -1155,7 +1155,7 @@ enum GlassesError: Error {
             //          clearState()
             //        }
             default:
-//                 Core.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+//                 Bridge.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
                 break
             }
         default:

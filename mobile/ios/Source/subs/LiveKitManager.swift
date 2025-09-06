@@ -79,7 +79,7 @@ public class LiveKitManager: NSObject {
                 // Setup custom audio source for PCM input
                 // try await setupCustomAudioTrack()
                 //                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
-                //              Core.log("LiveKit: a: \(room.)")
+                //              Bridge.log("LiveKit: a: \(room.)")
                 //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
 
                 Bridge.log("LiveKit: Successfully connected to LiveKit room")
@@ -178,7 +178,7 @@ public class LiveKitManager: NSObject {
         //          try await room.localParticipant.publish(data: pcmData)
         //      }
         //        guard let injector = bufferInjector else {
-        //            Core.log("LiveKit: Buffer injector not initialized")
+        //            Bridge.log("LiveKit: Buffer injector not initialized")
         //            return
         //        }
         //

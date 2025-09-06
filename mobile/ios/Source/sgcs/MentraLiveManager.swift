@@ -603,7 +603,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
     }
 
     func peripheral(_: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        // Core.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
+        // Bridge.log("GOT CHARACTERISTIC UPDATE @@@@@@@@@@@@@@@@@@@@@")
         if let error = error {
             Bridge.log("Error updating value for characteristic: \(error.localizedDescription)")
             return
@@ -617,13 +617,13 @@ extension MentraLiveManager: CBPeripheralDelegate {
         let threadId = Thread.current.hash
         let uuid = characteristic.uuid
 
-        // Core.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
+        // Bridge.log("Thread-\(threadId): 🎉 didUpdateValueFor CALLBACK TRIGGERED! Characteristic: \(uuid)")
         // if uuid == RX_CHAR_UUID {
-        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
+        //   Bridge.log("Thread-\(threadId): 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)")
         // } else if uuid == TX_CHAR_UUID {
-        //   Core.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
+        //   Bridge.log("Thread-\(threadId): 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)")
         // }
-        // Core.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
+        // Bridge.log("Thread-\(threadId): 🔍 Processing received data - \(data.count) bytes")
 
         processReceivedData(data)
     }
@@ -1138,7 +1138,7 @@ typealias JSONObject = [String: Any]
         //    // Set scan timeout
         //    DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
         //      if self?.isScanning == true {
-        //        Core.log("Scan timeout reached - stopping BLE scan")
+        //        Bridge.log("Scan timeout reached - stopping BLE scan")
         //        self?.stopScan()
         //      }
         //    }
@@ -1606,7 +1606,7 @@ typealias JSONObject = [String: Any]
     // MARK: - File Transfer Processing
 
     private func processFilePacket(_ packetInfo: K900ProtocolUtils.FilePacketInfo) {
-        //    Core.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
+        //    Bridge.log("📦 Processing file packet: \(packetInfo.fileName) [\(packetInfo.packIndex)/\(((packetInfo.fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE - 1))] (\(packetInfo.packSize) bytes)")
 
         // Check if this is a BLE photo transfer we're tracking
         var bleImgId = packetInfo.fileName
@@ -1784,9 +1784,9 @@ typealias JSONObject = [String: Any]
         //      let fileURL = saveDirectory.appendingPathComponent(fileName)
         //
         //      try imageData.write(to: fileURL)
-        //      Core.log("💾 Saved BLE photo locally: \(fileURL.path)")
+        //      Bridge.log("💾 Saved BLE photo locally: \(fileURL.path)")
         //    } catch {
-        //      Core.log("Error saving BLE photo locally: \(error)")
+        //      Bridge.log("Error saving BLE photo locally: \(error)")
         //    }
 
         // Get core token for authentication

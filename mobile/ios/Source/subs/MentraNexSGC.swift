@@ -122,7 +122,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             _connectionState = newValue
             if oldValue != newValue {
                 onConnectionStateChanged?()
-                Core.log("NEX: 🔄 Connection state changed: \(oldValue) -> \(newValue)")
+                Bridge.log("NEX: 🔄 Connection state changed: \(oldValue) -> \(newValue)")
             }
         }
     }
@@ -224,22 +224,22 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     override private init() {
         super.init()
-        Core.log("NEX: 🚀 MentraNexSGC initialization started")
+        Bridge.log("NEX: 🚀 MentraNexSGC initialization started")
 
         // Load saved device information (from Java implementation)
         loadSavedDeviceInfo()
 
         // Using custom Bluetooth queue for better performance (like G1)
-        Core.log("NEX: 📱 Creating CBCentralManager with custom Bluetooth queue")
+        Bridge.log("NEX: 📱 Creating CBCentralManager with custom Bluetooth queue")
         centralManager = CBCentralManager(delegate: self, queue: MentraNexSGC._bluetoothQueue)
 
-        Core.log("NEX: ✅ MentraNexSGC initialization completed")
-        Core.log("NEX: 📱 Central Manager created: \(centralManager != nil ? "YES" : "NO")")
+        Bridge.log("NEX: ✅ MentraNexSGC initialization completed")
+        Bridge.log("NEX: 📱 Central Manager created: \(centralManager != nil ? "YES" : "NO")")
         if let centralManager = centralManager {
-            Core.log("NEX: 📱 Initial Bluetooth State: \(centralManager.state.rawValue)")
+            Bridge.log("NEX: 📱 Initial Bluetooth State: \(centralManager.state.rawValue)")
         }
 
-        Core.log("NEX: 💾 Loaded saved device - Name: \(savedDeviceName ?? "None"), Address: \(savedDeviceAddress ?? "None")")
+        Bridge.log("NEX: 💾 Loaded saved device - Name: \(savedDeviceName ?? "None"), Address: \(savedDeviceAddress ?? "None")")
     }
 
     private func setupCommandQueue() {
@@ -280,7 +280,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             offset += chunkSize
         }
 
-        Core.log("NEX: 📦 Created \(chunks.count) MTU-optimized chunks (max size: \(effectiveChunkSize) bytes)")
+        Bridge.log("NEX: 📦 Created \(chunks.count) MTU-optimized chunks (max size: \(effectiveChunkSize) bytes)")
         queueChunks(chunks, waitTimeMs: waitTimeMs)
     }
 
@@ -294,15 +294,15 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func processCommand(_ command: BufferedCommand) async {
         guard let peripheral = peripheral, let writeCharacteristic = writeCharacteristic else {
-            Core.log("NEX: ⚠️ processCommand: peripheral/characteristic not ready")
+            Bridge.log("NEX: ⚠️ processCommand: peripheral/characteristic not ready")
             return
         }
 
         // Send each chunk sequentially
         for (index, chunk) in command.chunks.enumerated() {
             let data = Data(chunk)
-            Core.log("NEX: 📦 Sending chunk \(index) of \(command.chunks.count) to \(peripheral.name ?? "Unknown")")
-            Core.log("NEX: 📦 Chunk data: \(data.toHexString())")
+            Bridge.log("NEX: 📦 Sending chunk \(index) of \(command.chunks.count) to \(peripheral.name ?? "Unknown")")
+            Bridge.log("NEX: 📦 Chunk data: \(data.toHexString())")
             peripheral.writeValue(data, for: writeCharacteristic, type: .withResponse)
 
             // Delay between chunks except maybe after the last chunk if waitTime will handle it
@@ -324,27 +324,27 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         savedDeviceAddress = UserDefaults.standard.string(forKey: PREFS_DEVICE_ADDRESS)
         preferredDeviceId = UserDefaults.standard.string(forKey: PREFS_DEVICE_ID)
 
-        Core.log("NEX: 💾 Loaded device info - Name: \(savedDeviceName ?? "None"), Address: \(savedDeviceAddress ?? "None"), ID: \(preferredDeviceId ?? "None")")
+        Bridge.log("NEX: 💾 Loaded device info - Name: \(savedDeviceName ?? "None"), Address: \(savedDeviceAddress ?? "None"), ID: \(preferredDeviceId ?? "None")")
     }
 
     private func savePairedDeviceInfo(name: String?, address: String?) {
         if let name = name {
             UserDefaults.standard.set(name, forKey: PREFS_DEVICE_NAME)
             savedDeviceName = name
-            Core.log("NEX: 💾 Saved device name: \(name)")
+            Bridge.log("NEX: 💾 Saved device name: \(name)")
         }
 
         if let address = address {
             UserDefaults.standard.set(address, forKey: PREFS_DEVICE_ADDRESS)
             savedDeviceAddress = address
-            Core.log("NEX: 💾 Saved device address: \(address)")
+            Bridge.log("NEX: 💾 Saved device address: \(address)")
         }
     }
 
     @objc func savePreferredDeviceId(_ deviceId: String) {
         UserDefaults.standard.set(deviceId, forKey: PREFS_DEVICE_ID)
         preferredDeviceId = deviceId
-        Core.log("NEX: 💾 Saved preferred device ID: \(deviceId)")
+        Bridge.log("NEX: 💾 Saved preferred device ID: \(deviceId)")
     }
 
     @objc func clearSavedDeviceInfo() {
@@ -357,7 +357,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         preferredDeviceId = nil
         peripheralUUID = nil
 
-        Core.log("NEX: 🗑️ Cleared all saved device information")
+        Bridge.log("NEX: 🗑️ Cleared all saved device information")
     }
 
     // MARK: - Enhanced Device Filtering (ported from Java)
@@ -378,7 +378,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         for prefix in compatiblePrefixes {
             if deviceName.hasPrefix(prefix) || deviceName.contains(prefix) {
-                Core.log("NEX: ✅ Device '\(deviceName)' matches compatible prefix: \(prefix)")
+                Bridge.log("NEX: ✅ Device '\(deviceName)' matches compatible prefix: \(prefix)")
                 return true
             }
         }
@@ -401,12 +401,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
                let matchRange = Range(match.range(at: 1), in: deviceName)
             {
                 let deviceId = String(deviceName[matchRange])
-                Core.log("NEX: 🏷️ Extracted device ID: \(deviceId) from \(deviceName)")
+                Bridge.log("NEX: 🏷️ Extracted device ID: \(deviceId) from \(deviceName)")
                 return deviceId
             }
         }
 
-        Core.log("NEX: ⚠️ Could not extract device ID from: \(deviceName)")
+        Bridge.log("NEX: ⚠️ Could not extract device ID from: \(deviceName)")
         return nil
     }
 
@@ -414,7 +414,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc(connectByName:)
     func connect(name: String) {
-        Core.log("NEX-CONN: 🔗 connect(name:) called with \(name)")
+        Bridge.log("NEX-CONN: 🔗 connect(name:) called with \(name)")
         if _isScanning {
             stopScan()
         }
@@ -424,31 +424,31 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func connectByUUID() -> Bool {
         guard let uuid = peripheralUUID else {
-            Core.log("NEX-CONN: 🔵 No stored UUID to connect by.")
+            Bridge.log("NEX-CONN: 🔵 No stored UUID to connect by.")
             return false
         }
 
         guard let centralManager = centralManager else {
-            Core.log("NEX-CONN: ❌ Central Manager is nil, cannot connect by UUID.")
+            Bridge.log("NEX-CONN: ❌ Central Manager is nil, cannot connect by UUID.")
             return false
         }
 
-        Core.log("NEX-CONN: 🔵 Attempting to retrieve peripheral with stored UUID: \(uuid.uuidString)")
+        Bridge.log("NEX-CONN: 🔵 Attempting to retrieve peripheral with stored UUID: \(uuid.uuidString)")
         let peripherals = centralManager.retrievePeripherals(withIdentifiers: [uuid])
 
         if let peripheralToConnect = peripherals.first {
-            Core.log("NEX-CONN: 🔵 Found peripheral by UUID: \(peripheralToConnect.name ?? "Unknown"). Initiating connection.")
+            Bridge.log("NEX-CONN: 🔵 Found peripheral by UUID: \(peripheralToConnect.name ?? "Unknown"). Initiating connection.")
             peripheral = peripheralToConnect
             centralManager.connect(peripheralToConnect, options: nil)
             return true
         } else {
-            Core.log("NEX-CONN: 🔵 Could not find peripheral for stored UUID. Will proceed to scan.")
+            Bridge.log("NEX-CONN: 🔵 Could not find peripheral for stored UUID. Will proceed to scan.")
             return false
         }
     }
 
     private func startReconnectionTimer() {
-        Core.log("NEX-CONN: 🔄 Starting reconnection timer...")
+        Bridge.log("NEX-CONN: 🔄 Starting reconnection timer...")
         stopReconnectionTimer() // Ensure no existing timer is running
         reconnectionAttempts = 0
 
@@ -465,7 +465,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func stopReconnectionTimer() {
         if reconnectionTimer != nil {
-            Core.log("NEX-CONN: 🛑 Stopping reconnection timer.")
+            Bridge.log("NEX-CONN: 🛑 Stopping reconnection timer.")
             reconnectionTimer?.invalidate()
             reconnectionTimer = nil
         }
@@ -473,49 +473,49 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc private func attemptReconnection() {
         if nexReady {
-            Core.log("NEX-CONN: ✅ Already connected, stopping reconnection attempts.")
+            Bridge.log("NEX-CONN: ✅ Already connected, stopping reconnection attempts.")
             stopReconnectionTimer()
             return
         }
 
         if maxReconnectionAttempts != -1, reconnectionAttempts >= maxReconnectionAttempts {
-            Core.log("NEX-CONN: ❌ Max reconnection attempts reached.")
+            Bridge.log("NEX-CONN: ❌ Max reconnection attempts reached.")
             stopReconnectionTimer()
             return
         }
 
         reconnectionAttempts += 1
-        Core.log("NEX-CONN: 🔄 Attempting reconnection (\(reconnectionAttempts))...")
+        Bridge.log("NEX-CONN: 🔄 Attempting reconnection (\(reconnectionAttempts))...")
         startScan()
     }
 
     // MARK: - Public Methods
 
     private func startScan() {
-        Core.log("NEX-CONN: 🔍 startScan called")
+        Bridge.log("NEX-CONN: 🔍 startScan called")
 
         isDisconnecting = false // Reset intentional disconnect flag
 
         guard let centralManager = centralManager else {
-            Core.log("NEX-CONN: ❌ Central Manager is nil!")
+            Bridge.log("NEX-CONN: ❌ Central Manager is nil!")
             return
         }
 
         guard centralManager.state == .poweredOn else {
-            Core.log("NEX-CONN: ❌ Bluetooth not powered on. State: \(centralManager.state.rawValue)")
+            Bridge.log("NEX-CONN: ❌ Bluetooth not powered on. State: \(centralManager.state.rawValue)")
             return
         }
 
         // First, try to reconnect using stored UUID (faster and works in background)
         if connectByUUID() {
-            Core.log("NEX-CONN: 🔄 Attempting connection with stored UUID. Halting scan.")
+            Bridge.log("NEX-CONN: 🔄 Attempting connection with stored UUID. Halting scan.")
             return
         }
 
         // If that fails, check for already-connected system devices
         let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [MAIN_SERVICE_UUID])
         if let targetName = peripheralToConnectName, let existingPeripheral = connectedPeripherals.first(where: { $0.name?.contains(targetName) == true }) {
-            Core.log("NEX-CONN: 📱 Found already connected peripheral that matches target: \(existingPeripheral.name ?? "Unknown")")
+            Bridge.log("NEX-CONN: 📱 Found already connected peripheral that matches target: \(existingPeripheral.name ?? "Unknown")")
             if peripheral == nil {
                 peripheral = existingPeripheral
                 centralManager.connect(existingPeripheral, options: nil)
@@ -525,11 +525,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         // Check if we have a saved device name to reconnect to (like MentraLive)
         if let savedDeviceName = UserDefaults.standard.string(forKey: PREFS_DEVICE_NAME), !savedDeviceName.isEmpty {
-            Core.log("NEX-CONN: 🔄 Looking for saved device: \(savedDeviceName)")
+            Bridge.log("NEX-CONN: 🔄 Looking for saved device: \(savedDeviceName)")
             // This will be handled in didDiscover when the device is found
         }
 
-        Core.log("NEX-CONN: ✅ Bluetooth is powered on, starting scan...")
+        Bridge.log("NEX-CONN: ✅ Bluetooth is powered on, starting scan...")
         _isScanning = true
 
         // Scan for ALL devices, not just those with specific services
@@ -539,24 +539,24 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         ]
         centralManager.scanForPeripherals(withServices: nil, options: scanOptions)
 
-        Core.log("NEX-CONN: 🚀 Scan started successfully")
+        Bridge.log("NEX-CONN: 🚀 Scan started successfully")
 
         // Re-emit already discovered peripherals (like MentraLive)
         for (_, peripheral) in discoveredPeripherals {
-            Core.log("NEX-CONN: 📡 (Re-emitting from cache) peripheral: \(peripheral.name ?? "Unknown")")
+            Bridge.log("NEX-CONN: 📡 (Re-emitting from cache) peripheral: \(peripheral.name ?? "Unknown")")
             if let name = peripheral.name {
                 emitDiscoveredDevice(name)
             }
         }
 
         // No auto-stop timer (like G1) - manual control
-        Core.log("NEX-CONN: 💡 To stop scanning manually, call: MentraNexSGC.shared.stopScan()")
+        Bridge.log("NEX-CONN: 💡 To stop scanning manually, call: MentraNexSGC.shared.stopScan()")
     }
 
     @objc func stopScan() {
         centralManager?.stopScan()
         _isScanning = false
-        Core.log("NEX-CONN: 🛑 Stopped scanning.")
+        Bridge.log("NEX-CONN: 🛑 Stopped scanning.")
     }
 
     @objc func isScanning() -> Bool {
@@ -603,7 +603,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc func findCompatibleDevices() {
-        Core.log("NEX-DISCOVERY: Finding compatible devices. Clearing connection targets.")
+        Bridge.log("NEX-DISCOVERY: Finding compatible devices. Clearing connection targets.")
 
         // Clear any specific device targets to ensure we are only discovering
         peripheralToConnectName = nil
@@ -619,7 +619,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             if centralManager?.state == .poweredOn {
                 startScan()
             } else {
-                Core.log("NEX-DISCOVERY: Bluetooth not ready, will scan on power on.")
+                Bridge.log("NEX-DISCOVERY: Bluetooth not ready, will scan on power on.")
                 scanOnPowerOn = true
             }
         }
@@ -627,11 +627,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func sendTextWall(_ text: String) {
         guard nexReady else {
-            Core.log("NEX: Not ready to display text. Device not initialized.")
+            Bridge.log("NEX: Not ready to display text. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Displaying text wall: '\(text)'")
+        Bridge.log("NEX: Displaying text wall: '\(text)'")
 
         let displayText = Mentraos_Ble_DisplayText.with {
             $0.text = text
@@ -679,11 +679,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func displayScrollingText(_ text: String) {
         guard nexReady else {
-            Core.log("NEX: Not ready to display scrolling text. Device not initialized.")
+            Bridge.log("NEX: Not ready to display scrolling text. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Displaying scrolling text: '\(text)'")
+        Bridge.log("NEX: Displaying scrolling text: '\(text)'")
 
         let displayScrollingText = Mentraos_Ble_DisplayScrollingText.with {
             $0.text = text
@@ -711,15 +711,15 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func displayBitmap(_ bitmap: UIImage) {
         guard nexReady else {
-            Core.log("NEX: Not ready to display bitmap. Device not initialized.")
+            Bridge.log("NEX: Not ready to display bitmap. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Displaying bitmap image")
+        Bridge.log("NEX: Displaying bitmap image")
 
         // Convert UIImage to raw bitmap data
         guard let bmpData = convertUIImageToBmpData(bitmap) else {
-            Core.log("NEX: Failed to convert UIImage to BMP data")
+            Bridge.log("NEX: Failed to convert UIImage to BMP data")
             return
         }
 
@@ -732,11 +732,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func displayBitmapData(_ bmpData: Data, width: Int, height: Int) {
         guard nexReady else {
-            Core.log("NEX: Not ready to display bitmap data. Device not initialized.")
+            Bridge.log("NEX: Not ready to display bitmap data. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Displaying bitmap data (\(bmpData.count) bytes, \(width)x\(height))")
+        Bridge.log("NEX: Displaying bitmap data (\(bmpData.count) bytes, \(width)x\(height))")
 
         // Generate stream ID for image transfer
         let streamId = String(format: "%04X", Int.random(in: 0 ... 0xFFFF))
@@ -786,7 +786,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             chunks.append(header)
         }
 
-        Core.log("NEX: Sending \(chunks.count) image chunks")
+        Bridge.log("NEX: Sending \(chunks.count) image chunks")
         queueChunks(chunks, waitTimeMs: 50)
     }
 
@@ -823,11 +823,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func clearDisplay() {
         guard nexReady else {
-            Core.log("NEX: Not ready to clear display. Device not initialized.")
+            Bridge.log("NEX: Not ready to clear display. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Clearing display")
+        Bridge.log("NEX: Clearing display")
 
         let clearDisplay = Mentraos_Ble_ClearDisplay()
 
@@ -845,7 +845,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc func showHomeScreen() {
-        Core.log("NEX: Showing home screen")
+        Bridge.log("NEX: Showing home screen")
         clearDisplay()
 
         // Send a simple home screen text
@@ -856,11 +856,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func exitAllFunctions() {
         guard nexReady else {
-            Core.log("NEX: Not ready to exit functions. Device not initialized.")
+            Bridge.log("NEX: Not ready to exit functions. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Exiting all functions")
+        Bridge.log("NEX: Exiting all functions")
 
         // Send exit command (0x18 from Android implementation)
         let exitCommand: [UInt8] = [0x18]
@@ -871,13 +871,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func updateGlassesBrightness(_ brightness: Int) {
         guard nexReady else {
-            Core.log("NEX: Not ready to update brightness. Device not initialized.")
+            Bridge.log("NEX: Not ready to update brightness. Device not initialized.")
             return
         }
 
         // Validate brightness range (0-100)
         let validBrightness = max(0, min(100, brightness))
-        Core.log("NEX: Setting brightness to \(validBrightness)%")
+        Bridge.log("NEX: Setting brightness to \(validBrightness)%")
 
         let brightnessConfig = Mentraos_Ble_BrightnessConfig.with {
             $0.value = UInt32(validBrightness)
@@ -893,11 +893,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func updateGlassesAutoBrightness(_ enabled: Bool) {
         guard nexReady else {
-            Core.log("NEX: Not ready to update auto brightness. Device not initialized.")
+            Bridge.log("NEX: Not ready to update auto brightness. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Setting auto brightness to \(enabled)")
+        Bridge.log("NEX: Setting auto brightness to \(enabled)")
 
         let autoBrightnessConfig = Mentraos_Ble_AutoBrightnessConfig.with {
             $0.enabled = enabled
@@ -913,13 +913,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func updateGlassesHeadUpAngle(_ angle: Int) {
         guard nexReady else {
-            Core.log("NEX: Not ready to update head-up angle. Device not initialized.")
+            Bridge.log("NEX: Not ready to update head-up angle. Device not initialized.")
             return
         }
 
         // Validate angle range (0-60 degrees)
         let validAngle = max(0, min(60, angle))
-        Core.log("NEX: Setting head-up angle to \(validAngle) degrees")
+        Bridge.log("NEX: Setting head-up angle to \(validAngle) degrees")
 
         let headUpAngleConfig = Mentraos_Ble_HeadUpAngleConfig.with {
             $0.angle = UInt32(validAngle)
@@ -935,13 +935,13 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func updateGlassesDisplayHeight(_ height: Int) {
         guard nexReady else {
-            Core.log("NEX: Not ready to update display height. Device not initialized.")
+            Bridge.log("NEX: Not ready to update display height. Device not initialized.")
             return
         }
 
         // Validate height range (0-8)
         let validHeight = max(0, min(8, height))
-        Core.log("NEX: Setting display height to \(validHeight)")
+        Bridge.log("NEX: Setting display height to \(validHeight)")
 
         let displayHeightConfig = Mentraos_Ble_DisplayHeightConfig.with {
             $0.height = UInt32(validHeight)
@@ -957,11 +957,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func setMicrophoneEnabled(_ enabled: Bool) {
         guard nexReady else {
-            Core.log("NEX: Not ready to set microphone state. Device not initialized.")
+            Bridge.log("NEX: Not ready to set microphone state. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Setting microphone enabled: \(enabled)")
+        Bridge.log("NEX: Setting microphone enabled: \(enabled)")
 
         let micStateConfig = Mentraos_Ble_MicStateConfig.with {
             $0.enabled = enabled
@@ -991,11 +991,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func queryBatteryStatus() {
         guard nexReady else {
-            Core.log("NEX: Not ready to query battery status. Device not initialized.")
+            Bridge.log("NEX: Not ready to query battery status. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Querying battery status")
+        Bridge.log("NEX: Querying battery status")
 
         let batteryStateRequest = Mentraos_Ble_BatteryStateRequest()
 
@@ -1009,11 +1009,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func queryGlassesInfo() {
         guard nexReady else {
-            Core.log("NEX: Not ready to query glasses info. Device not initialized.")
+            Bridge.log("NEX: Not ready to query glasses info. Device not initialized.")
             return
         }
 
-        Core.log("NEX: Querying glasses information")
+        Bridge.log("NEX: Querying glasses information")
 
         let glassesInfoRequest = Mentraos_Ble_GlassesInfoRequest()
 
@@ -1029,12 +1029,12 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     @objc func sendPongResponse() {
         guard nexReady else {
-            Core.log("NEX: Not ready to send pong. Device not initialized.")
+            Bridge.log("NEX: Not ready to send pong. Device not initialized.")
             return
         }
 
         let timestamp = Date().timeIntervalSince1970 * 1000
-        Core.log("NEX: Sending pong response (Time: \(timestamp))")
+        Bridge.log("NEX: Sending pong response (Time: \(timestamp))")
 
         let pongResponse = Mentraos_Ble_PongResponse()
 
@@ -1074,7 +1074,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc func setUpdatingScreen(_ updating: Bool) {
-        Core.log("NEX: Set updating screen: \(updating)")
+        Bridge.log("NEX: Set updating screen: \(updating)")
         // This could be used to prevent display updates during certain operations
         // Implementation depends on specific requirements
     }
@@ -1085,7 +1085,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         guard data.count > 0 else { return }
 
         let packetType = data[0]
-        Core.log("NEX: Processing packet type: 0x\(String(format: "%02X", packetType))")
+        Bridge.log("NEX: Processing packet type: 0x\(String(format: "%02X", packetType))")
 
         switch packetType {
         case PACKET_TYPE_JSON:
@@ -1111,17 +1111,17 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             processImageData(data)
 
         default:
-            Core.log("NEX: Unknown packet type: 0x\(String(format: "%02X", packetType))")
+            Bridge.log("NEX: Unknown packet type: 0x\(String(format: "%02X", packetType))")
         }
     }
 
     private func processJsonData(_ jsonData: Data) {
         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
-            Core.log("NEX: Failed to decode JSON data")
+            Bridge.log("NEX: Failed to decode JSON data")
             return
         }
 
-        Core.log("NEX: Processing JSON: \(jsonString)")
+        Bridge.log("NEX: Processing JSON: \(jsonString)")
 
         do {
             guard let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
@@ -1146,17 +1146,17 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             case "head_gesture":
                 handleHeadGestureJson(json)
             default:
-                Core.log("NEX: Unhandled JSON type: \(type)")
+                Bridge.log("NEX: Unhandled JSON type: \(type)")
             }
         } catch {
-            Core.log("NEX: Error parsing JSON: \(error)")
+            Bridge.log("NEX: Error parsing JSON: \(error)")
         }
     }
 
     private func processProtobufData(_ protobufData: Data) {
         do {
             let glassesToPhone = try Mentraos_Ble_GlassesToPhone(serializedData: protobufData)
-            Core.log("NEX: Processing protobuf payload case: \(glassesToPhone.payload)")
+            Bridge.log("NEX: Processing protobuf payload case: \(glassesToPhone.payload)")
 
             switch glassesToPhone.payload {
             case let .batteryStatus(batteryStatus):
@@ -1195,19 +1195,19 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             // Note: VersionResponse not available in current protobuf structure
 
             case .none:
-                Core.log("NEX: Protobuf payload not set")
+                Bridge.log("NEX: Protobuf payload not set")
 
             default:
-                Core.log("NEX: Unhandled protobuf payload type")
+                Bridge.log("NEX: Unhandled protobuf payload type")
             }
 
         } catch {
-            Core.log("NEX: Error parsing protobuf data: \(error)")
+            Bridge.log("NEX: Error parsing protobuf data: \(error)")
         }
     }
 
     private func processAudioData(_ audioData: Data, sequenceNumber: UInt8) {
-        Core.log("NEX: Received audio data - sequence: \(sequenceNumber), size: \(audioData.count) bytes")
+        Bridge.log("NEX: Received audio data - sequence: \(sequenceNumber), size: \(audioData.count) bytes")
 
         // Update @Published property (G1-compatible approach)
         // Create packet with sequence number prefix like G1 expects
@@ -1219,7 +1219,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func processImageData(_ imageData: Data) {
-        Core.log("NEX: Received image data: \(imageData.count) bytes")
+        Bridge.log("NEX: Received image data: \(imageData.count) bytes")
         // Image data processing can be implemented based on specific requirements
     }
 
@@ -1229,7 +1229,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let level = Int(batteryStatus.level)
         let charging = batteryStatus.charging
 
-        Core.log("NEX: 🔋 Battery Status - Level: \(level)%, Charging: \(charging)")
+        Bridge.log("NEX: 🔋 Battery Status - Level: \(level)%, Charging: \(charging)")
 
         // Update @Published properties (G1-compatible approach)
         batteryLevel = level
@@ -1239,14 +1239,14 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleChargingStateProtobuf(_ chargingState: Mentraos_Ble_ChargingState) {
         let chargingState = chargingState.state == .charging
 
-        Core.log("NEX: 🔌 Charging State: \(chargingState ? "CHARGING" : "NOT_CHARGING")")
+        Bridge.log("NEX: 🔌 Charging State: \(chargingState ? "CHARGING" : "NOT_CHARGING")")
 
         // Update @Published property (G1-compatible approach)
         isCharging = chargingState
     }
 
     private func handleDeviceInfoProtobuf(_ deviceInfo: Mentraos_Ble_DeviceInfo) {
-        Core.log("NEX: 📱 Device Info: \(deviceInfo)")
+        Bridge.log("NEX: 📱 Device Info: \(deviceInfo)")
 
         // Update @Published properties (G1-compatible approach)
         deviceFirmwareVersion = deviceInfo.fwVersion
@@ -1256,7 +1256,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleHeadPositionProtobuf(_ headPosition: Mentraos_Ble_HeadPosition) {
         let angle = Int(headPosition.angle)
 
-        Core.log("NEX: 📐 Head Position - Angle: \(angle)°")
+        Bridge.log("NEX: 📐 Head Position - Angle: \(angle)°")
 
         // Update @Published property (G1-compatible approach)
         headUpAngle = angle
@@ -1265,7 +1265,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleHeadUpAngleResponseProtobuf(_ response: Mentraos_Ble_HeadUpAngleResponse) {
         let success = response.success
 
-        Core.log("NEX: 📐 Head Up Angle Set Response - Success: \(success)")
+        Bridge.log("NEX: 📐 Head Up Angle Set Response - Success: \(success)")
 
         // Emit response event
         let eventBody: [String: Any] = [
@@ -1280,7 +1280,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handlePingProtobuf(_: Mentraos_Ble_PingRequest) {
         let timestamp = Date().timeIntervalSince1970 * 1000
 
-        Core.log("NEX: 💓 Received PING from glasses (Time: \(timestamp))")
+        Bridge.log("NEX: 💓 Received PING from glasses (Time: \(timestamp))")
 
         // Automatically send pong response
         sendPongResponse()
@@ -1307,7 +1307,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleVadEventProtobuf(_ vadEvent: Mentraos_Ble_VadEvent) {
         let vadActiveState = vadEvent.state == .active
 
-        Core.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActiveState)")
+        Bridge.log("NEX: 🎤 VAD Event - Voice Activity: \(vadActiveState)")
 
         // Update @Published properties (G1-compatible approach)
         vadActive = vadActiveState
@@ -1318,19 +1318,19 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let status = transferComplete.status
         let missingChunks = transferComplete.missingChunks
 
-        Core.log("NEX: 🖼️ Image Transfer Complete - Status: \(status)")
+        Bridge.log("NEX: 🖼️ Image Transfer Complete - Status: \(status)")
 
         switch status {
         case .ok:
-            Core.log("NEX: Image transfer completed successfully")
+            Bridge.log("NEX: Image transfer completed successfully")
             // Clear any pending image chunks
 
         case .incomplete:
-            Core.log("NEX: Image transfer incomplete - Missing chunks: \(missingChunks)")
+            Bridge.log("NEX: Image transfer incomplete - Missing chunks: \(missingChunks)")
             // Could implement chunk retransmission here
 
         default:
-            Core.log("NEX: Unknown image transfer status")
+            Bridge.log("NEX: Unknown image transfer status")
         }
 
         // Emit image transfer complete event
@@ -1346,7 +1346,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func handleImuDataProtobuf(_ imuData: Mentraos_Ble_ImuData) {
-        Core.log("NEX: 📊 IMU Data: \(imuData)")
+        Bridge.log("NEX: 📊 IMU Data: \(imuData)")
 
         // Update @Published properties (G1-compatible approach)
         accelerometer = [imuData.accel.x, imuData.accel.y, imuData.accel.z]
@@ -1358,7 +1358,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let buttonNumber = Int(buttonEvent.button.rawValue)
         let buttonState = buttonEvent.state
 
-        Core.log("NEX: 🔘 Button Event - Button: \(buttonNumber), State: \(buttonState)")
+        Bridge.log("NEX: 🔘 Button Event - Button: \(buttonNumber), State: \(buttonState)")
 
         // Update @Published properties (G1-compatible approach)
         lastButtonPressed = buttonNumber
@@ -1368,7 +1368,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleHeadGestureProtobuf(_ headGesture: Mentraos_Ble_HeadGesture) {
         let gestureType = headGesture.gesture
 
-        Core.log("NEX: 👤 Head Gesture: \(gestureType)")
+        Bridge.log("NEX: 👤 Head Gesture: \(gestureType)")
 
         // Update @Published properties (G1-compatible approach)
         switch gestureType {
@@ -1380,7 +1380,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         case .shake:
             lastHeadGesture = "shake"
         default:
-            Core.log("NEX: Unknown head gesture type: \(gestureType)")
+            Bridge.log("NEX: Unknown head gesture type: \(gestureType)")
             lastHeadGesture = "unknown"
         }
     }
@@ -1391,7 +1391,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let level = json["level"] as? Int ?? -1
         let charging = json["charging"] as? Bool ?? false
 
-        Core.log("NEX: 🔋 JSON Battery Status - Level: \(level)%, Charging: \(charging)")
+        Bridge.log("NEX: 🔋 JSON Battery Status - Level: \(level)%, Charging: \(charging)")
 
         // Update @Published properties (G1-compatible approach)
         batteryLevel = level
@@ -1399,7 +1399,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func handleDeviceInfoJson(_ json: [String: Any]) {
-        Core.log("NEX: 📱 JSON Device Info: \(json)")
+        Bridge.log("NEX: 📱 JSON Device Info: \(json)")
 
         let eventBody: [String: Any] = [
             "device_info": json,
@@ -1413,7 +1413,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let buttonId = json["button_id"] as? String ?? "unknown"
         let pressType = json["press_type"] as? String ?? "short"
 
-        Core.log("NEX: 🔘 JSON Button Event - Button: \(buttonId), Type: \(pressType)")
+        Bridge.log("NEX: 🔘 JSON Button Event - Button: \(buttonId), Type: \(pressType)")
 
         let eventBody: [String: Any] = [
             "button_press": [
@@ -1430,7 +1430,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handlePingJson(_: [String: Any]) {
         let timestamp = Date().timeIntervalSince1970 * 1000
 
-        Core.log("NEX: 💓 JSON PING received (Time: \(timestamp))")
+        Bridge.log("NEX: 💓 JSON PING received (Time: \(timestamp))")
 
         // Send pong response
         sendPongResponse()
@@ -1449,7 +1449,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleVadEventJson(_ json: [String: Any]) {
         let vadActiveState = json["vad"] as? Bool ?? false
 
-        Core.log("NEX: 🎤 JSON VAD Event - Voice Activity: \(vadActiveState)")
+        Bridge.log("NEX: 🎤 JSON VAD Event - Voice Activity: \(vadActiveState)")
 
         // Update @Published properties (G1-compatible approach)
         vadActive = vadActiveState
@@ -1457,7 +1457,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func handleImuDataJson(_ json: [String: Any]) {
-        Core.log("NEX: 📊 JSON IMU Data: \(json)")
+        Bridge.log("NEX: 📊 JSON IMU Data: \(json)")
 
         let eventBody: [String: Any] = [
             "imu_data": json,
@@ -1470,7 +1470,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func handleHeadGestureJson(_ json: [String: Any]) {
         let gesture = json["gesture"] as? String ?? "unknown"
 
-        Core.log("NEX: 👤 JSON Head Gesture: \(gesture)")
+        Bridge.log("NEX: 👤 JSON Head Gesture: \(gesture)")
 
         let eventBody: [String: Any] = [
             "head_gesture": [
@@ -1487,7 +1487,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func emitEvent(_ eventName: String, body: [String: Any]) {
         // Use the standardized Bridge.sendTypedMessage helper for consistent type field handling
         Bridge.sendTypedMessage(eventName, body: body)
-        Core.log("NEX: 📡 Emitted \(eventName) via Bridge.sendTypedMessage")
+        Bridge.log("NEX: 📡 Emitted \(eventName) via Bridge.sendTypedMessage")
     }
 
     // MARK: - Heartbeat Management
@@ -1529,7 +1529,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Java-Compatible Initialization Methods
 
     private func startMicBeat() {
-        Core.log("NEX: Starting micbeat (30 min interval)")
+        Bridge.log("NEX: Starting micbeat (30 min interval)")
 
         if micBeatCount > 0 {
             stopMicBeat()
@@ -1542,7 +1542,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         // Schedule periodic mic beat (like Java lines 1753-1762)
         micBeatTimer = Timer.scheduledTimer(withTimeInterval: MICBEAT_INTERVAL_MS, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            Core.log("NEX: SENDING MIC BEAT")
+            Bridge.log("NEX: SENDING MIC BEAT")
             self.setMicrophoneEnabled(self.shouldUseGlassesMic)
         }
     }
@@ -1552,17 +1552,17 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         micBeatTimer?.invalidate()
         micBeatTimer = nil
         micBeatCount = 0
-        Core.log("NEX: Stopped mic beat")
+        Bridge.log("NEX: Stopped mic beat")
     }
 
     private func sendWhiteListCommand() {
         guard !whiteListedAlready else {
-            Core.log("NEX: Whitelist already sent, skipping")
+            Bridge.log("NEX: Whitelist already sent, skipping")
             return
         }
         whiteListedAlready = true
 
-        Core.log("NEX: Sending whitelist command")
+        Bridge.log("NEX: Sending whitelist command")
 
         // Create whitelist JSON exactly like Java (lines 2642-2680)
         let whitelistJson = createWhitelistJson()
@@ -1592,11 +1592,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: whitelistDict)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.log("NEX: Created whitelist JSON: \(jsonString)")
+                Bridge.log("NEX: Created whitelist JSON: \(jsonString)")
                 return jsonString
             }
         } catch {
-            Core.log("NEX: Error creating whitelist JSON: \(error)")
+            Bridge.log("NEX: Error creating whitelist JSON: \(error)")
         }
 
         return "{}"
@@ -1626,18 +1626,18 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             chunks.append(header)
         }
 
-        Core.log("NEX: Created \(chunks.count) whitelist chunks")
+        Bridge.log("NEX: Created \(chunks.count) whitelist chunks")
         return chunks
     }
 
     private func postProtobufSchemaVersionInfo() {
         guard !protobufVersionPosted else {
-            Core.log("NEX: Protobuf version already posted, skipping")
+            Bridge.log("NEX: Protobuf version already posted, skipping")
             return
         }
         protobufVersionPosted = true
 
-        Core.log("NEX: 📋 Posting protobuf schema version info")
+        Bridge.log("NEX: 📋 Posting protobuf schema version info")
 
         // Emit protobuf schema version event like Java (lines 3709-3728)
         let eventBody: [String: Any] = [
@@ -1655,11 +1655,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private func saveMicrophoneStateBeforeDisconnection() {
         UserDefaults.standard.set(shouldUseGlassesMic, forKey: "microphoneStateBeforeDisconnection")
         microphoneStateBeforeDisconnection = shouldUseGlassesMic
-        Core.log("NEX: Saved microphone state before disconnection: \(shouldUseGlassesMic)")
+        Bridge.log("NEX: Saved microphone state before disconnection: \(shouldUseGlassesMic)")
     }
 
     @objc func disconnect() {
-        Core.log("NEX: 🔌 User-initiated disconnect")
+        Bridge.log("NEX: 🔌 User-initiated disconnect")
         if let peripheral = peripheral {
             // Save microphone state before disconnection (like Java implementation)
             saveMicrophoneStateBeforeDisconnection()
@@ -1677,7 +1677,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Lifecycle Management (ported from Java)
 
     @objc func destroy() {
-        Core.log("NEX: 💥 Destroying MentraNexSGC instance")
+        Bridge.log("NEX: 💥 Destroying MentraNexSGC instance")
 
         isKilled = true
         isDisconnecting = true
@@ -1711,14 +1711,14 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         // Clear discovery cache
         discoveredPeripherals.removeAll()
 
-        Core.log("NEX: ✅ MentraNexSGC destroyed successfully")
+        Bridge.log("NEX: ✅ MentraNexSGC destroyed successfully")
         // Reset initialization flags
         whiteListedAlready = false
         protobufVersionPosted = false
     }
 
     @objc func reset() {
-        Core.log("NEX: 🔄 Resetting MentraNexSGC to fresh state")
+        Bridge.log("NEX: 🔄 Resetting MentraNexSGC to fresh state")
 
         // Disconnect current connection
         disconnect()
@@ -1736,7 +1736,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         reconnectionAttempts = 0
         peripheralToConnectName = nil
 
-        Core.log("NEX: ✅ Reset complete - ready for fresh pairing")
+        Bridge.log("NEX: ✅ Reset complete - ready for fresh pairing")
         // Reset initialization flags (like Java implementation)
         whiteListedAlready = false
         protobufVersionPosted = false
@@ -1756,7 +1756,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func emitDiscoveredDevice(_ name: String) {
         // Emit device discovery event (using MentraLive's format)
-        Core.log("NEX: 📡 Emitting discovered device: \(name)")
+        Bridge.log("NEX: 📡 Emitting discovered device: \(name)")
 
         let eventBody: [String: Any] = [
             "compatible_glasses_search_result": [
@@ -1770,84 +1770,84 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     @objc func checkBluetoothState() {
-        Core.log("NEX: 🔍 Checking Bluetooth State...")
+        Bridge.log("NEX: 🔍 Checking Bluetooth State...")
         if let centralManager = centralManager {
-            Core.log("NEX: 📱 Central Manager exists: YES")
-            Core.log("NEX: 📱 Current Bluetooth State: \(centralManager.state.rawValue)")
+            Bridge.log("NEX: 📱 Central Manager exists: YES")
+            Bridge.log("NEX: 📱 Current Bluetooth State: \(centralManager.state.rawValue)")
 
             switch centralManager.state {
             case .poweredOn:
-                Core.log("NEX: ✅ Bluetooth is ready for scanning")
+                Bridge.log("NEX: ✅ Bluetooth is ready for scanning")
 
                 if let savedDeviceName = UserDefaults.standard.string(forKey: PREFS_DEVICE_NAME), !savedDeviceName.isEmpty {
-                    Core.log("NEX: 🔄 Looking for saved device: \(savedDeviceName)")
+                    Bridge.log("NEX: 🔄 Looking for saved device: \(savedDeviceName)")
                     // This will be handled in didDiscover when the device is found
                     startScan()
                 }
             case .poweredOff:
-                Core.log("NEX: ❌ Bluetooth is turned off")
+                Bridge.log("NEX: ❌ Bluetooth is turned off")
             case .resetting:
-                Core.log("NEX: 🔄 Bluetooth is resetting")
+                Bridge.log("NEX: 🔄 Bluetooth is resetting")
             case .unauthorized:
-                Core.log("NEX: ❌ Bluetooth permission denied")
+                Bridge.log("NEX: ❌ Bluetooth permission denied")
             case .unsupported:
-                Core.log("NEX: ❌ Bluetooth not supported")
+                Bridge.log("NEX: ❌ Bluetooth not supported")
             case .unknown:
-                Core.log("NEX: ❓ Bluetooth state unknown")
+                Bridge.log("NEX: ❓ Bluetooth state unknown")
             @unknown default:
-                Core.log("NEX: ❓ Unknown Bluetooth state: \(centralManager.state.rawValue)")
+                Bridge.log("NEX: ❓ Unknown Bluetooth state: \(centralManager.state.rawValue)")
             }
         } else {
-            Core.log("NEX: ❌ Central Manager is nil!")
+            Bridge.log("NEX: ❌ Central Manager is nil!")
         }
     }
 
     // MARK: - CBCentralManagerDelegate
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        Core.log("NEX: 🔄 Bluetooth state changed to: \(central.state.rawValue)")
+        Bridge.log("NEX: 🔄 Bluetooth state changed to: \(central.state.rawValue)")
 
         switch central.state {
         case .poweredOn:
-            Core.log("NEX: ✅ Bluetooth is On and ready for scanning")
+            Bridge.log("NEX: ✅ Bluetooth is On and ready for scanning")
             if scanOnPowerOn {
-                Core.log("NEX: 🚀 Triggering scan after power on.")
+                Bridge.log("NEX: 🚀 Triggering scan after power on.")
                 scanOnPowerOn = false
                 startScan()
             }
         case .poweredOff:
-            Core.log("NEX: ❌ Bluetooth is Off - user needs to enable Bluetooth")
+            Bridge.log("NEX: ❌ Bluetooth is Off - user needs to enable Bluetooth")
             connectionState = .disconnected
         case .resetting:
-            Core.log("NEX: 🔄 Bluetooth is resetting - wait for completion")
+            Bridge.log("NEX: 🔄 Bluetooth is resetting - wait for completion")
             connectionState = .disconnected
         case .unauthorized:
-            Core.log("NEX: ❌ Bluetooth is unauthorized - check app permissions")
+            Bridge.log("NEX: ❌ Bluetooth is unauthorized - check app permissions")
             connectionState = .disconnected
         case .unsupported:
-            Core.log("NEX: ❌ Bluetooth is unsupported on this device")
+            Bridge.log("NEX: ❌ Bluetooth is unsupported on this device")
             connectionState = .disconnected
         case .unknown:
-            Core.log("NEX: ❓ Bluetooth state is unknown - may be initializing")
+            Bridge.log("NEX: ❓ Bluetooth state is unknown - may be initializing")
         @unknown default:
-            Core.log("NEX: ❓ A new Bluetooth state was introduced: \(central.state.rawValue)")
+            Bridge.log("NEX: ❓ A new Bluetooth state was introduced: \(central.state.rawValue)")
         }
     }
 
     func centralManager(_: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData _: [String: Any], rssi RSSI: NSNumber) {
         guard let deviceName = peripheral.name else {
-            // Core.log("NEX-CONN: 🚫 Ignoring device with no name")
+            // Bridge.log("NEX-CONN: 🚫 Ignoring device with no name")
             return
         }
 
         // guard isCompatibleNexDevice(deviceName) else {
-        //     // Core.log("NEX-CONN: 🚫 Ignoring incompatible device: \(deviceName)")
+        //     // Bridge.log("NEX-CONN: 🚫 Ignoring incompatible device: \(deviceName)")
         //     return
         // }
 
-        Core.log("NEX-CONN: 🎯 === Compatible Nex Device Found ===")
-        Core.log("NEX-CONN: 📱 Device Name: \(deviceName)")
-        Core.log("NEX-CONN: 📶 RSSI: \(RSSI) dBm")
+        Bridge.log("NEX-CONN: 🎯 === Compatible Nex Device Found ===")
+        Bridge.log("NEX-CONN: 📱 Device Name: \(deviceName)")
+        Bridge.log("NEX-CONN: 📶 RSSI: \(RSSI) dBm")
 
         // Store the peripheral in cache (like MentraLive)
         discoveredPeripherals[deviceName] = peripheral
@@ -1886,11 +1886,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     private func connectToFoundDevice(_ peripheral: CBPeripheral, reason: String) {
         guard self.peripheral == nil else {
-            Core.log("NEX-CONN: ⚠️ Already connected/connecting to a device, ignoring new connect request for '\(peripheral.name ?? "Unknown")'")
+            Bridge.log("NEX-CONN: ⚠️ Already connected/connecting to a device, ignoring new connect request for '\(peripheral.name ?? "Unknown")'")
             return
         }
 
-        Core.log("NEX-CONN: 🔗 Connecting to device '\(peripheral.name ?? "Unknown")' - Reason: \(reason)")
+        Bridge.log("NEX-CONN: 🔗 Connecting to device '\(peripheral.name ?? "Unknown")' - Reason: \(reason)")
 
         // Stop scanning since we found our target
         if _isScanning {
@@ -1911,11 +1911,11 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         centralManager?.connect(peripheral, options: connectionOptions)
 
-        Core.log("NEX-CONN: 🚀 Connection initiated with enhanced options")
+        Bridge.log("NEX-CONN: 🚀 Connection initiated with enhanced options")
     }
 
     func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        Core.log("NEX-CONN: ✅ Successfully connected to \(peripheral.name ?? "unknown device").")
+        Bridge.log("NEX-CONN: ✅ Successfully connected to \(peripheral.name ?? "unknown device").")
         isConnecting = false
         peripheralUUID = peripheral.identifier // Persist UUID
         stopReconnectionTimer() // Successfully connected, stop trying to reconnect.
@@ -1932,18 +1932,18 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             savePreferredDeviceId(deviceId)
         }
 
-        Core.log("NEX-CONN: 💾 Device information saved for reliable reconnection")
+        Bridge.log("NEX-CONN: 💾 Device information saved for reliable reconnection")
         peripheral.delegate = self
-        Core.log("NEX-CONN: 🔍 Discovering services...")
+        Bridge.log("NEX-CONN: 🔍 Discovering services...")
         peripheral.discoverServices([MAIN_SERVICE_UUID])
 
         // Reset any failed connection attempt counters
         reconnectionAttempts = 0
-        Core.log("NEX-CONN: 🔄 Reset reconnection attempts counter")
+        Bridge.log("NEX-CONN: 🔄 Reset reconnection attempts counter")
     }
 
     func centralManager(_: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        Core.log("NEX-CONN: ❌ Failed to connect to peripheral \(peripheral.name ?? "Unknown"). Error: \(error?.localizedDescription ?? "unknown")")
+        Bridge.log("NEX-CONN: ❌ Failed to connect to peripheral \(peripheral.name ?? "Unknown"). Error: \(error?.localizedDescription ?? "unknown")")
         isConnecting = false
         connectionState = .disconnected
         self.peripheral = nil // Reset peripheral on failure to allow reconnection
@@ -1954,10 +1954,10 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral disconnectedPeripheral: CBPeripheral, error: Error?) {
-        Core.log("NEX-CONN: 🔌 Disconnected from peripheral: \(disconnectedPeripheral.name ?? "Unknown")")
+        Bridge.log("NEX-CONN: 🔌 Disconnected from peripheral: \(disconnectedPeripheral.name ?? "Unknown")")
 
         if let error = error {
-            Core.log("NEX-CONN: ⚠️ Disconnect error: \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ⚠️ Disconnect error: \(error.localizedDescription)")
         }
 
         // Reset connection state
@@ -1995,24 +1995,24 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         // Clear command queue if needed
         if isQueueWorkerRunning {
-            Core.log("NEX-CONN: 🧹 Clearing command queue due to disconnection")
+            Bridge.log("NEX-CONN: 🧹 Clearing command queue due to disconnection")
         }
 
         if !isDisconnecting, !isKilled {
-            Core.log("NEX-CONN: 🔄 Unintentional disconnect detected. Attempting reconnection...")
+            Bridge.log("NEX-CONN: 🔄 Unintentional disconnect detected. Attempting reconnection...")
 
             // Enhanced reconnection strategy from Java implementation
             if let savedName = savedDeviceName {
-                Core.log("NEX-CONN: 🎯 Will attempt to reconnect to saved device: \(savedName)")
+                Bridge.log("NEX-CONN: 🎯 Will attempt to reconnect to saved device: \(savedName)")
             }
 
             startReconnectionTimer()
         } else {
-            Core.log("NEX-CONN: ✅ Intentional disconnect (isDisconnecting: \(isDisconnecting), isKilled: \(isKilled))")
+            Bridge.log("NEX-CONN: ✅ Intentional disconnect (isDisconnecting: \(isDisconnecting), isKilled: \(isKilled))")
 
             if isDisconnecting {
                 // Don't clear device info on intentional disconnect - user might reconnect later
-                Core.log("NEX-CONN: 💾 Keeping device info for potential future reconnection")
+                Bridge.log("NEX-CONN: 💾 Keeping device info for potential future reconnection")
             }
         }
     }
@@ -2020,9 +2020,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - MTU Negotiation (iOS-specific implementation)
 
     private func requestOptimalMTU(for peripheral: CBPeripheral) {
-        Core.log("NEX-CONN:  negotiating MTU")
-        Core.log("NEX: 🔍 iOS MTU Discovery (Platform Limitation: max \(MTU_MAX_IOS) bytes)")
-        Core.log("NEX: 🎯 iOS maximum: \(MTU_MAX_IOS) bytes, default: \(MTU_DEFAULT) bytes")
+        Bridge.log("NEX-CONN:  negotiating MTU")
+        Bridge.log("NEX: 🔍 iOS MTU Discovery (Platform Limitation: max \(MTU_MAX_IOS) bytes)")
+        Bridge.log("NEX: 🎯 iOS maximum: \(MTU_MAX_IOS) bytes, default: \(MTU_DEFAULT) bytes")
 
         // iOS MTU is automatically negotiated - we can only discover the current value
         // No manual MTU request available on iOS (platform limitation)
@@ -2031,14 +2031,14 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
         let maxWriteLength = peripheral.maximumWriteValueLength(for: .withResponse)
         let actualMTU = maxWriteLength + 3 // Add L2CAP header size
 
-        Core.log("NEX: 📊 iOS MTU Discovery Results:")
-        Core.log("NEX:    📏 Max write length: \(maxWriteLength) bytes")
-        Core.log("NEX:    📡 Effective MTU: \(actualMTU) bytes")
+        Bridge.log("NEX: 📊 iOS MTU Discovery Results:")
+        Bridge.log("NEX:    📏 Max write length: \(maxWriteLength) bytes")
+        Bridge.log("NEX:    📡 Effective MTU: \(actualMTU) bytes")
 
         // Validate against iOS limitations
         let validatedMTU = min(actualMTU, MTU_MAX_IOS)
         if actualMTU > MTU_MAX_IOS {
-            Core.log("NEX: 🔧 Clamping MTU from \(actualMTU) to iOS maximum: \(MTU_MAX_IOS)")
+            Bridge.log("NEX: 🔧 Clamping MTU from \(actualMTU) to iOS maximum: \(MTU_MAX_IOS)")
         }
 
         // Process MTU result immediately (iOS doesn't have callback like Android)
@@ -2049,7 +2049,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func onMTUNegotiated(mtu: Int, success: Bool) {
-        Core.log("NEX-CONN: 🔄 MTU Negotiation Result: Success=\(success), Device MTU=\(mtu)")
+        Bridge.log("NEX-CONN: 🔄 MTU Negotiation Result: Success=\(success), Device MTU=\(mtu)")
 
         if success, mtu > MTU_DEFAULT {
             // Store device capability and calculate actual negotiated MTU
@@ -2057,35 +2057,35 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             // iOS limitation: Use actual MTU but cap at iOS maximum
             currentMTU = min(MTU_MAX_IOS, mtu)
 
-            Core.log("NEX: 🎯 iOS MTU Configuration Complete:")
-            Core.log("NEX:    🍎 iOS Platform Max: \(MTU_MAX_IOS) bytes")
-            Core.log("NEX:    📡 Device Supports: \(deviceMaxMTU) bytes")
-            Core.log("NEX:    🤝 Final MTU: \(currentMTU) bytes")
+            Bridge.log("NEX: 🎯 iOS MTU Configuration Complete:")
+            Bridge.log("NEX:    🍎 iOS Platform Max: \(MTU_MAX_IOS) bytes")
+            Bridge.log("NEX:    📡 Device Supports: \(deviceMaxMTU) bytes")
+            Bridge.log("NEX:    🤝 Final MTU: \(currentMTU) bytes")
 
             // Calculate optimal chunk sizes based on iOS MTU constraints
             maxChunkSize = currentMTU - 10 // Reserve 10 bytes for headers
             bmpChunkSize = currentMTU - 6 // Reserve 6 bytes for image headers
 
-            Core.log("NEX: 📦 Optimized Chunk Sizes:")
-            Core.log("NEX:    📄 Data Chunk Size: \(maxChunkSize) bytes")
-            Core.log("NEX:    🖼️ Image Chunk Size: \(bmpChunkSize) bytes")
+            Bridge.log("NEX: 📦 Optimized Chunk Sizes:")
+            Bridge.log("NEX:    📄 Data Chunk Size: \(maxChunkSize) bytes")
+            Bridge.log("NEX:    🖼️ Image Chunk Size: \(bmpChunkSize) bytes")
 
         } else {
-            Core.log("NEX: ⚠️ MTU negotiation failed or using minimum, applying iOS defaults")
+            Bridge.log("NEX: ⚠️ MTU negotiation failed or using minimum, applying iOS defaults")
             currentMTU = MTU_DEFAULT
             deviceMaxMTU = MTU_DEFAULT
             maxChunkSize = 20 // Very conservative for 23-byte MTU
             bmpChunkSize = 20 // Very conservative for 23-byte MTU
 
-            Core.log("NEX: 📋 iOS Fallback Configuration:")
-            Core.log("NEX:    📊 Default MTU: \(MTU_DEFAULT) bytes")
-            Core.log("NEX:    📦 Data Chunk Size: \(maxChunkSize) bytes")
-            Core.log("NEX:    🖼️ Image Chunk Size: \(bmpChunkSize) bytes")
-            Core.log("NEX:    ⚠️ Using minimal chunks due to MTU limitation")
+            Bridge.log("NEX: 📋 iOS Fallback Configuration:")
+            Bridge.log("NEX:    📊 Default MTU: \(MTU_DEFAULT) bytes")
+            Bridge.log("NEX:    📦 Data Chunk Size: \(maxChunkSize) bytes")
+            Bridge.log("NEX:    🖼️ Image Chunk Size: \(bmpChunkSize) bytes")
+            Bridge.log("NEX:    ⚠️ Using minimal chunks due to MTU limitation")
         }
 
         // Device is now ready for communication
-        Core.log("NEX-CONN: ✅ Device initialization complete - ready for communication")
+        Bridge.log("NEX-CONN: ✅ Device initialization complete - ready for communication")
         nexReady = true
         connectionState = .connected
 
@@ -2102,20 +2102,20 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Device Initialization (ported from Java MentraNexSGC)
 
     private func initializeNexDevice() {
-        Core.log("NEX-CONN: 🚀 Starting Nex device initialization (matching Java sequence)")
+        Bridge.log("NEX-CONN: 🚀 Starting Nex device initialization (matching Java sequence)")
 
         // Exact Java initialization sequence from lines 648-691:
 
         // 1. Do first battery status query (Java line 650)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) { // 10ms delay like Java
-            Core.log("NEX: 🔋 Sending first battery status query")
+            Bridge.log("NEX: 🔋 Sending first battery status query")
             self.queryBatteryStatus()
         }
 
         // 2. Restore previous microphone state (Java lines 657-665)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { // 20ms delay
             let shouldRestoreMic = UserDefaults.standard.bool(forKey: "microphoneStateBeforeDisconnection")
-            Core.log("NEX: 🎤 Restoring microphone state to: \(shouldRestoreMic)")
+            Bridge.log("NEX: 🎤 Restoring microphone state to: \(shouldRestoreMic)")
 
             if shouldRestoreMic {
                 self.startMicBeat()
@@ -2144,7 +2144,7 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             self.queryGlassesInfo()
         }
 
-        Core.log("NEX-CONN: ✅ Java-compatible initialization sequence started")
+        Bridge.log("NEX-CONN: ✅ Java-compatible initialization sequence started")
     }
 
     private func emitDeviceReady() {
@@ -2159,24 +2159,24 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
         // Use the standardized Bridge.sendTypedMessage helper for consistent type field handling
         Bridge.sendTypedMessage("device_ready", body: eventBody)
-        Core.log("NEX: 📡 Emitted device ready event with MTU: \(currentMTU)")
+        Bridge.log("NEX: 📡 Emitted device ready event with MTU: \(currentMTU)")
     }
 
     // MARK: - CBPeripheralDelegate
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
-            Core.log("NEX-CONN: ❌ Error discovering services: \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ❌ Error discovering services: \(error.localizedDescription)")
             return
         }
 
         guard let services = peripheral.services else {
-            Core.log("NEX-CONN: ⚠️ No services found for peripheral.")
+            Bridge.log("NEX-CONN: ⚠️ No services found for peripheral.")
             return
         }
         for service in services {
             if service.uuid == MAIN_SERVICE_UUID {
-                Core.log("NEX-CONN: ✅ Found main service. Discovering characteristics...")
+                Bridge.log("NEX-CONN: ✅ Found main service. Discovering characteristics...")
                 peripheral.discoverCharacteristics([WRITE_CHAR_UUID, NOTIFY_CHAR_UUID], for: service)
             }
         }
@@ -2184,27 +2184,27 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if let error = error {
-            Core.log("NEX-CONN: ❌ Error discovering characteristics: \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ❌ Error discovering characteristics: \(error.localizedDescription)")
             return
         }
 
         guard let characteristics = service.characteristics else {
-            Core.log("NEX-CONN: ⚠️ No characteristics found for service \(service.uuid).")
+            Bridge.log("NEX-CONN: ⚠️ No characteristics found for service \(service.uuid).")
             return
         }
         for characteristic in characteristics {
             if characteristic.uuid == WRITE_CHAR_UUID {
-                Core.log("NEX-CONN: ✅ Found write characteristic.")
+                Bridge.log("NEX-CONN: ✅ Found write characteristic.")
                 writeCharacteristic = characteristic
             } else if characteristic.uuid == NOTIFY_CHAR_UUID {
-                Core.log("NEX-CONN: ✅ Found notify characteristic. Subscribing for notifications.")
+                Bridge.log("NEX-CONN: ✅ Found notify characteristic. Subscribing for notifications.")
                 notifyCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
             }
         }
 
         if writeCharacteristic != nil, notifyCharacteristic != nil {
-            Core.log("NEX-CONN: ✅ All required characteristics discovered. Proceeding to MTU negotiation.")
+            Bridge.log("NEX-CONN: ✅ All required characteristics discovered. Proceeding to MTU negotiation.")
 
             // Start MTU negotiation like Java implementation
             requestOptimalMTU(for: peripheral)
@@ -2213,15 +2213,15 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func peripheral(_: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("NEX-CONN: ❌ Error on updating value: \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ❌ Error on updating value: \(error.localizedDescription)")
             return
         }
 
         guard let data = characteristic.value else {
-            Core.log("NEX-CONN: ⚠️ Received notification with no data.")
+            Bridge.log("NEX-CONN: ⚠️ Received notification with no data.")
             return
         }
-        Core.log("NEX-CONN: 📥 Received data (\(data.count) bytes): \(data.toHexString())")
+        Bridge.log("NEX-CONN: 📥 Received data (\(data.count) bytes): \(data.toHexString())")
 
         // Process the received data based on packet type
         processReceivedData(data)
@@ -2229,23 +2229,23 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func peripheral(_: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("NEX-CONN: ❌ Error writing value to \(characteristic.uuid): \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ❌ Error writing value to \(characteristic.uuid): \(error.localizedDescription)")
             return
         }
         // This log can be very noisy, so it's commented out.
-        // Core.log("NEX-CONN: 📤 Successfully wrote value to \(characteristic.uuid).")
+        // Bridge.log("NEX-CONN: 📤 Successfully wrote value to \(characteristic.uuid).")
     }
 
     func peripheral(_: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("NEX-CONN: ❌ Error changing notification state for \(characteristic.uuid): \(error.localizedDescription)")
+            Bridge.log("NEX-CONN: ❌ Error changing notification state for \(characteristic.uuid): \(error.localizedDescription)")
             return
         }
 
         if characteristic.isNotifying {
-            Core.log("NEX-CONN: ✅ Successfully subscribed to notifications for characteristic \(characteristic.uuid.uuidString).")
+            Bridge.log("NEX-CONN: ✅ Successfully subscribed to notifications for characteristic \(characteristic.uuid.uuidString).")
         } else {
-            Core.log("NEX-CONN:  unsubscribed from notifications for characteristic \(characteristic.uuid.uuidString).")
+            Bridge.log("NEX-CONN:  unsubscribed from notifications for characteristic \(characteristic.uuid.uuidString).")
         }
     }
 }
