@@ -232,6 +232,9 @@ enum GlassesError: Error {
     private var leftPeripheral: CBPeripheral?
     private var rightPeripheral: CBPeripheral?
     private var connectedDevices: [String: (CBPeripheral?, CBPeripheral?)] = [:]
+    // Application-level cache to bypass iOS BLE caching issues
+    // Only cache device names, not peripherals (peripherals become invalid when manager resets)
+    private var discoveredG1DeviceNames = Set<String>()
     var lastConnectionTimestamp: Date = .distantPast
     private var heartbeatTimer: Timer?
     private var heartbeatQueue: DispatchQueue?
@@ -280,6 +283,7 @@ enum GlassesError: Error {
         leftGlassUUID = nil
         rightGlassUUID = nil
         DEVICE_SEARCH_ID = "NOT_SET"
+        discoveredG1DeviceNames.removeAll() // Clear the cache when forgetting
 
         // Stop the heartbeat timer
         heartbeatTimer?.invalidate()
@@ -458,8 +462,8 @@ enum GlassesError: Error {
                 }
             }
 
-            // First try: Connect by UUID (works in background)
-            if connectByUUID() {
+            // Only try UUID connection if we have a specific DEVICE_SEARCH_ID (not in discovery mode)
+            if DEVICE_SEARCH_ID != "NOT_SET" && connectByUUID() {
                 Bridge.log("G1: 🔄 Found and attempting to connect to stored glasses UUIDs")
                 // Wait for connection to complete - no need to scan
                 return true
@@ -469,7 +473,19 @@ enum GlassesError: Error {
                 CBCentralManagerScanOptionAllowDuplicatesKey: false, // Don't allow duplicate advertisements
             ]
 
+            Bridge.log("G1: Starting scan for peripherals")
             centralManager!.scanForPeripherals(withServices: nil, options: scanOptions)
+
+            // CRITICAL: Emit already discovered G1 devices from our cache (MentraLive strategy)
+            // Note: We only cache names, not peripherals (they become invalid on manager reset)
+            if DEVICE_SEARCH_ID == "NOT_SET" {
+                Bridge.log("G1: 📋 Emitting \(discoveredG1DeviceNames.count) cached G1 device names")
+                for name in discoveredG1DeviceNames {
+                    Bridge.log("G1: 📋 (Cached) device: \(name)")
+                    emitDiscoveredDevice(name)
+                }
+            }
+
             return true
         }
     }
@@ -481,8 +497,48 @@ enum GlassesError: Error {
     }
 
     func findCompatibleDevices() {
-        DEVICE_SEARCH_ID = "NOT_SET"
-        startScan()
+        findCompatibleDevices(clearCache: false)
+    }
+
+    func findCompatibleDevices(clearCache: Bool) {
+        Bridge.log("G1: findCompatibleDevices() - Hybrid strategy (clearCache: \(clearCache))")
+
+        // Stop any existing scan
+        if centralManager?.isScanning == true {
+            Bridge.log("G1: Stopping existing scan")
+            centralManager?.stopScan()
+        }
+
+        // Clear connection state and UUIDs for discovery mode
+        leftPeripheral = nil
+        rightPeripheral = nil
+        leftGlassUUID = nil
+        rightGlassUUID = nil
+
+        if clearCache {
+            Bridge.log("G1: 🗑️ Clearing device cache for fresh scan")
+            discoveredG1DeviceNames.removeAll()
+        }
+
+        // HYBRID APPROACH: If cache is empty, force iOS cache clear
+        if discoveredG1DeviceNames.isEmpty {
+            Bridge.log("G1: ⚠️ Cache is empty - forcing central manager reset to clear iOS cache")
+
+            // Nuclear option only when cache is empty
+            centralManager?.delegate = nil
+            centralManager = nil
+
+            // Small delay to ensure cleanup
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.DEVICE_SEARCH_ID = "NOT_SET"
+                self?.startScan()
+            }
+        } else {
+            // Cache has devices, use normal scan
+            Bridge.log("G1: ✅ Cache has \(discoveredG1DeviceNames.count) devices - using cached strategy")
+            DEVICE_SEARCH_ID = "NOT_SET"
+            startScan()
+        }
     }
 
     // connect to glasses we've discovered:
@@ -2001,8 +2057,19 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
 
         Bridge.log("G1: found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
 
-        // Only process serial number for devices that match our search ID
-        if name.contains(DEVICE_SEARCH_ID) {
+        // This ensures our cache is populated for future scans
+        if !discoveredG1DeviceNames.contains(name) {
+            Bridge.log("G1: 💾 Caching device name: \(name)")
+            discoveredG1DeviceNames.insert(name)
+        } else {
+            Bridge.log("G1: ✅ Device name already in cache: \(name)")
+        }
+
+        // Process all devices when SEARCH_ID is "NOT_SET" (discovery mode)
+        // Otherwise only process devices that match our search ID
+        let shouldProcess = (DEVICE_SEARCH_ID == "NOT_SET") || name.contains(DEVICE_SEARCH_ID)
+
+        if shouldProcess {
             // Extract manufacturer data to decode serial number
             if let manufacturerData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
                 Bridge.log("G1: 📱 Found manufacturer data: \(manufacturerData.hexEncodedString())")
