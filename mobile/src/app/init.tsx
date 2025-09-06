@@ -50,6 +50,7 @@ export default function InitScreen() {
   const [errorType, setErrorType] = useState<"connection" | "auth" | null>(null)
   const [canSkipUpdate, setCanSkipUpdate] = useState(false)
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
+  const [isRetrying, setIsRetrying] = useState(false)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -135,10 +136,15 @@ export default function InitScreen() {
     }
   }
 
-  const checkCloudVersion = async (): Promise<void> => {
-    setState("loading")
+  const checkCloudVersion = async (isRetry = false): Promise<void> => {
+    // Only show loading screen on initial load, not on retry
+    if (!isRetry) {
+      setState("loading")
+      setLoadingStatus(translate("versionCheck:checkingForUpdates"))
+    } else {
+      setIsRetrying(true)
+    }
     setErrorType(null)
-    setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
       const localVer = getLocalVersion()
@@ -148,6 +154,7 @@ export default function InitScreen() {
         console.error("Failed to get local version")
         setErrorType("connection")
         setState("error")
+        setIsRetrying(false)
         return
       }
 
@@ -158,19 +165,23 @@ export default function InitScreen() {
         if (semver.lt(localVer, recommended)) {
           setState("outdated")
           setCanSkipUpdate(!semver.lt(localVer, required))
+          setIsRetrying(false)
           return
         }
+        setIsRetrying(false)
         checkLoggedIn()
       } catch (error) {
         console.error("Failed to fetch cloud version:", error)
         setErrorType("connection")
         setState("error")
+        setIsRetrying(false)
         return
       }
     } catch (error) {
       console.error("Version check failed:", error)
       setErrorType("connection")
       setState("error")
+      setIsRetrying(false)
     }
   }
 
@@ -191,7 +202,7 @@ export default function InitScreen() {
       await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
       await bridge.setServerUrl("")
       setIsUsingCustomUrl(false)
-      await checkCloudVersion()
+      await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {
       console.error("Failed to reset URL:", error)
     }
@@ -213,7 +224,7 @@ export default function InitScreen() {
           iconColor: theme.colors.error,
           title: "Connection Error",
           description: isUsingCustomUrl
-            ? "Could not connect to the custom server. Please try resetting the URL to the default or check your connection."
+            ? "Could not connect to the custom server. Please try using the default server or check your connection."
             : "Could not connect to the server. Please check your connection and try again.",
         }
 
@@ -279,9 +290,13 @@ export default function InitScreen() {
           <View style={themed($buttonContainer)}>
             {state === "error" && (
               <Button
-                onPress={checkCloudVersion}
+                onPress={() => checkCloudVersion(true)}
                 style={themed($primaryButton)}
-                text={translate("versionCheck:retryConnection")}
+                text={isRetrying ? translate("versionCheck:retrying") : translate("versionCheck:retryConnection")}
+                disabled={isRetrying}
+                LeftAccessory={
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.textAlt} /> : undefined
+                }
               />
             )}
 
@@ -298,8 +313,12 @@ export default function InitScreen() {
               <Button
                 onPress={handleResetUrl}
                 style={themed($secondaryButton)}
-                text={translate("versionCheck:resetUrl")}
+                text={isRetrying ? translate("versionCheck:resetting") : translate("versionCheck:resetUrl")}
                 preset="reversed"
+                disabled={isRetrying}
+                LeftAccessory={
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
+                }
               />
             )}
 
