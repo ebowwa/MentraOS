@@ -1679,7 +1679,11 @@ public class CameraNeo extends LifecycleService {
             CameraCaptureSession.StateCallback sessionStateCallback = new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
-                    cameraCaptureSession = session;
+                    // Store the session atomically
+                    synchronized (SERVICE_LOCK) {
+                        cameraCaptureSession = session;
+                    }
+                    
                     if (forVideo) {
                         if (currentMode == RecordingMode.BUFFER) {
                             startBufferRecordingInternal();
@@ -2333,6 +2337,15 @@ public class CameraNeo extends LifecycleService {
      */
     private void startPreviewWithAeMonitoring() {
         try {
+            // Check if session is still valid before using it
+            if (cameraCaptureSession == null) {
+                Log.e(TAG, "Camera capture session is null in startPreviewWithAeMonitoring");
+                notifyPhotoError("Camera session not ready");
+                closeCamera();
+                stopSelf();
+                return;
+            }
+            
             // Start repeating preview request with AE monitoring
             cameraCaptureSession.setRepeatingRequest(previewBuilder.build(),
                 aeCallback, backgroundHandler);

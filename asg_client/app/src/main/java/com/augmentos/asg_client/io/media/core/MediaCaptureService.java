@@ -728,6 +728,17 @@ public class MediaCaptureService {
             }
             return;
         }
+        
+        // Check if video recording is active - photos cannot interrupt video recording
+        if (isRecordingVideo) {
+            Log.e(TAG, "Cannot take photo - video recording in progress");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError("local", "Camera busy with video recording", 
+                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        
         // Note: No need to check CameraNeo.isCameraInUse() for photos
         // The camera's keep-alive system handles rapid photo taking gracefully
         

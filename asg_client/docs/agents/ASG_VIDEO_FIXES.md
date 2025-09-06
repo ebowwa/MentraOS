@@ -291,21 +291,43 @@ public synchronized boolean startVideoRecording(RecordingSource source, ...) {
 
 ## NEW CRITICAL ISSUES FOUND (2025-09-06)
 
-### 7. FileManagerFactory Null Pointer Exception (CRASH BUG)
+### 7. ✅ FileManagerFactory Null Pointer Exception (CRASH BUG) - FIXED
 
 **Error**: App crashes with NullPointerException in FileManagerFactory.initialize()
 **Location**: FileManagerFactory.java:73, AppModule.java:11
 **Problem**: Wrong initialize() method being called - no-argument version calls detectPlatform() which throws exception on Android
 **Impact**: App cannot restart after stopping video recording
-**Fix**: The issue is that AppModule.java calls the Context version but somewhere else the no-arg version is being called
+**Fix IMPLEMENTED**:
 
-### 8. CameraCaptureSession Becomes Null During Recording (CRASH BUG)
+- Added null checks in FileManagerFactory.initialize() (no-arg version)
+- Better error messages to guide developers to use initialize(Context) on Android
+- Build successful
+
+### 8. ✅ CameraCaptureSession Becomes Null During Recording (CRASH BUG) - FIXED
 
 **Error**: NullPointerException when calling setRepeatingRequest on null CameraCaptureSession
 **Location**: CameraNeo.java:2337 in startPreviewWithAeMonitoring()
 **Problem**: cameraCaptureSession is being set to null somewhere between assignment (line 1682) and use (line 1718/2337)
 **Possible Cause**: Race condition or session being closed during configuration
 **Impact**: Video recording crashes mid-recording
+**Fix IMPLEMENTED**:
+
+- Added null check in startPreviewWithAeMonitoring() at line 2337
+- Added synchronized block when storing cameraCaptureSession in onConfigured() at line 1683
+- Build successful
+
+### 9. ✅ Camera Conflict When Photo Button Pressed During Video Recording (CRASH BUG) - FIXED
+
+**Error**: App crashes when photo button is pressed during video recording
+**Location**: MediaCaptureService.java:721, K900CommandHandler.java:202
+**Problem**: Photo capture attempted to open camera while it was being used for video recording
+**Impact**: Camera disconnected, app crashed with thread/handler errors
+**Fix IMPLEMENTED**:
+
+- Added check in takePhotoLocally() to prevent photos during video recording
+- Modified button handler: short press now stops video if recording, otherwise takes photo
+- Applied to both PHOTO and BOTH modes
+- Build successful
 
 ## Success Metrics
 
@@ -315,3 +337,4 @@ public synchronized boolean startVideoRecording(RecordingSource source, ...) {
 - Clear error messages for storage issues
 - No camera lockups requiring reboot
 - No app crashes during or after recording
+- Button press correctly stops video when recording
