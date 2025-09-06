@@ -133,23 +133,6 @@ export default function Layout() {
               overflow: "hidden",
             }}>
             <LinearGradient
-              colors={[
-                `${theme.colors.separator}30`, // 19% opacity
-                `${theme.colors.separator}00`, // 0% opacity (transparent)
-                `#FF000080`, // 50% opacity
-                "#FF0000",
-              ]}
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: 0,
-                height: 14, // Same as your original borderTopWidth
-              }}
-              start={{x: 0, y: 0}}
-              end={{x: 0, y: 1}}
-            />
-            <LinearGradient
               colors={[theme.colors.backgroundStart, theme.colors.backgroundEnd]}
               style={{
                 position: "absolute",
