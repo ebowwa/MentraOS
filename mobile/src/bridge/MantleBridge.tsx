@@ -999,12 +999,19 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async setSttModelPath(path: string) {
+  async setSttModelDetails(path: string, languageCode: string) {
     return await this.sendData({
-      command: "set_stt_model_path",
+      command: "set_stt_model_details",
       params: {
         path: path,
+        languageCode: languageCode,
       },
+    })
+  }
+  
+  async getSttModelPath(): Promise<string> {
+    return await this.sendData({
+      command: "get_stt_model_path",
     })
   }
 
