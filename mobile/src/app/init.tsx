@@ -293,15 +293,17 @@ export default function InitScreen() {
                 onPress={handleResetUrl}
                 style={themed($secondaryButton)}
                 text={translate("versionCheck:resetUrl")}
+                preset="reversed"
               />
             )}
 
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
                 onPress={navigateToDestination}
-                tx="versionCheck:continueAnyways"
+                tx="versionCheck:continueAnyway"
+                preset="reversed"
               />
             )}
           </View>
@@ -375,8 +377,6 @@ const $primaryButton: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
 })
 
-const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $secondaryButton: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
-  backgroundColor: colors.palette.primary200,
-  color: colors.textAlt,
 })
