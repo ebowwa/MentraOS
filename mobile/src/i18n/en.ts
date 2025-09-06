@@ -20,9 +20,10 @@ const en = {
     update: "Update",
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
-    continueAnyways: "Continue Anyways",
-    resetUrl: "Reset to Default URL",
+    continueAnyway: "Continue Anyway",
+    resetUrl: "Switch to Default Server",
     connectingToServer: "Connecting to server...",
+    resetting: "Resetting...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
