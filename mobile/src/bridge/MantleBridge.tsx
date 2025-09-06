@@ -11,7 +11,7 @@ import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
-import AugmentOSParser, {CoreStatusParser} from "@/utils/CoreStatusParser"
+import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
@@ -428,7 +428,7 @@ export class MantleBridge extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      this.emit("statusUpdateReceived", AugmentOSParser.defaultStatus)
+      this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
     }
   }
 
