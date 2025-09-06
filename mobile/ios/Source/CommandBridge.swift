@@ -122,7 +122,7 @@ import Foundation
                     m.handle_display_event(params)
                 case .display_text:
                     guard let params else {
-                        Core.log("CommandBridge: display_text invalid params")
+                        Bridge.log("CommandBridge: display_text invalid params")
                         break
                     }
                     m.handle_display_text(params)
