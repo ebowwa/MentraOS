@@ -1,5 +1,6 @@
 package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos;
 
+import android.content.SharedPreferences;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
@@ -42,16 +43,17 @@ public class SherpaOnnxTranscriber {
     
     // Dynamic model path support
     private static String customModelPath = null;
+    private static String customModelLanguage = "en-US";
 
     /**
      * Interface to receive transcription results from Sherpa-ONNX.
      */
     public interface TranscriptListener {
         /** Called with live partial transcription (not final yet). */
-        void onPartialResult(String text);
+        void onPartialResult(String text, String language);
 
         /** Called when an utterance ends and final text is available. */
-        void onFinalResult(String text);
+        void onFinalResult(String text, String language);
     }
 
     /**
@@ -69,6 +71,7 @@ public class SherpaOnnxTranscriber {
         try {
             // Check for dynamic model path first
             String modelPath = getModelPath();
+            String modelLanguage = getModelLanguage();
             
             // Load model file paths
             OnlineModelConfig modelConfig = new OnlineModelConfig();
@@ -233,7 +236,7 @@ public class SherpaOnnxTranscriber {
                     String finalText = recognizer.getResult(stream).getText().trim();
 
                     if (!finalText.isEmpty() && transcriptListener != null) {
-                        mainHandler.post(() -> transcriptListener.onFinalResult(finalText));
+                        mainHandler.post(() -> transcriptListener.onFinalResult(finalText, customModelLanguage));
                     }
 
                     recognizer.reset(stream); // Start new utterance
@@ -244,7 +247,7 @@ public class SherpaOnnxTranscriber {
 
                     if (!partial.equals(lastPartialResult) && !partial.isEmpty() && transcriptListener != null) {
                         lastPartialResult = partial;
-                        mainHandler.post(() -> transcriptListener.onPartialResult(partial));
+                        mainHandler.post(() -> transcriptListener.onPartialResult(partial, customModelLanguage));
                     }
                 }
 
@@ -370,9 +373,33 @@ public class SherpaOnnxTranscriber {
             customModelPath = systemPath;
             return systemPath;
         }
-        
-        // Fall back to stored custom path
+
+        // 2. Next, check SharedPreferences
+        String prefsModelPath = context.getSharedPreferences("AugmentosPrefs", Context.MODE_PRIVATE).getString("stt_model_path", null);
+        if (prefsModelPath != null && !prefsModelPath.isEmpty()) {
+            customModelPath = prefsModelPath;
+            return prefsModelPath;
+        }
+
         return customModelPath;
+    }
+
+    private String getModelLanguage() {
+        // First check system property (set by FileProviderModule)
+        String sytemLanguage = System.getProperty("stt.model.language");
+        if (sytemLanguage != null && !sytemLanguage.isEmpty()) {
+            customModelLanguage = sytemLanguage;
+            return sytemLanguage;
+        }
+
+        // 2. Next, check SharedPreferences
+        String prefsModelLanguage = context.getSharedPreferences("AugmentosPrefs", Context.MODE_PRIVATE).getString("stt_model_language", null);
+        if (prefsModelLanguage != null && !prefsModelLanguage.isEmpty()) {
+            customModelLanguage = prefsModelLanguage;
+            return prefsModelLanguage;
+        }
+
+        return customModelLanguage;
     }
     
     /**

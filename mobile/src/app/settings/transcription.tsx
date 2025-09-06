@@ -189,10 +189,18 @@ export default function TranscriptionSettingsScreen() {
     return "Preparing..."
   }
 
-  const checkModelStatus = async () => {
+  const initSelectedModel = async () => {
+    const modelId = await STTModelManager.getCurrentModelIdFromPreferences()
+    if (modelId) {
+      setSelectedModelId(modelId)
+    }
+    checkModelStatus(modelId)
+  }
+
+  const checkModelStatus = async (modelId?: string) => {
     setIsCheckingModel(true)
     try {
-      const info = await STTModelManager.getModelInfo(selectedModelId)
+      const info = await STTModelManager.getModelInfo(modelId || selectedModelId)
       setModelInfo(info)
       const models = await STTModelManager.getAllModelsInfo()
       setAllModels(models)
@@ -214,7 +222,7 @@ export default function TranscriptionSettingsScreen() {
   }, [status.core_info.enforce_local_transcription])
 
   useEffect(() => {
-    checkModelStatus()
+    initSelectedModel()
   }, [])
 
   useEffect(() => {
