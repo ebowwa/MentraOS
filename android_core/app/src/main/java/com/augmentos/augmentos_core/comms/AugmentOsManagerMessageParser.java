@@ -292,6 +292,21 @@ public class AugmentOsManagerMessageParser {
                     callback.stopVideoRecording(stopRequestId);
                     break;
 
+                // case "update_settings":
+                //     JSONObject settings = commandObject.getJSONObject("params");
+                //     callback.updateSettings(settings);
+                //     break;
+
+                // case "display_event":
+                //     JSONObject displayEvent = commandObject.getJSONObject("params");
+                //     callback.handleDisplayEvent(displayEvent);
+                //     break;
+
+                // case "microphone_state_change":
+                //     JSONObject microphoneStateChange = commandObject.getJSONObject("params");
+                //     callback.handleMicrophoneStateChange(microphoneStateChange);
+                //     break;
+
                 default:
                     Log.w(TAG, "Unknown command: " + command);
             }
