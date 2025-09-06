@@ -229,11 +229,11 @@ export default function PrivacySettingsScreen() {
         {/* Notification Permission - Android Only */}
         {Platform.OS === "android" && !notificationsEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:notificationsLabel")}
               subtitle={translate("settings:notificationsSubtitle")}
               value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
+              onPress={handleToggleNotifications}
             />
             <Spacer height={theme.spacing.md} />
           </>

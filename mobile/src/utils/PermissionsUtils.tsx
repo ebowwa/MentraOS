@@ -540,7 +540,7 @@ export const displayPermissionDeniedWarning = (permissionName: string): Promise<
 
 export const displayCriticalPermissionDeniedWarning = (permissionName: string): Promise<boolean> => {
   return new Promise(resolve => {
-    Alert.alert(
+    showAlert(
       `${permissionName} Required`,
       `AugmentOS needs ${permissionName.toLowerCase()} permissions to function properly. Please grant these permissions to continue.`,
       [
@@ -557,10 +557,15 @@ export const displayCriticalPermissionDeniedWarning = (permissionName: string): 
 // Helper function to handle permissions that were previously denied at the system level
 export const handlePreviouslyDeniedPermission = (permissionName: string): Promise<boolean> => {
   return new Promise(resolve => {
-    Alert.alert(
+    showAlert(
       "Permission Required",
       `${permissionName} permission is required but has been denied previously. Please enable it in your device settings.`,
       [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
         {
           text: "Open Settings",
           onPress: () => {
@@ -568,11 +573,6 @@ export const handlePreviouslyDeniedPermission = (permissionName: string): Promis
             // Return false since we don't know if the user actually changed the setting
             resolve(false)
           },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => resolve(false),
         },
       ],
     )
