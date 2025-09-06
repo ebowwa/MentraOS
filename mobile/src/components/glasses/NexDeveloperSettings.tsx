@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
 
 import {useFocusEffect} from "@react-navigation/native"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import coreCommunicator from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
