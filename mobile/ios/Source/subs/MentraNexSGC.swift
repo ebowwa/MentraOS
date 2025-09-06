@@ -1485,16 +1485,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     // MARK: - Event Emission Helper
 
     private func emitEvent(_ eventName: String, body: [String: Any]) {
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: body, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                // Use CoreMessageEvent like G1 does to avoid unsupported event type errors
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                Core.log("NEX: 📡 Emitted \(eventName) via CoreMessageEvent: \(jsonString)")
-            }
-        } catch {
-            Core.log("NEX: ❌ Error emitting \(eventName): \(error)")
-        }
+        // Use the standardized Bridge.sendTypedMessage helper for consistent type field handling
+        Bridge.sendTypedMessage(eventName, body: body)
+        Core.log("NEX: 📡 Emitted \(eventName) via Bridge.sendTypedMessage")
     }
 
     // MARK: - Heartbeat Management
@@ -1772,14 +1765,8 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             ],
         ]
 
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-            }
-        } catch {
-            Core.log("Error converting to JSON: \(error)")
-        }
+        // Use the standardized Bridge.sendTypedMessage helper for consistent type field handling
+        Bridge.sendTypedMessage("compatible_glasses_search_result", body: eventBody)
     }
 
     @objc func checkBluetoothState() {
@@ -2170,15 +2157,9 @@ class MentraNexSGC: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
             ],
         ]
 
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Core.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                Core.log("NEX: 📡 Emitted device ready event with MTU: \(currentMTU)")
-            }
-        } catch {
-            Core.log("NEX: ❌ Error emitting device ready event: \(error)")
-        }
+        // Use the standardized Bridge.sendTypedMessage helper for consistent type field handling
+        Bridge.sendTypedMessage("device_ready", body: eventBody)
+        Core.log("NEX: 📡 Emitted device ready event with MTU: \(currentMTU)")
     }
 
     // MARK: - CBPeripheralDelegate
