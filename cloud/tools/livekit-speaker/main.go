@@ -6,23 +6,23 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
-	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
-	"math"
 
 	media "github.com/livekit/media-sdk"
 	lkpacer "github.com/livekit/mediatransportutil/pkg/pacer"
-	lksdk "github.com/livekit/server-sdk-go/v2"
-	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
 	lkauth "github.com/livekit/protocol/auth"
 	livekitpb "github.com/livekit/protocol/livekit"
+	lksdk "github.com/livekit/server-sdk-go/v2"
+	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
 	webrtc "github.com/pion/webrtc/v4"
 
 	"github.com/hajimehoshi/oto/v2"
@@ -285,9 +285,9 @@ func main() {
 	)
 	roomCallback := &lksdk.RoomCallback{
 		ParticipantCallback: trackCb,
-		OnDisconnected: func() { log.Printf("room disconnected") },
-		OnReconnecting: func() { log.Printf("room reconnecting...") },
-		OnReconnected: func() { log.Printf("room reconnected") },
+		OnDisconnected:      func() { log.Printf("room disconnected") },
+		OnReconnecting:      func() { log.Printf("room reconnecting...") },
+		OnReconnected:       func() { log.Printf("room reconnected") },
 		OnParticipantConnected: func(rp *lksdk.RemoteParticipant) {
 			log.Printf("participant connected: %s", rp.Identity())
 		},
@@ -341,14 +341,14 @@ type pcmWriter struct {
 func (p *pcmWriter) Write(b []byte) (int, error) {
 	n, err := p.w.Write(b)
 	if err == nil {
-	p.mu.Lock()
-	p.frames++
-	f := p.frames
-	p.totalBytes += int64(n)
-	p.lastWrite = time.Now()
-	p.mu.Unlock()
-	p.metrics.addBytes(n)
-	if p.levelEvery > 0 && f%p.levelEvery == 0 {
+		p.mu.Lock()
+		p.frames++
+		f := p.frames
+		p.totalBytes += int64(n)
+		p.lastWrite = time.Now()
+		p.mu.Unlock()
+		p.metrics.addBytes(n)
+		if p.levelEvery > 0 && f%p.levelEvery == 0 {
 			// compute simple RMS on last chunk
 			var sum int64
 			for i := 0; i+1 < len(b); i += 2 {
@@ -409,7 +409,9 @@ func writeAll(w interface{ Write([]byte) (int, error) }, b []byte) error {
 
 // writeSineTo writes PCM16 sine into a writer (same pipe as main player).
 func writeSineTo(w io.Writer, freq float64, durSec float64, sampleRate int, channels int, volume float64) error {
-	if durSec <= 0 { return nil }
+	if durSec <= 0 {
+		return nil
+	}
 	n := int(float64(sampleRate) * durSec)
 	amp := int16(32767 * volume)
 	// mono tone buffer
@@ -436,8 +438,12 @@ func writeSineTo(w io.Writer, freq float64, durSec float64, sampleRate int, chan
 	pos := 0
 	for pos < len(bytes) {
 		end := pos + chunk
-		if end > len(bytes) { end = len(bytes) }
-		if _, err := w.Write(bytes[pos:end]); err != nil { return err }
+		if end > len(bytes) {
+			end = len(bytes)
+		}
+		if _, err := w.Write(bytes[pos:end]); err != nil {
+			return err
+		}
 		pos = end
 	}
 	return nil
@@ -445,7 +451,9 @@ func writeSineTo(w io.Writer, freq float64, durSec float64, sampleRate int, chan
 
 // playSine generates a simple PCM16 sine wave and plays it via oto.
 func playSine(ctx *oto.Context, freq float64, durSec float64, sampleRate int, channels int, volume float64) error {
-	if durSec <= 0 { return nil }
+	if durSec <= 0 {
+		return nil
+	}
 	n := int(float64(sampleRate) * durSec)
 	amp := int16(32767 * volume)
 	// mono buffer
@@ -482,10 +490,10 @@ func playSine(ctx *oto.Context, freq float64, durSec float64, sampleRate int, ch
 
 // audioMetrics tracks per-second bytes vs expected rate.
 type audioMetrics struct {
-	mu           sync.Mutex
-	expectedBps  int
-	windowStart  time.Time
-	windowBytes  int
+	mu             sync.Mutex
+	expectedBps    int
+	windowStart    time.Time
+	windowBytes    int
 	lastSampleTime time.Time
 }
 
@@ -519,8 +527,12 @@ func (m *audioMetrics) roll() (bytesPerSec float64, pct int) {
 	pct = 0
 	if m.expectedBps > 0 {
 		pct = int((bps / float64(m.expectedBps)) * 100.0)
-		if pct > 999 { pct = 999 }
-		if pct < 0 { pct = 0 }
+		if pct > 999 {
+			pct = 999
+		}
+		if pct < 0 {
+			pct = 0
+		}
 	}
 	return bps, pct
 }
@@ -540,8 +552,12 @@ func (m *audioMetrics) snapshot() (bytesPerSec float64, pct int) {
 	pct = 0
 	if m.expectedBps > 0 {
 		pct = int((bps / float64(m.expectedBps)) * 100.0)
-		if pct > 999 { pct = 999 }
-		if pct < 0 { pct = 0 }
+		if pct > 999 {
+			pct = 999
+		}
+		if pct < 0 {
+			pct = 0
+		}
 	}
 	return bps, pct
 }
@@ -560,8 +576,12 @@ func decodeJWTIdentity(tok string) (sub, name string) {
 	if err := json.Unmarshal(payload, &m); err != nil {
 		return "", ""
 	}
-	if v, ok := m["sub"].(string); ok { sub = v }
-	if v, ok := m["name"].(string); ok { name = v }
+	if v, ok := m["sub"].(string); ok {
+		sub = v
+	}
+	if v, ok := m["name"].(string); ok {
+		name = v
+	}
 	return sub, name
 }
 
