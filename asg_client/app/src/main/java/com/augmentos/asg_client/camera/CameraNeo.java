@@ -46,6 +46,7 @@ import com.augmentos.asg_client.settings.VideoSettings;
 import android.view.WindowManager;
 
 import com.augmentos.asg_client.utils.WakeLockManager;
+import com.augmentos.asg_client.io.storage.StorageManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -866,6 +867,16 @@ public class CameraNeo extends LifecycleService {
 
         try {
             if (mediaRecorder != null) {
+                // Check minimum recording duration to prevent corruption
+                long recordingDuration = System.currentTimeMillis() - recordingStartTime;
+                if (recordingDuration < 500) {
+                    Log.w(TAG, "Recording duration too short (" + recordingDuration + "ms), file may be corrupted");
+                    // Still try to stop, but warn about potential corruption
+                    if (sVideoCallback != null) {
+                        Log.w(TAG, "Warning: Video recording was very short, file may be corrupted");
+                    }
+                }
+                
                 mediaRecorder.stop();
                 mediaRecorder.reset();
             }
@@ -1352,6 +1363,12 @@ public class CameraNeo extends LifecycleService {
      */
     private void setupMediaRecorder(String filePath) {
         try {
+            // Check storage space before setting up recorder
+            StorageManager storageManager = new StorageManager(this);
+            if (!storageManager.canRecordVideo()) {
+                throw new IOException("Insufficient storage space for video recording");
+            }
+            
             if (mediaRecorder == null) {
                 mediaRecorder = new MediaRecorder();
             } else {
@@ -1369,8 +1386,8 @@ public class CameraNeo extends LifecycleService {
             mediaRecorder.setOutputFile(filePath);
 
             // Set video encoding parameters
-            // Use higher bitrate for 1080p
-            int bitRate = (videoSize.getWidth() >= 1920) ? 5000000 : 3000000; // 5Mbps for 1080p, 3Mbps for 720p
+            // Use higher bitrate for better reliability and to prevent encoder issues
+            int bitRate = (videoSize.getWidth() >= 1920) ? 8000000 : 5000000; // 8Mbps for 1080p, 5Mbps for 720p
             mediaRecorder.setVideoEncodingBitRate(bitRate);
             
             // Use fps from settings if available
@@ -1391,6 +1408,59 @@ public class CameraNeo extends LifecycleService {
             int displayOrientation = getDisplayRotation();
             int videoOrientation = JPEG_ORIENTATION.get(displayOrientation, 0);
             mediaRecorder.setOrientationHint(videoOrientation);
+            
+            // Set maximum file size and duration based on available storage
+            long maxFileSize = storageManager.getMaxVideoFileSize();
+            int maxDuration = storageManager.getMaxVideoDuration(bitRate);
+            
+            try {
+                mediaRecorder.setMaxFileSize(maxFileSize);
+                Log.d(TAG, "Set max file size: " + (maxFileSize / (1024 * 1024)) + " MB");
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Failed to set max file size: " + e.getMessage());
+            }
+            
+            try {
+                mediaRecorder.setMaxDuration(maxDuration);
+                Log.d(TAG, "Set max duration: " + (maxDuration / 1000) + " seconds");
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "Failed to set max duration: " + e.getMessage());
+            }
+            
+            // Set error listener to handle recording failures
+            mediaRecorder.setOnErrorListener((mr, what, extra) -> {
+                Log.e(TAG, "MediaRecorder error: what=" + what + ", extra=" + extra);
+                isRecording = false;
+                String errorMsg = "Recording error: " + what;
+                if (what == MediaRecorder.MEDIA_ERROR_SERVER_DIED) {
+                    errorMsg = "Media server died during recording";
+                } else if (what == MediaRecorder.MEDIA_RECORDER_ERROR_UNKNOWN) {
+                    errorMsg = "Unknown recording error occurred";
+                }
+                notifyVideoError(currentVideoId, errorMsg);
+                // Try to clean up
+                try {
+                    if (mediaRecorder != null) {
+                        mediaRecorder.reset();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error resetting MediaRecorder after error", e);
+                }
+            });
+            
+            // Set info listener for recording events
+            mediaRecorder.setOnInfoListener((mr, what, extra) -> {
+                Log.d(TAG, "MediaRecorder info: what=" + what + ", extra=" + extra);
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
+                    Log.w(TAG, "Max duration reached, stopping recording");
+                    stopCurrentVideoRecording(currentVideoId);
+                } else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+                    Log.w(TAG, "Max file size reached, stopping recording");
+                    stopCurrentVideoRecording(currentVideoId);
+                } else if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_APPROACHING) {
+                    Log.w(TAG, "Approaching max file size limit");
+                }
+            });
 
             // Prepare the recorder
             mediaRecorder.prepare();
@@ -1689,28 +1759,46 @@ public class CameraNeo extends LifecycleService {
         }
         try {
             cameraCaptureSession.setRepeatingRequest(previewBuilder.build(), null, backgroundHandler);
-            mediaRecorder.start();
-            isRecording = true;
-            recordingStartTime = System.currentTimeMillis();
-            // Clear pending settings after use
-            pendingVideoSettings = null;
-            if (sVideoCallback != null) {
-                sVideoCallback.onRecordingStarted(currentVideoId);
-            }
-            // Start progress timer if callback is interested
-            if (sVideoCallback != null) {
-                recordingTimer = new Timer();
-                recordingTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        if (isRecording && sVideoCallback != null) {
-                            long duration = System.currentTimeMillis() - recordingStartTime;
-                            sVideoCallback.onRecordingProgress(currentVideoId, duration);
-                        }
+            
+            // Add small delay to ensure camera surface is connected and first frames are captured
+            // This helps prevent audio-only recordings
+            backgroundHandler.postDelayed(() -> {
+                try {
+                    if (cameraCaptureSession == null || recorderSurface == null || !recorderSurface.isValid()) {
+                        Log.e(TAG, "Camera not ready for recording - surface invalid");
+                        notifyVideoError(currentVideoId, "Camera not ready for recording");
+                        return;
                     }
-                }, 1000, 1000); // Update every second
-            }
-            Log.d(TAG, "Video recording started for: " + currentVideoId);
+                    
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordingStartTime = System.currentTimeMillis();
+                    
+                    // Clear pending settings after use
+                    pendingVideoSettings = null;
+                    if (sVideoCallback != null) {
+                        sVideoCallback.onRecordingStarted(currentVideoId);
+                    }
+                    // Start progress timer if callback is interested
+                    if (sVideoCallback != null) {
+                        recordingTimer = new Timer();
+                        recordingTimer.schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                if (isRecording && sVideoCallback != null) {
+                                    long duration = System.currentTimeMillis() - recordingStartTime;
+                                    sVideoCallback.onRecordingProgress(currentVideoId, duration);
+                                }
+                            }
+                        }, 1000, 1000); // Update every second
+                    }
+                    Log.d(TAG, "Video recording started for: " + currentVideoId);
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to start recording after delay", e);
+                    notifyVideoError(currentVideoId, "Failed to start recording: " + e.getMessage());
+                    isRecording = false;
+                }
+            }, 100); // 100ms delay to ensure surface is ready
         } catch (CameraAccessException | IllegalStateException e) {
             Log.e(TAG, "Failed to start video recording", e);
             notifyVideoError(currentVideoId, "Failed to start recording: " + e.getMessage());

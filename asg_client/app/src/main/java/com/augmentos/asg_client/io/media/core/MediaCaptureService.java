@@ -18,6 +18,7 @@ import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
+import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -429,6 +430,26 @@ public class MediaCaptureService {
      * Start video recording with specific parameters and settings
      */
     private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
+        // Check if RTMP streaming is active - videos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot start video - RTMP streaming active");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera busy with streaming", 
+                    MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Check if camera is actively in use (this will return false for kept-alive idle camera)
+        if (CameraNeo.isCameraInUse()) {
+            Log.e(TAG, "Cannot start video - camera actively in use");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera busy", 
+                    MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
@@ -698,6 +719,18 @@ public class MediaCaptureService {
      * @param enableLed Whether to enable camera LED flash
      */
     public void takePhotoLocally(String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError("local", "Camera busy with streaming", 
+                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        // Note: No need to check CameraNeo.isCameraInUse() for photos
+        // The camera's keep-alive system handles rapid photo taking gracefully
+        
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
