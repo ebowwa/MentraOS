@@ -4,20 +4,18 @@ import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
-
-import BackendServerComms from "@/bridge/BackendServerComms"
 import {Button, Screen} from "@/components/ignite"
-import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import ServerComms from "@/services/ServerComms"
+import restComms from "@/managers/RestComms"
+import socketComms from "@/managers/SocketComms"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -34,8 +32,9 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
+const useNewWsManager = false
 
-export default function VersionUpdateScreen() {
+export default function InitScreen() {
   // Hooks
   const {theme, themed} = useAppTheme()
   const {user, session} = useAuth()
@@ -49,7 +48,9 @@ export default function VersionUpdateScreen() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
   const [errorType, setErrorType] = useState<"connection" | "auth" | null>(null)
+  const [canSkipUpdate, setCanSkipUpdate] = useState(false)
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
+  const [isRetrying, setIsRetrying] = useState(false)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -74,17 +75,32 @@ export default function VersionUpdateScreen() {
     if (pendingRoute) {
       setPendingRoute(null)
       setTimeout(() => processUrl(pendingRoute), DEEPLINK_DELAY)
-    } else {
-      setTimeout(() => {
-        router.dismissAll()
-        replace("/(tabs)/home")
-      }, NAVIGATION_DELAY)
+      return
     }
+
+    if (!user) {
+      replace("/auth/login")
+      return
+    }
+
+    setTimeout(() => {
+      router.dismissAll()
+      replace("/(tabs)/home")
+    }, NAVIGATION_DELAY)
+  }
+
+  const checkLoggedIn = async (): Promise<void> => {
+    if (!user) {
+      replace("/auth/login")
+      return
+    }
+    handleTokenExchange()
   }
 
   const handleTokenExchange = async (): Promise<void> => {
     setState("loading")
     setLoadingStatus(translate("versionCheck:connectingToServer"))
+
     try {
       const supabaseToken = session?.access_token
       if (!supabaseToken) {
@@ -93,16 +109,14 @@ export default function VersionUpdateScreen() {
         return
       }
 
-      const backend = BackendServerComms.getInstance()
-      const coreToken = await backend.exchangeToken(supabaseToken)
+      const coreToken = await restComms.exchangeToken(supabaseToken)
       const uid = user?.email || user?.id
 
-      const useNewWsManager = false
       if (useNewWsManager) {
-        coreCommunicator.setup()
-        ServerComms.getInstance().setAuthCreds(coreToken, uid)
+        bridge.setup()
+        socketComms.setAuthCreds(coreToken, uid)
       } else {
-        coreCommunicator.setAuthCreds(coreToken, uid)
+        bridge.setAuthCreds(coreToken, uid)
       }
 
       // Check onboarding status
@@ -122,13 +136,17 @@ export default function VersionUpdateScreen() {
     }
   }
 
-  const checkCloudVersion = async (): Promise<void> => {
-    setState("loading")
+  const checkCloudVersion = async (isRetry = false): Promise<void> => {
+    // Only show loading screen on initial load, not on retry
+    if (!isRetry) {
+      setState("loading")
+      setLoadingStatus(translate("versionCheck:checkingForUpdates"))
+    } else {
+      setIsRetrying(true)
+    }
     setErrorType(null)
-    setLoadingStatus(translate("versionCheck:checkingForUpdates"))
 
     try {
-      const backendComms = BackendServerComms.getInstance()
       const localVer = getLocalVersion()
       setLocalVersion(localVer)
 
@@ -136,32 +154,34 @@ export default function VersionUpdateScreen() {
         console.error("Failed to get local version")
         setErrorType("connection")
         setState("error")
+        setIsRetrying(false)
         return
       }
 
-      await backendComms.restRequest("/apps/version", null, {
-        onSuccess: data => {
-          const cloudVer = data.version
-          setCloudVersion(cloudVer)
-
-          console.log(`Version check: local=${localVer}, cloud=${cloudVer}`)
-
-          if (semver.lt(localVer, cloudVer)) {
-            setState("outdated")
-            return
-          }
-          handleTokenExchange()
-        },
-        onFailure: errorCode => {
-          console.error("Failed to fetch cloud version:", errorCode)
-          setErrorType("connection")
-          setState("error")
-        },
-      })
+      try {
+        const {required, recommended} = await restComms.getMinimumClientVersion()
+        setCloudVersion(recommended)
+        console.log(`Version check: local=${localVer}, cloud=${required}`)
+        if (semver.lt(localVer, recommended)) {
+          setState("outdated")
+          setCanSkipUpdate(!semver.lt(localVer, required))
+          setIsRetrying(false)
+          return
+        }
+        setIsRetrying(false)
+        checkLoggedIn()
+      } catch (error) {
+        console.error("Failed to fetch cloud version:", error)
+        setErrorType("connection")
+        setState("error")
+        setIsRetrying(false)
+        return
+      }
     } catch (error) {
       console.error("Version check failed:", error)
       setErrorType("connection")
       setState("error")
+      setIsRetrying(false)
     }
   }
 
@@ -180,9 +200,9 @@ export default function VersionUpdateScreen() {
   const handleResetUrl = async (): Promise<void> => {
     try {
       await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      await coreCommunicator.setServerUrl("")
+      await bridge.setServerUrl("")
       setIsUsingCustomUrl(false)
-      await checkCloudVersion()
+      await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {
       console.error("Failed to reset URL:", error)
     }
@@ -204,7 +224,7 @@ export default function VersionUpdateScreen() {
           iconColor: theme.colors.error,
           title: "Connection Error",
           description: isUsingCustomUrl
-            ? "Could not connect to the custom server. Please try resetting the URL to the default or check your connection."
+            ? "Could not connect to the custom server. Please try using the default server or check your connection."
             : "Could not connect to the server. Please check your connection and try again.",
         }
 
@@ -213,7 +233,7 @@ export default function VersionUpdateScreen() {
           icon: "update",
           iconColor: theme.colors.tint,
           title: "Update Required",
-          description: "MentraOS is outdated. An update is required to continue using the application.",
+          description: "MentraOS is outdated. Please update to continue using the application.",
         }
 
       default:
@@ -270,9 +290,13 @@ export default function VersionUpdateScreen() {
           <View style={themed($buttonContainer)}>
             {state === "error" && (
               <Button
-                onPress={checkCloudVersion}
+                onPress={() => checkCloudVersion(true)}
                 style={themed($primaryButton)}
-                text={translate("versionCheck:retryConnection")}
+                text={isRetrying ? translate("versionCheck:retrying") : translate("versionCheck:retryConnection")}
+                disabled={isRetrying}
+                LeftAccessory={
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.textAlt} /> : undefined
+                }
               />
             )}
 
@@ -289,16 +313,22 @@ export default function VersionUpdateScreen() {
               <Button
                 onPress={handleResetUrl}
                 style={themed($secondaryButton)}
-                text={translate("versionCheck:resetUrl")}
+                text={isRetrying ? translate("versionCheck:resetting") : translate("versionCheck:resetUrl")}
+                preset="reversed"
+                disabled={isRetrying}
+                LeftAccessory={
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
+                }
               />
             )}
 
-            {(state === "error" || state === "outdated") && (
+            {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.textAlt} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
                 onPress={navigateToDestination}
-                tx="versionCheck:continueAnyways"
+                tx="versionCheck:continueAnyway"
+                preset="reversed"
               />
             )}
           </View>
@@ -372,8 +402,6 @@ const $primaryButton: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
 })
 
-const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $secondaryButton: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
-  backgroundColor: colors.palette.primary200,
-  color: colors.textAlt,
 })

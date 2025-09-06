@@ -97,10 +97,7 @@ class WebSocketManager extends EventEmitter {
   }
 
   isConnected(): boolean {
-    return this.webSocket !== null && this.webSocket.readyState === WebSocket.OPEN
-  }
-
-  isActuallyConnected(): boolean {
+    // return this.webSocket !== null && this.webSocket.readyState === WebSocket.OPEN
     return this.previousStatus === WebSocketStatus.CONNECTED
   }
 
@@ -161,4 +158,5 @@ class WebSocketManager extends EventEmitter {
   }
 }
 
-export default WebSocketManager
+const wsManager = WebSocketManager.getInstance()
+export default wsManager

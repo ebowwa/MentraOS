@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -97,7 +97,7 @@ export default function TranscriptionSettingsScreen() {
     }
 
     const newSetting = !isEnforceLocalTranscriptionEnabled
-    await coreCommunicator.sendToggleEnforceLocalTranscription(newSetting)
+    await bridge.sendToggleEnforceLocalTranscription(newSetting)
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
@@ -113,7 +113,7 @@ export default function TranscriptionSettingsScreen() {
       try {
         await STTModelManager.activateModel(modelId)
         showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-        await coreCommunicator.restartTranscription()
+        await bridge.restartTranscription()
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -167,7 +167,7 @@ export default function TranscriptionSettingsScreen() {
 
               // If local transcription is enabled, disable it
               if (isEnforceLocalTranscriptionEnabled) {
-                await coreCommunicator.sendToggleEnforceLocalTranscription(false)
+                await bridge.sendToggleEnforceLocalTranscription(false)
                 setIsEnforceLocalTranscriptionEnabled(false)
               }
             } catch (error: any) {
@@ -205,7 +205,7 @@ export default function TranscriptionSettingsScreen() {
 
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
+    await bridge.sendToggleBypassVadForDebugging(newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
@@ -235,7 +235,7 @@ export default function TranscriptionSettingsScreen() {
           onValueChange={toggleBypassVadForDebugging}
         />
 
-        {(
+        {
           <>
             <Spacer height={theme.spacing.md} />
 
@@ -285,7 +285,7 @@ export default function TranscriptionSettingsScreen() {
               </>
             )}
           </>
-        )}
+        }
       </ScrollView>
     </Screen>
   )

@@ -48,14 +48,14 @@ class ServerComms {
         // every hour send calendar events again:
         let oneHour: TimeInterval = 1 * 60 * 60 // 1hr
         Timer.scheduledTimer(withTimeInterval: oneHour, repeats: true) { [weak self] _ in
-            Core.log("Periodic calendar sync")
+            Bridge.log("Periodic calendar sync")
             self?.sendCalendarEvents()
         }
 
         // Deploy datetime coordinates to command center every 60 seconds
         let sixtySeconds: TimeInterval = 60
         Timer.scheduledTimer(withTimeInterval: sixtySeconds, repeats: true) { [weak self] _ in
-            Core.log("Periodic datetime transmission")
+            Bridge.log("Periodic datetime transmission")
             guard let self = self else { return }
             let isoDatetime = ServerComms.getCurrentIsoDatetime()
             self.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
@@ -80,7 +80,7 @@ class ServerComms {
     // TODO: config: remove
     func setServerUrl(_ url: String) {
         serverUrl = url
-        Core.log("ServerComms: setServerUrl: \(url)")
+        Bridge.log("ServerComms: setServerUrl: \(url)")
         if wsManager.isConnected() {
             wsManager.disconnect()
             connectWebSocket()
@@ -91,14 +91,10 @@ class ServerComms {
 
     func connectWebSocket() {
         guard let url = URL(string: getServerUrl()) else {
-            Core.log("Invalid server URL")
+            Bridge.log("Invalid server URL")
             return
         }
         wsManager.connect(url: url, coreToken: coreToken)
-    }
-
-    func isWebSocketConnected() -> Bool {
-        return wsManager.isActuallyConnected()
     }
 
     // MARK: - Audio / VAD
@@ -138,7 +134,7 @@ class ServerComms {
 
     func sendCalendarEvent(_ calendarItem: CalendarItem) {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send calendar event: not connected.")
+            Bridge.log("Cannot send calendar event: not connected.")
             return
         }
 
@@ -158,7 +154,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("Error building calendar_event JSON: \(error)")
+            Bridge.log("Error building calendar_event JSON: \(error)")
         }
     }
 
@@ -171,7 +167,7 @@ class ServerComms {
                 let eventsToSend = events.prefix(5)
                 for event in eventsToSend {
                     let calendarItem = convertEKEventToCalendarItem(event)
-                    Core.log("CALENDAR EVENT \(calendarItem)")
+                    Bridge.log("CALENDAR EVENT \(calendarItem)")
                     self.sendCalendarEvent(calendarItem)
                 }
             }
@@ -200,13 +196,13 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building location_update JSON: \(error)")
+            Bridge.log("ServerComms: Error building location_update JSON: \(error)")
         }
     }
 
     func sendLocationUpdates() {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send location updates: WebSocket not connected")
+            Bridge.log("Cannot send location updates: WebSocket not connected")
             return
         }
 
@@ -231,13 +227,13 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building location_update JSON: \(error)")
+            Bridge.log("ServerComms: Error building location_update JSON: \(error)")
         }
     }
 
     func updateAsrConfig(languages: [[String: Any]]) {
         guard wsManager.isConnected() else {
-            Core.log("ServerComms: Cannot send ASR config: not connected.")
+            Bridge.log("ServerComms: Cannot send ASR config: not connected.")
             return
         }
 
@@ -252,7 +248,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building config message: \(error)")
+            Bridge.log("ServerComms: Error building config message: \(error)")
         }
     }
 
@@ -269,12 +265,12 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building core_status_update JSON: \(error)")
+            Bridge.log("ServerComms: Error building core_status_update JSON: \(error)")
         }
     }
 
     func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
-        Core.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+        Bridge.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
         let message: [String: Any] = [
             "type": "audio_play_response",
             "requestId": requestId,
@@ -287,10 +283,10 @@ class ServerComms {
             let jsonData = try JSONSerialization.data(withJSONObject: message)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 wsManager.sendText(jsonString)
-                Core.log("ServerComms: Sent audio play response to server")
+                Bridge.log("ServerComms: Sent audio play response to server")
             }
         } catch {
-            Core.log("ServerComms: Failed to serialize audio play response: \(error)")
+            Bridge.log("ServerComms: Failed to serialize audio play response: \(error)")
         }
     }
 
@@ -309,7 +305,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building start_app JSON: \(error)")
+            Bridge.log("ServerComms: Error building start_app JSON: \(error)")
         }
     }
 
@@ -326,7 +322,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building stop_app JSON: \(error)")
+            Bridge.log("ServerComms: Error building stop_app JSON: \(error)")
         }
     }
 
@@ -346,7 +342,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building button_press JSON: \(error)")
+            Bridge.log("ServerComms: Error building button_press JSON: \(error)")
         }
     }
 
@@ -364,7 +360,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building photo_response JSON: \(error)")
+            Bridge.log("ServerComms: Error building photo_response JSON: \(error)")
         }
     }
 
@@ -382,7 +378,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error building video_stream_response JSON: \(error)")
+            Bridge.log("ServerComms: Error building video_stream_response JSON: \(error)")
         }
     }
 
@@ -399,7 +395,7 @@ class ServerComms {
                 wsManager.sendText(jsonString)
             }
         } catch {
-            Core.log("ServerComms: Error sending head position: \(error)")
+            Bridge.log("ServerComms: Error sending head position: \(error)")
         }
     }
 
@@ -421,8 +417,8 @@ class ServerComms {
             let url = livekitData["url"] as? String ?? ""
             let token = livekitData["token"] as? String ?? ""
             if !url.isEmpty, !token.isEmpty {
-                Core.log("ServerComms: Connecting to LiveKit: \(url)")
-                Core.log("ServerComms: LiveKit token: \(token)")
+                Bridge.log("ServerComms: Connecting to LiveKit: \(url)")
+                Bridge.log("ServerComms: LiveKit token: \(token)")
                 LiveKitManager.shared.connect(url: url, token: token)
             }
 
@@ -467,7 +463,7 @@ class ServerComms {
             handleAudioStopRequest()
 
         case "reconnect":
-            Core.log("ServerComms: TODO: Server is requesting a reconnect.")
+            Bridge.log("ServerComms: TODO: Server is requesting a reconnect.")
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
@@ -483,13 +479,13 @@ class ServerComms {
 
         case "app_started":
             if let packageName = msg["packageName"] as? String {
-                Core.log("ServerComms: Received app_started message for package: \(packageName)")
+                Bridge.log("ServerComms: Received app_started message for package: \(packageName)")
                 m.onAppStarted(packageName)
             }
 
         case "app_stopped":
             if let packageName = msg["packageName"] as? String {
-                Core.log("ServerComms: Received app_stopped message for package: \(packageName)")
+                Bridge.log("ServerComms: Received app_stopped message for package: \(packageName)")
                 m.onAppStopped(packageName)
             }
 
@@ -499,11 +495,12 @@ class ServerComms {
             let webhookUrl = msg["webhookUrl"] as? String ?? ""
             let authToken = msg["authToken"] as? String ?? ""
             let size = (msg["size"] as? String) ?? "medium"
-            Core.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), authToken: \(authToken.isEmpty ? "none" : "***"), size: \(size)")
+
+            Bridge.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), authToken: \(authToken.isEmpty ? "none" : "***"), size: \(size)")
             if !requestId.isEmpty, !appId.isEmpty {
                 m.onPhotoRequest(requestId, appId, webhookUrl, size)
             } else {
-                Core.log("Invalid photo request: missing requestId or appId")
+                Bridge.log("Invalid photo request: missing requestId or appId")
             }
 
         case "start_rtmp_stream":
@@ -511,54 +508,54 @@ class ServerComms {
             if !rtmpUrl.isEmpty {
                 m.onRtmpStreamStartRequest(msg)
             } else {
-                Core.log("Invalid RTMP stream request: missing rtmpUrl or callback")
+                Bridge.log("Invalid RTMP stream request: missing rtmpUrl or callback")
             }
 
         case "stop_rtmp_stream":
-            Core.log("Received STOP_RTMP_STREAM")
+            Bridge.log("Received STOP_RTMP_STREAM")
             m.onRtmpStreamStop()
 
         case "keep_rtmp_stream_alive":
-            Core.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
+            Bridge.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
             m.onRtmpStreamKeepAlive(msg)
 
         case "start_buffer_recording":
-            Core.log("ServerComms: Received START_BUFFER_RECORDING")
+            Bridge.log("ServerComms: Received START_BUFFER_RECORDING")
             m.onStartBufferRecording()
 
         case "stop_buffer_recording":
-            Core.log("ServerComms: Received STOP_BUFFER_RECORDING")
+            Bridge.log("ServerComms: Received STOP_BUFFER_RECORDING")
             m.onStopBufferRecording()
 
         case "save_buffer_video":
-            Core.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
+            Bridge.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
             let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
             let durationSeconds = msg["durationSeconds"] as? Int ?? 30
             m.onSaveBufferVideo(requestId, durationSeconds)
 
         case "start_video_recording":
-            Core.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
+            Bridge.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
             let save = msg["save"] as? Bool ?? true
             m.onStartVideoRecording(requestId, save)
 
         case "stop_video_recording":
-            Core.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
+            Bridge.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
             let requestId = msg["requestId"] as? String ?? ""
             m.onStopVideoRecording(requestId)
 
         default:
-            Core.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
+            Bridge.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
         }
     }
 
     private func handleAudioPlayRequest(_ msg: [String: Any]) {
-        Core.log("ServerComms: Handling audio play request: \(msg)")
+        Bridge.log("ServerComms: Handling audio play request: \(msg)")
         guard let requestId = msg["requestId"] as? String else {
             return
         }
 
-        Core.log("ServerComms: Handling audio play request for requestId: \(requestId)")
+        Bridge.log("ServerComms: Handling audio play request for requestId: \(requestId)")
 
         let audioUrl = msg["audioUrl"] as? String ?? ""
         let volume = msg["volume"] as? Float ?? 1.0
@@ -575,7 +572,7 @@ class ServerComms {
     }
 
     private func handleAudioStopRequest() {
-        Core.log("ServerComms: Handling audio stop request")
+        Bridge.log("ServerComms: Handling audio stop request")
         let audioManager = AudioManager.getInstance()
         audioManager.stopAllAudio()
     }
@@ -589,7 +586,7 @@ class ServerComms {
         // if after some time we're still not connected, run this function again:
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
             // if self.wsManager.isConnected() {
-            if self.wsManager.isActuallyConnected() {
+            if self.wsManager.isConnected() {
                 self.reconnectionAttempts = 0
                 self.reconnecting = false
                 return
@@ -600,7 +597,7 @@ class ServerComms {
     }
 
     private func handleStatusChange(_ status: WebSocketStatus) {
-        Core.log("handleStatusChange: \(status)")
+        Bridge.log("handleStatusChange: \(status)")
 
         if status == .disconnected || status == .error {
             stopAudioSenderThread()
@@ -626,8 +623,9 @@ class ServerComms {
                         self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
-                        self.audioBuffer.offer(chunk)
-                        Thread.sleep(forTimeInterval: 0.1)
+                        // self.audioBuffer.offer(chunk)
+                        // Thread.sleep(forTimeInterval: 0.1)
+                        Bridge.sendWSBinary(chunk)
                     }
                 } else {
                     // No data in queue, wait a bit
@@ -641,7 +639,7 @@ class ServerComms {
     }
 
     private func stopAudioSenderThread() {
-        Core.log("stopping audio sender thread")
+        Bridge.log("stopping audio sender thread")
         audioSenderRunning = false
         audioSenderThread = nil
     }
@@ -650,7 +648,7 @@ class ServerComms {
 
     func sendUserDatetimeToBackend(isoDatetime: String) {
         guard let url = URL(string: getServerUrlForRest() + "/api/user-data/set-datetime") else {
-            Core.log("ServerComms: Invalid URL for datetime transmission")
+            Bridge.log("ServerComms: Invalid URL for datetime transmission")
             return
         }
 
@@ -676,16 +674,16 @@ class ServerComms {
 
                 if let httpResponse = response as? HTTPURLResponse {
                     if httpResponse.statusCode != 200 {
-                        Core.log("ServerComms: Datetime transmission failed. Response code: \(httpResponse.statusCode)")
+                        Bridge.log("ServerComms: Datetime transmission failed. Response code: \(httpResponse.statusCode)")
                         if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
-                            Core.log("ServerComms: Error response: \(responseString)")
+                            Bridge.log("ServerComms: Error response: \(responseString)")
                         }
                     }
                 }
             }.resume()
 
         } catch {
-            Core.log("ServerComms: Exception during datetime transmission preparation: \(error.localizedDescription)")
+            Bridge.log("ServerComms: Exception during datetime transmission preparation: \(error.localizedDescription)")
         }
     }
 
@@ -725,7 +723,7 @@ class ServerComms {
         let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
         let secureServer = secure.contains("true")
         let url = "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
-        Core.log("ServerComms: getServerUrl(): \(url)")
+        Bridge.log("ServerComms: getServerUrl(): \(url)")
         return url
     }
 
@@ -735,7 +733,7 @@ class ServerComms {
         {
             return whatToStream
         }
-        Core.log("ServerComms: whatToStream was not found in server message!")
+        Bridge.log("ServerComms: whatToStream was not found in server message!")
         return []
     }
 
@@ -812,12 +810,12 @@ class ServerComms {
      */
     func sendTranscriptionResult(transcription: [String: Any]) {
         guard wsManager.isConnected() else {
-            Core.log("Cannot send transcription result: WebSocket not connected")
+            Bridge.log("Cannot send transcription result: WebSocket not connected")
             return
         }
 
         guard let text = transcription["text"] as? String, !text.isEmpty else {
-            Core.log("Skipping empty transcription result")
+            Bridge.log("Skipping empty transcription result")
             return
         }
 
@@ -827,10 +825,10 @@ class ServerComms {
                 wsManager.sendText(jsonString)
 
                 let isFinal = transcription["isFinal"] as? Bool ?? false
-                Core.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
+                Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
             }
         } catch {
-            Core.log("Error sending transcription result: \(error)")
+            Bridge.log("Error sending transcription result: \(error)")
         }
     }
 }

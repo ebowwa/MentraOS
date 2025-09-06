@@ -1,5 +1,5 @@
 //
-//  Core.swift
+//  CoreBridge.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 3/4/25.
@@ -8,13 +8,13 @@
 import Foundation
 import React
 
-@objc(Core)
-class Core: RCTEventEmitter {
+@objc(Bridge)
+class Bridge: RCTEventEmitter {
     static var emitter: RCTEventEmitter!
 
     override init() {
         super.init()
-        Core.emitter = self
+        Bridge.emitter = self
     }
 
     @objc
@@ -34,22 +34,22 @@ class Core: RCTEventEmitter {
 
     static func showBanner(type: String, message: String) {
         let data = ["type": type, "message": message] as [String: Any]
-        Core.sendTypedMessage("show_banner", body: data)
+        Bridge.sendTypedMessage("show_banner", body: data)
     }
 
     static func sendAppStartedEvent(_ packageName: String) {
         let data = ["packageName": packageName]
-        Core.sendTypedMessage("app_started", body: data)
+        Bridge.sendTypedMessage("app_started", body: data)
     }
 
     static func sendAppStoppedEvent(_ packageName: String) {
         let data = ["packageName": packageName]
-        Core.sendTypedMessage("app_stopped", body: data)
+        Bridge.sendTypedMessage("app_stopped", body: data)
     }
 
     static func sendPairFailureEvent(_ error: String) {
         let data = ["error": error]
-        Core.sendTypedMessage("pair_failure", body: data)
+        Bridge.sendTypedMessage("pair_failure", body: data)
     }
 
     override func supportedEvents() -> [String] {
@@ -60,7 +60,13 @@ class Core: RCTEventEmitter {
     // WS Comms:
     static func sendWSText(_ msg: String) {
         let data = ["text": msg]
-        Core.sendTypedMessage("ws_text", body: data)
+        Bridge.sendTypedMessage("ws_text", body: data)
+    }
+
+    static func sendWSBinary(_ data: Data) {
+        let base64String = data.base64EncodedString()
+        let body = ["binary": base64String]
+        Bridge.sendTypedMessage("ws_binary", body: body)
     }
 
     static func sendTypedMessage(_ type: String, body: [String: Any]) {
