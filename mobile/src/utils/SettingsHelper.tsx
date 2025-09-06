@@ -38,7 +38,7 @@ export const SETTINGS_KEYS = {
 }
 
 const DEFAULT_SETTINGS = {
-  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass",
+  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass:443",
   [SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]: false,
   [SETTINGS_KEYS.ONBOARDING_COMPLETED]: false,
   [SETTINGS_KEYS.SETTINGS_ACCESS_COUNT]: 0,
@@ -67,6 +67,10 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.dashboard_depth]: 5,
   [SETTINGS_KEYS.button_mode]: "photo",
   [SETTINGS_KEYS.button_photo_size]: "medium",
+}
+
+export const getSettingDefault = (key: string) => {
+  return DEFAULT_SETTINGS[key]
 }
 
 const saveSetting = async (key: string, value: any): Promise<void> => {
