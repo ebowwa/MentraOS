@@ -32,7 +32,26 @@ class SherpaOnnxTranscriber {
 
     // Dynamic model path support
     private static var customModelPath: String? {
-        return UserDefaults.standard.string(forKey: "STTModelPath")
+        guard let storedPath = UserDefaults.standard.string(forKey: "STTModelPath") else {
+            return nil
+        }
+
+        // Always resolve current Documents directory
+        let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+
+        // Extract relative subpath after "Documents/"
+        // NOTE: Doing this because the application id changes between the development builds and files can't be found.
+        if let range = storedPath.range(of: "/Documents/") {
+            let relativePath = String(storedPath[range.upperBound...]) // e.g. "stt_models/..."
+            let fixedPath = documentsURL.appendingPathComponent(relativePath).path
+
+            Bridge.log("Reconstructed STTModelPath: \(fixedPath)")
+            return fixedPath
+        }
+
+        // If nothing matched, just return as-is
+        Bridge.log("STTModelPath (raw): \(storedPath)")
+        return storedPath
     }
 
     /**
@@ -155,55 +174,12 @@ class SherpaOnnxTranscriber {
                         NSLocalizedDescriptionKey: "No valid model files found at path: \(customPath)",
                     ])
                 }
-
             } else {
-                // Fall back to bundle resources (for backwards compatibility)
-                guard SherpaOnnxTranscriber.areModelFilesPresent() else {
-                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: "No STT model available. Please download a model first.",
-                    ])
-                }
-
-                guard let bundleEncoderPath = Bundle.main.path(forResource: "encoder", ofType: "onnx"),
-                      let bundleDecoderPath = Bundle.main.path(forResource: "decoder", ofType: "onnx"),
-                      let bundleJoinerPath = Bundle.main.path(forResource: "joiner", ofType: "onnx"),
-                      let bundleTokensPath = Bundle.main.path(forResource: "tokens", ofType: "txt")
-                else {
-                    throw NSError(domain: "SherpaOnnxTranscriber", code: 1, userInfo: [
-                        NSLocalizedDescriptionKey: "Model files not found in bundle.",
-                    ])
-                }
-
-                modelType = "transducer"
-
-                // Create Sherpa-ONNX transducer model config
-                var transducer = sherpaOnnxOnlineTransducerModelConfig(
-                    encoder: bundleEncoderPath,
-                    decoder: bundleDecoderPath,
-                    joiner: bundleJoinerPath
-                )
-
-                // Create model config
-                var modelConfig = sherpaOnnxOnlineModelConfig(
-                    tokens: bundleTokensPath,
-                    transducer: transducer,
-                    numThreads: 1
-                )
-
-                // Configure recognizer
-                var featureConfig = sherpaOnnxFeatureConfig()
-
-                var config = sherpaOnnxOnlineRecognizerConfig(
-                    featConfig: featureConfig,
-                    modelConfig: modelConfig,
-                    enableEndpoint: true,
-                    rule1MinTrailingSilence: 1.2,
-                    rule2MinTrailingSilence: 0.8,
-                    rule3MinUtteranceLength: 10.0
-                )
-
-                // Create recognizer with the wrapper
-                recognizer = SherpaOnnxRecognizer(config: &config)
+                Bridge.log("No Sherpa ONNX model available. Transcription will be disabled.")
+                Bridge.log("Please download a model using the model downloader in settings.")
+                recognizer = nil
+                isRunning = false
+                return
             }
 
             if recognizer == nil {
@@ -422,70 +398,5 @@ class SherpaOnnxTranscriber {
         Bridge.log("♻️ Restarting SherpaOnnxTranscriber...")
         shutdown()
         initialize()
-    }
-
-    /**
-     * Verify that all required Sherpa-ONNX model files are present in the app bundle.
-     * Call this method to check if the models were properly added to the Xcode project.
-     *
-     * @return true if all model files are found, false otherwise
-     */
-    static func areModelFilesPresent() -> Bool {
-        let fileManager = FileManager.default
-
-        // First check if we have a custom model path
-        if let customPath = customModelPath {
-            Bridge.log("Checking for Sherpa-ONNX model files at custom path: \(customPath)")
-
-            // Check for tokens.txt (required for all models)
-            let tokensPath = (customPath as NSString).appendingPathComponent("tokens.txt")
-            guard fileManager.fileExists(atPath: tokensPath) else {
-                Bridge.log("❌ Missing tokens.txt at custom path")
-                return false
-            }
-
-            // Check for CTC model
-            let ctcModelPath = (customPath as NSString).appendingPathComponent("model.int8.onnx")
-            if fileManager.fileExists(atPath: ctcModelPath) {
-                Bridge.log("✅ CTC model files found at custom path")
-                return true
-            }
-
-            // Check for transducer model
-            let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
-            var allTransducerFilesPresent = true
-            for fileName in transducerFiles {
-                let filePath = (customPath as NSString).appendingPathComponent(fileName)
-                if !fileManager.fileExists(atPath: filePath) {
-                    allTransducerFilesPresent = false
-                    break
-                }
-            }
-
-            if allTransducerFilesPresent {
-                Bridge.log("✅ Transducer model files found at custom path")
-                return true
-            }
-
-            Bridge.log("❌ No complete model found at custom path")
-            return false
-        }
-
-        // Fall back to checking bundle (transducer only for backwards compatibility)
-        Bridge.log("Checking for Sherpa-ONNX model files in bundle...")
-
-        let requiredFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
-        for fileName in requiredFiles {
-            let components = fileName.components(separatedBy: ".")
-            guard components.count == 2,
-                  Bundle.main.path(forResource: components[0], ofType: components[1]) != nil
-            else {
-                Bridge.log("❌ Missing model file in bundle: \(fileName)")
-                return false
-            }
-        }
-
-        Bridge.log("✅ All Sherpa-ONNX model files found in bundle")
-        return true
     }
 }

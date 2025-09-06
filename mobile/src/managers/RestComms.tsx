@@ -256,12 +256,12 @@ class RestComms {
     await this.authenticatedRequest("POST", "/api/client/feedback", {feedback: feedbackBody})
   }
 
-  public async writeUserSettings(appName: string, settings: any): Promise<void> {
-    await this.authenticatedRequest("POST", "/api/client/user/settings", {appName, settings})
+  public async writeUserSettings(settings: any): Promise<void> {
+    await this.authenticatedRequest("POST", "/api/client/user/settings", {settings})
   }
 
   public async loadUserSettings(): Promise<any> {
-    return this.authenticatedRequest("GET", "/api/client/user/settings")
+    return await this.authenticatedRequest("GET", "/api/client/user/settings")
   }
 
   // Error Reporting

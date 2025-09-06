@@ -1,3 +1,4 @@
+import bridge from "@/bridge/MantleBridge"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export const SETTINGS_KEYS = {
@@ -38,7 +39,7 @@ export const SETTINGS_KEYS = {
 }
 
 const DEFAULT_SETTINGS = {
-  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass",
+  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass:443",
   [SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]: false,
   [SETTINGS_KEYS.ONBOARDING_COMPLETED]: false,
   [SETTINGS_KEYS.SETTINGS_ACCESS_COUNT]: 0,
@@ -69,10 +70,17 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.button_photo_size]: "medium",
 }
 
+export const getSettingDefault = (key: string) => {
+  return DEFAULT_SETTINGS[key]
+}
+
 const saveSetting = async (key: string, value: any): Promise<void> => {
   try {
     const jsonValue = JSON.stringify(value)
     await AsyncStorage.setItem(key, jsonValue)
+    if (CORE_SETTINGS_KEYS.includes(key)) {
+      bridge.updateSettings({[key]: value})
+    }
   } catch (error) {
     console.error(`Failed to save setting (${key}):`, error)
   }
@@ -94,6 +102,12 @@ const loadSetting = async (key: string, overrideDefaultValue?: any) => {
   }
 }
 
+export const writeSettings = async (settings: any): Promise<any> => {
+  for (const key in settings) {
+    await saveSetting(key, settings[key])
+  }
+}
+
 export const getRestUrl = async (): Promise<string> => {
   const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
   const url = new URL(serverUrl)
@@ -109,36 +123,36 @@ export const getWsUrl = async (): Promise<string> => {
   return wsUrl
 }
 
+const CORE_SETTINGS_KEYS = [
+  SETTINGS_KEYS.sensing_enabled,
+  SETTINGS_KEYS.power_saving_mode,
+  SETTINGS_KEYS.always_on_status_bar,
+  SETTINGS_KEYS.bypass_vad_for_debugging,
+  SETTINGS_KEYS.bypass_audio_encoding_for_debugging,
+  SETTINGS_KEYS.metric_system_enabled,
+  SETTINGS_KEYS.enforce_local_transcription,
+  SETTINGS_KEYS.button_press_mode,
+  SETTINGS_KEYS.default_wearable,
+  SETTINGS_KEYS.preferred_mic,
+  SETTINGS_KEYS.contextual_dashboard_enabled,
+  SETTINGS_KEYS.head_up_angle,
+  SETTINGS_KEYS.brightness,
+  SETTINGS_KEYS.auto_brightness,
+  SETTINGS_KEYS.dashboard_height,
+  SETTINGS_KEYS.dashboard_depth,
+  SETTINGS_KEYS.button_mode,
+  SETTINGS_KEYS.button_photo_size,
+]
+
 // return an object populated with settings that the core should have:
 export const getCoreSettings = async (): Promise<any> => {
-  const coreSettings = [
-    SETTINGS_KEYS.sensing_enabled,
-    SETTINGS_KEYS.power_saving_mode,
-    SETTINGS_KEYS.always_on_status_bar,
-    SETTINGS_KEYS.bypass_vad_for_debugging,
-    SETTINGS_KEYS.bypass_audio_encoding_for_debugging,
-    SETTINGS_KEYS.metric_system_enabled,
-    SETTINGS_KEYS.enforce_local_transcription,
-    SETTINGS_KEYS.button_press_mode,
-    SETTINGS_KEYS.default_wearable,
-    SETTINGS_KEYS.preferred_mic,
-    SETTINGS_KEYS.contextual_dashboard_enabled,
-    SETTINGS_KEYS.head_up_angle,
-    SETTINGS_KEYS.brightness,
-    SETTINGS_KEYS.auto_brightness,
-    SETTINGS_KEYS.dashboard_height,
-    SETTINGS_KEYS.dashboard_depth,
-    SETTINGS_KEYS.button_mode,
-    SETTINGS_KEYS.button_photo_size,
-  ]
-
   const coreSettingsObj: any = {}
 
-  for (const setting of coreSettings) {
+  for (const setting of CORE_SETTINGS_KEYS) {
     coreSettingsObj[setting] = await loadSetting(setting)
   }
 
-  return coreSettings
+  return coreSettingsObj
 }
 
 export {saveSetting, loadSetting}
