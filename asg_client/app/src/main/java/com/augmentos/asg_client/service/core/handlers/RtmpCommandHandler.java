@@ -86,7 +86,8 @@ public class RtmpCommandHandler implements ICommandHandler {
             }
 
             String streamId = data.optString("streamId", "");
-            RtmpStreamingService.startStreaming(context, rtmpUrl, streamId);
+            boolean enableLed = data.optBoolean("enable_led", true); // Default true for livestreams
+            RtmpStreamingService.startStreaming(context, rtmpUrl, streamId, enableLed);
             return true;
         } catch (Exception e) {
             Log.e(TAG, "Error handling RTMP start command", e);
