@@ -28,6 +28,9 @@
 // #include "task_ble_receive.h"
 #include <zephyr/logging/log.h>
 
+// External function to get BLE device name from main.c
+extern const char* get_ble_device_name(void);
+
 #define LOG_MODULE_NAME MOS_LVGL
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
@@ -528,14 +531,33 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
 
-    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
-    const char *initial_text =
+    // **NEW: Set initial placeholder text with actual BLE device name**
+    const char *ble_name = get_ble_device_name();
+    static char formatted_text[1024]; // Static buffer for formatted text
+    
+    snprintf(formatted_text, sizeof(formatted_text),
         "MentraOS AR Display Ready\n\n"
         "Waiting for protobuf text messages...\n\n"
+        "🔵 BLE Device: %s\n\n"
+        "📱 Search for this name in your app to pair\n\n"
+        "Version: %s\n\n"
+        "Build Time: %s\n\n"
+        "Build Date: %s\n\n"
+        "Build Hash: %s\n\n"
+        "Build Branch: %s\n\n"
+        "Build Tag: %s\n\n"
         "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!";
+        "✅ System initialized and ready for messages!",
+        ble_name ? ble_name : "Unknown",
+        CONFIG_LVGL_VERSION ? CONFIG_LVGL_VERSION : "Unknown",
+        __TIME__,
+        __DATE__,
+        "Unknown", // Build hash placeholder
+        "Unknown", // Build branch placeholder
+        "Unknown"  // Build tag placeholder
+    );
 
-    lv_label_set_text(label, initial_text);
+    lv_label_set_text(label, formatted_text);
 
     // Style the label text - optimized settings
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
