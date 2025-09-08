@@ -1,0 +1,13 @@
+# Optimize for size on mobile
+[profile.release]
+lto = true
+opt-level = "z"
+strip = true
+rpath = true
+
+
+[target.aarch64-apple-ios]
+rustflags = [
+  "-C", "link-arg=-framework", 
+  "-C", "link-arg=Foundation"
+]
