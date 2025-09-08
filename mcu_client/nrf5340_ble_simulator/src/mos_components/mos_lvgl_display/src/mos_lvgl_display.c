@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-08 15:33:09
+ * @LastEditTime : 2025-09-08 21:16:08
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -360,7 +360,7 @@ static void show_default_ui(void)
 {
     BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
-    show_test_pattern(3);
+    show_test_pattern(4);
 
     BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
 }
@@ -539,13 +539,13 @@ static void create_scrolling_text_container(lv_obj_t *screen)
         "MentraOS AR Display Ready\n\n"
         "Waiting for Connection...\n\n"
         "BLE Device: %s\n\n"
-        "Version: %s\n\n"
+        // "Version: %s\n\n"
         "Build Time: %s\n\n"
         "Build Date: %s\n\n",
         ble_name ? ble_name : "Unknown",
-        CONFIG_LVGL_VERSION ? CONFIG_LVGL_VERSION : "Unknown",
+        // CONFIG_LVGL_VERSION ? CONFIG_LVGL_VERSION : "Unknown",
         __TIME__,
-        __DATE__,
+        __DATE__
     );
 
     lv_label_set_text(label, formatted_text);
