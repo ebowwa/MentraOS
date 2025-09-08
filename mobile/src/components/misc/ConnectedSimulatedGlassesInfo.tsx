@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, Animated, Linking} from "react-native"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import GlassesDisplayMirror from "./GlassesDisplayMirror"

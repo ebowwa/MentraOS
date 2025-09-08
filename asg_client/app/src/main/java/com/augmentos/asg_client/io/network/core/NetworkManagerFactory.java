@@ -9,6 +9,7 @@ import android.util.Log;
 import com.augmentos.asg_client.io.network.interfaces.INetworkManager;
 import com.augmentos.asg_client.io.network.managers.FallbackNetworkManager;
 import com.augmentos.asg_client.io.network.managers.K900NetworkManager;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 import com.augmentos.asg_client.io.network.managers.SystemNetworkManager;
 import com.augmentos.asg_client.io.network.utils.DebugNotificationManager;
 
@@ -31,9 +32,11 @@ public class NetworkManagerFactory {
         DebugNotificationManager notificationManager = new DebugNotificationManager(context);
         
         // First check if this is a K900 device
+        // TODO: Should we remove this?
         Log.d(TAG, "[FORCING k900 DEVICE TYPE FOR TESTING]");
-        if (true || isK900Device(context)) {
+        if (true || ServiceUtils.isK900Device(context)) {
             Log.i(TAG, "K900 device detected, using K900NetworkManager");
+            Log.d(TAG, "Device type: " + ServiceUtils.getDeviceTypeString(context));
             notificationManager.showDeviceTypeNotification(true);
             return new K900NetworkManager(context);
         }
@@ -59,30 +62,12 @@ public class NetworkManagerFactory {
      * Check if the device is a K900
      * @param context The application context
      * @return true if the device is a K900, false otherwise
+     * @deprecated Use ServiceUtils.isK900Device() instead - centralized implementation
      */
+    @Deprecated
     private static boolean isK900Device(Context context) {
-        try {
-            // Verify the SystemUI package exists
-            PackageManager pm = context.getPackageManager();
-            pm.getPackageInfo(K900_SYSTEM_UI_PACKAGE, 0);
-            
-            // Check for K900-specific system action
-            try {
-                // Just try to create an intent with the K900-specific action
-                Intent testIntent = new Intent(K900_BROADCAST_ACTION);
-                testIntent.setPackage(K900_SYSTEM_UI_PACKAGE);
-                
-                // If we get this far without exceptions, it's likely a K900 device
-                Log.i(TAG, "Detected K900 capabilities");
-                return true;
-            } catch (Exception e) {
-                Log.w(TAG, "K900-specific broadcast not supported: " + e.getMessage());
-                return false;
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "Not a K900 device: " + e.getMessage());
-            return false;
-        }
+        Log.w(TAG, "⚠️ Using deprecated isK900Device() - switch to ServiceUtils.isK900Device()");
+        return ServiceUtils.isK900Device(context);
     }
     
     /**

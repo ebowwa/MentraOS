@@ -508,6 +508,12 @@ public class PhoneMicrophoneManager {
             return;
         }
         
+        // Check if we're already in SCO mode - no need to restart
+        if (currentStatus == MicStatus.SCO_MODE && micInstance != null) {
+            Log.d(TAG, "Already in SCO mode with active mic instance - skipping redundant switch");
+            return;
+        }
+        
         // Clean up existing instance
         cleanUpCurrentMic();
         
@@ -581,6 +587,12 @@ public class PhoneMicrophoneManager {
             return;
         }
         
+        // Check if we're already in normal mode - no need to restart
+        if (currentStatus == MicStatus.NORMAL_MODE && micInstance != null) {
+            Log.d(TAG, "Already in normal mode with active mic instance - skipping redundant switch");
+            return;
+        }
+        
         // Clean up existing instance
         cleanUpCurrentMic();
         
@@ -650,6 +662,12 @@ public class PhoneMicrophoneManager {
             // No glasses mic available, we've exhausted all options
             Log.e(TAG, "No glasses microphone available, pausing recording");
             pauseRecording();
+            return;
+        }
+        
+        // Check if we're already using glasses mic - no need to restart
+        if (currentStatus == MicStatus.GLASSES_MIC) {
+            Log.d(TAG, "Already using glasses microphone - skipping redundant switch");
             return;
         }
         

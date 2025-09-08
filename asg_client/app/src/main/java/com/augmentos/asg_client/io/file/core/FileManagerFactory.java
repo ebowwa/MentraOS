@@ -76,11 +76,22 @@ public class FileManagerFactory {
 
     /**
      * Auto-detect platform and initialize
+     * NOTE: This method will throw an exception on Android. Use initialize(Context) instead.
      */
     public static void initialize() {
         PlatformStrategy strategy = PlatformRegistry.detectPlatform();
+        // Check if strategy is null or if getBaseDirectory returns null
+        if (strategy == null) {
+            throw new IllegalStateException("Failed to detect platform strategy");
+        }
+        
+        File baseDir = strategy.getBaseDirectory();
+        if (baseDir == null) {
+            throw new IllegalStateException("Platform strategy returned null base directory. On Android, use initialize(Context) instead.");
+        }
+        
         PlatformConfig config = new PlatformConfig(
-                strategy.getBaseDirectory(),
+                baseDir,
                 strategy.createLogger(),
                 strategy.getPlatformName()
         );

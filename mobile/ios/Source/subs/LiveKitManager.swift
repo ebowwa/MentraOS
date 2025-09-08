@@ -15,6 +15,7 @@ public class LiveKitManager: NSObject {
     private let room: Room
     private var cancellables = Set<AnyCancellable>()
     private var audioTrack: LocalAudioTrack?
+    private var counter = 0
 
     public var enabled = false
 
@@ -24,13 +25,15 @@ public class LiveKitManager: NSObject {
         room = Room()
         super.init()
 
+        room.add(delegate: self)
+
         do {
-            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
-            //                        try LiveKit.AudioManager.shared.setManualRenderingMode(true)
+            //      LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = false
+            try LiveKit.AudioManager.shared.setManualRenderingMode(true)
             //            LiveKit.AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
             //            try LiveKit.AudioManager.shared.setManualRenderingMode(false)
         } catch {
-            Core.log("Error setting manual rendering mode")
+            Bridge.log("Error setting manual rendering mode")
         }
     }
 
@@ -46,17 +49,17 @@ public class LiveKitManager: NSObject {
     ) {
         // Prevent multiple simultaneous connection attempts
         guard room.connectionState == .disconnected else {
-            Core.log("LiveKit: Already connected or connecting")
+            Bridge.log("LiveKit: Already connected or connecting")
             return
         }
 
         Task {
             do {
-                Core.log("LiveKit: Attempting to connect to: \(url)")
+                Bridge.log("LiveKit: Attempting to connect to: \(url)")
 
                 // Create connect options
                 let connectOptions = ConnectOptions(
-                    enableMicrophone: false
+                    enableMicrophone: true
                 )
 
                 let roomOptions = RoomOptions(
@@ -75,14 +78,14 @@ public class LiveKitManager: NSObject {
 
                 // Setup custom audio source for PCM input
                 // try await setupCustomAudioTrack()
-                Core.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
+                //                Bridge.log("LiveKit: trackCount: \(room.localParticipant.localAudioTracks.count)")
                 //              Core.log("LiveKit: a: \(room.)")
                 //              room.localParticipant.publish(audioTrack: room.localParticipant.publish(data: ))
 
-                Core.log("LiveKit: Successfully connected to LiveKit room")
+                Bridge.log("LiveKit: Successfully connected to LiveKit room")
 
             } catch {
-                Core.log("LiveKit: Failed to connect: \(error.localizedDescription)")
+                Bridge.log("LiveKit: Failed to connect: \(error.localizedDescription)")
             }
         }
     }
@@ -120,37 +123,48 @@ public class LiveKitManager: NSObject {
             options: publishOptions
         )
 
-        Core.log("LiveKit: Custom audio track setup complete")
+        Bridge.log("LiveKit: Custom audio track setup complete")
     }
 
     /// Convert raw PCM data to AVAudioPCMBuffer
     private func dataToPCMBuffer(data: Data) -> AVAudioPCMBuffer? {
-        // Create format for 16kHz, mono, 16-bit PCM
-        guard
-            let format = AVAudioFormat(
-                commonFormat: .pcmFormatInt16,
-                sampleRate: 16000,
-                channels: 1,
-                interleaved: false
-            )
-        else {
-            Core.log("LiveKit: Failed to create audio format")
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 16000,
+            channels: 1,
+            interleaved: false
+        )!
+
+        let channelCount = Int(format.channelCount)
+        let bytesPerSample = 2 // Int16 is 2 bytes
+        let totalSamples = data.count / bytesPerSample
+        let frameCount = totalSamples / channelCount
+
+        // Create buffer with the calculated frame capacity
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
+            Bridge.log("Error: Could not create PCM buffer")
             return nil
         }
 
-        let frameCapacity = UInt32(data.count) / format.streamDescription.pointee.mBytesPerFrame
+        // Set the actual frame length
+        buffer.frameLength = AVAudioFrameCount(frameCount)
 
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity) else {
-            Core.log("LiveKit: Failed to create PCM buffer")
+        // Get int16 channel data pointer
+        guard let int16Data = buffer.int16ChannelData else {
+            Bridge.log("Error: Buffer does not support int16 data")
             return nil
         }
 
-        buffer.frameLength = frameCapacity
+        // Convert Data to array of Int16 values
+        data.withUnsafeBytes { bytes in
+            let int16Pointer = bytes.bindMemory(to: Int16.self)
 
-        // Copy data to buffer
-        if let channelData = buffer.int16ChannelData {
-            data.withUnsafeBytes { bytes in
-                memcpy(channelData[0], bytes.baseAddress, data.count)
+            // Write samples to each channel
+            for frame in 0 ..< frameCount {
+                for channel in 0 ..< channelCount {
+                    let sampleIndex = frame * channelCount + channel
+                    int16Data[channel][frame] = int16Pointer[sampleIndex]
+                }
             }
         }
 
@@ -169,11 +183,14 @@ public class LiveKitManager: NSObject {
         //        }
         //
         guard let buffer = dataToPCMBuffer(data: pcmData) else {
-            Core.log("LiveKit: Failed to convert data to PCM buffer")
+            Bridge.log("LiveKit: Failed to convert data to PCM buffer")
             return
         }
 
-        Core.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
+        counter += 1
+        if counter % 50 == 0 {
+            Bridge.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
+        }
 
         LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
         //
@@ -186,12 +203,12 @@ public class LiveKitManager: NSObject {
             room.connectionState == .connected || room.connectionState == .connecting
             || room.connectionState == .reconnecting
         else {
-            Core.log("LiveKit: Not connected, nothing to disconnect")
+            Bridge.log("LiveKit: Not connected, nothing to disconnect")
             return
         }
 
         Task {
-            Core.log("LiveKit: Disconnecting from LiveKit")
+            Bridge.log("LiveKit: Disconnecting from LiveKit")
 
             // Clear references
             audioTrack = nil
@@ -209,13 +226,13 @@ extension LiveKitManager: RoomDelegate {
     ) {
         switch connectionState {
         case .disconnected:
-            Core.log("LiveKit: Disconnected from room")
+            Bridge.log("LiveKit: Disconnected from room")
         case .connecting:
-            Core.log("LiveKit: Connecting to room...")
+            Bridge.log("LiveKit: Connecting to room...")
         case .connected:
-            Core.log("LiveKit: Connected to room")
+            Bridge.log("LiveKit: Connected to room")
         case .reconnecting:
-            Core.log("LiveKit: Reconnecting to room...")
+            Bridge.log("LiveKit: Reconnecting to room...")
         }
     }
 }

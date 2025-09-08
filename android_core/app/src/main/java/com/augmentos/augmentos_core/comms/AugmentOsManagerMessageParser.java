@@ -295,6 +295,7 @@ public class AugmentOsManagerMessageParser {
                 String stopRequestId = commandObject.getJSONObject("params").getString("request_id");
                 callback.stopVideoRecording(stopRequestId);
                 break;
+
             case "display_text": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");
                 String text = paramsObject.getString("text");
@@ -304,6 +305,7 @@ public class AugmentOsManagerMessageParser {
                 callback.onDisplayTextNotified(text, size, x, y);
             }
             break;
+
             case "display_image": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");
                 String imageType = paramsObject.getString("imageType");
@@ -311,15 +313,18 @@ public class AugmentOsManagerMessageParser {
                 callback.onDisplayImageNotified(imageType, imageSize);
             }
             break;
+
             case "clear_display": {
                 callback.clearDisplay();
             }
             break;
+
             case "set_lc3_audio_enabled": {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setLc3AudioEnabled(enabled);
             }
             break;
+
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }

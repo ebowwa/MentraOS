@@ -31,13 +31,19 @@ export const simulatedGlasses: Capabilities = {
     adjustBrightness: true,
   },
 
-  // Microphone capabilities - does not have a microphone
-  hasMicrophone: false,
-  microphone: null,
+  // Microphone capabilities - has a microphone (phone mic)
+  hasMicrophone: true,
+  microphone: {
+    count: 1,
+    hasVAD: false,
+  },
 
-  // Speaker capabilities - does not have a speaker
-  hasSpeaker: false,
-  speaker: null,
+  // Speaker capabilities - has a speaker (phone speaker)
+  hasSpeaker: true,
+  speaker: {
+    count: 1,
+    isPrivate: false,
+  },
 
   // IMU capabilities - does not have an IMU
   hasIMU: false,
