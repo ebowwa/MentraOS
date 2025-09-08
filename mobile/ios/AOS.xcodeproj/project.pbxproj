@@ -19,8 +19,8 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5033C3B2E5668D6006A0718 /* CommandBridge.swift */; };
 		C5033F1F2E568874006A0718 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = C5033F1E2E568874006A0718 /* LiveKit */; };
-		C5152E182E6F50FA00675D31 /* MobileExample.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5152E162E6F4FD300675D31 /* MobileExample.xcframework */; };
-		C5152E192E6F50FA00675D31 /* MobileExample.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C5152E162E6F4FD300675D31 /* MobileExample.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C5152E932E6F5F6A00675D31 /* LiveKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5152E912E6F5F5D00675D31 /* LiveKit.xcframework */; };
+		C5152E942E6F5F6A00675D31 /* LiveKit.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C5152E912E6F5F5D00675D31 /* LiveKit.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
 		C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */; };
 		C5DE979F2DDD0EA80032FC99 /* MentraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* MentraManager.swift */; };
@@ -64,7 +64,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				C5152E192E6F50FA00675D31 /* MobileExample.xcframework in Embed Frameworks */,
+				C5152E942E6F5F6A00675D31 /* LiveKit.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -88,7 +88,7 @@
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C5033C3B2E5668D6006A0718 /* CommandBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandBridge.swift; sourceTree = "<group>"; };
-		C5152E162E6F4FD300675D31 /* MobileExample.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MobileExample.xcframework; path = /Users/fosse/dev/mentraos/rust/livekit/ios/MobileExample.xcframework; sourceTree = "<absolute>"; };
+		C5152E912E6F5F5D00675D31 /* LiveKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = LiveKit.xcframework; path = /Users/fosse/dev/mentraos/rust/livekit/ios/LiveKit.xcframework; sourceTree = "<absolute>"; };
 		C5DE97882DDD0EA80032FC99 /* MentraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraManager.swift; sourceTree = "<group>"; };
 		C5DE97892DDD0EA80032FC99 /* BridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeModule.h; sourceTree = "<group>"; };
 		C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BridgeModule.m; sourceTree = "<group>"; };
@@ -179,8 +179,8 @@
 			files = (
 				C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */,
-				C5152E182E6F50FA00675D31 /* MobileExample.xcframework in Frameworks */,
 				6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */,
+				C5152E932E6F5F6A00675D31 /* LiveKit.xcframework in Frameworks */,
 				C5033F1F2E568874006A0718 /* LiveKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -227,7 +227,7 @@
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
-				C5152E162E6F4FD300675D31 /* MobileExample.xcframework */,
+				C5152E912E6F5F5D00675D31 /* LiveKit.xcframework */,
 				6D62BA752E2BDFD100140E04 /* SherpaOnnx */,
 				C5DE982E2DDD0F420032FC99 /* CoreObjC */,
 				C5DE98412DDD0F420032FC99 /* VAD */,
