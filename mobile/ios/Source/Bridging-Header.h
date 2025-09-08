@@ -19,3 +19,5 @@
 #import "sherpa-onnx/c-api/c-api.h"
 
 #import "BridgeModule.h"
+
+#include "mobile_example.h"
