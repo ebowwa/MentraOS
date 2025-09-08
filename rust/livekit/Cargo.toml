@@ -4,23 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+livekit = { version = "0.7.17" }
 lazy_static = "1.4.0"
-# livekit = { path = "../../livekit", features = ["rustls-tls-webpki-roots"] }
-# livekit = { version = "0.7.16", features = ["rustls-tls-webpki-roots"] }
 log = "0.4.19"
 tokio = { version = "1", features = ["full"] }
+# livekit = { path = "../../livekit", features = ["rustls-tls-webpki-roots"] }
+# livekit = { version = "0.7.16", features = ["rustls-tls-webpki-roots"] }
 
 
-imgproc = { version = "0.3.12" }
-yuv-sys = { version = "0.3.7" }
-libwebrtc = { version = "0.3.12" }
-livekit-api = { version = "0.4.5" }
-livekit-ffi = { version = "0.12.31" }
-livekit-protocol = { version = "0.4.0" }
-livekit-runtime = { version = "0.4.0" }
-# livekit = { version = "0.7.16" }
-livekit = { path = "../../../rust-sdks/livekit", features = ["rustls-tls-webpki-roots"] }
-soxr-sys = { version = "0.1.0" }
+# imgproc = { version = "0.3.12" }
+# yuv-sys = { version = "0.3.7" }
+# libwebrtc = { version = "0.3.12" }
+# livekit-api = { version = "0.4.6" }
+# livekit-ffi = { version = "0.12.32" }
+# livekit-protocol = { version = "0.4.0" }
+# livekit-runtime = { version = "0.4.0" }
+# livekit = { path = "../../../rust-sdks/livekit", features = ["rustls-tls-webpki-roots"] }
+# soxr-sys = { version = "0.1.0" }
 # webrtc-sys-build = { version = "0.3.7"}
 # webrtc-sys = { version = "0.3.9" }
 
@@ -30,10 +30,10 @@ jni = "0.21.1"
 android_logger = "0.13.1"
 
 [build-dependencies]
+webrtc-sys-build = "0.3.7"
 # webrtc-sys-build = { path = "../../webrtc-sys/build" }
-webrtc-sys-build = { path = "../../../rust-sdks/webrtc-sys/build" }
+# webrtc-sys-build = { path = "../../../rust-sdks/webrtc-sys/build" }
 
-# webrtc-sys-build = "0.3.7"
 
 [lib]
 crate-type = ["cdylib"]
