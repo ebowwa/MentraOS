@@ -18,10 +18,11 @@ livekit-api = { version = "0.4.5" }
 livekit-ffi = { version = "0.12.31" }
 livekit-protocol = { version = "0.4.0" }
 livekit-runtime = { version = "0.4.0" }
-livekit = { version = "0.7.16" }
+# livekit = { version = "0.7.16" }
+livekit = { path = "../../../rust-sdks/livekit", features = ["rustls-tls-webpki-roots"] }
 soxr-sys = { version = "0.1.0" }
 # webrtc-sys-build = { version = "0.3.7"}
-webrtc-sys = { version = "0.3.9" }
+# webrtc-sys = { version = "0.3.9" }
 
 
 [target.'cfg(target_os = "android")'.dependencies]
@@ -30,7 +31,9 @@ android_logger = "0.13.1"
 
 [build-dependencies]
 # webrtc-sys-build = { path = "../../webrtc-sys/build" }
-webrtc-sys-build = "0.3.7"
+webrtc-sys-build = { path = "../../../rust-sdks/webrtc-sys/build" }
+
+# webrtc-sys-build = "0.3.7"
 
 [lib]
 crate-type = ["cdylib"]

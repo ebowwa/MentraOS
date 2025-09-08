@@ -11,4 +11,6 @@
 
 void livekit_connect(const char *url, const char *token);
 
-#endif /* livekit_mobile_example */
+
+
+#endif  /* livekit_mobile_example */
