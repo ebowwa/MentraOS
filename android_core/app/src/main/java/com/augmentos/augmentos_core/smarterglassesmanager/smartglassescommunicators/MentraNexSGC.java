@@ -32,8 +32,6 @@ import mentraos.ble.MentraosBle.BrightnessConfig;
 import mentraos.ble.MentraosBle.AutoBrightnessConfig;
 import mentraos.ble.MentraosBle.HeadUpAngleConfig;
 import mentraos.ble.MentraosBle.DisplayHeightConfig;
-import mentraos.ble.MentraosBle.VersionRequest;
-import mentraos.ble.MentraosBle.VersionResponse;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -126,8 +124,6 @@ import java.util.Map;
 import java.util.HashMap;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesSerialNumberEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtobufSchemaVersionEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ProtocolVersionResponseEvent;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -685,15 +681,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // start sending debug notifications
                 //just for test
                 //startPeriodicTextWall(302);
-                
-                // Post protobuf schema version information (only once)
-                if (!protobufVersionPosted) {
-                    postProtobufSchemaVersionInfo();
-                    protobufVersionPosted = true;
-                }
-                
-                // Query glasses protobuf version from firmware
-                queryGlassesProtobufVersionFromFirmware();
             }
         } else {
             Log.e(TAG, " glass UART service not found");
@@ -1697,20 +1684,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, logMessage.toString());
     }
 
-    // Heartbeat methods for Nex Glasses
-    // Note: Glasses send ping, phone responds with pong
-    private byte[] constructPongResponse() {
-        Log.d(TAG, "Constructing pong response to glasses ping");
-        
-        // Create the PongResponse message
-        PongResponse pongResponse = PongResponse.newBuilder().build();
-
-        // Create the PhoneToGlasses message with the pong response
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setPong(pongResponse).build();
-
-        return generateProtobufCommandBytes(phoneToGlasses);
-    }
-
     private byte[] constructBatteryLevelQuery() {
         BatteryStateRequest batteryStateRequest = BatteryStateRequest.newBuilder().build();
 
@@ -1720,30 +1693,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return generateProtobufCommandBytes(phoneToGlasses);
 
     }
-    
-    /**
-     * Queries the protobuf schema version from the glasses firmware
-     */
-    private void queryGlassesProtobufVersionFromFirmware() {
-        Log.d(TAG, "=== SENDING GLASSES PROTOBUF VERSION REQUEST ===");
-        
-        // Generate unique message ID for this request
-        String msgId = "ver_req_" + System.currentTimeMillis();
-        
-        VersionRequest versionRequest = VersionRequest.newBuilder()
-                .setMsgId(msgId)
-                .build();
-
-        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
-                .setMsgId(msgId)
-                .setVersionRequest(versionRequest)
-                .build();
-
-        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
-        sendDataSequentially(versionQueryPacket, 100);
-        
-        Log.d(TAG, "Sent glasses protobuf version request with msg_id: " + msgId);
-    }
 
     // periodically send a mic ON request so it never turns off
     private void startMicBeat(int delay) {
@@ -1752,7 +1701,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             stopMicBeat();
         }
         setMicEnabled(true, 10);
-
         micBeatRunnable = new Runnable() {
             @Override
             public void run() {
@@ -1880,35 +1828,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             micBeatRunnable = null;
             micBeatCount = 0;
         }
-    }
-
-    private void sendPongResponse() {
-        // Respond to ping from glasses with pong
-        lastHeartbeatReceivedTime = System.currentTimeMillis();
-        Log.d(TAG, "=== SENDING PONG RESPONSE TO GLASSES === (Time: " + lastHeartbeatReceivedTime + ")");
-        
-        byte[] pongPacket = constructPongResponse();
-
-        // Send the pong response
-        if (pongPacket != null) {
-            sendDataSequentially(pongPacket, 100);
-            Log.d(TAG, "Pong response sent successfully");
-            
-            // Notify mobile app about pong sent
-            notifyHeartbeatSent(System.currentTimeMillis());
-        } else {
-            Log.e(TAG, "Failed to construct pong response packet");
-        }
-
-        // Still query battery periodically (every 10 pings received)
-        if (batteryMain == -1 || heartbeatCount % 10 == 0) {
-            mainTaskHandler.sendEmptyMessageDelayed(MAIN_TASK_HANDLER_CODE_BATTERY_QUERY, 500);
-        }
-
-        heartbeatCount++;
-        
-        // Notify mobile app about heartbeat received
-        notifyHeartbeatReceived(lastHeartbeatReceivedTime);
     }
 
     private void queryBatteryStatus() {
@@ -2766,14 +2685,17 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             return;
         }
         Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO GLASSES ===");
-        
-        // Create the clear display protobuf message
-        mentraos.ble.MentraosBle.ClearDisplay clearDisplay = mentraos.ble.MentraosBle.ClearDisplay.newBuilder()
+
+        // Create empty text display to clear the screen
+        DisplayText emptyText = DisplayText.newBuilder()
+                .setText("")
+                .setX(0)
+                .setY(0)
                 .build();
 
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
                 .setMsgId("clear_disp_001")
-                .setClearDisplay(clearDisplay)
+                .setDisplayText(emptyText)
                 .build();
 
         byte[] cmdBytes = generateProtobufCommandBytes(phoneToGlasses);
@@ -3244,13 +3166,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "headUpAngleResponse: " + headUpAngleResponse.toString());
                 }
                 break;
-                case PING: {
-                    lastHeartbeatReceivedTime = System.currentTimeMillis();
-                    Log.d(TAG, "=== RECEIVED PING FROM GLASSES === (Time: " + lastHeartbeatReceivedTime + ")");
-                    // Respond to ping with pong
-                    sendPongResponse();
-                }
-                break;
                 case VAD_EVENT: {
                     // final VadEvent vadEvent = glassesToPhone.getVadEvent();
                     // EventBus.getDefault().post(new VadEvent(vadEvent.getVad()));
@@ -3299,27 +3214,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     // System.currentTimeMillis()));
                 }
                 break;
-                case VERSION_RESPONSE: {
-                    final VersionResponse versionResponse = glassesToPhone.getVersionResponse();
-                    Log.d(TAG, "=== RECEIVED GLASSES PROTOBUF VERSION RESPONSE ===");
-                    Log.d(TAG, "Glasses Protobuf Version: " + versionResponse.getVersion());
-                    Log.d(TAG, "Message ID: " + versionResponse.getMsgId());
-                    if (!versionResponse.getCommit().isEmpty()) {
-                        Log.d(TAG, "Commit: " + versionResponse.getCommit());
-                    }
-                    if (!versionResponse.getBuildDate().isEmpty()) {
-                        Log.d(TAG, "Build Date: " + versionResponse.getBuildDate());
-                    }
-                    
-                    // Post glasses protobuf version event to update UI
-                    EventBus.getDefault().post(new ProtocolVersionResponseEvent(
-                        versionResponse.getVersion(),
-                        versionResponse.getCommit(),
-                        versionResponse.getBuildDate(),
-                        versionResponse.getMsgId()
-                    ));
-                }
-                break;
                 case PAYLOAD_NOT_SET: {
                 }
                 break;
@@ -3327,7 +3221,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "unknown payloadCase: " + payloadCase);
                     break;
             }
-
         } catch (InvalidProtocolBufferException e) {
             e.printStackTrace(); // Handle parsing error
         }
@@ -3611,124 +3504,6 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
      */
     public long getLastHeartbeatReceivedTime() {
         return lastHeartbeatReceivedTime;
-    }
-    
-        /**
-     * Gets the current protobuf schema version from the compiled protobuf descriptor
-     */
-    public int getProtobufSchemaVersion() {
-        try {
-            // Get the protobuf descriptor and extract the schema version
-            com.google.protobuf.Descriptors.FileDescriptor fileDescriptor = 
-                mentraos.ble.MentraosBle.getDescriptor().getFile();
-            
-            Log.d(TAG, "Proto file descriptor: " + fileDescriptor.getName());
-            
-            // Method 1: Try to access the custom mentra_schema_version option
-            try {
-                // Get the file options from the descriptor
-                com.google.protobuf.DescriptorProtos.FileOptions options = fileDescriptor.getOptions();
-                Log.d(TAG, "Got file options: " + options.toString());
-                
-                // Try to access the custom option using the extension registry
-                // First, check if the extension is available in the generated code
-                try {
-                    // Look for the generated extension in the MentraosBle class
-                    java.lang.reflect.Field[] fields = mentraos.ble.MentraosBle.class.getDeclaredFields();
-                    for (java.lang.reflect.Field field : fields) {
-                        if (field.getName().toLowerCase().contains("schema") || 
-                            field.getName().toLowerCase().contains("version")) {
-                            Log.d(TAG, "Found potential version field: " + field.getName());
-                            field.setAccessible(true);
-                            try {
-                                Object value = field.get(null);
-                                                        if (value instanceof com.google.protobuf.Extension) {
-                                com.google.protobuf.Extension<com.google.protobuf.DescriptorProtos.FileOptions, Integer> ext = 
-                                    (com.google.protobuf.Extension<com.google.protobuf.DescriptorProtos.FileOptions, Integer>) value;
-                                if (options.hasExtension(ext)) {
-                                    int version = options.getExtension(ext);
-                                    Log.d(TAG, "Found schema version via extension: " + version);
-                                    return version;
-                                }
-                            }
-                            } catch (Exception fieldException) {
-                                Log.d(TAG, "Field access failed for " + field.getName() + ": " + fieldException.getMessage());
-                            }
-                        }
-                    }
-                } catch (Exception extensionException) {
-                    Log.d(TAG, "Extension search failed: " + extensionException.getMessage());
-                }
-                
-            } catch (Exception optionsException) {
-                Log.d(TAG, "Options access failed: " + optionsException.getMessage());
-            }
-            
-            // Method 2: Try to read from the actual proto file content
-            try {
-                String protoVersion = readProtoVersionFromProject();
-                if (protoVersion != null) {
-                    Log.d(TAG, "Read proto version from project: " + protoVersion);
-                    return Integer.parseInt(protoVersion);
-                }
-            } catch (Exception projectException) {
-                Log.d(TAG, "Project file reading failed: " + projectException.getMessage());
-            }
-            
-
-            
-            Log.w(TAG, "Could not extract protobuf schema version dynamically, using fallback");
-            return 1; // Fallback to version 1
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting protobuf schema version: " + e.getMessage(), e);
-            return 1; // Fallback to version 1
-        }
-    }
-    
-    /**
-     * Gets detailed protobuf build information
-     */
-    public String getProtobufBuildInfo() {
-        try {
-            int schemaVersion = getProtobufSchemaVersion();
-            String fileDescriptorName = mentraos.ble.MentraosBle.getDescriptor().getFile().getName();
-            
-            return String.format("Schema v%d | %s", schemaVersion, fileDescriptorName);
-        } catch (Exception e) {
-            Log.e(TAG, "Error getting protobuf build info: " + e.getMessage(), e);
-            return "Schema v1 | Unknown";
-        }
-    }
-    
-    @Override
-    public String getProtobufSchemaVersionInfo() {
-        return getProtobufBuildInfo();
-    }
-    
-    /**
-     * Posts protobuf schema version information to EventBus for React Native consumption
-     */
-    public void postProtobufSchemaVersionInfo() {
-        try {
-            // Call the version method only once
-            int schemaVersion = getProtobufSchemaVersion();
-            
-            // Build the info string directly instead of calling getProtobufBuildInfo()
-            String fileDescriptorName = mentraos.ble.MentraosBle.getDescriptor().getFile().getName();
-            String buildInfo = String.format("Schema v%d | %s", schemaVersion, fileDescriptorName);
-            
-            ProtobufSchemaVersionEvent event = new ProtobufSchemaVersionEvent(
-                schemaVersion, 
-                buildInfo, 
-                smartGlassesDevice != null ? smartGlassesDevice.deviceModelName : "Unknown"
-            );
-            
-            EventBus.getDefault().post(event);
-            Log.d(TAG, "Posted protobuf schema version event: " + buildInfo);
-        } catch (Exception e) {
-            Log.e(TAG, "Error posting protobuf schema version event: " + e.getMessage(), e);
-        }
     }
     
     /**
