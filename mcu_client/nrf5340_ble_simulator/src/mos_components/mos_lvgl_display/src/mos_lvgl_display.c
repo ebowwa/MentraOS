@@ -537,24 +537,15 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     
     snprintf(formatted_text, sizeof(formatted_text),
         "MentraOS AR Display Ready\n\n"
-        "Waiting for protobuf text messages...\n\n"
-        "🔵 BLE Device: %s\n\n"
-        "📱 Search for this name in your app to pair\n\n"
+        "Waiting for Connection...\n\n"
+        "BLE Device: %s\n\n"
         "Version: %s\n\n"
         "Build Time: %s\n\n"
-        "Build Date: %s\n\n"
-        "Build Hash: %s\n\n"
-        "Build Branch: %s\n\n"
-        "Build Tag: %s\n\n"
-        "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!",
+        "Build Date: %s\n\n",
         ble_name ? ble_name : "Unknown",
         CONFIG_LVGL_VERSION ? CONFIG_LVGL_VERSION : "Unknown",
         __TIME__,
         __DATE__,
-        "Unknown", // Build hash placeholder
-        "Unknown", // Build branch placeholder
-        "Unknown"  // Build tag placeholder
     );
 
     lv_label_set_text(label, formatted_text);
