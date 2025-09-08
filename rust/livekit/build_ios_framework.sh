@@ -3,6 +3,8 @@
 cargo build --release --target aarch64-apple-ios
 # cargo build --release --target aarch64-apple-ios-sim
 
+# cbindgen --config cbindgen.toml --crate livekit-bridge --output include/mobile_example.h
+
 # xcodebuild -create-xcframework \
 #   -library ./target/aarch64-apple-ios/release/liblivekit_bridge.dylib \
 #   -headers ./include/ \

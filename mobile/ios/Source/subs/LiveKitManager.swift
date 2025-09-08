@@ -12,6 +12,7 @@ public class LiveKitManager: NSObject {
     @objc public static let shared = LiveKitManager()
 
     public var enabled = false
+    private var counter = 0
 
     // MARK: - Initialization
 
@@ -104,10 +105,12 @@ public class LiveKitManager: NSObject {
 //      return
 //    }
 //
-//    counter += 1
-//    if counter % 50 == 0 {
-//      Bridge.log("LiveKit: Adding PCM buffer with \(buffer.frameLength) frames")
-//    }
+        counter += 1
+        if counter % 50 == 0 {
+            Bridge.log("LiveKit: Adding PCM buffer")
+        }
+
+        livekit_add_pcm()
 //
 //    LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
 //    //
