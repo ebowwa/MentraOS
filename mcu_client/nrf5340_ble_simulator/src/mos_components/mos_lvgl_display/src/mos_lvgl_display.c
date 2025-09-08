@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 14:00:54
+ * @LastEditTime : 2025-09-08 15:33:09
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -71,30 +71,25 @@ static void fps_timer_cb(struct k_timer *timer_id)
 
 void lv_example_scroll_text(void)
 {
-    // 创建一个标签
     lv_obj_t *label = lv_label_create(lv_screen_active());
 
-    // 设置滚动模式（自动横向滚动）
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-    // 设置标签区域宽度（可视区域）
-    lv_obj_set_width(label, 640);  // 根据你屏幕宽度设置，单位像素
+    lv_obj_set_width(label, 640);
 
-    // 设置标签位置
-    lv_obj_set_pos(label, 0, 410);  // x/y 位置，根据屏幕设置
+    lv_obj_set_pos(label, 0, 410); 
 
-    // 设置长文本（会触发滚动）
     lv_label_set_text(label, "!!!!!nRF5340 + NCS 3.0.0 + LVGL!!!!");
 
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(label, lv_color_white(), 0); 
     lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 
 /**
- * @brief 设置显示开关
- * @param state true 开启显示，false 关闭显示
+ * @brief 设置显示开关; Set display on/off
+ * @param state true 开启显示，false 关闭显示; true to turn on display, false to turn off display
  */
 void set_display_onoff(bool state)
 {
@@ -220,16 +215,16 @@ void lvgl_dispaly_text(void)
 {
     lv_obj_t *hello_world_label = lv_label_create(lv_screen_active());
     lv_label_set_text(hello_world_label, "Hello LVGL World");
-    lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);  // 居中对齐
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);  // 左对齐
-    // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
-    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); 
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0); 
+    // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); 
+    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 static lv_obj_t   *counter_label;
-static lv_timer_t *counter_timer;  // 指针即可
+static lv_timer_t *counter_timer;  
 static lv_obj_t   *acc_label;
 static lv_obj_t   *gyr_label;
 static void  counter_timer_cb(lv_timer_t *timer)
@@ -259,80 +254,64 @@ void ui_create(void)
     gyr_label = lv_label_create(lv_screen_active());
     lv_obj_align(gyr_label, LV_TEXT_ALIGN_LEFT, 0, 380);
 
-    // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       // 左对齐
-    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  // 白色对应非零值
+    // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       
+    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_30, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
-    // 创建一个 100ms 周期的定时器，把 count 指针经 user_data 传给它
     static int count = 0;
     counter_timer    = lv_timer_create(counter_timer_cb, 300, &count);
-    // （100 是毫秒，回调里每次会被触发）
 }
 
 /****************************************************/
 static lv_obj_t *cont = NULL;
 static lv_anim_t anim;
 
-// 动画回调，将容器纵向滚动到 v 像素
+
 static void scroll_cb(void *var, int32_t v)
 {
     LV_UNUSED(var);
     lv_obj_scroll_to_y(cont, v, LV_ANIM_OFF);
 }
-/**
- * @brief 在指定区域创建一个垂直循环滚动长文本
- * @param parent  父对象，一般使用 lv_scr_act()
- * @param x       区域左上角 X 坐标
- * @param y       区域左上角 Y 坐标
- * @param w       区域宽度（像素）
- * @param h       区域高度（像素）
- * @param txt     要滚动显示的文本
- * @param font    字体指针，如 &lv_font_montserrat_48
- * @param time_ms 从滚动到末端并返回所用时间（毫秒）
- */
+
 void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h, const char *txt,
                         const lv_font_t *font, uint32_t time_ms)
 {
-    // 移除旧区域
     scroll_text_stop();
 
-    // 创建可滚动容器
     cont = lv_obj_create(parent);
     lv_obj_set_size(cont, w, h);
     lv_obj_set_pos(cont, x, y);
     lv_obj_set_scroll_dir(cont, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-    // 设置容器背景为黑色
+
     lv_obj_set_style_bg_color(cont, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
-    // 在容器中创建标签
+
     lv_obj_t *label = lv_label_create(cont);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, w);
     lv_label_set_text(label, txt);
 
-    // 设置文字为白色和指定字体
     lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
-    // 强制标签布局更新，获取正确的内容高度
     lv_obj_update_layout(label);
     int32_t label_h = lv_obj_get_height(label);
-    // 计算滚动范围 = 标签高度 - 容器高度
+
     int32_t range = label_h - h;
     if (range <= 0)
         return;
 
-    // 初始化并启动往返滚动动画
+ 
     lv_anim_init(&anim);
     lv_anim_set_var(&anim, cont);
     lv_anim_set_exec_cb(&anim, scroll_cb);
     lv_anim_set_time(&anim, time_ms);
     lv_anim_set_values(&anim, 0, range);
-    // lv_anim_set_playback_duration(&anim, time_ms); // 反向动画时间
+    // lv_anim_set_playback_duration(&anim, time_ms); 
     lv_anim_set_repeat_count(&anim, LV_ANIM_REPEAT_INFINITE);
     lv_anim_start(&anim);
 }
@@ -770,18 +749,6 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
 
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
 {
-    // 获取当前应用的字体对象
-    // const lv_font_t *font = lv_obj_get_style_text_font(label, 0);
-    // uint32_t unicode = 'A';
-    // lv_font_glyph_dsc_t glyph_dsc;
-    // if (lv_font_get_glyph_dsc(font, &glyph_dsc, unicode, 0))
-    // {
-    //     BSP_LOGI(TAG, "字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
-    // }
-    // mos_delay_ms(1000);
-    // BSP_LOGI(TAG, "Font pointer: %p", font);
-    // BSP_LOGI(TAG, "字体高度：%d px", font->line_height);
-    // BSP_LOGI(TAG, "基线位置：%d px", font->base_line);
     const struct device *display_dev;
     display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
     if (!device_is_ready(display_dev))
@@ -789,14 +756,14 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
         return;
     }
-    if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
+    if (hls12vga_init_sem_take() != 0) 
     {
         BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
         return;
     }
-    // 初始化 FPS 统计定时器：每 1000ms 输出一次
-    mos_timer_create(&fps_timer, fps_timer_cb);
-    mos_timer_start(&fps_timer, true, 1000);
+    // 初始化 FPS 统计定时器：每 1000ms 输出一次;Initialize FPS stats timer: output once every 1000ms
+    // mos_timer_create(&fps_timer, fps_timer_cb);
+    // mos_timer_start(&fps_timer, true, 1000);
     static uint32_t last_refresh_ms;
     display_state_t state_type = LCD_STATE_INIT;
     display_cmd_t   cmd;
@@ -824,22 +791,24 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     BSP_LOGI(TAG, "LCD_CMD_OPEN");
                     hls12vga_power_on();
                     set_display_onoff(true);
-                    hls12vga_set_brightness(9);  // 设置亮度
-                    hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+                    hls12vga_set_brightness(9);  // 设置亮度; Set brightness
+                    /* 切换到 GRAY16（4bit输入格式）; Switch to GRAY16 (4bit input format) */
+                    hls12vga_set_gray16_mode();
+                    // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像; 0X10 vertical mirror 0X00 normal display 0X08 horizontal mirror 0X18 horizontal + vertical mirror
+                    hls12vga_set_mirror(0x10);   
                     // hls12vga_set_brightness(cmd.p.open.brightness);
                     // hls12vga_set_mirror(cmd.p.open.mirror);
                     mos_delay_ms(2);
-                    hls12vga_open_display();  // 开启显示
+                    hls12vga_open_display();  // 开启显示; Open display
                     // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                    hls12vga_clear_screen(false);  // 清屏
+                    hls12vga_clear_screen(false);  // 清屏; Clear screen
                     state_type = LCD_STATE_ON;
 
                     BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
-                    show_default_ui();  // 显示默认图像
+                    show_default_ui();  // 显示默认图像; Show default image
                     BSP_LOGI(TAG, "✅ show_default_ui() completed");
                     break;
                 case LCD_CMD_DATA:
-                    /* 处理帧数据*/
                     break;
                 case LCD_CMD_CYCLE_PATTERN:
                     /* **NEW: Handle pattern cycling safely in LVGL thread** */
@@ -860,7 +829,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 case LCD_CMD_CLOSE:
                     if (get_display_onoff())
                     {
-                        // hls12vga_clear_screen(false); // 清屏
+                        // hls12vga_clear_screen(false);
                         // lv_timer_handler();
                         scroll_text_stop();
                         set_display_onoff(false);
@@ -882,26 +851,26 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
                     /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
-                    }
+                    // if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+                    // }
                     break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
                     /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    if (hls12vga_draw_vertical_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
-                    }
+                    // if (hls12vga_draw_vertical_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+                    // }
                     break;
                 case LCD_CMD_CHESS_PATTERN:
                     /* **NEW: Handle direct HLS12VGA chess pattern** */
                     BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    if (hls12vga_draw_chess_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw chess pattern");
-                    }
+                    // if (hls12vga_draw_chess_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw chess pattern");
+                    // }
                     break;
                 default:
                     break;

@@ -40,29 +40,11 @@
 
 #include <zephyr/logging/log.h>
 #include <nrfx_clock.h>
-
+#include "mos_fuel_gauge.h"
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-static int hfclock_config_and_start(void)
-{
-	int ret;
-	/* Use this to turn on 128 MHz clock for cpu_app */
-	ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
-	ret -= NRFX_ERROR_BASE_NUM;
-	if (ret)
-	{
-		return ret;
-	}
-	nrfx_clock_hfclk_start();
-	while (!nrfx_clock_hfclk_is_running())
-	{
-	}
-	return 0;
-}
-// 初始化高频时钟128Mhz运行模式
-SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 #define STACKSIZE 2048
 #define PRIORITY 7
@@ -97,9 +79,10 @@ static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 static struct k_work adv_work;
 
-static const struct device *uart = DEVICE_DT_GET(DT_CHOSEN(nordic_nus_uart));
+static const struct device *uart = NULL;//DEVICE_DT_GET(DT_CHOSEN(nordic_nus_uart));
 static struct k_work_delayable uart_work;
-
+const struct gpio_dt_spec es_power_en = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), es_power_en_gpios);
+const struct gpio_dt_spec mic_pwr_en  = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), mic_pwr_en_gpios); 
 struct uart_data_t {
 	void *fifo_reserved;
 	uint8_t data[UART_BUF_SIZE];
@@ -293,7 +276,7 @@ static bool uart_test_async_api(const struct device *dev)
 	const struct uart_driver_api *api =
 			(const struct uart_driver_api *)dev->api;
 
-	return (api->callback_set != NULL);
+	// return (api->callback_set != NULL);
 }
 
 static int uart_init(void)
@@ -733,8 +716,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **DEBUG: Enhanced button logging to identify spurious events**
 	if (has_changed != 0) {
-		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
-		        button_state, has_changed, buttons);
+		// LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
+		//         button_state, has_changed, buttons);
 	}
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
@@ -809,7 +792,34 @@ static void configure_gpio(void)
 		LOG_ERR("Cannot init LEDs (err: %d)", err);
 	}
 }
-
+int init_user_gpio(void)
+{
+	int err;
+	if (!gpio_is_ready_dt(&es_power_en))
+	{
+		LOG_ERR("GPIO port for es_power_en not ready");
+		return -1;
+	}
+	err = gpio_pin_configure_dt(&es_power_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+	if (err != 0)
+	{
+		LOG_ERR("es_power_en config error: %d", err);
+		return err;
+	}
+	if (!gpio_is_ready_dt(&mic_pwr_en))
+    {
+        LOG_ERR("GPIO mic_pwr_en not ready");
+        return -1;
+    }
+	err = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+    if (err != 0)
+    {
+        LOG_ERR("mic_pwr_en config error: %d", err);
+        return err;
+    }
+	LOG_INF("User GPIOs configured successfully");
+	return 0;
+}
 int main(void)
 {
 	int blink_status = 0;
@@ -820,6 +830,7 @@ int main(void)
 
 	configure_gpio();
 
+	init_user_gpio();
 	// **NEW: Log updated button functionality (avoiding SPI4 conflicts)**
 	LOG_INF("� Button controls updated (avoiding SPI4 pin conflicts):");
 	LOG_INF("   � Button 1: Cycle battery 0→100%% + toggle charging");
@@ -836,10 +847,10 @@ int main(void)
 	// Set initial brightness to 50%
 	protobuf_set_brightness_level(50);
 
-	err = uart_init();
-	if (err) {
-		error();
-	}
+	// err = uart_init();
+	// if (err) {
+	// 	error();
+	// }
 
 	if (IS_ENABLED(CONFIG_BT_NUS_SECURITY_ENABLED)) {
 		err = bt_conn_auth_cb_register(&conn_auth_callbacks);
@@ -884,6 +895,7 @@ int main(void)
 		LOG_INF("✅ PDM audio streaming system ready");
 		LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
 	}
+	pm1300_init();
 
 	// Initialize ping/pong connectivity monitoring system
 	LOG_INF("📡 Initializing ping/pong connectivity monitoring...");
@@ -891,14 +903,14 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
-        // Initialize LVGL display system with working driver implementation
-        printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
-        
-        // Start the LVGL display thread first!
-        printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
-        lvgl_display_thread();
-        printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-
+	// Initialize LVGL display system with working driver implementation
+	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	
+	// Start the LVGL display thread first!
+	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	lvgl_display_thread();
+	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+#if 0
         // Give the thread a moment to initialize
         k_msleep(100);
         
@@ -940,15 +952,36 @@ int main(void)
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here
         LOG_INF("LVGL demo thread will start automatically");
-
+#endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
 
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+		
+		LOG_INF(" Main loop alive");	
+		batter_monitor();
 	}
 }
+static int hfclock_config_and_start(void)
+{
+	int ret;
+	/* Use this to turn on 128 MHz clock for cpu_app */
+	ret = nrfx_clock_divider_set(NRF_CLOCK_DOMAIN_HFCLK, NRF_CLOCK_HFCLK_DIV_1);
+	ret -= NRFX_ERROR_BASE_NUM;
+	if (ret)
+	{
+		return ret;
+	}
+	nrfx_clock_hfclk_start();
+	while (!nrfx_clock_hfclk_is_running())
+	{
+	}
+	return 0;
+}
+// 初始化高频时钟128Mhz运行模式
+SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
 void ble_write_thread(void)
 {

@@ -6,11 +6,14 @@
 
 / {
 	chosen {
-		nordic,nus-uart = &uart0;
+		// nordic,nus-uart = &uart0;
 		/* Use HLS12VGA projector display */
 		zephyr,display = &hls12vga;
 	};
-	
+	zephyr,user {
+		es_power_en-gpios = <&gpio1 00 GPIO_ACTIVE_HIGH>;
+		mic_pwr_en-gpios = <&gpio0 04 GPIO_ACTIVE_HIGH>;
+	};
 	pwmleds {
 		compatible = "pwm-leds";
 		
@@ -23,14 +26,6 @@
 	
 	aliases {
 		pwm-led3 = &pwm_led3;
-	};
-
-	/* Dummy display for testing (until projector driver properly integrated) */
-	dummy_display: dummy_display {
-		compatible = "zephyr,dummy-dc";
-		width = <640>;
-		height = <480>;
-		status = "okay";
 	};
 };
 
@@ -75,15 +70,17 @@
 	pinctrl-0 = <&spi4_default>;
 	pinctrl-1 = <&spi4_sleep>;
 	pinctrl-names = "default", "sleep";
-
+	cs-gpios = <&gpio0 0 GPIO_ACTIVE_HIGH>;
 	hls12vga: hls12vga@0 {
 		compatible = "zephyr,custom-hls12vga";
 		reg = <0>;
 		status = "okay";
 		spi-max-frequency = <32000000>;
 
-		left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-		right_cs-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+		// left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+		// right_cs-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+		left_cs-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		right_cs-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
 		v0_9-gpios     = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 		v1_8-gpios     = <&gpio0 6 GPIO_ACTIVE_HIGH>;
 		vcom-gpios     = <&gpio0 7 GPIO_ACTIVE_HIGH>;
@@ -130,4 +127,35 @@ dmic_dev: &pdm0 {
 	pinctrl-names = "default";
 	// clock-source = "ACLK";
 };
+&uart0 {
+	status = "disabled";
+};
+&gpio_fwd {
+	status = "disabled";
+	/delete-node/ uart;
+};
 
+/delete-node/ &mx25r64;
+&qspi {
+	status = "okay";
+	pinctrl-0 = <&qspi_default>;
+	pinctrl-1 = <&qspi_sleep>;
+	pinctrl-names = "default", "sleep";
+	mx25u256: mx25u256@0 {
+		compatible = "nordic,qspi-nor";
+		reg = <0>;
+		/* MX25U256 supports only pp and pp4io */
+		writeoc = "pp4io";
+		/* MX25U256 supports all readoc options */
+		readoc = "read4io";
+		sck-frequency = <32000000>;
+		address-size-32;
+		enter-4byte-addr = <0xb7>;
+		jedec-id = [ c2 25 39  ];
+		sfdp-bfp = [ e5 20 fb ff ff ff ff 0f 44 eb 08 6b 08 3b 04 bb fe ff ff ff ff ff 00 ff ff ff 44 eb 0c 20 0f 52 10 d8 00 ff 25 52 dd 00 84 a5 04 e2 44 03 17 38 30 b0 30 b0 f7 bd d5 5c 4a 9e 29 ff f0 50 f9 85  ];
+		size = <0x2000000>;// 32M
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+	};
+};
