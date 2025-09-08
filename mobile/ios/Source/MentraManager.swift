@@ -2479,6 +2479,8 @@ struct ViewState {
 
     func didReceivePartialTranscription(_ text: String) {
         // Send partial result to server with proper formatting
+        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
+        Bridge.log("Mentra: Sending partial transcription: \(text), \(transcriptionLanguage)")
         let transcription: [String: Any] = [
             "type": "local_transcription",
             "text": text,
@@ -2486,7 +2488,7 @@ struct ViewState {
             "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
             "endTime": Int(Date().timeIntervalSince1970 * 1000),
             "speakerId": 0,
-            "transcribeLanguage": "en-US",
+            "transcribeLanguage": transcriptionLanguage,
             "provider": "sherpa-onnx",
         ]
 
@@ -2495,6 +2497,8 @@ struct ViewState {
 
     func didReceiveFinalTranscription(_ text: String) {
         // Send final result to server with proper formatting
+        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
+        Bridge.log("Mentra: Sending final transcription: \(text), \(transcriptionLanguage)")
         if !text.isEmpty {
             let transcription: [String: Any] = [
                 "type": "local_transcription",
@@ -2503,7 +2507,7 @@ struct ViewState {
                 "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
                 "endTime": Int(Date().timeIntervalSince1970 * 1000),
                 "speakerId": 0,
-                "transcribeLanguage": "en-US",
+                "transcribeLanguage": transcriptionLanguage,
                 "provider": "sherpa-onnx",
             ]
 
@@ -2511,9 +2515,14 @@ struct ViewState {
         }
     }
 
-    func setSttModelPath(_ path: String) {
+    func setSttModelDetails(_ path: String, _ languageCode: String) {
         UserDefaults.standard.set(path, forKey: "STTModelPath")
+        UserDefaults.standard.set(languageCode, forKey: "STTModelLanguageCode")
         UserDefaults.standard.synchronize()
+    }
+
+    func getSttModelPath() -> String {
+        return UserDefaults.standard.string(forKey: "STTModelPath") ?? ""
     }
 
     func checkSTTModelAvailable() -> Bool {

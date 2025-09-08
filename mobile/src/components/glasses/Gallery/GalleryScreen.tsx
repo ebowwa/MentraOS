@@ -276,6 +276,12 @@ export function GalleryScreen() {
 
       if (!syncData.changed_files || syncData.changed_files.length === 0) {
         console.log("Sync Complete - no new files")
+        // Stop hotspot if gallery opened it
+        if (galleryOpenedHotspot) {
+          console.log("[GalleryScreen] No files to sync, closing hotspot...")
+          await handleStopHotspot()
+        }
+        transitionToState(GalleryState.SYNC_COMPLETE)
         return
       }
 
@@ -329,6 +335,19 @@ export function GalleryScreen() {
       await loadDownloadedPhotos()
       transitionToState(GalleryState.SYNC_COMPLETE)
       setSyncProgress(null)
+
+      // Stop hotspot if gallery opened it
+      if (galleryOpenedHotspot) {
+        console.log("[GalleryScreen] Sync completed with files, closing hotspot...")
+        try {
+          await handleStopHotspot()
+          console.log("[GalleryScreen] Hotspot closed successfully after sync")
+        } catch (error) {
+          console.error("[GalleryScreen] Failed to close hotspot after sync:", error)
+        }
+      }
+
+      // Transition to final state after hotspot is closed
       transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
     } catch (err) {
       let errorMsg = "Sync failed"
@@ -713,17 +732,9 @@ export function GalleryScreen() {
     }, 500)
   }, [galleryState, totalServerCount])
 
-  // Monitor sync completion
-  useEffect(() => {
-    if (galleryState !== GalleryState.SYNC_COMPLETE || !galleryOpenedHotspot || !isHotspotEnabled) {
-      return
-    }
-
-    console.log("[GalleryScreen] Sync completed, auto-closing hotspot...")
-    handleStopHotspot()
-      .then(() => console.log("[GalleryScreen] Hotspot closed after sync"))
-      .catch(error => console.error("[GalleryScreen] Failed to close hotspot:", error))
-  }, [galleryState, galleryOpenedHotspot, isHotspotEnabled])
+  // Note: Hotspot cleanup after sync is now handled directly in syncAllPhotos()
+  // instead of using useEffect to watch for SYNC_COMPLETE state, which was unreliable
+  // due to immediate state transitions
 
   // Cleanup on unmount
   useEffect(() => {

@@ -23,6 +23,8 @@ const en = {
     continueAnyway: "Continue Anyway",
     resetUrl: "Switch to Default Server",
     connectingToServer: "Connecting to server...",
+    retrying: "Retrying...",
+    resetting: "Resetting...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
@@ -180,7 +182,7 @@ const en = {
     autoBrightnessLabel: "Auto Brightness",
     autoBrightnessSubtitle: "Automatically adjust the brightness of your smart glasses based on the ambient light.",
     notificationsLabel: "Notifications Access",
-    notificationsSubtitle: "Allow AugmentOS to forward your phone notifications to your smart glasses.",
+    notificationsSubtitle: "Allow Mentra to forward your phone notifications to your smart glasses.",
     selectMic: "Select which microphone to use",
     simulatedGlassesNote: "This setting has no effect when using Simulated Glasses",
     profileSettings: "Profile Settings",

@@ -12,8 +12,6 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
-		6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */; };
-		6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */; };
 		6DDF1F572E2BED9800EAD638 /* SherpaOnnx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */; };
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
@@ -68,10 +66,6 @@
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
-		6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = decoder.onnx; sourceTree = "<group>"; };
-		6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = encoder.onnx; sourceTree = "<group>"; };
-		6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */ = {isa = PBXFileReference; lastKnownFileType = text; path = joiner.onnx; sourceTree = "<group>"; };
-		6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = tokens.txt; sourceTree = "<group>"; };
 		6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "sherpa-onnx.xcframework"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-AOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.release.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -206,22 +200,10 @@
 			isa = PBXGroup;
 			children = (
 				6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */,
-				6DAA264E2E2BF04E00B9AEC4 /* Model */,
 				6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */,
 			);
 			name = SherpaOnnx;
 			path = Packages/SherpaOnnx;
-			sourceTree = "<group>";
-		};
-		6DAA264E2E2BF04E00B9AEC4 /* Model */ = {
-			isa = PBXGroup;
-			children = (
-				6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */,
-				6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */,
-				6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */,
-				6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */,
-			);
-			path = Model;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -507,8 +489,6 @@
 				C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */,
 				C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */,
 				A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */,
-				6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */,
-				6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

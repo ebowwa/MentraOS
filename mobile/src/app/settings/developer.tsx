@@ -23,16 +23,12 @@ export default function DeveloperSettingsScreen() {
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const {replace} = useNavigationHistory()
-
-  const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
-    status.core_info.bypass_audio_encoding_for_debugging,
-  )
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const [showNewUi, setShowNewUi] = useState(false)
-  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
+  const [powerSavingMode, setPowerSavingMode] = useState(false)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -42,12 +38,6 @@ export default function DeveloperSettingsScreen() {
     const newSetting = !reconnectOnAppForeground
     await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
     setReconnectOnAppForeground(newSetting)
-  }
-
-  const toggleBypassAudioEncodingForDebugging = async () => {
-    const newSetting = !isBypassAudioEncodingForDebuggingEnabled
-    await bridge.sendToggleBypassAudioEncodingForDebugging(newSetting)
-    setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
   }
 
   const toggleNewUi = async () => {
@@ -183,15 +173,18 @@ export default function DeveloperSettingsScreen() {
   // Load saved URL on mount
   useEffect(() => {
     const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI)
       setShowNewUi(newUiSetting)
+
+      const powerSavingMode = await loadSetting(SETTINGS_KEYS.power_saving_mode)
+      setPowerSavingMode(powerSavingMode)
     }
     loadSettings()
   }, [])
