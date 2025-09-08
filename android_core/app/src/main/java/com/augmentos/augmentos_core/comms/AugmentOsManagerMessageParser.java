@@ -159,6 +159,7 @@ public class AugmentOsManagerMessageParser {
                 JSONObject settings = commandObject.getJSONObject("params").getJSONObject("settings");
                 callback.updateAppSettings(targetApp, settings);
                 break;
+
             case "request_app_info":
                 String packageNameToGetDetails = commandObject.getJSONObject("params").getString("target");
                 callback.requestAppInfo(packageNameToGetDetails);
@@ -194,7 +195,6 @@ public class AugmentOsManagerMessageParser {
                 boolean updatingScreen = commandObject.getJSONObject("params").getBoolean("enabled");
                 callback.setUpdatingScreen(updatingScreen);
                 break;
-
 
             case "send_wifi_credentials":
                 String ssid = commandObject.getJSONObject("params").getString("ssid");
@@ -295,6 +295,7 @@ public class AugmentOsManagerMessageParser {
                 String stopRequestId = commandObject.getJSONObject("params").getString("request_id");
                 callback.stopVideoRecording(stopRequestId);
                 break;
+
             case "display_text": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");
                 String text = paramsObject.getString("text");
@@ -304,6 +305,7 @@ public class AugmentOsManagerMessageParser {
                 callback.onDisplayTextNotified(text, size, x, y);
             }
             break;
+
             case "display_image": {
                 final JSONObject paramsObject = commandObject.getJSONObject("params");
                 String imageType = paramsObject.getString("imageType");
@@ -311,15 +313,18 @@ public class AugmentOsManagerMessageParser {
                 callback.onDisplayImageNotified(imageType, imageSize);
             }
             break;
+
             case "clear_display": {
                 callback.clearDisplay();
             }
             break;
+
             case "set_lc3_audio_enabled": {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setLc3AudioEnabled(enabled);
             }
             break;
+
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }
