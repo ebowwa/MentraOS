@@ -50,7 +50,6 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
         "profile": "/settings/profile",
         "privacy": "/settings/privacy",
         "developer": "/settings/developer",
-
         "theme": "/settings/theme",
         "change-password": "/settings/change-password",
         "data-export": "/settings/data-export",
