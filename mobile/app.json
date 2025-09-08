@@ -153,7 +153,9 @@
           "project": "mentra-os",
           "organization": "mentra-labs"
         }
-      ]
+      ],
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc"
     ],
     "experiments": {
       "tsconfigPaths": true,
