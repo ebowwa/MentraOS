@@ -734,20 +734,25 @@ export class AsgCameraApiClient {
           "Accept": "*/*",
           "User-Agent": "MentraOS-Mobile/1.0",
         },
-        progressDivider: 10,
+        connectionTimeout: 300000, // 5 minutes for connection establishment
+        readTimeout: 300000, // 5 minutes for data reading
+        backgroundTimeout: 600000, // 10 minutes for background downloads (iOS)
+        progressDivider: 1, // Get progress updates every 1% instead of 10%
+        progressInterval: 250, // Update progress every 250ms max
         begin: res => {
           console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
         },
         progress: res => {
           const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
 
-          // Call the progress callback if provided
+          // Call the progress callback if provided - now reports all progress
           if (onProgress) {
             onProgress(percentage)
           }
 
-          if (percentage % 20 === 0) {
-            // Log every 20%
+          // Log less frequently to avoid spam, but UI gets all updates
+          if (percentage % 10 === 0) {
+            // Log every 10%
             console.log(`[ASG Camera API] Download progress ${filename}: ${percentage}%`)
           }
         },
@@ -812,6 +817,9 @@ export class AsgCameraApiClient {
               "Accept": "image/*",
               "User-Agent": "MentraOS-Mobile/1.0",
             },
+            connectionTimeout: 60000, // 1 minute for thumbnails (smaller files)
+            readTimeout: 60000, // 1 minute for thumbnails
+            progressDivider: 1, // Get all progress updates for thumbnails too
             begin: res => {
               console.log(`[ASG Camera API] Thumbnail download started for ${filename}, size: ${res.contentLength}`)
             },

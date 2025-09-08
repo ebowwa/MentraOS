@@ -722,7 +722,7 @@ class SonioxTranslationStream implements TranslationStreamInstance {
       mr: "mr-IN",
       ms: "ms-MY",
       nl: "nl-NL",
-      no: "no-NO",
+      no: "nb-NO",
       pa: "pa-IN",
       pl: "pl-PL",
       pt: "pt-PT",
