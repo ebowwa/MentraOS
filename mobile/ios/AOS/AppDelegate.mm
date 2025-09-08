@@ -3,6 +3,9 @@
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
 
+// Import the LiveKit patch to prevent crash
+#import "../Source/utils/UIDevice+LiveKitPatch.h"
+
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions

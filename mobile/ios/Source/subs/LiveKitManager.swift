@@ -32,6 +32,7 @@ public class LiveKitManager: NSObject {
             do {
                 Bridge.log("LiveKit: Attempting to connect to: \(url)")
 
+//                livekit_connect(url, token, 16_000, 1)
                 livekit_connect(url, token)
 
                 enabled = true
@@ -110,7 +111,10 @@ public class LiveKitManager: NSObject {
             Bridge.log("LiveKit: Adding PCM buffer")
         }
 
-        livekit_add_pcm()
+//        data.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
+//            let int16Pointer = rawBuffer.bindMemory(to: Int16.self).baseAddress!
+//            livekit_add_pcm(int16Pointer, data.count, 16_000, 1)
+//        }
 //
 //    LiveKit.AudioManager.shared.mixer.capture(appAudio: buffer)
 //    //
