@@ -317,6 +317,7 @@ const en = {
     appNotOnlineMessage: "This app is not online. Please try again later.",
     pairingBatteryTooLow:
       "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} and try again.",
+    invalidEmail: "Invalid email address.",
   },
   common: {
     ok: "OK",
@@ -358,9 +359,6 @@ const en = {
       content: "No data found yet. Try clicking the button to refresh or reload the app.",
       button: "Let's try this again",
     },
-  },
-  errors: {
-    invalidEmail: "Invalid email address.",
   },
   navigation: {
     home: "Home",
