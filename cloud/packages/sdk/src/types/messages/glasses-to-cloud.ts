@@ -64,7 +64,7 @@ export interface OpenDashboard extends BaseMessage {
 export interface ButtonPress extends BaseMessage {
   type: GlassesToCloudMessageType.BUTTON_PRESS;
   buttonId: string;
-  pressType: 'short' | 'long';
+  pressType: string;
 }
 
 /**

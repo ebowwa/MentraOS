@@ -506,19 +506,6 @@ public class ServerComms {
         }
     }
 
-    public void sendButtonActionEvent(String button, String event) {
-        try {
-            JSONObject eventObject = new JSONObject();
-            eventObject.put("type", "button_event");
-            eventObject.put("button", button);
-            eventObject.put("event", event);
-            eventObject.put("timestamp", System.currentTimeMillis());
-            wsManager.sendText(eventObject.toString());
-        } catch (JSONException e) {
-            Log.e(TAG, "Error building button_event JSON", e);
-        }
-    }
-
     public void sendRtmpStreamStatus(JSONObject statusMessage) {
         try {
             // Send the status message directly since it's already in the correct format

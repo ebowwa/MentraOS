@@ -96,7 +96,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConn
 import com.augmentos.augmentos_core.audio.Lc3Player;
 import com.google.gson.Gson;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonActionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
@@ -3285,7 +3285,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                     Log.d(TAG, "Received Button Event: " + buttonEvent.toString());
                     final ButtonEvent.Button button = buttonEvent.getButton();
                     final ButtonEvent.Event event = buttonEvent.getEvent();
-                    EventBus.getDefault().post(new ButtonActionEvent(button.name(), event.name()));
+                    EventBus.getDefault().post(new ButtonPressEvent(smartGlassesDevice.deviceModelName, button.name(), event.name()));
                 }
                 break;
                 case HEAD_GESTURE: {
