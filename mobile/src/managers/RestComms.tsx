@@ -1,8 +1,6 @@
 import axios, {AxiosRequestConfig, AxiosResponse} from "axios"
-import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {getRestUrl} from "@/utils/SettingsHelper"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
