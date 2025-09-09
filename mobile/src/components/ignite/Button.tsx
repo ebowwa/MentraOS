@@ -19,7 +19,7 @@ const gradientBorderStyle: ViewStyle = {
   padding: 2,
 }
 
-type Presets = "default" | "primary" | "secondary" | "accent" | "warning" | "destructive"
+type Presets = "default" | "primary" | "secondary" | "accent" | "warning" | "destructive" | "outlined"
 
 export interface ButtonAccessoryProps {
   style: StyleProp<any>
@@ -272,6 +272,15 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
       backgroundColor: colors.error,
     }),
   ],
+  outlined: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.palette.transparent,
+      borderWidth: 1.5,
+      borderColor: colors.textDim,
+    }),
+  ],
 }
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
@@ -281,6 +290,7 @@ const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   accent: [$baseTextStyle],
   warning: [$baseTextStyle, ({colors}) => ({color: colors.palette.accent100})],
   destructive: [$baseTextStyle, ({colors}) => ({color: colors.palette.angry600})],
+  outlined: [$baseTextStyle, ({colors}) => ({color: colors.text})],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
@@ -290,6 +300,7 @@ const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   accent: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
   warning: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
   destructive: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  outlined: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
@@ -299,4 +310,5 @@ const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   accent: () => ({opacity: 0.9}),
   warning: () => ({opacity: 0.9}),
   destructive: () => ({opacity: 0.9}),
+  outlined: () => ({opacity: 0.9}),
 }
