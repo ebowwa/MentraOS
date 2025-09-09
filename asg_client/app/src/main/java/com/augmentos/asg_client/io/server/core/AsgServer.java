@@ -19,6 +19,10 @@ public abstract class AsgServer extends NanoHTTPD {
 
     protected static final int MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
     protected static final int CACHE_SIZE_LIMIT = 10; // Max 10 files in cache
+    
+    // Extended timeout for large file transfers (5 minutes)
+    // Default NanoHTTPD timeout is 10 seconds which is too short for 500MB+ videos
+    protected static final int EXTENDED_SOCKET_TIMEOUT = 300000; // 5 minutes
 
     // Dependencies injected through constructor
     protected final ServerConfig config;
@@ -69,7 +73,7 @@ public abstract class AsgServer extends NanoHTTPD {
     }
 
     /**
-     * Start the server with enhanced error handling.
+     * Start the server with enhanced error handling and extended timeout for large files.
      */
     public void startServer() {
         logger.info(getTag(), "🚀 =========================================");
@@ -77,9 +81,13 @@ public abstract class AsgServer extends NanoHTTPD {
         logger.info(getTag(), "🚀 =========================================");
         
         try {
-            start(SOCKET_READ_TIMEOUT, false);
+            // Use extended timeout instead of default SOCKET_READ_TIMEOUT
+            // This allows large video transfers (500MB+) to complete without timing out
+            start(EXTENDED_SOCKET_TIMEOUT, false);
             logger.info(getTag(), "✅ " + config.getServerName() + 
                        " started successfully on port " + getListeningPort());
+            logger.info(getTag(), "⏱️ Socket timeout set to " + EXTENDED_SOCKET_TIMEOUT + "ms (" + 
+                       (EXTENDED_SOCKET_TIMEOUT / 60000) + " minutes) for large file support");
             logger.info(getTag(), "📱 Access from mobile app: http://[GLASSES_IP]:" + getListeningPort());
             
             // Log server URL

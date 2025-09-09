@@ -276,6 +276,12 @@ export function GalleryScreen() {
 
       if (!syncData.changed_files || syncData.changed_files.length === 0) {
         console.log("Sync Complete - no new files")
+        // Stop hotspot if gallery opened it
+        if (galleryOpenedHotspot) {
+          console.log("[GalleryScreen] No files to sync, closing hotspot...")
+          await handleStopHotspot()
+        }
+        transitionToState(GalleryState.SYNC_COMPLETE)
         return
       }
 
@@ -329,6 +335,19 @@ export function GalleryScreen() {
       await loadDownloadedPhotos()
       transitionToState(GalleryState.SYNC_COMPLETE)
       setSyncProgress(null)
+
+      // Stop hotspot if gallery opened it
+      if (galleryOpenedHotspot) {
+        console.log("[GalleryScreen] Sync completed with files, closing hotspot...")
+        try {
+          await handleStopHotspot()
+          console.log("[GalleryScreen] Hotspot closed successfully after sync")
+        } catch (error) {
+          console.error("[GalleryScreen] Failed to close hotspot after sync:", error)
+        }
+      }
+
+      // Transition to final state after hotspot is closed
       transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
     } catch (err) {
       let errorMsg = "Sync failed"
@@ -541,6 +560,11 @@ export function GalleryScreen() {
       ) {
         console.log("[GalleryScreen] User cancelled WiFi connection")
         transitionToState(GalleryState.USER_CANCELLED_WIFI)
+      } else if (error?.message?.includes("user has to enable wifi manually")) {
+        // Android 10+ requires manual WiFi enable
+        setErrorMessage("Please enable WiFi in your device settings first")
+        showAlert("WiFi Required", "Please enable WiFi in your device settings and try again", [{text: "OK"}])
+        transitionToState(GalleryState.USER_CANCELLED_WIFI)
       } else {
         setErrorMessage(error?.message || "Failed to connect to hotspot")
         transitionToState(GalleryState.ERROR)
@@ -550,7 +574,10 @@ export function GalleryScreen() {
 
   // Retry hotspot connection
   const retryHotspotConnection = () => {
-    if (!hotspotSsid || !hotspotPassword || !hotspotGatewayIp) return
+    if (!hotspotSsid || !hotspotPassword || !hotspotGatewayIp) {
+      handleRequestHotspot()
+      return
+    }
 
     transitionToState(GalleryState.WAITING_FOR_WIFI_PROMPT)
     connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
@@ -559,7 +586,7 @@ export function GalleryScreen() {
   // Query gallery status
   const queryGlassesGalleryStatus = () => {
     console.log("[GalleryScreen] Querying glasses gallery status...")
-    coreCommunicator
+    bridge
       .queryGalleryStatus()
       .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
   }
@@ -651,7 +678,6 @@ export function GalleryScreen() {
   useEffect(() => {
     if (galleryState === GalleryState.MEDIA_AVAILABLE) {
       console.log("[GalleryScreen] Media available, requesting hotspot")
-      // handleRequestHotspot()
       transitionToState(GalleryState.USER_CANCELLED_WIFI)
     }
   }, [galleryState])
@@ -706,17 +732,9 @@ export function GalleryScreen() {
     }, 500)
   }, [galleryState, totalServerCount])
 
-  // Monitor sync completion
-  useEffect(() => {
-    if (galleryState !== GalleryState.SYNC_COMPLETE || !galleryOpenedHotspot || !isHotspotEnabled) {
-      return
-    }
-
-    console.log("[GalleryScreen] Sync completed, auto-closing hotspot...")
-    handleStopHotspot()
-      .then(() => console.log("[GalleryScreen] Hotspot closed after sync"))
-      .catch(error => console.error("[GalleryScreen] Failed to close hotspot:", error))
-  }, [galleryState, galleryOpenedHotspot, isHotspotEnabled])
+  // Note: Hotspot cleanup after sync is now handled directly in syncAllPhotos()
+  // instead of using useEffect to watch for SYNC_COMPLETE state, which was unreliable
+  // due to immediate state transitions
 
   // Cleanup on unmount
   useEffect(() => {
@@ -724,7 +742,7 @@ export function GalleryScreen() {
       if (!galleryOpenedHotspot) return
 
       console.log("[GalleryScreen] Gallery unmounting - closing hotspot")
-      coreCommunicator
+      bridge
         .sendCommand("set_hotspot_state", {enabled: false})
         .then(() => console.log("[GalleryScreen] Closed hotspot on exit"))
         .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
@@ -823,6 +841,7 @@ export function GalleryScreen() {
     if (!shouldShowSyncButton) return null
 
     const statusContent = () => {
+      console.log("[GalleryScreen] Rendering status content for state:", galleryState)
       switch (galleryState) {
         case GalleryState.REQUESTING_HOTSPOT:
           return (
@@ -857,7 +876,7 @@ export function GalleryScreen() {
           )
 
         case GalleryState.USER_CANCELLED_WIFI:
-          if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
+          // if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
           return (
             <View>
               <View style={themed($syncButtonRow)}>
@@ -867,11 +886,21 @@ export function GalleryScreen() {
                   color={theme.colors.text}
                   style={{marginRight: spacing.xs}}
                 />
-                <Text style={themed($syncButtonText)}>Connect to sync {glassesGalleryStatus.total} items</Text>
+                <Text style={themed($syncButtonText)}>
+                  Sync {glassesGalleryStatus?.total}{" "}
+                  {glassesGalleryStatus?.photos > 0 && glassesGalleryStatus?.videos > 0
+                    ? glassesGalleryStatus?.total === 1
+                      ? "item"
+                      : "items"
+                    : glassesGalleryStatus?.photos > 0
+                      ? glassesGalleryStatus?.photos === 1
+                        ? "photo"
+                        : "photos"
+                      : glassesGalleryStatus?.videos === 1
+                        ? "video"
+                        : "videos"}
+                </Text>
               </View>
-              <Text style={[themed($syncButtonSubtext), {marginTop: 4, textAlign: "center"}]}>
-                Tap to join "{hotspotSsid}" network
-              </Text>
             </View>
           )
 
@@ -1127,7 +1156,7 @@ const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   color: colors.text,
 })
 
-const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   position: "absolute",
   bottom: spacing.xl,
   left: spacing.lg,
@@ -1139,11 +1168,15 @@ const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderColor: colors.border,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
-  shadowColor: "#000",
-  shadowOffset: {width: 0, height: 2},
-  shadowOpacity: 0.15,
-  shadowRadius: 3.84,
-  elevation: 5,
+  ...(isDark
+    ? {}
+    : {
+        shadowColor: "#000",
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.15,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }),
 })
 
 const $syncButtonContent: ThemedStyle<ViewStyle> = () => ({

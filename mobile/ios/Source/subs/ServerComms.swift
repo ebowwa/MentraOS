@@ -97,10 +97,6 @@ class ServerComms {
         wsManager.connect(url: url, coreToken: coreToken)
     }
 
-    func isWebSocketConnected() -> Bool {
-        return wsManager.isActuallyConnected()
-    }
-
     // MARK: - Audio / VAD
 
     func sendAudioChunk(_ audioData: Data) {
@@ -588,7 +584,7 @@ class ServerComms {
         // if after some time we're still not connected, run this function again:
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
             // if self.wsManager.isConnected() {
-            if self.wsManager.isActuallyConnected() {
+            if self.wsManager.isConnected() {
                 self.reconnectionAttempts = 0
                 self.reconnecting = false
                 return
@@ -625,8 +621,9 @@ class ServerComms {
                         self.wsManager.sendBinary(chunk)
                     } else {
                         // Re-enqueue the chunk if not connected, then wait a bit
-                        self.audioBuffer.offer(chunk)
-                        Thread.sleep(forTimeInterval: 0.1)
+                        // self.audioBuffer.offer(chunk)
+                        // Thread.sleep(forTimeInterval: 0.1)
+                        Bridge.sendWSBinary(chunk)
                     }
                 } else {
                     // No data in queue, wait a bit

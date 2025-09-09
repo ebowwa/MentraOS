@@ -29,6 +29,7 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
     private static final String AUTHORITY = "com.mentra.mentra.provider";
     private static final String STT_MODEL_PATH_KEY = "stt_model_path";
+    private static final String STT_MODEL_LANGUAGE_KEY = "stt_model_language";
     private static final String PREFS_NAME = "AugmentosPrefs";
 
     public FileProviderModule(ReactApplicationContext reactContext) {
@@ -135,15 +136,34 @@ public class FileProviderModule extends ReactContextBaseJavaModule {
 
     // STT Model Management Methods
     @ReactMethod
-    public void setSTTModelPath(String path, Promise promise) {
+    public void setSttModelDetails(String path, String languageCode, Promise promise) {
         try {
             SharedPreferences prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            prefs.edit().putString(STT_MODEL_PATH_KEY, path).apply();
+            prefs.edit()
+            .putString(STT_MODEL_LANGUAGE_KEY, languageCode)
+            .putString(STT_MODEL_PATH_KEY, path)
+            .apply();
+
+            System.out.println("FileProviderModule: Setting STT model path to: " + path);
+            System.out.println("FileProviderModule: Setting STT model language to: " + languageCode);
+            
             
             // Also set it as a system property for SherpaOnnxTranscriber to access
             System.setProperty("stt.model.path", path);
+            System.setProperty("stt.model.language", languageCode);
             
             promise.resolve(true);
+        } catch (Exception e) {
+            promise.reject("STT_ERROR", e.getMessage(), e);
+        }
+    }
+
+    @ReactMethod
+    public void getSTTModelPath(Promise promise) {
+        try {
+            SharedPreferences prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String modelPath = prefs.getString(STT_MODEL_PATH_KEY, null);
+            promise.resolve(modelPath);
         } catch (Exception e) {
             promise.reject("STT_ERROR", e.getMessage(), e);
         }

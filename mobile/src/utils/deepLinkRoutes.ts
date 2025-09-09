@@ -18,14 +18,18 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.replace("/(tabs)/home")
+      // Don't navigate to home without authentication
+      // Let the app's index route handle the navigation logic
+      navObject.replace("/")
     },
+    requiresAuth: false, // Let index.tsx handle auth checking
   },
   {
     pattern: "/home",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
       navObject.replace("/(tabs)/home")
     },
+    requiresAuth: true, // Require auth for explicit /home navigation
   },
 
   // Settings routes
@@ -195,7 +199,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             setTimeout(() => {
               console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
               try {
-                navObject.replace("/auth/version-check")
+                navObject.replace("/init")
                 console.log("[LOGIN DEBUG] router.replace called successfully")
               } catch (navError) {
                 console.error("[LOGIN DEBUG] Error calling router.replace:", navError)

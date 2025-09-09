@@ -316,7 +316,7 @@ export class AudioManager {
    *
    * @param intervalMs Interval in milliseconds
    */
-  startOrderedBufferProcessing(intervalMs: number = 100): void {
+  startOrderedBufferProcessing(intervalMs = 100): void {
     // Clear any existing interval
     this.stopOrderedBufferProcessing();
 

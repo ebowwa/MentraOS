@@ -1,5 +1,5 @@
 //
-//  Bridge.swift
+//  CoreBridge.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 3/4/25.
@@ -61,6 +61,12 @@ class Bridge: RCTEventEmitter {
     static func sendWSText(_ msg: String) {
         let data = ["text": msg]
         Bridge.sendTypedMessage("ws_text", body: data)
+    }
+
+    static func sendWSBinary(_ data: Data) {
+        let base64String = data.base64EncodedString()
+        let body = ["binary": base64String]
+        Bridge.sendTypedMessage("ws_binary", body: body)
     }
 
     static func sendTypedMessage(_ type: String, body: [String: Any]) {

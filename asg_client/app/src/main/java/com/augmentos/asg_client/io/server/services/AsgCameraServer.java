@@ -382,7 +382,12 @@ public class AsgCameraServer extends AsgServer {
             data.put("has_more", hasMore);
             data.put("package_name", fileManager.getDefaultPackageName());
             data.put("processing_time_ms", totalTime);
-            return createSuccessResponse(data);
+            
+            // Add keep-alive headers for gallery responses too
+            Response response = createSuccessResponse(data);
+            response.addHeader("Connection", "keep-alive");
+            response.addHeader("Keep-Alive", "timeout=300, max=100");
+            return response;
         } catch (Exception e) {
             long totalTime = System.currentTimeMillis() - startTime;
             logger.error(TAG, "📚 Error serving gallery after " + totalTime + "ms: " + e.getMessage(), e);
@@ -392,6 +397,7 @@ public class AsgCameraServer extends AsgServer {
 
     /**
      * Serve a specific photo or video thumbnail by filename using the file management system.
+     * For videos, this endpoint serves thumbnails instead of the full video file.
      */
     private Response servePhoto(IHTTPSession session) {
         logger.debug(TAG, "🖼️ Photo/Video request started");
@@ -418,7 +424,7 @@ public class AsgCameraServer extends AsgServer {
             FileMetadata metadata = fileManager.getFileMetadata(fileManager.getDefaultPackageName(), filename);
             String mimeType = metadata != null ? metadata.getMimeType() : "image/jpeg";
 
-            // Check if it's a video file
+            // Check if it's a video file - serve thumbnail instead of full video
             if (isVideoFile(filename)) {
                 logger.debug(TAG, "🎥 Video file detected: " + filename);
                 return serveVideoThumbnail(mediaFile, filename);
@@ -543,9 +549,35 @@ public class AsgCameraServer extends AsgServer {
             headers.put("Content-Type", mimeType);
             headers.put("Content-Length", String.valueOf(photoFile.length()));
 
+            // Add keep-alive headers to prevent timeout on long downloads
+            headers.put("Connection", "keep-alive");
+            headers.put("Keep-Alive", "timeout=300, max=100"); // 5 minute timeout, max 100 requests
+            
             logger.debug(TAG, "⬇️ 📋 Response headers: " + headers);
             logger.debug(TAG, "⬇️ ✅ Starting download: " + filename + " (" + photoFile.length() + " bytes)");
-            return newChunkedResponse(Response.Status.OK, mimeType, new FileInputStream(photoFile));
+            
+            // Use BufferedInputStream with 64KB buffer for better performance and memory usage
+            // This prevents memory issues with large files and improves streaming performance
+            FileInputStream fileStream = new FileInputStream(photoFile);
+            java.io.BufferedInputStream bufferedStream = new java.io.BufferedInputStream(fileStream, 65536); // 64KB buffer
+            
+            // For very large files (>100MB), use a keep-alive wrapper to send periodic data
+            // This prevents the connection from timing out during slow transfers
+            java.io.InputStream finalStream = bufferedStream;
+            if (photoFile.length() > 100 * 1024 * 1024) { // 100MB threshold
+                logger.debug(TAG, "⬇️ 🔄 Large file detected, using keep-alive stream wrapper");
+                finalStream = new KeepAliveInputStream(bufferedStream);
+            }
+            
+            logger.debug(TAG, "⬇️ 📦 Using 64KB buffered stream for efficient transfer");
+            Response response = newChunkedResponse(Response.Status.OK, mimeType, finalStream);
+            
+            // Add the keep-alive headers to the response
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                response.addHeader(header.getKey(), header.getValue());
+            }
+            
+            return response;
         } catch (Exception e) {
             logger.error(TAG, "⬇️ 💥 Error downloading photo " + filename + ": " + e.getMessage(), e);
             return createErrorResponse(Response.Status.INTERNAL_ERROR, "Error downloading photo file");

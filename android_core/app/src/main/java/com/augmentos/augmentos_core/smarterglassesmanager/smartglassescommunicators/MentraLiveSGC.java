@@ -2790,7 +2790,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try{
             JSONObject cmdObject = new JSONObject();
             cmdObject.put("C", "cs_hrt"); // Video command
-            cmdObject.put("B", "");     // Add the body
+            // cmdObject.put("W", 1);        // Wake up MTK system
+            cmdObject.put("B", "");       // Add the body
             String jsonStr = cmdObject.toString();
             Log.d(TAG, "Sending hrt command: " + jsonStr);
             byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);

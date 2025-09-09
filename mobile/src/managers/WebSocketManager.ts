@@ -97,10 +97,7 @@ class WebSocketManager extends EventEmitter {
   }
 
   isConnected(): boolean {
-    return this.webSocket !== null && this.webSocket.readyState === WebSocket.OPEN
-  }
-
-  isActuallyConnected(): boolean {
+    // return this.webSocket !== null && this.webSocket.readyState === WebSocket.OPEN
     return this.previousStatus === WebSocketStatus.CONNECTED
   }
 

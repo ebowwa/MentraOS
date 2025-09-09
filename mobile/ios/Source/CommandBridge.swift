@@ -63,7 +63,8 @@ import Foundation
             case save_buffer_video
             case start_video_recording
             case stop_video_recording
-            case set_stt_model_path
+            case set_stt_model_details
+            case get_stt_model_path
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
@@ -71,6 +72,7 @@ import Foundation
             case display_event
             case update_settings
             case microphone_state_change
+            case restart_transcriber
             case unknown
         }
 
@@ -345,14 +347,17 @@ import Foundation
                     m.handleRequestStatus()
                 case .ping:
                     break
-                case .set_stt_model_path:
+                case .set_stt_model_details:
                     guard let params = params,
-                          let path = params["path"] as? String
+                          let path = params["path"] as? String,
+                          let languageCode = params["languageCode"] as? String
                     else {
-                        Bridge.log("CommandBridge: stop_video_recording invalid params")
+                        Bridge.log("CommandBridge: set_stt_model_details invalid params")
                         break
                     }
-                    m.setSttModelPath(path)
+                    m.setSttModelDetails(path, languageCode)
+                case .get_stt_model_path:
+                    return m.getSttModelPath()
                 case .check_stt_model_available:
                     return m.checkSTTModelAvailable()
                 case .validate_stt_model:
@@ -377,6 +382,7 @@ import Foundation
                         Bridge.log("CommandBridge: microphone_state_change invalid params")
                         break
                     }
+
                     let bypassVad = msg["bypassVad"] as? Bool ?? false
                     var requiredDataStrings: [String] = []
                     if let requiredDataArray = msg["requiredData"] as? [String] {
@@ -395,6 +401,8 @@ import Foundation
                         break
                     }
                     m.handle_update_settings(params)
+                case .restart_transcriber:
+                    m.restartTranscriber()
                 }
             }
         } catch {

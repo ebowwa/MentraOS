@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
 const {Bridge, BridgeModule, CoreCommsService} = NativeModules
@@ -155,7 +155,7 @@ export class MantleBridge extends EventEmitter {
    * Gets the singleton instance of Bridge
    */
   public static getInstance(): MantleBridge {
-    if (!Bridge.instance) {
+    if (!MantleBridge.instance) {
       MantleBridge.instance = new MantleBridge()
     }
     return MantleBridge.instance
@@ -391,7 +391,12 @@ export class MantleBridge extends EventEmitter {
           socketComms.sendText(data.text)
           break
         case "ws_binary":
-          socketComms.sendBinary(data.binary)
+          const binaryString = atob(data.binary)
+          const bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          socketComms.sendBinary(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -566,15 +571,7 @@ export class MantleBridge extends EventEmitter {
     return await this.sendData({command: "forget_smart_glasses"})
   }
 
-  async sendToggleVirtualWearable(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_virtual_wearable",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
+  // TODO: config: remove
   async sendToggleSensing(enabled: boolean) {
     return await this.sendData({
       command: "enable_sensing",
@@ -602,6 +599,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendSetPreferredMic(mic: string) {
     return await this.sendData({
       command: "set_preferred_mic",
@@ -649,6 +647,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: "enable_contextual_dashboard",
@@ -658,6 +657,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendToggleBypassVadForDebugging(enabled: boolean) {
     return await this.sendData({
       command: "bypass_vad_for_debugging",
@@ -667,6 +667,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendTogglePowerSavingMode(enabled: boolean) {
     return await this.sendData({
       command: "enable_power_saving_mode",
@@ -676,6 +677,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendToggleBypassAudioEncodingForDebugging(enabled: boolean) {
     return await this.sendData({
       command: "bypass_audio_encoding_for_debugging",
@@ -685,6 +687,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendToggleEnforceLocalTranscription(enabled: boolean) {
     return await this.sendData({
       command: "enforce_local_transcription",
@@ -694,6 +697,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
     console.log("sendToggleAlwaysOnStatusBar")
     return await this.sendData({
@@ -704,6 +708,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
     return await this.sendData({
       command: "update_glasses_brightness",
@@ -714,6 +719,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setGlassesHeadUpAngle(headUpAngle: number) {
     return await this.sendData({
       command: "update_glasses_head_up_angle",
@@ -723,6 +729,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setGlassesHeight(height: number) {
     return await this.sendData({
       command: "update_glasses_height",
@@ -730,6 +737,7 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  // TODO: config: remove
   async setGlassesDepth(depth: number) {
     return await this.sendData({
       command: "update_glasses_depth",
@@ -829,11 +837,11 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async sendSettings() {
+  async updateSettings(settings: any) {
     return await this.sendData({
-      command: "set_settings",
+      command: "update_settings",
       params: {
-        // TODO: add settings
+        ...settings,
       },
     })
   }
@@ -994,12 +1002,19 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async setSttModelPath(path: string) {
+  async setSttModelDetails(path: string, languageCode: string) {
     return await this.sendData({
-      command: "set_stt_model_path",
+      command: "set_stt_model_details",
       params: {
         path: path,
+        languageCode: languageCode,
       },
+    })
+  }
+
+  async getSttModelPath(): Promise<string> {
+    return await this.sendData({
+      command: "get_stt_model_path",
     })
   }
 
