@@ -144,7 +144,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private final String SAVED_NEX_ID_KEY = "SAVED_Nex_ID_KEY";
 
     private boolean isDebugMode = true;
-    private boolean isLc3AudioEnabled = true;
+    private boolean isLc3AudioEnabled = false;
 
     // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
@@ -399,10 +399,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
                         stopScan();
 
-                        if (!isWorkerRunning) {
-                            Log.d(TAG, "Worker thread is not running. Starting it.");
-                            startWorkerIfNeeded();
-                        }
+                        // Force restart the worker thread on reconnection
+                        Log.d(TAG, "Reconnection detected - reinitializing process queue");
+                        reinitializeProcessQueue();
 
                         Log.d(TAG, "Discover services calling...");
                         gatt.discoverServices();
@@ -656,15 +655,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 // .postDelayed(() -> sendBrightnessCommand(brightnessValue,
                 // shouldUseAutoBrightness), 10);
 
-                // Restore previous microphone state or disable if this is the first connection
-                boolean shouldRestoreMic = microphoneStateBeforeDisconnection;
-                Log.d(TAG, "Restoring microphone state to: " + shouldRestoreMic + 
-                          " (previous state: " + microphoneStateBeforeDisconnection + ")");
-                if (shouldRestoreMic) {
-                    startMicBeat((int) MICBEAT_INTERVAL_MS);
-                } else {
-                    stopMicBeat();
-                }
+                // Microphone state will be restored after process queue reinitialization
+                Log.d(TAG, "Microphone state restoration will occur after process queue setup");
+                Log.d(TAG, "Saved microphone state for restoration: " + microphoneStateBeforeDisconnection);
 
                 // enable our AugmentOS notification key
                 sendWhiteListCommand(10);
@@ -1155,6 +1148,64 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
     }
 
+    // Force restart the process queue worker thread (for reconnection scenarios)
+    private synchronized void reinitializeProcessQueue() {
+        Log.d(TAG, "Reinitializing process queue - current isWorkerRunning: " + isWorkerRunning);
+        
+        // Force stop any existing worker
+        if (isWorkerRunning) {
+            Log.d(TAG, "Stopping existing worker thread");
+            // Add null request to terminate current worker cleanly
+            sendQueue.offer(new SendRequest[]{null});
+            isWorkerRunning = false;
+        }
+        
+        // Clear any stale requests from previous connection
+        sendQueue.clear();
+        Log.d(TAG, "Cleared sendQueue during reinitialization");
+        
+        // Start fresh worker thread
+        isWorkerRunning = true;
+        new Thread(this::processQueue, "MentraNexSGCProcessQueue-Reconnect").start();
+        Log.d(TAG, "Started new process queue worker thread");
+        
+        // Restore microphone state after process queue is ready
+        restoreMicrophoneState();
+    }
+
+    // Restore microphone state after reconnection and process queue initialization
+    private void restoreMicrophoneState() {
+        Log.d(TAG, "Restoring microphone state after process queue reinitialization");
+        Log.d(TAG, "Previous microphone state: " + microphoneStateBeforeDisconnection);
+        Log.d(TAG, "Current microphone state: " + isMicrophoneEnabled);
+
+        // Use the saved state from before disconnection
+        boolean shouldRestoreMic = microphoneStateBeforeDisconnection;
+
+        // Add a small delay to ensure process queue worker is fully started
+        micEnableHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (shouldRestoreMic) {
+                    Log.d(TAG, "Restoring microphone to enabled state");
+                    startMicBeat((int) MICBEAT_INTERVAL_MS);
+                } else {
+                    Log.d(TAG, "Restoring microphone to disabled state");
+                    stopMicBeat();
+                }
+                
+                // Update current state to match restored state
+                isMicrophoneEnabled = shouldRestoreMic;
+                
+                // Emit event to notify frontend of restored microphone state
+                EventBus.getDefault().post(new isMicEnabledForFrontendEvent(shouldRestoreMic));
+                Log.d(TAG, "Emitted microphone state event to frontend: " + shouldRestoreMic);
+
+                Log.d(TAG, "Microphone state restoration complete: " + isMicrophoneEnabled);
+            }
+        }, 500); // 500ms delay to ensure process queue is ready
+    }
+
     public class BooleanWaiter {
         private boolean flag = true; // initially true
 
@@ -1202,6 +1253,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                         break;
                     }
 
+                    Log.d(TAG, "PROC_QUEUE - Sending request: " + request.data);
+                    Log.d(TAG, "PROC_QUEUE - Request waitTime: " + request.waitTime);
+
                     try {
                         // Force an initial delay so BLE gets all setup
                         long timeSinceConnection = System.currentTimeMillis() - lastConnectionTimestamp;
@@ -1240,7 +1294,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             }
         }
 
-        Log.d(TAG, "Process queue thread exiting");
+        // Ensure worker running flag is properly reset when thread exits
+        isWorkerRunning = false;
+        Log.d(TAG, "Process queue thread exiting - isWorkerRunning reset to false");
     }
 
     private final int NOTIFICATION = 0x4B; // Notification command
@@ -1370,7 +1426,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Saved microphone state during destroy: " + microphoneStateBeforeDisconnection);
 
         // disable the microphone and stop sending micbeat
-        stopMicBeat();
+        stopMicBeatAndDisable();
 
         // Stop periodic notifications
         stopPeriodicNotifications();
@@ -1426,8 +1482,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
         sendQueue.clear();
 
-        // Add a dummy element to unblock the take() call if needed
-        sendQueue.offer(new SendRequest[0]); // is this needed?
+        // Add a null element to cleanly terminate the worker thread
+        if (isWorkerRunning) {
+            sendQueue.offer(new SendRequest[]{null});
+        }
 
         isWorkerRunning = false;
 
@@ -1821,6 +1879,12 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     private void stopMicBeat() {
+        stopMicBeatWithoutStateChange();
+    }
+
+    // Stop mic beat and explicitly change the persistent state (for legitimate disable operations)
+    private void stopMicBeatAndDisable() {
+        Log.d(TAG, "Stopping mic beat and disabling microphone state");
         setMicEnabled(false, 10);
         if (micBeatHandler != null) {
             micBeatHandler.removeCallbacksAndMessages(null);
@@ -1828,6 +1892,32 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             micBeatRunnable = null;
             micBeatCount = 0;
         }
+        Log.d(TAG, "Mic beat stopped and microphone state disabled");
+    }
+
+    // Stop mic beat without changing the persistent microphone state
+    private void stopMicBeatWithoutStateChange() {
+        Log.d(TAG, "Stopping mic beat without changing persistent microphone state");
+        
+        // Send mic disable command to hardware but don't update isMicrophoneEnabled
+        if (!isKilled) {
+            Log.d(TAG, "=== SENDING MICROPHONE DISABLE COMMAND TO GLASSES (Hardware Only) ===");
+            MicStateConfig micStateConfig = MicStateConfig.newBuilder().setEnabled(false).build();
+            PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder().setMicState(micStateConfig).build();
+            byte[] micConfigBytes = generateProtobufCommandBytes(phoneToGlasses);
+            sendDataSequentially(micConfigBytes, 10);
+            Log.d(TAG, "Sent hardware-only MIC disable command: " + bytesToHex(micConfigBytes));
+        }
+        
+        // Stop the mic beat timer without affecting state
+        if (micBeatHandler != null) {
+            micBeatHandler.removeCallbacksAndMessages(null);
+            micBeatHandler.removeCallbacksAndMessages(micBeatRunnable);
+            micBeatRunnable = null;
+            micBeatCount = 0;
+        }
+        
+        Log.d(TAG, "Mic beat stopped - preserved microphone state: " + isMicrophoneEnabled);
     }
 
     private void queryBatteryStatus() {
@@ -2966,7 +3056,7 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             startMicBeat((int) MICBEAT_INTERVAL_MS);
         } else {
             Log.d(TAG, "Microphone disabled, stopping audio input handling");
-            stopMicBeat();
+            stopMicBeatAndDisable();
         }
     }
 
