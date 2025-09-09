@@ -8,11 +8,11 @@ import {
   registerGlobals,
 } from "@livekit/react-native"
 
-import {Room} from "livekit-client"
-import {Track} from "livekit-client"
+import {Room, LocalAudioTrack, Track, AudioPreset} from "livekit-client"
 
 class LivekitManager {
   private static instance: LivekitManager
+  private room: Room | null = null
 
   private constructor() {
     // this.livekit = new Livekit()
@@ -31,6 +31,7 @@ class LivekitManager {
     //   token,
     // })
     const room = new Room()
+    this.room = room
     room.connect(url, token)
     room.on("connected", () => {
       console.log("LivekitManager: Connected to room")
@@ -38,6 +39,27 @@ class LivekitManager {
     room.on("disconnected", () => {
       console.log("LivekitManager: Disconnected from room")
     })
+  }
+
+  public async test() {
+    console.log("LivekitManager: Test")
+
+    if (!this.room) {
+      console.log("LivekitManager: Room not connected")
+      return
+    }
+
+    // LocalAudioTrack
+
+    // this.room.localParticipant.ce
+
+    const source = new AudioSource(48000, 1) // 48kHz, 1 channel (mono)
+
+    // Start the audio source
+    await source.start()
+
+    // Create track from source
+    const track = LocalAudioTrack.createAudioTrack("audio-file", source)
   }
 }
 
