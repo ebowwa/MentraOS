@@ -1176,12 +1176,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 // Send current frame
                 String currentAnimationTextFrame = "                    " + ARROW_FRAMES[frameIndex] + " MentraOS Booting " + ARROW_FRAMES[frameIndex];
                 smartGlassesManager.windowManager.showAppLayer(
-                        "system",
-                        () -> {
-                            smartGlassesManager.sendTextWall(currentAnimationTextFrame);
-                        },
-                        6
+                    "system",
+                    () -> smartGlassesManager.sendTextWall("                  /// MentraOS Booting \\\\\\"),
+                    6
                 );
+
                 // Send the same text wall to AugmentOS Manager in JSONObject format
                 JSONObject displayJson = new JSONObject();
                 try {

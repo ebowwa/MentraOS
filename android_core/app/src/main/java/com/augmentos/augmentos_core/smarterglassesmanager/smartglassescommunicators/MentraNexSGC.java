@@ -1309,9 +1309,15 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // 'date'
         // field
 
+        // Filter all text content in notifications to ensure only English characters
+        String filteredAppIdentifier = filterToEnglishCharacters(appIdentifier);
+        String filteredTitle = filterToEnglishCharacters(title);
+        String filteredSubtitle = filterToEnglishCharacters(subtitle);
+        String filteredMessage = filterToEnglishCharacters(message);
+
         NCSNotification ncsNotification = new NCSNotification(notificationNum++, // Increment sequence ID for uniqueness
                 1, // type (e.g., 1 = notification type)
-                appIdentifier, title, subtitle, message, (int) currentTime, // Cast long to int to match Python
+                filteredAppIdentifier, filteredTitle, filteredSubtitle, filteredMessage, (int) currentTime, // Cast long to int to match Python
                 currentDate, // Add the current date to the notification
                 "AugmentOS" // display_name
         );
@@ -1393,7 +1399,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected to glasses");
             return;
         }
-        byte[] textChunks = createTextWallChunksForNex(title + "\n\n" + body);
+        // Filter both title and body before combining
+        String filteredTitle = filterToEnglishCharacters(title);
+        String filteredBody = filterToEnglishCharacters(body);
+        byte[] textChunks = createTextWallChunksForNex(filteredTitle + "\n\n" + filteredBody);
         sendDataSequentially(textChunks);
 //        List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
 //        for (int i = 0; i < chunks.size(); i++) {
@@ -1544,7 +1553,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         if (updatingScreen) {
             return;
         }
-        byte[] textChunks = createTextWallChunksForNex(text);
+        // Filter text to ensure only English characters are sent to glasses
+        String filteredText = filterToEnglishCharacters(text);
+        byte[] textChunks = createTextWallChunksForNex(filteredText);
         sendDataSequentially(textChunks);
     }
 
@@ -1582,10 +1593,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         // sendChunks(chunks);
         StringBuilder textBuilder = new StringBuilder();
         if (textTop != null) {
-            textBuilder.append(textTop).append("\n");
+            // Filter each text component separately for better debugging
+            String filteredTextTop = filterToEnglishCharacters(textTop);
+            textBuilder.append(filteredTextTop).append("\n");
         }
         if (textBottom != null) {
-            textBuilder.append(textBottom);
+            String filteredTextBottom = filterToEnglishCharacters(textBottom);
+            textBuilder.append(filteredTextBottom);
         }
         final String finalText = textBuilder.toString();
         byte[] textChunks = createTextWallChunksForNex(finalText);
@@ -1638,7 +1652,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
         StringBuilder textBuilder = new StringBuilder();
         for (String bullet : rowStrings) {
-            textBuilder.append(bullet).append("\n");
+            // Filter each row string individually
+            String filteredBullet = filterToEnglishCharacters(bullet);
+            textBuilder.append(filteredBullet).append("\n");
         }
         final String finalText = textBuilder.toString();
         byte[] textChunks = createTextWallChunksForNex(finalText);
@@ -1657,10 +1673,14 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         }
         StringBuilder textBuilder = new StringBuilder();
         if (title != null) {
-            textBuilder.append(title).append("\n");
+            // Filter title separately
+            String filteredTitle = filterToEnglishCharacters(title);
+            textBuilder.append(filteredTitle).append("\n");
         }
         for (String bullet : bullets) {
-            textBuilder.append(bullet).append("\n");
+            // Filter each bullet point individually
+            String filteredBullet = filterToEnglishCharacters(bullet);
+            textBuilder.append(filteredBullet).append("\n");
         }
         final String finalText = textBuilder.toString();
         byte[] textChunks = createTextWallChunksForNex(finalText);
@@ -1686,7 +1706,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         if (updatingScreen) {
             return;
         }
-        byte[] textChunks = createTextWallChunksForNex(text);
+        // Filter text to ensure only English characters are sent to glasses
+        String filteredText = filterToEnglishCharacters(text);
+        byte[] textChunks = createTextWallChunksForNex(filteredText);
         sendDataSequentially(textChunks);
     }
 
@@ -2073,6 +2095,128 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         return sb.toString().trim();
     }
 
+    /**
+     * Filters text to only allow English characters (ASCII printable characters)
+     * Removes non-English characters or converts them to English equivalents
+     * 
+     * @param text Input text that may contain non-English characters
+     * @return Filtered text containing only English characters (non-English chars removed)
+     */
+    private String filterToEnglishCharacters(String text) {
+        if (text == null) {
+            return null;
+        }
+        
+        StringBuilder filtered = new StringBuilder();
+        boolean hasNonEnglish = false;
+        
+        for (char c : text.toCharArray()) {
+            // Allow printable ASCII characters (32-126) plus common whitespace
+            if ((c >= 32 && c <= 126) || c == '\n' || c == '\r' || c == '\t') {
+                filtered.append(c);
+            } else {
+                hasNonEnglish = true;
+                // Replace common non-English characters with English equivalents
+                switch (c) {
+                    // Common quotation marks
+                    case '\u201C': case '\u201D': case '\u201E': case '\u201A': case '\u00AB': case '\u00BB':
+                        filtered.append('"');
+                        break;
+                    case '\u2018': case '\u2019': case '\u201B':
+                        filtered.append('\'');
+                        break;
+                    // Common dashes
+                    case '\u2013': case '\u2014': case '\u2015':
+                        filtered.append('-');
+                        break;
+                    // Common ellipsis
+                    case '\u2026':
+                        filtered.append("...");
+                        break;
+                    // Bullet points
+                    case '\u2022': case '\u2023': case '\u25E6': case '\u25AA': case '\u25AB':
+                        filtered.append('*');
+                        break;
+                    // Arrows (as mentioned in existing code)
+                    case '\u2B06': case '\u2191':
+                        filtered.append('^');
+                        break;
+                    case '\u27F6': case '\u2192': case '\u279C': case '\u21D2':
+                        filtered.append("->");
+                        break;
+                    case '\u2B07': case '\u2193':
+                        filtered.append('v');
+                        break;
+                    case '\u2B05': case '\u2190':
+                        filtered.append("<-");
+                        break;
+                    // Common accented characters - remove accent
+                    case '\u00E1': case '\u00E0': case '\u00E2': case '\u00E4': case '\u00E3': case '\u00E5':
+                        filtered.append('a');
+                        break;
+                    case '\u00E9': case '\u00E8': case '\u00EA': case '\u00EB':
+                        filtered.append('e');
+                        break;
+                    case '\u00ED': case '\u00EC': case '\u00EE': case '\u00EF':
+                        filtered.append('i');
+                        break;
+                    case '\u00F3': case '\u00F2': case '\u00F4': case '\u00F6': case '\u00F5':
+                        filtered.append('o');
+                        break;
+                    case '\u00FA': case '\u00F9': case '\u00FB': case '\u00FC':
+                        filtered.append('u');
+                        break;
+                    case '\u00F1':
+                        filtered.append('n');
+                        break;
+                    case '\u00E7':
+                        filtered.append('c');
+                        break;
+                    // Uppercase versions
+                    case '\u00C1': case '\u00C0': case '\u00C2': case '\u00C4': case '\u00C3': case '\u00C5':
+                        filtered.append('A');
+                        break;
+                    case '\u00C9': case '\u00C8': case '\u00CA': case '\u00CB':
+                        filtered.append('E');
+                        break;
+                    case '\u00CD': case '\u00CC': case '\u00CE': case '\u00CF':
+                        filtered.append('I');
+                        break;
+                    case '\u00D3': case '\u00D2': case '\u00D4': case '\u00D6': case '\u00D5':
+                        filtered.append('O');
+                        break;
+                    case '\u00DA': case '\u00D9': case '\u00DB': case '\u00DC':
+                        filtered.append('U');
+                        break;
+                    case '\u00D1':
+                        filtered.append('N');
+                        break;
+                    case '\u00C7':
+                        filtered.append('C');
+                        break;
+                    default:
+                        // For any other non-English character, simply skip it (remove it)
+                        // This provides cleaner text display without visual noise
+                        break;
+                }
+            }
+        }
+        
+        String result = filtered.toString();
+        
+        // Log warning if non-English characters were filtered
+        if (hasNonEnglish && isDebugMode) {
+            Log.w(TAG, "=== CHARACTER FILTERING APPLIED ===");
+            Log.w(TAG, "Non-English characters removed from text");
+            Log.w(TAG, "Original length: " + text.length() + ", Filtered length: " + result.length());
+            Log.w(TAG, "Original: \"" + text + "\"");
+            Log.w(TAG, "Filtered: \"" + result + "\"");
+            Log.w(TAG, "=====================================");
+        }
+        
+        return result;
+    }
+
     // microphone stuff
     public void setMicEnabled(boolean enable, int delay) {
         Log.d(TAG, "setMicEnabled called with enable: " + enable + " and delay: " + delay);
@@ -2267,18 +2411,21 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     // currently only a single page - 1PAGE CHANGE ,for Nex glasses
     private byte[] createTextWallChunksForNex(String text) {
+        // Apply character filtering as a final safety check
+        String filteredText = filterToEnglishCharacters(text);
+        
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
                 .setColor(10000)
-                .setText(text)
+                .setText(filteredText)
                 .setSize(48)
                 .setX(20)
                 .setY(260)
                 .build();
 
         Log.d(TAG, "=== SENDING TEXT TO GLASSES ===");
-        Log.d(TAG, "Text: \"" + text + "\"");
-        Log.d(TAG, "Text Length: " + text.length() + " characters");
+        Log.d(TAG, "Text: \"" + filteredText + "\"");
+        Log.d(TAG, "Text Length: " + filteredText.length() + " characters");
         Log.d(TAG, "DisplayText Builder: " + textNewBuilder.toString());
         
         // Create the PhoneToGlasses using its builder and set the DisplayText
@@ -2291,10 +2438,13 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     }
 
     private byte[] createTextWallChunksForNex(DisplayTextEvent displayTextEvent) {
+        // Apply character filtering to the text from the event
+        String filteredText = filterToEnglishCharacters(displayTextEvent.text);
+        
         DisplayText textNewBuilder = DisplayText
                 .newBuilder()
                 .setColor(10000)
-                .setText(displayTextEvent.text)
+                .setText(filteredText)
                 .setSize(displayTextEvent.size)
                 .setX(displayTextEvent.x)
                 .setY(displayTextEvent.y).build();
@@ -2311,9 +2461,11 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     // TextWallChunks for text
     private byte[] createTextWallChunksForNexForJson(String text) {
+        // Apply character filtering before JSON serialization
+        String filteredText = filterToEnglishCharacters(text);
 
         DisplayTextJson displayText = new DisplayTextJson();
-        displayText.setText(text);
+        displayText.setText(filteredText);
         displayText.setSize(20);
         final String jsonData = gson.toJson(displayText);
 
@@ -2335,14 +2487,16 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     // create a VerticalScrollingfor Nex glasses
     private byte[] createVerticalScrollingTextWallChunksForNex(String text) {
+        // Apply character filtering before creating scrolling text
+        String filteredText = filterToEnglishCharacters(text);
 
-        DisplayScrollingText textNewBuilder = DisplayScrollingText.newBuilder().setText(text).setSize(48)
+        DisplayScrollingText textNewBuilder = DisplayScrollingText.newBuilder().setText(filteredText).setSize(48)
                 .setHeight(100).setWidth(200).setAlign(DisplayScrollingText.Alignment.CENTER).setLineSpacing(2)
                 .setLoop(true).setPauseMs(10).setSpeed(50).setX(20).setY(50).build();
 
         Log.d(TAG, "=== SENDING SCROLLING TEXT TO GLASSES ===");
-        Log.d(TAG, "Scrolling Text: \"" + text + "\"");
-        Log.d(TAG, "Text Length: " + text.length() + " characters");
+        Log.d(TAG, "Scrolling Text: \"" + filteredText + "\"");
+        Log.d(TAG, "Text Length: " + filteredText.length() + " characters");
         Log.d(TAG, "DisplayScrollingText Builder: " + textNewBuilder.toString());
 
         // Create the PhoneToGlasses using its builder and set the DisplayScrollingText
@@ -2765,7 +2919,10 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "Not connected to glasses");
             return;
         }
-        Log.d(TAG, "displayCustomContent content: " + content);
+        // Filter content to ensure only English characters (for future implementation)
+        String filteredContent = filterToEnglishCharacters(content);
+        Log.d(TAG, "displayCustomContent content: " + filteredContent);
+        // TODO: Implement actual custom content display to glasses using filteredContent
     }
 
     @Override
