@@ -14,6 +14,7 @@ import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
+import livekitManager from "@/managers/LivekitManager"
 
 const {Bridge, BridgeModule, CoreCommsService} = NativeModules
 const eventEmitter = new NativeEventEmitter(Bridge)
@@ -232,7 +233,6 @@ export class MantleBridge extends EventEmitter {
       return
     }
 
-    // console.log("RECEIVED MESSAGE FROM CORE")
     try {
       const data = JSON.parse(jsonString)
 
@@ -243,19 +243,6 @@ export class MantleBridge extends EventEmitter {
           return
         }
         this.lastMessage = jsonString
-      }
-
-      // Log if this is a WiFi scan result
-      if ("wifi_scan_results" in data) {
-        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
-        console.log("📡 Raw JSON string:", jsonString)
-        console.log("📡 Parsed data:", data)
-        console.log("📡 ========= END RAW MESSAGE =========")
-      }
-
-      // Log if this is a gallery status result
-      if ("glasses_gallery_status" in data) {
-        console.log("📸 Gallery status received from Core:", data.glasses_gallery_status)
       }
 
       this.isConnected = true
@@ -279,6 +266,7 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      // TODO: config: remove all of these and just use the typed messages
       if ("glasses_wifi_status_change" in data) {
         // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
@@ -357,6 +345,9 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      let binaryString
+      let bytes
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -387,12 +378,20 @@ export class MantleBridge extends EventEmitter {
             type: data.type,
           })
           break
+        case "mic_data":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          livekitManager.sendAudio(bytes)
+          break
         case "ws_text":
           socketComms.sendText(data.text)
           break
         case "ws_binary":
-          const binaryString = atob(data.binary)
-          const bytes = new Uint8Array(binaryString.length)
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
