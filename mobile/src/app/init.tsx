@@ -333,7 +333,9 @@ export default function InitScreen() {
                 preset="reversed"
                 disabled={isRetrying}
                 LeftAccessory={
-                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
+                  isRetrying
+                    ? () => <ActivityIndicator size="small" color={theme.colors.buttonPillIconText} />
+                    : undefined
                 }
               />
             )}
@@ -341,7 +343,7 @@ export default function InitScreen() {
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
                 preset="reversed"
