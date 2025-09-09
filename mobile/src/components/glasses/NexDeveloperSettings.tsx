@@ -405,17 +405,17 @@ export default function NexDeveloperSettings() {
           <Text style={themed($subtitle)}>
             Advanced developer tools and debugging features for smart glasses development
           </Text>
-          <View style={themed($versionContainer)}>
+          {/* <View style={themed($versionContainer)}>
             <Text style={themed($versionBadge)}>Interface v{NEX_INTERFACE_VERSION}</Text>
             <Text style={themed($protobufVersionBadge)}>App Protobuf {protobufSchemaVersion.split(" | ")[0]}</Text>
             <Text style={themed($glassesProtobufVersionBadge)}>
               Glasses Protobuf {glassesProtobufVersion.split(" | ")[0]}
             </Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Screen Settings for binocular glasses */}
-        {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.binocular && (
+        {/* {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.binocular && (
           <View style={themed($settingsGroup)}>
             <Text style={themed($sectionTitle)}>Display Settings</Text>
             <RouteButton
@@ -424,7 +424,7 @@ export default function NexDeveloperSettings() {
               onPress={() => push("/settings/screen")}
             />
           </View>
-        )}
+        )} */}
 
         {/* Mentra Nex BLE Test Section - Only show when connected to Mentra Nex */}
         {status.glasses_info?.model_name === "Mentra Nex" && status.core_info.puck_connected ? (
@@ -503,11 +503,10 @@ export default function NexDeveloperSettings() {
             </View>
 
             {/* Send Test Image */}
-            <View style={themed($settingsGroup)}>
+            {/* <View style={themed($settingsGroup)}>
               <Text style={themed($sectionTitle)}>Send Test Image</Text>
               <Text style={themed($description)}>Send a test bitmap image to BLE with selected size</Text>
 
-              {/* Size Selection */}
               <View style={$selectionSection}>
                 <Text style={themed($label)}>Image Size:</Text>
                 <View style={$buttonGrid}>
@@ -529,7 +528,6 @@ export default function NexDeveloperSettings() {
                 </View>
               </View>
 
-              {/* Image Selection */}
               <View style={$selectionSection}>
                 <Text style={themed($label)}>Test Image:</Text>
                 <View style={$buttonGrid}>
@@ -549,7 +547,6 @@ export default function NexDeveloperSettings() {
                 </View>
               </View>
 
-              {/* Pattern Preview and Send Button */}
               <View style={$previewSection}>
                 <Text style={themed($label)}>Preview:</Text>
                 <View style={$previewContainer}>
@@ -568,7 +565,7 @@ export default function NexDeveloperSettings() {
                   />
                 </View>
               </View>
-            </View>
+            </View> */}
 
             {/* Clear Display */}
             <View style={themed($settingsGroup)}>
@@ -651,7 +648,7 @@ export default function NexDeveloperSettings() {
               )}
             </View>
 
-            {/* LC3 Audio Control */}
+            {/* LC3 Audio Control 
             <View style={themed($settingsGroup)}>
               <Text style={themed($sectionTitle)}>🔊 LC3 Audio Control</Text>
               <Text style={themed($description)}>Enable or disable LC3 audio playback from glasses</Text>
@@ -663,9 +660,10 @@ export default function NexDeveloperSettings() {
                 onValueChange={onLc3AudioToggle}
                 containerStyle={$toggleContainer}
               />
-            </View>
+            </View> 
+            */}
 
-            {/* Ping-Pong Console */}
+            {/* Ping-Pong Console 
             <View style={themed($settingsGroup)}>
               <Text style={themed($sectionTitle)}>💓 Ping-Pong Console</Text>
               <Text style={themed($description)}>Monitor ping-pong communication with Mentra Nex glasses</Text>
@@ -698,7 +696,8 @@ export default function NexDeveloperSettings() {
                   Response Time: {Math.abs(lastHeartbeatSent - lastHeartbeatReceived)}ms
                 </Text>
               )}
-            </View>
+            </View> 
+            */}
           </>
         ) : (
           <View style={themed($settingsGroup)}>
