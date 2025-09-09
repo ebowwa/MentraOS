@@ -664,7 +664,7 @@ int ble_send_data(const uint8_t *data, uint16_t len)
         // LOG_ERR("Invalid data or length || ble not connected");
         return -1;
     }
-    LOG_INF("<--Sending data to BLE-->: len=%d", len);
+    // LOG_INF("<--Sending data to BLE-->: len=%d", len);
     // LOG_INF("Data: %s", data);
     // LOG_HEXDUMP_INF(data, len, "Hexdump:");
     uint16_t offset = 0;
@@ -966,9 +966,9 @@ int main(void)
 	advertising_start();
 
 	for (;;) {
-		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
-		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
-		
+		// dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
+		// k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+		k_sleep(K_MSEC(5000));
 		LOG_INF(" Main loop alive");	
 		batter_monitor();
 	}
