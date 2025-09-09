@@ -61,6 +61,9 @@ public interface AugmentOsActionsCallback {
 
     void setLc3AudioEnabled(boolean enabled);
 
+    void setVadEnabled(boolean enabled);
+    void setVadSensitivity(int sensitivity);
+
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();
     void stopBufferRecording();

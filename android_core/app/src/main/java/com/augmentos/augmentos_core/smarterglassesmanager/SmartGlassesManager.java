@@ -968,6 +968,22 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void setVadEnabled(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.setVadEnabled(enabled);
+        } else {
+            Log.e(TAG, "Cannot set VAD enabled: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
+    public void setVadSensitivity(int sensitivity) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.setVadSensitivity(sensitivity);
+        } else {
+            Log.e(TAG, "Cannot set VAD sensitivity: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     /**
      * Getter for SmartGlassesRepresentative instance
      * Allows external access for immediate microphone switching

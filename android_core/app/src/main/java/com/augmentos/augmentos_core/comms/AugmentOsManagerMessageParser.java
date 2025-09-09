@@ -323,6 +323,17 @@ public class AugmentOsManagerMessageParser {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setLc3AudioEnabled(enabled);
             }
+
+            case "set_vad_enabled": {
+                boolean enabled = commandObject.getBoolean("enabled");
+                callback.setVadEnabled(enabled);
+            }
+
+            case "set_vad_sensitivity": {
+                int sensitivity = commandObject.getInt("sensitivity");
+                callback.setVadSensitivity(sensitivity);
+            }
+            
             break;
 
             default:
