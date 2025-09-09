@@ -88,6 +88,14 @@ static K_FIFO_DEFINE(fifo_uart_tx_data);
 static K_FIFO_DEFINE(fifo_uart_rx_data);
 
 static char           dynamic_device_name[32] = "NexSim";
+/**
+ * Get the current BLE device name for display purposes
+ * @return Pointer to the device name string
+ */
+const char* get_ble_device_name(void)
+{
+	return dynamic_device_name;
+}
 static struct bt_data ad[]                    = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
     BT_DATA(BT_DATA_NAME_COMPLETE, "NexSim", 6),
@@ -822,7 +830,7 @@ int main(void)
 	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
 
 	configure_gpio();
-	
+
 	init_user_gpio();
 	// **NEW: Log updated button functionality (avoiding SPI4 conflicts)**
 	LOG_INF("� Button controls updated (avoiding SPI4 pin conflicts):");
@@ -888,6 +896,7 @@ int main(void)
 		LOG_INF("✅ PDM audio streaming system ready");
 		LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
 	}
+	pm1300_init();
 
 	// Initialize ping/pong connectivity monitoring system
 	LOG_INF("📡 Initializing ping/pong connectivity monitoring...");
@@ -951,6 +960,9 @@ int main(void)
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+		
+		LOG_INF(" Main loop alive");	
+		batter_monitor();
 	}
 }
 static int hfclock_config_and_start(void)

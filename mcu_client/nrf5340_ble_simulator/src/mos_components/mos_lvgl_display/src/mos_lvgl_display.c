@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-05 11:43:32
+ * @LastEditTime : 2025-09-09 16:33:15
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -27,6 +27,9 @@
 // #include "bspal_icm42688p.h"
 // #include "task_ble_receive.h"
 #include <zephyr/logging/log.h>
+
+// External function to get BLE device name from main.c
+extern const char* get_ble_device_name(void);
 
 #define LOG_MODULE_NAME MOS_LVGL
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -72,27 +75,23 @@ void lv_example_scroll_text(void)
 {
     lv_obj_t *label = lv_label_create(lv_screen_active());
 
-    // 设置滚动模式（自动横向滚动）;set long mode
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-    // 设置标签区域宽度（可视区域）;set width
-    lv_obj_set_width(label, 640);  // 根据你屏幕宽度设置，单位像素;set width
+    lv_obj_set_width(label, 640);
 
-    // 设置标签位置;set position
-    lv_obj_set_pos(label, 0, 210);  // x/y 位置，根据屏幕设置;set position
+    lv_obj_set_pos(label, 0, 410); 
 
-    // 设置长文本（会触发滚动）;set text
     lv_label_set_text(label, "!!!!!nRF5340 + NCS 3.0.0 + LVGL!!!!");
 
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(label, lv_color_white(), 0); 
     lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 
 /**
- * @brief Set display on/off state
- * @param state true for on, false for off
+ * @brief 设置显示开关; Set display on/off
+ * @param state true 开启显示，false 关闭显示; true to turn on display, false to turn off display
  */
 void set_display_onoff(bool state)
 {
@@ -219,15 +218,15 @@ void lvgl_dispaly_text(void)
     lv_obj_t *hello_world_label = lv_label_create(lv_screen_active());
     lv_label_set_text(hello_world_label, "Hello LVGL World");
     lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0);
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);
-    // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); 
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0); 
+    // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); 
+    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 static lv_obj_t   *counter_label;
-static lv_timer_t *counter_timer;
+static lv_timer_t *counter_timer;  
 static lv_obj_t   *acc_label;
 static lv_obj_t   *gyr_label;
 static void  counter_timer_cb(lv_timer_t *timer)
@@ -257,10 +256,10 @@ void ui_create(void)
     gyr_label = lv_label_create(lv_screen_active());
     lv_obj_align(gyr_label, LV_TEXT_ALIGN_LEFT, 0, 380);
 
-    // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);
-    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);
+    // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       
+    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  
     lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_30, 0);
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     static int count = 0;
@@ -271,65 +270,50 @@ void ui_create(void)
 static lv_obj_t *cont = NULL;
 static lv_anim_t anim;
 
-// 动画回调，将容器纵向滚动到 v 像素; set scroll callback
+
 static void scroll_cb(void *var, int32_t v)
 {
     LV_UNUSED(var);
     lv_obj_scroll_to_y(cont, v, LV_ANIM_OFF);
 }
-/**
- * @brief 创建一个滚动文本区域; Create a scrolling text area
- * @param parent 父对象; parent object
- * @param x x 坐标; x coordinate
- * @param y y 坐标; y coordinate
- * @param w 宽度; width
- * @param h 高度; height
- * @param txt 要显示的文本; text to display
- * @param font 字体; font
- * @param time_ms 滚动时间（毫秒）; scroll time in milliseconds
- * @return 无; none
- */
+
 void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h, const char *txt,
                         const lv_font_t *font, uint32_t time_ms)
 {
-    // 移除旧区域; remove old container
     scroll_text_stop();
 
-    // 创建可滚动容器; create scrollable container
     cont = lv_obj_create(parent);
     lv_obj_set_size(cont, w, h);
     lv_obj_set_pos(cont, x, y);
     lv_obj_set_scroll_dir(cont, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-    // 设置容器背景为黑色; set container background to black
+
     lv_obj_set_style_bg_color(cont, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
-    // 在容器中创建标签; create label in container
+
     lv_obj_t *label = lv_label_create(cont);
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(label, w);
     lv_label_set_text(label, txt);
 
-    // 设置文字为白色和指定字体; set text style
     lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
-    // 强制标签布局更新，获取正确的内容高度; force layout update
     lv_obj_update_layout(label);
     int32_t label_h = lv_obj_get_height(label);
-    // 计算滚动范围 = 标签高度 - 容器高度; calculate scroll range
+
     int32_t range = label_h - h;
     if (range <= 0)
         return;
 
-    // 初始化并启动往返滚动动画; init and start scroll animation
+ 
     lv_anim_init(&anim);
     lv_anim_set_var(&anim, cont);
     lv_anim_set_exec_cb(&anim, scroll_cb);
     lv_anim_set_time(&anim, time_ms);
     lv_anim_set_values(&anim, 0, range);
-    // lv_anim_set_playback_duration(&anim, time_ms); // 反向动画时间; playback time
+    // lv_anim_set_playback_duration(&anim, time_ms); 
     lv_anim_set_repeat_count(&anim, LV_ANIM_REPEAT_INFINITE);
     lv_anim_start(&anim);
 }
@@ -375,7 +359,7 @@ static void show_default_ui(void)
 {
     BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
-    show_test_pattern(3);
+    show_test_pattern(4);
 
     BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
 }
@@ -545,14 +529,24 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
 
-    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
-    const char *initial_text =
+    // **NEW: Set initial placeholder text with actual BLE device name**
+    const char *ble_name = get_ble_device_name();
+    static char formatted_text[1024]; // Static buffer for formatted text
+    
+    snprintf(formatted_text, sizeof(formatted_text),
         "MentraOS AR Display Ready\n\n"
-        "Waiting for protobuf text messages...\n\n"
-        "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!";
+        "Waiting for Connection...\n\n"
+        "BLE Device: %s\n\n"
+        // "Version: %s\n\n"
+        "Build Time: %s\n\n"
+        "Build Date: %s\n\n",
+        ble_name ? ble_name : "Unknown",
+        // CONFIG_LVGL_VERSION ? CONFIG_LVGL_VERSION : "Unknown",
+        __TIME__,
+        __DATE__
+    );
 
-    lv_label_set_text(label, initial_text);
+    lv_label_set_text(label, formatted_text);
 
     // Style the label text - optimized settings
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
@@ -895,27 +889,27 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
                     /* **NEW: Handle direct A6M_0011 horizontal grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    if (a6m_0011_draw_horizontal_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
-                    }
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+                    // if (a6m_0011_draw_horizontal_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+                    // }
                     break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
                     /* **NEW: Handle direct A6M_0011 vertical grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    if (a6m_0011_draw_vertical_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
-                    }
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+                    // if (a6m_0011_draw_vertical_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+                    // }
                     break;
                 case LCD_CMD_CHESS_PATTERN:
                     /* **NEW: Handle direct A6M_0011 chess pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    if (a6m_0011_draw_chess_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw chess pattern");
-                    }
+                    // BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+                    // if (a6m_0011_draw_chess_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw chess pattern");
+                    // }
                     break;
                 default:
                     break;
