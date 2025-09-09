@@ -17,9 +17,9 @@ import Foundation
     }
 
     @objc func handleCommand(_ command: String) -> Any {
-        Bridge.log("CommandBridge: Received command: \(command)")
+        // Bridge.log("CommandBridge: Received command: \(command)")
 
-        let m = MentraManager.getInstance()
+        let m = MentraManager.shared
 
         // Define command types enum
         enum CommandType: String {
@@ -99,11 +99,7 @@ import Foundation
                     m.setup()
                 // TODO: config: remove
                 case .set_server_url:
-                    guard let params = params, let url = params["url"] as? String else {
-                        Bridge.log("CommandBridge: set_server_url invalid params")
-                        break
-                    }
-                    ServerComms.shared.setServerUrl(url)
+                    Bridge.log("CommandBridge: DEPRECATED COMMAND SENT (set_server_url)")
                 // TODO: config: remove
                 case .set_auth_secret_key:
                     guard let params = params,
@@ -291,16 +287,6 @@ import Foundation
                     ServerComms.shared.sendHeadPosition(isUp: position == "up")
                     // Trigger dashboard display locally
                     m.sendCurrentState(position == "up")
-                case .simulate_button_press:
-                    guard let params = params,
-                          let buttonId = params["buttonId"] as? String,
-                          let pressType = params["pressType"] as? String
-                    else {
-                        Bridge.log("CommandBridge: simulate_button_press invalid params")
-                        break
-                    }
-                    // Use existing sendButtonPress method
-                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
                 case .enforce_local_transcription:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Bridge.log("CommandBridge: enforce_local_transcription invalid params")

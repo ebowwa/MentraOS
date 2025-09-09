@@ -185,11 +185,7 @@ export class MantleBridge extends EventEmitter {
       })
     }
 
-    // set the backend server url
-    const backendServerUrl = await getRestUrl()
-    await this.setServerUrl(backendServerUrl) // todo: config: remove
-
-    this.sendSettings() // TODO: config: finish this
+    this.sendSettings()
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -303,9 +299,6 @@ export class MantleBridge extends EventEmitter {
           has_content: data.glasses_gallery_status.has_content,
           camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
-      } else if ("glasses_display_event" in data) {
-        // TODO: config: remove
-        GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
       } else if ("notify_manager" in data) {
@@ -357,6 +350,9 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      let binaryString
+      let bytes
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -387,15 +383,27 @@ export class MantleBridge extends EventEmitter {
             type: data.type,
           })
           break
+        case "head_position":
+          GlobalEventEmitter.emit("HEAD_POSITION", data.position)
+          break
         case "ws_text":
           socketComms.sendText(data.text)
           break
-        case "ws_binary":
-          const binaryString = atob(data.binary)
-          const bytes = new Uint8Array(binaryString.length)
+        case "ws_bin":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
+          socketComms.sendBinary(bytes)
+          break
+        case "mic_data":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          console.log("MantleBridge: Sending mic data to server")
           socketComms.sendBinary(bytes)
           break
         default:
@@ -406,6 +414,13 @@ export class MantleBridge extends EventEmitter {
       console.error("Error parsing data from Core:", e)
       this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
     }
+  }
+
+  private async sendSettings() {
+    this.sendData({
+      command: "update_settings",
+      params: {...(await getCoreSettings())},
+    })
   }
 
   /**
@@ -571,41 +586,12 @@ export class MantleBridge extends EventEmitter {
     return await this.sendData({command: "forget_smart_glasses"})
   }
 
-  // TODO: config: remove
-  async sendToggleSensing(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_sensing",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  async sendToggleForceCoreOnboardMic(enabled: boolean) {
-    return await this.sendData({
-      command: "force_core_onboard_mic",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
   async restartTranscription() {
     console.log("Restarting transcription with new model...")
 
     // Send restart command to native side
     await this.sendData({
       command: "restart_transcriber",
-    })
-  }
-
-  // TODO: config: remove
-  async sendSetPreferredMic(mic: string) {
-    return await this.sendData({
-      command: "set_preferred_mic",
-      params: {
-        mic: mic,
-      },
     })
   }
 
@@ -644,104 +630,6 @@ export class MantleBridge extends EventEmitter {
       params: {
         enabled: enabled,
       },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleContextualDashboard(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_contextual_dashboard",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleBypassVadForDebugging(enabled: boolean) {
-    return await this.sendData({
-      command: "bypass_vad_for_debugging",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendTogglePowerSavingMode(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_power_saving_mode",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleBypassAudioEncodingForDebugging(enabled: boolean) {
-    return await this.sendData({
-      command: "bypass_audio_encoding_for_debugging",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleEnforceLocalTranscription(enabled: boolean) {
-    return await this.sendData({
-      command: "enforce_local_transcription",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleAlwaysOnStatusBar(enabled: boolean) {
-    console.log("sendToggleAlwaysOnStatusBar")
-    return await this.sendData({
-      command: "enable_always_on_status_bar",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
-    return await this.sendData({
-      command: "update_glasses_brightness",
-      params: {
-        brightness: brightness,
-        autoBrightness: autoBrightness,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesHeadUpAngle(headUpAngle: number) {
-    return await this.sendData({
-      command: "update_glasses_head_up_angle",
-      params: {
-        headUpAngle: headUpAngle,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesHeight(height: number) {
-    return await this.sendData({
-      command: "update_glasses_height",
-      params: {height: height},
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesDepth(depth: number) {
-    return await this.sendData({
-      command: "update_glasses_depth",
-      params: {depth: depth},
     })
   }
 

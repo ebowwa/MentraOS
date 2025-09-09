@@ -101,7 +101,6 @@ export default function TranscriptionSettingsScreen() {
     }
 
     const newSetting = !isEnforceLocalTranscriptionEnabled
-    await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
     await saveSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
@@ -218,7 +217,6 @@ export default function TranscriptionSettingsScreen() {
 
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
-    await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
     await saveSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
   }

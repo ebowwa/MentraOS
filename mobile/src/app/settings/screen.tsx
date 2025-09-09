@@ -46,80 +46,18 @@ export default function ScreenSettingsScreen() {
     }
 
     // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
-    await bridge.setGlassesBrightnessMode(newBrightness, false) // TODO: config: remove
     await saveSetting(SETTINGS_KEYS.brightness, newBrightness)
     setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
-    await bridge.setGlassesDepth(newDepth) // TODO: config: remove
     await saveSetting(SETTINGS_KEYS.dashboard_depth, newDepth)
     setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
-    await bridge.setGlassesHeight(newHeight) // TODO: config: remove
     await saveSetting(SETTINGS_KEYS.dashboard_height, newHeight)
     setHeight(newHeight)
-  }
-
-  // Switch track colors
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
-  // Fixed slider props to avoid warning
-  const sliderProps = {
-    style: [styles.slider],
-    minimumValue: 0,
-    maximumValue: 100,
-    step: 1,
-    onSlidingComplete: (value: number) => changeBrightness(value),
-    value: brightness ?? 50,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
-  }
-
-  const depthSliderProps = {
-    style: [styles.slider],
-    minimumValue: 1,
-    maximumValue: 5,
-    step: 1,
-    onSlidingComplete: (value: number) => changeDepth(value),
-    value: depth ?? 5,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
-  }
-
-  const heightSliderProps = {
-    style: [styles.slider],
-    minimumValue: 1,
-    maximumValue: 8,
-    step: 1,
-    onSlidingComplete: (value: number) => changeHeight(value),
-    value: height ?? 4,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
   }
 
   return (

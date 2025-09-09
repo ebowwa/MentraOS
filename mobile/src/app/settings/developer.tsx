@@ -73,7 +73,6 @@ export default function DeveloperSettingsScreen() {
         console.log("URL Test Successful:", response.data)
         // Save the URL if the test passes
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await bridge.setServerUrl(urlToTest) // TODO: config: remove
         setSavedCustomUrl(urlToTest)
         await showAlert(
           "Success",
@@ -126,7 +125,6 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
     showAlert("Success", "Reset backend URL to default.", [
