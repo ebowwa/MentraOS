@@ -3,8 +3,8 @@ version: v2
 namespace: ${PORTER_NAMESPACE}
 build:
   method: docker
-  context: ./cloud/cloud-client
-  dockerfile: ./cloud/cloud-client/docker/Dockerfile
+  context: ./cloud/packages/cloud-client
+  dockerfile: ./cloud/packages/cloud-client/docker/Dockerfile
 services:
   - name: cloud-uptime-tracker
     type: web
