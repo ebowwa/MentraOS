@@ -1,3 +1,5 @@
+any moving of folders should be done with git mv so we maintain git history.
+
 - `cloud/developer-porter` should be renamed `console` and moved to `cloud/websites`
 
 - cloud/store/web should be renamed to store and moved to cloud/websites
@@ -16,3 +18,6 @@
 `cloud/packages/cloud/src/services/session/translation`
 
 - `cloud/packages/cloud/src/services/session/SessionService` needs to be deleted, any functionality here should be in `cloud/packages/cloud/src/services/session/UserSession` or within a Manager inside of UserSession.
+
+- `cloud/packages/cloud/src/services/session/SessionStorage` is not needed and logic should be static map / functions in UserSession class.
+
