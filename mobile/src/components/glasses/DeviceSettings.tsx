@@ -338,44 +338,18 @@ export default function DeviceSettings() {
 
       {hasBrightness && (
         <View style={themed($settingsGroup)}>
-          <ToggleSetting
-            label="Auto Brightness"
-            value={autoBrightness}
-            onValueChange={value => {
-              setAutoBrightness(value)
-              bridge.setGlassesBrightnessMode(brightness, value)
+          <SliderSetting
+            label="Brightness"
+            value={brightness}
+            onValueChange={setBrightness}
+            min={0}
+            max={100}
+            onValueSet={value => {
+              bridge.setGlassesBrightnessMode(value, false)
             }}
-            containerStyle={{
-              paddingHorizontal: 0,
-              paddingTop: 0,
-              paddingBottom: autoBrightness ? 0 : undefined,
-              borderWidth: 0,
-            }}
+            containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
+            disableBorder
           />
-
-          {!autoBrightness && (
-            <>
-              <View
-                style={{
-                  height: StyleSheet.hairlineWidth,
-                  backgroundColor: theme.colors.separator,
-                  marginBottom: theme.spacing.xs,
-                }}
-              />
-              <SliderSetting
-                label="Brightness"
-                value={brightness}
-                onValueChange={setBrightness}
-                min={0}
-                max={100}
-                onValueSet={value => {
-                  bridge.setGlassesBrightnessMode(value, autoBrightness)
-                }}
-                containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
-                disableBorder
-              />
-            </>
-          )}
         </View>
       )}
 

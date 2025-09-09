@@ -345,16 +345,9 @@ export function DeviceToolbar() {
         {hasDisplay ? (
           <>
             <SunIcon size={18} color={theme.colors.statusIcon} />
-            {autoBrightness ? (
-              <Text style={{color: theme.colors.statusText}}>Auto</Text>
-            ) : (
-              <>
-                <Text
-                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-                  {status.glasses_settings.brightness}%
-                </Text>
-              </>
-            )}
+            <Text style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+              {status.glasses_settings.brightness}%
+            </Text>
           </>
         ) : (
           <View style={{width: 50, height: 18}} />
