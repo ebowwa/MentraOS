@@ -53,6 +53,7 @@ class WebSocketManager extends EventEmitter {
     // Create new WebSocket with authorization header
     const wsUrl = new URL(url)
     wsUrl.searchParams.set("token", coreToken)
+    wsUrl.searchParams.set("livekit", "true")
 
     this.webSocket = new WebSocket(wsUrl.toString())
 
