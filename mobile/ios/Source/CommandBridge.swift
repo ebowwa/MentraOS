@@ -19,7 +19,7 @@ import Foundation
     @objc func handleCommand(_ command: String) -> Any {
         Bridge.log("CommandBridge: Received command: \(command)")
 
-        let m = MentraManager.getInstance()
+        let m = MentraManager.shared
 
         // Define command types enum
         enum CommandType: String {

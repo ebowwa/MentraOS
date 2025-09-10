@@ -132,14 +132,14 @@ class OnboardMicrophoneManager {
             Bridge.log("Audio session interrupted - another app took control")
             // Phone call started, pause recording
             if isRecording {
-                MentraManager.getInstance().onInterruption(began: true)
+                MentraManager.shared.onInterruption(began: true)
             }
         case .ended:
             Bridge.log("Audio session interruption ended")
             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                 if options.contains(.shouldResume) {
-                    MentraManager.getInstance().onInterruption(began: false)
+                    MentraManager.shared.onInterruption(began: false)
                 }
             }
         @unknown default:
@@ -157,7 +157,7 @@ class OnboardMicrophoneManager {
         }
 
         Bridge.log("MIC: handleRouteChange: \(reason)")
-        MentraManager.getInstance().onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
+        MentraManager.shared.onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
 
         // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
         // if isRecording {

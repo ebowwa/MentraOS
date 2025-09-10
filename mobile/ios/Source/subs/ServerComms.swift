@@ -405,14 +405,14 @@ class ServerComms {
 
     private func handleIncomingMessage(_ msg: [String: Any]) {
         guard let type = msg["type"] as? String else { return }
-        let m = MentraManager.getInstance()
+        let m = MentraManager.shared
 
         // CoreCommsService.log("Received message of type: \(type)")
 
         switch type {
         case "connection_ack":
-            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
-            MentraManager.getInstance().onConnectionAck()
+            MentraManager.shared.onAppStateChange(parseAppList(msg))
+            MentraManager.shared.onConnectionAck()
             let livekitData = msg["livekit"] as? [String: Any] ?? [:]
             let url = livekitData["url"] as? String ?? ""
             let token = livekitData["token"] as? String ?? ""

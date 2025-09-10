@@ -47,9 +47,25 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("app_stopped", body: data)
     }
 
+    static func sendHeadPosition(_ isUp: Bool) {
+        let data = ["position": isUp ? "up" : "down"]
+        Bridge.sendTypedMessage("head_position", body: data)
+    }
+
     static func sendPairFailureEvent(_ error: String) {
         let data = ["error": error]
         Bridge.sendTypedMessage("pair_failure", body: data)
+    }
+
+    static func sendMicData(_ data: Data) {
+        let base64String = data.base64EncodedString()
+        let body = ["base64": base64String]
+        Bridge.sendTypedMessage("mic_data", body: body)
+    }
+
+    static func saveSetting(_ key: String, _ value: Any) {
+        let body = ["key": key, "value": value]
+        Bridge.sendTypedMessage("save_setting", body: body)
     }
 
     override func supportedEvents() -> [String] {
@@ -57,7 +73,7 @@ class Bridge: RCTEventEmitter {
         return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
     }
 
-    // WS Comms:
+    // Arbitrary WS Comms (dont use these, make a dedicated function for your use case):
     static func sendWSText(_ msg: String) {
         let data = ["text": msg]
         Bridge.sendTypedMessage("ws_text", body: data)
@@ -65,10 +81,12 @@ class Bridge: RCTEventEmitter {
 
     static func sendWSBinary(_ data: Data) {
         let base64String = data.base64EncodedString()
-        let body = ["binary": base64String]
-        Bridge.sendTypedMessage("ws_binary", body: body)
+        let body = ["base64": base64String]
+        Bridge.sendTypedMessage("ws_bin", body: body)
     }
 
+    // don't call this function directly, instead
+    // make a function above that calls this function:
     static func sendTypedMessage(_ type: String, body: [String: Any]) {
         var body = body
         body["type"] = type

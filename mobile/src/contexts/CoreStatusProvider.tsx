@@ -5,6 +5,7 @@ import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
 import restComms from "@/managers/RestComms"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -26,7 +27,19 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     const parsedStatus = CoreStatusParser.parseStatus(data)
-    if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
+    if (INTENSE_LOGGING)
+      console.log("CoreStatus: status:", parsedStatus)
+
+      // TODO: make a command for this in the MantleBridge:
+    ;(async () => {
+      const currentDefaultWearable = await loadSetting(SETTINGS_KEYS.default_wearable)
+      const newDefaultWearable = parsedStatus.core_info.default_wearable
+      console.log("CoreStatus: Default wearable changed:", newDefaultWearable, currentDefaultWearable)
+      if (newDefaultWearable !== currentDefaultWearable) {
+        await saveSetting(SETTINGS_KEYS.default_wearable, newDefaultWearable)
+        console.log("CoreStatus: Default wearable changed:", newDefaultWearable)
+      }
+    })()
 
     // only update the status if diff > 0
     setStatus(prevStatus => {

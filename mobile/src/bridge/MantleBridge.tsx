@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
 const {Bridge, BridgeModule, CoreCommsService} = NativeModules
@@ -186,10 +186,12 @@ export class MantleBridge extends EventEmitter {
     }
 
     // set the backend server url
-    const backendServerUrl = await getRestUrl()
-    await this.setServerUrl(backendServerUrl) // todo: config: remove
+    if (Platform.OS === "android") {
+      const backendServerUrl = await getRestUrl() // TODO: config: remove
+      await this.setServerUrl(backendServerUrl) // TODO: config: remove
+    }
 
-    this.sendSettings() // TODO: config: finish this
+    this.sendSettings()
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -303,9 +305,6 @@ export class MantleBridge extends EventEmitter {
           has_content: data.glasses_gallery_status.has_content,
           camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
-      } else if ("glasses_display_event" in data) {
-        // TODO: config: remove
-        GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
       } else if ("notify_manager" in data) {
@@ -357,6 +356,9 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      let binaryString
+      let bytes
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -387,15 +389,30 @@ export class MantleBridge extends EventEmitter {
             type: data.type,
           })
           break
+        case "save_setting":
+          await saveSetting(data.key, data.value, false)
+          break
+        case "head_position":
+          GlobalEventEmitter.emit("HEAD_POSITION", data.position)
+          break
         case "ws_text":
           socketComms.sendText(data.text)
           break
-        case "ws_binary":
-          const binaryString = atob(data.binary)
-          const bytes = new Uint8Array(binaryString.length)
+        case "ws_bin":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
+          socketComms.sendBinary(bytes)
+          break
+        case "mic_data":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          console.log("MantleBridge: Sending mic data to server")
           socketComms.sendBinary(bytes)
           break
         default:
@@ -406,6 +423,13 @@ export class MantleBridge extends EventEmitter {
       console.error("Error parsing data from Core:", e)
       this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
     }
+  }
+
+  private async sendSettings() {
+    this.sendData({
+      command: "update_settings",
+      params: {...(await getCoreSettings())},
+    })
   }
 
   /**
