@@ -4,6 +4,6 @@ export const CLIENT_VERSIONS = {
 };
 
 export const SDK_VERSIONS = {
-  required: "0.0.0",   // Client must be at or above this version to work with this server.
+  required: "0.0.0",   
   // recommended: "Fetched from npm", 
 }

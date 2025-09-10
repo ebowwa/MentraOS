@@ -3,26 +3,6 @@ import {SDK_VERSIONS} from "../../../../packages/cloud/src/version"
 
 const router = Router();
 
-
-interface sdkVResonse {
-    success: boolean;
-    data: {
-        required: string;
-        recommended: string;
-    },
-    timestamp: Date;
-
-}
-
-type LatestSdkResponse = {
-  success: boolean;
-  data: {
-    required: string;
-    recommended: string;
-  };
-  timestamp: string;
-};
-
 // Simple GET route
 router.get("/", async (req: Request, res: Response) => {
   try {
