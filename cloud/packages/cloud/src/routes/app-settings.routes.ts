@@ -8,9 +8,9 @@ import Organization from '../models/organization.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 import appService, { isUninstallable, SYSTEM_DASHBOARD_PACKAGE_NAME } from '../services/core/app.service';
-import { sessionService } from '../services/session/session.service';
+import ServerUserSession from '../services/session/UserSession';
 import { logger as rootLogger } from '../services/logging/pino-logger';
-import { CloudToAppMessageType, UserSession, AppSetting } from '@mentra/sdk';
+import { CloudToAppMessageType, UserSession as SdkUserSession, AppSetting } from '@mentra/sdk';
 import { Permission } from '@mentra/sdk';
 
 const router = express.Router();
@@ -296,7 +296,7 @@ router.post('/:appName', async (req, res) => {
     rootLogger.info(`Updated settings for app "${appName}" for user ${userId}`);
 
     // Get user session to send WebSocket update
-    const userSession = sessionService.getSession(userId);
+    const userSession = ServerUserSession.getById(userId);
 
     // If user has active sessions, send them settings updates via WebSocket
     if (userSession && appName !== SYSTEM_DASHBOARD_PACKAGE_NAME && appName !== "com.augmentos.dashboard") {

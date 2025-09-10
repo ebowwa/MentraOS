@@ -4,7 +4,6 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from "../services/logging/pino-logger";
-import sessionService from '../services/session/session.service';
 import jwt from 'jsonwebtoken';
 import photoRequestService, { PendingPhotoRequest } from '../services/core/photo-request.service';
 

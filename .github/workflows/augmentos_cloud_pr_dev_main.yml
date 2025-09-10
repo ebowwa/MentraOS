@@ -45,13 +45,13 @@ jobs:
         run: bun run build
 
       - name: Run live captions tests
-        working-directory: cloud/cloud-client
+        working-directory: cloud/packages/cloud-client
         run: bun run test:live-captions
 
       - name: Run mira tests
-        working-directory: cloud/cloud-client
+        working-directory: cloud/packages/cloud-client
         run: bun run test:mira
 
       - name: Run translation tests
-        working-directory: cloud/cloud-client
+        working-directory: cloud/packages/cloud-client
         run: bun run test:translation

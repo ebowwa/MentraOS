@@ -1,5 +1,5 @@
 import express from 'express';
-import sessionService from '../services/session/session.service';
+import UserSession from '../services/session/UserSession';
 import { Request, Response, NextFunction } from 'express';
 import appService from '../services/core/app.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
@@ -47,7 +47,7 @@ async function shazamAuthMiddleware(req: Request, res: Response, next: NextFunct
 router.get('/api/audio/:userId', shazamAuthMiddleware, async (req, res) => {
   try {
     const userId = req.params.userId;
-    const userSession = sessionService.getSessionByUserId(userId);
+    const userSession = UserSession.getById(userId);
 
     if (!userSession) {
       return res.status(404).json({ error: 'Session not found' });
