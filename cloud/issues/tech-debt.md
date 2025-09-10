@@ -21,3 +21,6 @@ any moving of folders should be done with git mv so we maintain git history.
 
 - `cloud/packages/cloud/src/services/session/SessionStorage` is not needed and logic should be static map / functions in UserSession class.
 
+- duplicate .env vars: `CLOUD_HOST_NAME` and `CLOUD_PUBLIC_HOST_NAME`, also `CLOUD_LOCAL_HOST_NAME` may be depricated since all apps are now moved to db / registered with dev console.
+
+- AppManager is way to long, split it into AppManager and AppSession, where AppSession is the isolated state for a single active app, instead of having the state for an app spread across multiple managers / maps. this has been causing too many bugs.

@@ -5,7 +5,7 @@
 import express, { Request, Response } from "express";
 import { logger } from "../services/logging/pino-logger";
 import { validateGlassesAuth } from "../middleware/glasses-auth.middleware";
-import sessionService from "../services/session/session.service";
+import UserSession from "../services/session/UserSession";
 import subscriptionService from "../services/session/subscription.service";
 import { StreamType } from "@mentra/sdk";
 import photoRequestService from "../services/core/photo-request.service";
@@ -30,13 +30,13 @@ router.post(
       );
 
       // Find the user's active session
-      const userSession = sessionService.getSessionByUserId(userId);
+      const userSession = UserSession.getById(userId);
 
       // Check if any Apps are subscribed to button events
       const subscribedApps = userSession
         ? userSession.subscriptionManager.getSubscribedApps(
-            StreamType.BUTTON_PRESS,
-          )
+          StreamType.BUTTON_PRESS,
+        )
         : [];
 
       if (subscribedApps.length === 0) {
