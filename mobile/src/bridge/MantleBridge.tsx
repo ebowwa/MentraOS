@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 
 const {Bridge, BridgeModule, CoreCommsService} = NativeModules
@@ -382,6 +382,9 @@ export class MantleBridge extends EventEmitter {
             message: data.message,
             type: data.type,
           })
+          break
+        case "save_setting":
+          await saveSetting(data.key, data.value, false)
           break
         case "head_position":
           GlobalEventEmitter.emit("HEAD_POSITION", data.position)

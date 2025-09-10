@@ -63,6 +63,11 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("mic_data", body: body)
     }
 
+    static func saveSetting(_ key: String, _ value: Any) {
+        let body = ["key": key, "value": value]
+        Bridge.sendTypedMessage("save_setting", body: body)
+    }
+
     override func supportedEvents() -> [String] {
         // add more as needed
         return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]

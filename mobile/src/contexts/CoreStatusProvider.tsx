@@ -27,12 +27,14 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     const parsedStatus = CoreStatusParser.parseStatus(data)
-    if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
+    if (INTENSE_LOGGING)
+      console.log("CoreStatus: status:", parsedStatus)
 
-    // TODO: make a command for this in the MantleBridge:
+      // TODO: make a command for this in the MantleBridge:
     ;(async () => {
       const currentDefaultWearable = await loadSetting(SETTINGS_KEYS.default_wearable)
       const newDefaultWearable = parsedStatus.core_info.default_wearable
+      console.log("CoreStatus: Default wearable changed:", newDefaultWearable, currentDefaultWearable)
       if (newDefaultWearable !== currentDefaultWearable) {
         await saveSetting(SETTINGS_KEYS.default_wearable, newDefaultWearable)
         console.log("CoreStatus: Default wearable changed:", newDefaultWearable)

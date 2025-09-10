@@ -1909,6 +1909,9 @@ struct ViewState {
         } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
         }
+        // save the default_wearable now that we're connected:
+        Bridge.saveSetting("default_wearable", defaultWearable)
+        Bridge.saveSetting("device_name", deviceName)
     }
 
     private func handleG1Ready() {
@@ -2049,29 +2052,6 @@ struct ViewState {
         //        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
         //      }
         //    }
-    }
-
-    // MARK: - Settings Management
-
-    private enum SettingsKeys {
-        static let defaultWearable = "defaultWearable"
-        static let deviceName = "deviceName"
-        static let useOnboardMic = "useBoardMic"
-        static let contextualDashboard = "contextualDashboard"
-        static let headUpAngle = "headUpAngle"
-        static let brightness = "brightness"
-        static let autoBrightness = "autoBrightness"
-        static let sensingEnabled = "sensingEnabled"
-        static let powerSavingMode = "powerSavingMode"
-        static let dashboardHeight = "dashboardHeight"
-        static let dashboardDepth = "dashboardDepth"
-        static let alwaysOnStatusBar = "alwaysOnStatusBar"
-        static let bypassVad = "bypassVad"
-        static let bypassAudioEncoding = "bypassAudioEncoding"
-        static let preferredMic = "preferredMic"
-        static let metricSystemEnabled = "metricSystemEnabled"
-        static let enforceLocalTranscription = "enforceLocalTranscription"
-        static let buttonPressMode = "buttonPressMode"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
