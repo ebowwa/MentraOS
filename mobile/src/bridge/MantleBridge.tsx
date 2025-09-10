@@ -277,7 +277,7 @@ export class MantleBridge extends EventEmitter {
 
     try {
       if ("status" in data) {
-        this.emit("statusUpdateReceived", data)
+        GlobalEventEmitter.emit("CORE_STATUS_UPDATE", data)
         return
       }
 
@@ -421,7 +421,7 @@ export class MantleBridge extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
+      GlobalEventEmitter.emit("CORE_STATUS_UPDATE", CoreStatusParser.defaultStatus)
     }
   }
 

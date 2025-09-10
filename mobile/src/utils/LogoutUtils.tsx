@@ -214,9 +214,6 @@ export class LogoutUtils {
     console.log(`${this.TAG}: Resetting status providers...`)
 
     try {
-      // Remove all core communicator event listeners
-      bridge.removeAllListeners("statusUpdateReceived")
-
       // Emit a logout event for any components that need to reset
       GlobalEventEmitter.emit("USER_LOGGED_OUT")
 

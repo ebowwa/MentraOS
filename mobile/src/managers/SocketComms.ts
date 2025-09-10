@@ -421,8 +421,9 @@ class SocketComms {
   }
 
   private handle_app_state_change(msg: any) {
-    console.log("SocketCommsTS: app state change", msg)
-    this.parse_app_list(msg)
+    // console.log("SocketCommsTS: app state change", msg)
+    // this.parse_app_list(msg)
+    GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 
   private handle_connection_error(msg: any) {
