@@ -22,14 +22,7 @@ import {
   ToolCall,
 } from "../../types";
 
-type LatestSdkResponse = {
-  success: boolean;
-  data: {
-    required: string;
-    recommended: string;
-  };
-  timestamp: string;
-};
+
 import { Logger } from "pino";
 import { logger as rootLogger } from "../../logging/logger";
 import axios from "axios";
@@ -286,11 +279,12 @@ export class AppServer {
         // Fetch latest SDK version from the API endpoint
         let latest = "2.1.20"; // fallback version
         try {
-          const response = await axios.get('https://mentra-cloud-server.ngrok.app/api/sdk');
+          const cloudHost = process.env.CLOUD_PUBLIC_HOST_NAME || 'mentra-cloud-server.ngrok.app';
+          const response = await axios.get(`https://${cloudHost}/api/sdk`);
           if (response.data && response.data.success && response.data.data) {
             latest = response.data.data.latest; // Changed from "recommended" to "latest"
             this.logger.debug(`Latest SDK version from API: ${latest}`);
-            this.logger.debug(`Latest SDK version from API: ${currentVersion}`);
+            this.logger.debug(`Current SDK version: ${currentVersion}`);
 
           }
         } catch (fetchError) {
