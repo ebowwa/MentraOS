@@ -57,4 +57,7 @@ public interface AugmentOsActionsCallback {
     void startVideoRecording(String requestId, boolean save);
     void stopVideoRecording(String requestId);
     void restartTranscriber();
+    void updateSettings(JSONObject settings);
+    void handleDisplayEvent(JSONObject displayEvent);
+    void handleMicrophoneStateChange(JSONObject microphoneStateChange);
 }

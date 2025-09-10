@@ -2724,6 +2724,177 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void updateSettings(JSONObject settings) {
+        Log.d(TAG, "Updating settings from manager: " + settings.toString());
+        try {
+            // Handle sensing enabled
+            if (settings.has("enable_sensing")) {
+                boolean sensingEnabled = settings.getBoolean("enable_sensing");
+                setSensingEnabled(sensingEnabled);
+            }
+            
+            // // Handle force core onboard mic
+            // if (settings.has("forceCoreOnboardMic")) {
+            //     boolean forceCoreOnboardMic = settings.getBoolean("forceCoreOnboardMic");
+            //     setForceCoreOnboardMic(forceCoreOnboardMic);
+            // }
+            
+            // Handle contextual dashboard
+            if (settings.has("contextual_dashboard")) {
+                boolean contextualDashboardEnabled = settings.getBoolean("contextualDashboardEnabled");
+                setContextualDashboardEnabled(contextualDashboardEnabled);
+            }
+            
+            // Handle metric system
+            if (settings.has("metric_system_enabled")) {
+                boolean metricSystemEnabled = settings.getBoolean("metric_system_enabled");
+                setMetricSystemEnabled(metricSystemEnabled);
+            }
+            
+            // Handle bypass VAD for debugging
+            if (settings.has("bypass_vad_for_debugging")) {
+                boolean bypassVadForDebugging = settings.getBoolean("bypass_vad_for_debugging");
+                setBypassVadForDebugging(bypassVadForDebugging);
+            }
+            
+            // Handle bypass audio encoding for debugging
+            if (settings.has("bypass_audio_encoding_for_debugging")) {
+                boolean bypassAudioEncodingForDebugging = settings.getBoolean("bypass_audio_encoding_for_debugging");
+                setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
+            }
+            
+            // Handle enforce local transcription
+            if (settings.has("enforce_local_transcription")) {
+                boolean enforceLocalTranscription = settings.getBoolean("enforce_local_transcription");
+                setEnforceLocalTranscription(enforceLocalTranscription);
+            }
+            
+            // Handle always on status bar
+            if (settings.has("always_on_status_bar")) {
+                boolean alwaysOnStatusBarEnabled = settings.getBoolean("always_on_status_bar");
+                setAlwaysOnStatusBarEnabled(alwaysOnStatusBarEnabled);
+            }
+            
+            // Handle power saving mode
+            if (settings.has("power_saving_mode")) {
+                boolean powerSavingMode = settings.getBoolean("power_saving_mode");
+                setPowerSavingMode(powerSavingMode);
+            }
+            
+            // Handle glasses brightness settings
+            if (settings.has("brightness")) {
+                brightnessLevel = settings.getInt("brightness");
+            }
+            if (settings.has("auto_brightness")) {
+                autoBrightness = settings.getBoolean("auto_brightness");
+            }
+            if (settings.has("auto_brightness") || settings.has("brightness")) {
+                if (autoBrightness) {
+                    updateGlassesAutoBrightness(true);
+                } else {
+                    updateGlassesBrightness(brightnessLevel);
+                }
+            }
+            
+            // Handle head up angle
+            if (settings.has("head_up_angle")) {
+                int headUpAngle = settings.getInt("head_up_angle");
+                updateGlassesHeadUpAngle(headUpAngle);
+            }
+            
+            // Handle dashboard height and depth
+            if (settings.has("dashboard_height")) {
+                int height = settings.getInt("dashboard_height");
+                updateGlassesHeight(height);
+            }
+            if (settings.has("dashboard_depth")) {
+                int depth = settings.getInt("dashboard_depth");
+                updateGlassesDepth(depth);
+            }
+            
+            // Handle button settings
+            if (settings.has("button_mode")) {
+                String buttonMode = settings.getString("button_mode");
+                setButtonMode(buttonMode);
+            }
+            if (settings.has("button_photo_size")) {
+                String photoSize = settings.getString("button_photo_size");
+                setButtonPhotoSize(photoSize);
+            }
+            if (settings.has("button_camera_led")) {
+                boolean ledEnabled = settings.getBoolean("button_camera_led");
+                setButtonCameraLed(ledEnabled);
+            }
+            
+            // Handle preferred mic
+            if (settings.has("preferred_mic")) {
+                String mic = settings.getString("preferred_mic");
+                setPreferredMic(mic);
+            }
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing settings JSON", e);
+        }
+    }
+
+    @Override
+    public void handleDisplayEvent(JSONObject displayEvent) {
+        Log.d(TAG, "Handling display event from manager: " + displayEvent.toString());
+        
+        // Cache the display data
+        cachedDisplayData = displayEvent;
+        
+        // Parse the display event message
+        Runnable newRunnable = parseDisplayEventMessage(displayEvent);
+        
+        // Get the duration if specified
+        int durationMs = displayEvent.optInt("durationMs", -1);
+        
+        // Show on glasses if connected
+        if (smartGlassesManager != null) {
+            smartGlassesManager.windowManager.showAppLayer("serverappid", newRunnable, durationMs / 1000); // Convert to seconds
+        }
+        
+        // Note: We don't send back to manager since this came from manager
+        // This avoids circular messaging
+    }
+
+    @Override
+    public void handleMicrophoneStateChange(JSONObject microphoneStateChange) {
+        Log.d(TAG, "Handling microphone state change from manager: " + microphoneStateChange.toString());
+        
+        try {
+            // Parse required data types
+            List<SpeechRequiredDataType> requiredData = new ArrayList<>();
+            JSONArray requiredDataJson = microphoneStateChange.optJSONArray("requiredData");
+            
+            if (requiredDataJson != null) {
+                for (int i = 0; i < requiredDataJson.length(); i++) {
+                    String datum = requiredDataJson.optString(i, "");
+                    if (!datum.isEmpty()) {
+                        try {
+                            requiredData.add(SpeechRequiredDataType.fromString(datum));
+                        } catch (IllegalArgumentException e) {
+                            Log.w(TAG, "Unknown required data type: " + datum, e);
+                        }
+                    }
+                }
+            }
+            
+            // Parse bypass VAD flag
+            boolean bypassVad = microphoneStateChange.optBoolean("bypassVad", false);
+            
+            // Apply the microphone state change
+            if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
+                smartGlassesManager.changeMicrophoneState(requiredData, bypassVad);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling microphone state change", e);
+        }
+    }
+
+    @Override
     public void setButtonMode(String mode) {
         Log.d("AugmentOsService", "Setting button mode: " + mode);
         // Save locally
