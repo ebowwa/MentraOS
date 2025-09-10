@@ -123,6 +123,9 @@
     "packages/sdk": {
       "name": "@mentra/sdk",
       "version": "2.1.22",
+      "bin": {
+        "mentra": "./dist/cli.js",
+      },
       "dependencies": {
         "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",
