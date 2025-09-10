@@ -73,6 +73,7 @@ import Foundation
             case update_settings
             case microphone_state_change
             case restart_transcriber
+            case connect_livekit
             case unknown
         }
 
@@ -403,6 +404,13 @@ import Foundation
                     m.handle_update_settings(params)
                 case .restart_transcriber:
                     m.restartTranscriber()
+                case .connect_livekit:
+                    guard let params = params, let url = params["url"] as? String, let token = params["token"] as? String else {
+                        Bridge.log("CommandBridge: connect_livekit invalid params")
+                        break
+                    }
+                    Bridge.log("CommandBridge: Connecting to LiveKit: \(url)")
+                    LiveKitManager.shared.connect(url: url, token: token)
                 }
             }
         } catch {

@@ -44,7 +44,6 @@ struct ViewState {
     @objc var frameManager: FrameManager?
     var serverComms = ServerComms.shared
     var micManager = OnboardMicrophoneManager.shared
-    var livekit = LiveKitManager.shared
 
     private var lastStatusObj: [String: Any] = [:]
 

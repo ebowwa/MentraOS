@@ -58,9 +58,10 @@ class Bridge: RCTEventEmitter {
     }
 
     static func sendMicData(_ data: Data) {
-        let base64String = data.base64EncodedString()
-        let body = ["base64": base64String]
-        Bridge.sendTypedMessage("mic_data", body: body)
+//        let base64String = data.base64EncodedString()
+//        let body = ["base64": base64String]
+//        Bridge.sendTypedMessage("mic_data", body: body)
+        LiveKitManager.shared.addPcm(data)
     }
 
     static func saveSetting(_ key: String, _ value: Any) {

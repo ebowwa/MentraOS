@@ -137,7 +137,7 @@ export default function InitScreen() {
           console.error("Failed to load user settings:", error)
         }
 
-        bridge.updateSettings(getCoreSettings()) // send settings to core
+        bridge.updateSettings(await getCoreSettings()) // send settings to core
       } else {
         bridge.setAuthCreds(coreToken, uid)
       }

@@ -416,8 +416,14 @@ class SocketComms {
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
     console.log("SocketCommsTS: connection ack", msg)
-    this.parse_app_list(msg)
+    // this.parse_app_list(msg)
     // bridge.sendCommand("connection_ack")
+    if (msg.livekit) {
+      const {url, token} = msg.livekit
+      if (url && token) {
+        bridge.sendCommand("connect_livekit", {url, token})
+      }
+    }
   }
 
   private handle_app_state_change(msg: any) {
