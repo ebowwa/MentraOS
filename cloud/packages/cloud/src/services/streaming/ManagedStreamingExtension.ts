@@ -16,7 +16,6 @@ import {
   GlassesToCloudMessageType,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
-import { sessionService } from "../session/session.service";
 import {
   CloudflareStreamService,
   LiveInputResult,
@@ -1125,7 +1124,7 @@ export class ManagedStreamingExtension {
         lastStatus.webrtcUrl === statusMessage.webrtcUrl &&
         lastStatus.message === statusMessage.message &&
         JSON.stringify(lastStatus.outputs) ===
-          JSON.stringify(statusMessage.outputs);
+        JSON.stringify(statusMessage.outputs);
 
       if (isDuplicate) {
         this.logger.debug(
@@ -1328,7 +1327,7 @@ export class ManagedStreamingExtension {
    * Get user session by userId
    */
   private getUserSession(userId: string): UserSession | undefined {
-    return sessionService.getSessionByUserId(userId) || undefined;
+    return UserSession.getById(userId) || undefined;
   }
 
   /**

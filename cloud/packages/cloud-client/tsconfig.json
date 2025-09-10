@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -16,8 +16,8 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,
     "noEmit": false,
-    "lib": ["ES2022", "DOM"],
-    "types": ["bun-types", "node"]
+  "lib": ["ES2022", "DOM"],
+  "types": ["node"]
   },
   "include": [
     "src/**/*"
@@ -25,7 +25,9 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+  "**/*.test.ts",
+  "**/*.spec.ts",
+  "src/examples/**",
+  "src/testing/**"
   ]
 }

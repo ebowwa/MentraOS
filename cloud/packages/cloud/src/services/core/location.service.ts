@@ -1,5 +1,4 @@
 import { User, UserI } from "../../models/user.model";
-import { sessionService } from "../session/session.service";
 import UserSession from "../session/UserSession";
 // import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from "../logging/pino-logger";
@@ -211,7 +210,7 @@ class LocationService {
       this.pendingPolls.delete(locationUpdate.correlationId);
     } else {
       // This is a broadcast update for a continuous stream.
-      sessionService.relayMessageToApps(userSession, locationUpdate);
+      userSession.relayMessageToApps(locationUpdate);
     }
 
     // Always update the user's last known location cache in the background.

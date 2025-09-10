@@ -10,7 +10,6 @@ import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
 import { logger as rootLogger } from '../../services/logging';
 import { User, UserI } from "../../models/user.model";
-import { sessionService } from "../../services/session/session.service";
 import UserSession from "../../services/session/UserSession";
 
 const SERVICE_NAME = 'client-auth-middleware';
@@ -149,7 +148,7 @@ async function requireUserSession(req: Request, res: Response, next: NextFunctio
   const logger = userReq.logger;
 
   try {
-    const userSession = sessionService.getSessionByUserId(userReq.email);
+  const userSession = UserSession.getById(userReq.email);
 
     if (!userSession) {
       logger.warn(`requireUserSession: No active session found for user: ${userReq.email}`);
@@ -178,7 +177,7 @@ async function optionalUserSession(req: Request, res: Response, next: NextFuncti
       return next();
     }
 
-    const userSession = sessionService.getSessionByUserId(email);
+  const userSession = UserSession.getById(email);
 
     if (userSession) {
       (req as RequestWithOptionalUserSession).userSession = userSession;
