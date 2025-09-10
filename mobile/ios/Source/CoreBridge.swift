@@ -58,10 +58,9 @@ class Bridge: RCTEventEmitter {
     }
 
     static func sendMicData(_ data: Data) {
-//        let base64String = data.base64EncodedString()
-//        let body = ["base64": base64String]
-//        Bridge.sendTypedMessage("mic_data", body: body)
-        LiveKitManager.shared.addPcm(data)
+        let base64String = data.base64EncodedString()
+        let body = ["base64": base64String]
+        Bridge.sendTypedMessage("mic_data", body: body)
     }
 
     static func saveSetting(_ key: String, _ value: Any) {
@@ -70,7 +69,7 @@ class Bridge: RCTEventEmitter {
     }
 
     override func supportedEvents() -> [String] {
-        // add more as needed
+        // don't add to this list, use a typed message instead
         return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
     }
 

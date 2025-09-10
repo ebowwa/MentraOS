@@ -327,44 +327,42 @@ class OnboardMicrophoneManager {
             return false
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 256, format: inputFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
 
-            LiveKitManager.shared.addPcm2(buffer)
+            let frameCount = Int(buffer.frameLength)
 
-//            let frameCount = Int(buffer.frameLength)
-//
-//            // Calculate the correct output buffer capacity based on sample rate conversion
-//            // For downsampling from inputFormat.sampleRate to 16000 Hz
-//            let outputCapacity = AVAudioFrameCount(
-//                Double(frameCount) * (16000.0 / inputFormat.sampleRate)
-//            )
-//
-//            // Create a 16-bit PCM data buffer with adjusted capacity
-//            let convertedBuffer = AVAudioPCMBuffer(
-//                pcmFormat: converter.outputFormat,
-//                frameCapacity: outputCapacity
-//            )!
-//
-//            var error: NSError? = nil
-//            let status = converter.convert(
-//                to: convertedBuffer,
-//                error: &error,
-//                withInputFrom: { _, outStatus in
-//                    outStatus.pointee = .haveData
-//                    return buffer
-//                }
-//            )
-//
-//            guard status == .haveData && error == nil else {
-//                Bridge.log("MIC: Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
-//                return
-//            }
-//
-//            let pcmData = self.extractInt16Data(from: convertedBuffer)
-//
-//            // just publish the PCM data, we'll encode it in the AOSManager:
-//            self.voiceDataSubject.send(pcmData)
+            // Calculate the correct output buffer capacity based on sample rate conversion
+            // For downsampling from inputFormat.sampleRate to 16000 Hz
+            let outputCapacity = AVAudioFrameCount(
+                Double(frameCount) * (16000.0 / inputFormat.sampleRate)
+            )
+
+            // Create a 16-bit PCM data buffer with adjusted capacity
+            let convertedBuffer = AVAudioPCMBuffer(
+                pcmFormat: converter.outputFormat,
+                frameCapacity: outputCapacity
+            )!
+
+            var error: NSError? = nil
+            let status = converter.convert(
+                to: convertedBuffer,
+                error: &error,
+                withInputFrom: { _, outStatus in
+                    outStatus.pointee = .haveData
+                    return buffer
+                }
+            )
+
+            guard status == .haveData && error == nil else {
+                Bridge.log("MIC: Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
+                return
+            }
+
+            let pcmData = self.extractInt16Data(from: convertedBuffer)
+
+            // just publish the PCM data, we'll encode it in the AOSManager:
+            self.voiceDataSubject.send(pcmData)
         }
 
         // Start the audio engine
