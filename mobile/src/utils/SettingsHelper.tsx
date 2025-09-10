@@ -22,6 +22,7 @@ export const SETTINGS_KEYS = {
   enforce_local_transcription: "enforce_local_transcription",
   button_press_mode: "button_press_mode",
   default_wearable: "default_wearable",
+  device_name: "device_name",
   preferred_mic: "preferred_mic",
   contextual_dashboard_enabled: "contextual_dashboard_enabled",
   head_up_angle: "head_up_angle",
@@ -59,6 +60,7 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.enforce_local_transcription]: false,
   [SETTINGS_KEYS.button_press_mode]: "photo",
   [SETTINGS_KEYS.default_wearable]: "glasses",
+  [SETTINGS_KEYS.device_name]: "",
   [SETTINGS_KEYS.preferred_mic]: "phone",
   [SETTINGS_KEYS.contextual_dashboard_enabled]: true,
   [SETTINGS_KEYS.head_up_angle]: 45,
@@ -74,12 +76,14 @@ export const getSettingDefault = (key: string) => {
   return DEFAULT_SETTINGS[key]
 }
 
-const saveSetting = async (key: string, value: any): Promise<void> => {
+const saveSetting = async (key: string, value: any, updateCore: boolean = true): Promise<void> => {
   try {
     const jsonValue = JSON.stringify(value)
     await AsyncStorage.setItem(key, jsonValue)
     if (CORE_SETTINGS_KEYS.includes(key)) {
-      bridge.updateSettings({[key]: value})
+      if (updateCore) {
+        bridge.updateSettings({[key]: value})
+      }
     }
   } catch (error) {
     console.error(`Failed to save setting (${key}):`, error)
@@ -133,6 +137,7 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.enforce_local_transcription,
   SETTINGS_KEYS.button_press_mode,
   SETTINGS_KEYS.default_wearable,
+  SETTINGS_KEYS.device_name,
   SETTINGS_KEYS.preferred_mic,
   SETTINGS_KEYS.contextual_dashboard_enabled,
   SETTINGS_KEYS.head_up_angle,
