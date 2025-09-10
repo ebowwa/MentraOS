@@ -41,7 +41,7 @@ class LivekitManager {
     })
   }
 
-  public async test() {
+  public async addPcm(data: Uint8Array) {
     console.log("LivekitManager: Test")
 
     if (!this.room) {
@@ -49,17 +49,7 @@ class LivekitManager {
       return
     }
 
-    // LocalAudioTrack
-
-    // this.room.localParticipant.ce
-
-    const source = new AudioSource(48000, 1) // 48kHz, 1 channel (mono)
-
-    // Start the audio source
-    await source.start()
-
-    // Create track from source
-    const track = LocalAudioTrack.createAudioTrack("audio-file", source)
+    this.room.localParticipant.publishData(data, {reliable: false})
   }
 }
 
