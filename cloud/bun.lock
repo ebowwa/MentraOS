@@ -41,17 +41,6 @@
         "typescript-eslint": "^8.24.0",
       },
     },
-    "packages/agents": {
-      "name": "@mentra/agents",
-      "version": "1.0.0",
-      "dependencies": {
-        "@mentra/sdk": "workspace:*",
-        "@mentra/utils": "workspace:*",
-      },
-      "devDependencies": {
-        "typescript": "^5.0.0",
-      },
-    },
     "packages/cloud": {
       "name": "@mentra/cloud",
       "version": "1.0.0",
@@ -451,8 +440,6 @@
     "@logtail/tools": ["@logtail/tools@0.5.4", "", { "dependencies": { "@logtail/types": "^0.5.3" } }, "sha512-S0PtfWOVVgvb36q8mLksMw910mO2TahDaqIYnUM/ZEYX+AwqKRGov4zt/X33zHRzCFVpSKoZFv7bFs8TBie/pQ=="],
 
     "@logtail/types": ["@logtail/types@0.5.3", "", {}, "sha512-5uKf1xQ7wRqSW0lYIwDpXdXcFHxPKH5EM22MoEjwTpd8suymOYuEdx9qCCHCYey4uOhPq7x6OkZf86bTO83JsA=="],
-
-    "@mentra/agents": ["@mentra/agents@workspace:packages/agents"],
 
     "@mentra/cloud": ["@mentra/cloud@workspace:packages/cloud"],
 
