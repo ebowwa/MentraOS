@@ -1049,6 +1049,13 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  async requestVadConfig() {
+    console.log("requestVadConfig")
+    return await this.sendData({
+      command: "request_vad_config",
+    })
+  }
+
   async setImuEnabled(enabled: boolean) {
     console.log("setImuEnabled", enabled)
     return await this.sendData({

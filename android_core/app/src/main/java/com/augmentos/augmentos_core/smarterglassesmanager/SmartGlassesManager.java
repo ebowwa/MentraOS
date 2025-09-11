@@ -984,6 +984,14 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void requestVadConfig() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.requestVadConfig();
+        } else {
+            Log.e(TAG, "Cannot request VAD config: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     public void setImuEnabled(boolean enabled) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.setImuEnabled(enabled);

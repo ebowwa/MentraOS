@@ -3445,6 +3445,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void requestVadConfig() {
+        Log.d(TAG, "requestVadConfig called");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.requestVadConfig();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control VAD");
+        }
+    }
+
+    @Override
     public void setImuEnabled(boolean enabled) {
         Log.d(TAG, "setImuEnabled called: " + enabled);
         if (smartGlassesManager != null) {

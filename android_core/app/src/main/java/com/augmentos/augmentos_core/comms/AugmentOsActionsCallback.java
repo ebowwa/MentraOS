@@ -63,6 +63,7 @@ public interface AugmentOsActionsCallback {
 
     void setVadEnabled(boolean enabled);
     void setVadSensitivity(int sensitivity);
+    void requestVadConfig();
 
     void setImuEnabled(boolean enabled);
     void setImuStreamEnabled(boolean enabled);

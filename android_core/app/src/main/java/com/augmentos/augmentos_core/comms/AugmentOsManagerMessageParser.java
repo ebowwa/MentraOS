@@ -337,6 +337,11 @@ public class AugmentOsManagerMessageParser {
             }
             break;
 
+            case "request_vad_config": {
+                callback.requestVadConfig();
+            }
+            break;
+
             case "set_imu_enabled": {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setImuEnabled(enabled);

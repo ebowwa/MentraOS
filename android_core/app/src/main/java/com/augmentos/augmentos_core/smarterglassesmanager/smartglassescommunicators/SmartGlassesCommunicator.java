@@ -404,6 +404,15 @@ public abstract class SmartGlassesCommunicator {
     }
 
     /**
+     * Request VAD (Voice Activity Detection) configuration from smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void requestVadConfig() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "VAD config not implemented for this device");
+    }
+
+    /**
      * Set IMU (Inertial Measurement Unit) enabled on smart glasses
      * Default implementation does nothing - specific communicators should override
      *

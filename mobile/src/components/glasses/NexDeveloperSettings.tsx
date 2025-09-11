@@ -412,6 +412,23 @@ export default function NexDeveloperSettings() {
     }
   }
 
+  const onRequestVadData = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      try {
+        // Toggle VAD to trigger a new data point
+        await coreCommunicator.requestVadConfig();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        showAlert("Error", `Failed to request VAD data: ${errorMessage}`, [
+          {
+            text: "OK",
+            onPress: () => {},
+          },
+        ])
+      }
+    }
+  }
+
   const onImuToggle = async (enabled: boolean) => {
     setImuEnabled(enabled)
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -426,6 +443,28 @@ export default function NexDeveloperSettings() {
     setImuStreamEnabled(enabled)
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
       await coreCommunicator.setImuStreamEnabled(enabled)
+    }
+  }
+
+  const onRequestImuData = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      try {
+        await coreCommunicator.sendImuSingleRequest()
+        showAlert("Success", "IMU data request sent successfully", [
+          {
+            text: "OK",
+            onPress: () => {},
+          },
+        ])
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        showAlert("Error", `Failed to request IMU data: ${errorMessage}`, [
+          {
+            text: "OK",
+            onPress: () => {},
+          },
+        ])
+      }
     }
   }
 
@@ -737,6 +776,15 @@ export default function NexDeveloperSettings() {
                   containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
                   disableBorder
                 />
+                <View style={$buttonRow}>
+                  <PillButton
+                    text="Request VAD Status"
+                    variant="secondary"
+                    onPress={onRequestVadData}
+                    disabled={!vadEnabled}
+                    buttonStyle={$fullWidthButton}
+                  />
+                </View>
             </View>
 
             {/* IMU Control*/}
@@ -758,6 +806,15 @@ export default function NexDeveloperSettings() {
                 onValueChange={onImuStreamToggle}
                 containerStyle={$toggleContainer}
               />
+              <View style={$buttonRow}>
+                <PillButton
+                  text="Request IMU Single"
+                  variant="secondary"
+                  onPress={onRequestImuData}
+                  disabled={!imuEnabled}
+                  buttonStyle={$fullWidthButton}
+                />
+              </View>
             </View>
 
             {/* Ping-Pong Console */}

@@ -3442,6 +3442,19 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         sendDataSequentially(versionQueryPacket, 100);
     }
 
+    public void requestVadConfig() {
+        Log.d(TAG, "requestVadConfig");
+
+        MentraosBle.VadStatusRequest request = MentraosBle.VadStatusRequest.newBuilder().build();
+
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setRequestVadStatus(request)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
     public void setImuEnabled(boolean enabled) {
         Log.d(TAG, "setImuEnabled: " + enabled);
         this.isImuEnabled = enabled;
