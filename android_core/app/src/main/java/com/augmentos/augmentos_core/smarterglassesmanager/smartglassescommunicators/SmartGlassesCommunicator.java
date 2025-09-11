@@ -402,4 +402,35 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "VAD sensitivity not implemented for this device");
     }
+
+    /**
+     * Set IMU (Inertial Measurement Unit) enabled on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param enabled Whether to enable IMU
+     */
+    public void setImuEnabled(boolean enabled) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "IMU not implemented for this device");
+    }
+
+    /**
+     * Set IMU (Inertial Measurement Unit) stream enabled on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param enabled Whether to enable IMU stream
+     */
+    public void setImuStreamEnabled(boolean enabled) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "IMU stream not implemented for this device");
+    }
+
+    /**
+     * Send IMU (Inertial Measurement Unit) single request to smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void sendImuSingleRequest() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "IMU single request not implemented for this device");
+    }
 }

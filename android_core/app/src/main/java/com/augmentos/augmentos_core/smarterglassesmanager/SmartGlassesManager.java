@@ -984,6 +984,30 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void setImuEnabled(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.setImuEnabled(enabled);
+        } else {
+            Log.e(TAG, "Cannot set IMU enabled: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
+    public void setImuStreamEnabled(boolean enabled) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.setImuStreamEnabled(enabled);
+        } else {
+            Log.e(TAG, "Cannot set IMU stream enabled: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
+    public void sendImuSingleRequest() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendImuSingleRequest();
+        } else {
+            Log.e(TAG, "Cannot send IMU single request: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     /**
      * Getter for SmartGlassesRepresentative instance
      * Allows external access for immediate microphone switching

@@ -155,6 +155,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
     private boolean isVadEnabled = true;
     private int vadSensitivity = 50;
 
+    private boolean isImuEnabled = true;
+    private boolean isImuStreamEnabled = true;
+
     // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
@@ -3433,6 +3436,52 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
         
         PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
             .setSetVadConfig(vadConfigRequest)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
+    public void setImuEnabled(boolean enabled) {
+        Log.d(TAG, "setImuEnabled: " + enabled);
+        this.isImuEnabled = enabled;
+
+        MentraosBle.ImuEnabledConfig imuEnabledConfig = MentraosBle.ImuEnabledConfig.newBuilder().setEnabled(enabled).build();
+        
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setImuEnabled(imuEnabledConfig)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
+    public void setImuStreamEnabled(boolean enabled) {
+        Log.d(TAG, "setImuStreamEnabled: " + enabled);
+        this.isImuStreamEnabled = enabled;
+
+        if (enabled) {
+          this.isImuEnabled = enabled;
+        }
+
+        MentraosBle.ImuStreamConfig imuStreamConfig = MentraosBle.ImuStreamConfig.newBuilder().setEnabled(enabled).build();
+        
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setImuStream(imuStreamConfig)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
+    public void sendImuSingleRequest() {
+        Log.d(TAG, "sendImuSingleRequest");
+        this.isImuEnabled = true;
+
+        MentraosBle.ImuSingleRequest imuSingleRequest = MentraosBle.ImuSingleRequest.newBuilder().build();
+        
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setImuSingle(imuSingleRequest)
             .build();
 
         byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);

@@ -3444,6 +3444,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
+    @Override
+    public void setImuEnabled(boolean enabled) {
+        Log.d(TAG, "setImuEnabled called: " + enabled);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.setImuEnabled(enabled);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control IMU");
+        }
+    }
+
+    @Override
+    public void setImuStreamEnabled(boolean enabled) {
+        Log.d(TAG, "setImuStreamEnabled called: " + enabled);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.setImuStreamEnabled(enabled);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control IMU stream");
+        }
+    }
+
+    @Override
+    public void sendImuSingleRequest() {
+        Log.d(TAG, "sendImuSingleRequest called");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.sendImuSingleRequest();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot send IMU single request");
+        }
+    }
+
 
     @Override
     public void startBufferRecording() {

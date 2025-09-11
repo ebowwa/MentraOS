@@ -323,17 +323,35 @@ public class AugmentOsManagerMessageParser {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setLc3AudioEnabled(enabled);
             }
+            break;
 
             case "set_vad_enabled": {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setVadEnabled(enabled);
             }
+            break;
 
             case "set_vad_sensitivity": {
                 int sensitivity = commandObject.getInt("sensitivity");
                 callback.setVadSensitivity(sensitivity);
             }
-            
+            break;
+
+            case "set_imu_enabled": {
+                boolean enabled = commandObject.getBoolean("enabled");
+                callback.setImuEnabled(enabled);
+            }
+            break;
+
+            case "set_imu_stream_enabled": {
+                boolean enabled = commandObject.getBoolean("enabled");
+                callback.setImuStreamEnabled(enabled);
+            }
+            break;
+
+            case "send_imu_single_request": {
+                callback.sendImuSingleRequest();
+            }
             break;
 
             default:
