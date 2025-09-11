@@ -8,7 +8,8 @@
 	chosen {
 		nordic,nus-uart = &uart0;
 		/* Use HLS12VGA projector display */
-		zephyr,display = &hls12vga;
+		// zephyr,display = &hls12vga;
+		zephyr,display = &ssd1306;
 	};
 	
 	pwmleds {
@@ -67,11 +68,25 @@
 
 		};
 	};
+
+	i2c2_default: i2c2_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 25)>,
+					<NRF_PSEL(TWIM_SCL, 0, 26)>;
+		};
+	};
+    i2c2_sleep: i2c2_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 25)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 26)>;
+            low-power-enable;
+        };
+    };
 };
 
 &spi4 {
 	compatible = "nordic,nrf-spim";
-	status = "okay";
+	status = "disabled";
 	pinctrl-0 = <&spi4_default>;
 	pinctrl-1 = <&spi4_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -79,7 +94,7 @@
 	hls12vga: hls12vga@0 {
 		compatible = "zephyr,custom-hls12vga";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 		spi-max-frequency = <32000000>;
 
 		left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
@@ -131,3 +146,32 @@ dmic_dev: &pdm0 {
 	// clock-source = "ACLK";
 };
 
+
+
+&i2c2 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    pinctrl-0 = <&i2c2_default>;
+    pinctrl-1 = <&i2c2_sleep>;
+    pinctrl-names = "default", "sleep";
+	clock-frequency = <I2C_BITRATE_FAST_PLUS>;
+    zephyr,concat-buf-size = <4096>;
+    ssd1306: ssd1306@3c {
+        compatible = "solomon,ssd1306fb";  
+        reg = <0x3c>;    
+        width = <128>;
+        height = <64>;
+
+        segment-offset = <0>;
+        page-offset = <0>;
+        display-offset = <0>;
+        multiplex-ratio = <63>;
+        com-invdir;
+        prechargep = <0x22>;
+
+        segment-remap;          // 水平翻转（常见模块需要）
+        // com-invdir;          // 垂直翻转（如图像倒置再打开试试）
+
+        status = "okay";
+    };
+};

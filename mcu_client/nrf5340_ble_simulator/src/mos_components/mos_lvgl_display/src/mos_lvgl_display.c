@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 14:00:54
+ * @LastEditTime : 2025-09-11 15:09:18
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -18,7 +18,7 @@
 #include "lvgl_display.h"
 // #include <lvgl.h>
 // #include <hls12vga.h>
-#include <display/lcd/hls12vga.h>
+// #include <display/lcd/hls12vga.h>
 
 #include "bal_os.h"
 #include "bsp_log.h"
@@ -63,10 +63,10 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count  = 0;
-    BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
-    BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
-    BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
-    BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
+//     BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
+//     BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
+//     BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
+//     BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
 }
 
 void lv_example_scroll_text(void)
@@ -520,6 +520,56 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     BSP_LOGI(TAG, "🔄 Started infinite smooth horizontal scrolling animation for welcome text");
 }
 
+static void anim_set_x_cb(void *obj, int32_t v) 
+{ 
+    lv_obj_set_x((lv_obj_t *)obj, v); 
+}
+
+static void create_center_rectangle_pattern_ssd1306(lv_obj_t *screen)
+{
+    const char *text = "Welcome to MentraOS NExFirmware!";
+    const lv_font_t *font = &lv_font_montserrat_24;   
+    const uint32_t ms_per_px = 25;   
+    const lv_coord_t sw = lv_obj_get_width(screen);
+    const lv_coord_t sh = lv_obj_get_height(screen);
+
+    lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+
+
+    lv_obj_t *label = lv_label_create(screen);
+    lv_obj_set_style_text_color(label, lv_color_black(), 0);
+    lv_obj_set_style_text_font(label, font, 0);
+    lv_label_set_text(label, text);
+
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+
+    lv_obj_update_layout(label);
+    lv_coord_t label_w = lv_obj_get_width(label);
+    lv_coord_t label_h = lv_obj_get_height(label);
+
+    lv_obj_set_y(label, (sh - label_h) / 2);
+
+    const lv_coord_t x_start = sw;      
+    const lv_coord_t x_end   = -label_w;   
+
+    uint32_t total_px = (uint32_t)(x_start - x_end);  
+    uint32_t anim_time_ms = total_px * ms_per_px;
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, label);
+    lv_anim_set_exec_cb(&a, anim_set_x_cb);
+    lv_anim_set_values(&a, x_start, x_end);
+    lv_anim_set_time(&a, anim_time_ms);
+    lv_anim_set_path_cb(&a, lv_anim_path_linear);
+    lv_anim_set_repeat_delay(&a, 250);         
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&a);
+}
+
+
+
 static void create_scrolling_text_container(lv_obj_t *screen)
 {
     // Create scrollable container with 20px margins on all sides
@@ -634,7 +684,8 @@ static void show_test_pattern(int pattern_id)
             create_vertical_zebra_pattern(screen);
             break;
         case 3:
-            create_center_rectangle_pattern(screen);
+            // create_center_rectangle_pattern(screen);
+            create_center_rectangle_pattern_ssd1306(screen);
             break;
         case 4:
             create_scrolling_text_container(screen);
@@ -789,11 +840,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
         return;
     }
-    if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
-    {
-        BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
-        return;
-    }
+    // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
+    // {
+    //     BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+    //     return;
+    // }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
     mos_timer_create(&fps_timer, fps_timer_cb);
     mos_timer_start(&fps_timer, true, 1000);
@@ -822,16 +873,16 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     break;
                 case LCD_CMD_OPEN:
                     BSP_LOGI(TAG, "LCD_CMD_OPEN");
-                    hls12vga_power_on();
-                    set_display_onoff(true);
-                    hls12vga_set_brightness(9);  // 设置亮度
-                    hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
-                    // hls12vga_set_brightness(cmd.p.open.brightness);
-                    // hls12vga_set_mirror(cmd.p.open.mirror);
-                    mos_delay_ms(2);
-                    hls12vga_open_display();  // 开启显示
-                    // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                    hls12vga_clear_screen(false);  // 清屏
+                    // hls12vga_power_on();
+                    // set_display_onoff(true);
+                    // hls12vga_set_brightness(9);  // 设置亮度
+                    // hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+                    // // hls12vga_set_brightness(cmd.p.open.brightness);
+                    // // hls12vga_set_mirror(cmd.p.open.mirror);
+                    // mos_delay_ms(2);
+                    // hls12vga_open_display();  // 开启显示
+                    // // hls12vga_set_shift(MOVE_DEFAULT, 0);
+                    // hls12vga_clear_screen(false);  // 清屏
                     state_type = LCD_STATE_ON;
 
                     BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
@@ -862,9 +913,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     {
                         // hls12vga_clear_screen(false); // 清屏
                         // lv_timer_handler();
-                        scroll_text_stop();
-                        set_display_onoff(false);
-                        hls12vga_power_off();
+                        // scroll_text_stop();
+                        // set_display_onoff(false);
+                        // hls12vga_power_off();
                     }
                     state_type = LCD_STATE_OFF;
                     break;
@@ -881,28 +932,28 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
                     /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+                    // if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+                    // }
+                    // break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
                     /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    if (hls12vga_draw_vertical_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+                    // if (hls12vga_draw_vertical_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+                    // }
+                    // break;
                 case LCD_CMD_CHESS_PATTERN:
                     /* **NEW: Handle direct HLS12VGA chess pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    if (hls12vga_draw_chess_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw chess pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+                    // if (hls12vga_draw_chess_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw chess pattern");
+                    // }
+                    // break;
                 default:
                     break;
             }
