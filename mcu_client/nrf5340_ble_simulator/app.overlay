@@ -31,7 +31,7 @@
 		compatible = "zephyr,dummy-dc";
 		width = <640>;
 		height = <480>;
-		status = "okay";
+		status = "disabled";  // Disabled since we're using SSD1306
 	};
 };
 
@@ -69,19 +69,7 @@
 		};
 	};
 
-	i2c2_default: i2c2_default {
-		group1 {
-			psels = <NRF_PSEL(TWIM_SDA, 1, 14)>,
-					<NRF_PSEL(TWIM_SCL, 1, 15)>;
-		};
-	};
-    i2c2_sleep: i2c2_sleep {
-        group1 {
-            psels = <NRF_PSEL(TWIM_SDA, 1, 14)>,
-                    <NRF_PSEL(TWIM_SCL, 1, 15)>;
-            low-power-enable;
-        };
-    };
+	// I2C2 pinctrl moved to board overlay
 };
 
 &spi4 {
@@ -149,29 +137,5 @@ dmic_dev: &pdm0 {
 
 
 &i2c2 {
-    compatible = "nordic,nrf-twim";
-    status = "okay";
-    pinctrl-0 = <&i2c2_default>;
-    pinctrl-1 = <&i2c2_sleep>;
-    pinctrl-names = "default", "sleep";
-	clock-frequency = <I2C_BITRATE_FAST_PLUS>;
-    zephyr,concat-buf-size = <4096>;
-    ssd1306: ssd1306@3c {
-        compatible = "solomon,ssd1306fb";  
-        reg = <0x3c>;    
-        width = <128>;
-        height = <64>;
-
-        segment-offset = <0>;
-        page-offset = <0>;
-        display-offset = <0>;
-        multiplex-ratio = <63>;
-        com-invdir;
-        prechargep = <0x22>;
-
-        segment-remap;          // 水平翻转（常见模块需要）
-        // com-invdir;          // 垂直翻转（如图像倒置再打开试试）
-
-        status = "okay";
-    };
+    // SSD1306 configuration moved to board overlay
 };
