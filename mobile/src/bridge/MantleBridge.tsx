@@ -400,7 +400,6 @@ export class MantleBridge extends EventEmitter {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          // console.log("MantleBridge: Sending mic data to server")
           // socketComms.sendBinary(bytes)
           livekitManager.addPcm(bytes)
           break

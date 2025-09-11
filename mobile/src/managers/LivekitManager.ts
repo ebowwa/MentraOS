@@ -10,20 +10,15 @@ import {
 
 import {Room, LocalAudioTrack, Track, AudioPreset} from "livekit-client"
 import Toast from "react-native-toast-message"
+import restComms from "./RestComms"
 
 class LivekitManager {
   private static instance: LivekitManager
   private room: Room | null = null
 
-  private static sequence = 0
+  private sequence = 0
 
   private constructor() {}
-
-  private static getSequence() {
-    LivekitManager.sequence += 1
-    LivekitManager.sequence = LivekitManager.sequence % 256
-    return LivekitManager.sequence
-  }
 
   public static getInstance(): LivekitManager {
     if (!LivekitManager.instance) {
@@ -32,7 +27,15 @@ class LivekitManager {
     return LivekitManager.instance
   }
 
-  public async connect(url: string, token: string) {
+  private getSequence() {
+    this.sequence += 1
+    this.sequence = this.sequence % 256
+    return this.sequence
+  }
+
+  public async connect() {
+    console.log(`LivekitManager: Connecting to room`)
+
     // const room = new LiveKitRoom({
     //   url,
     //   token,
@@ -44,7 +47,8 @@ class LivekitManager {
     }
 
     try {
-      console.log(`LivekitManager: Connecting to room`)
+      const {url, token} = await restComms.getLivekitUrlAndToken()
+
       const room = new Room()
       this.room = room
       await room.connect(url, token)
@@ -63,6 +67,10 @@ class LivekitManager {
     } catch (error) {
       console.error("LivekitManager: Error connecting to room", error)
     }
+
+    // setTimeout(() => {
+    //   this.connect()
+    // }, 20 * 1000)
   }
 
   public async addPcm(data: Uint8Array) {
@@ -76,7 +84,7 @@ class LivekitManager {
     // }
 
     // prepend a sequence number:
-    const sequence = LivekitManager.getSequence()
+    const sequence = this.getSequence()
     data = new Uint8Array([sequence, ...data])
 
     // console.error(`number: ${sequence}`)

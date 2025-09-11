@@ -272,6 +272,12 @@ class RestComms {
     return this.authenticatedRequest("DELETE", "/api/account/confirm-deletion", {requestId, confirmationCode})
   }
 
+  public async getLivekitUrlAndToken(): Promise<{url: string; token: string}> {
+    const response = await this.authenticatedRequest("GET", "/api/client/livekit/token")
+    const {url, token} = response.data
+    return {url, token}
+  }
+
   // Data Export
   public async requestDataExport(): Promise<any> {
     return this.authenticatedRequest("POST", "/api/account/request-export", {format: "json"})
