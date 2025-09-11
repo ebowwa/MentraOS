@@ -53,6 +53,7 @@ const AppStore: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [apps, setApps] = useState<AppI[]>([]);
+  const [originalApps, setOriginalApps] = useState<AppI[]>([]);
   const [installingApp, setInstallingApp] = useState<string | null>(null);
   const [activeOrgFilter, setActiveOrgFilter] = useState<string | null>(orgId);
   const [orgName, setOrgName] = useState<string>("");
@@ -144,6 +145,7 @@ const AppStore: React.FC = () => {
       }
 
       setApps(appList);
+      setOriginalApps(appList);
     } catch (err) {
       console.error("Error fetching apps:", err);
       setError("Failed to load apps. Please try again.");
@@ -157,12 +159,20 @@ const AppStore: React.FC = () => {
     if (searchQuery.trim() === "") return apps;
 
     const query = searchQuery.toLowerCase();
-    return apps.filter(
+    const filtered = apps.filter(
       (app) =>
         app.name.toLowerCase().includes(query) ||
-        (app.description && app.description.toLowerCase().includes(query)),
+        (app.description && app.description.toLowerCase().includes(query)) ||
+        app.packageName.toLowerCase().includes(query), // Also match package name
     );
-  }, [apps, searchQuery]);
+    
+    // If we have a single app that was found by package search, show it regardless
+    if (apps.length === 1 && apps !== originalApps) {
+      return apps;
+    }
+    
+    return filtered;
+  }, [apps, originalApps, searchQuery]);
 
   /**
    * Handles search form submission
@@ -365,35 +375,63 @@ const AppStore: React.FC = () => {
     setSearchQuery(value);
     console.log("🔍 Search input:", value);
     
+    // Restore original apps if we had searched by package before
+    if (apps !== originalApps) {
+      setApps(originalApps);
+    }
+    
     if (value.trim() === "") {
-      console.log("📊 Total apps available:", apps.length);
+      console.log("📊 Total apps available:", originalApps.length);
       return;
     }
 
     const query = value.toLowerCase();
-    const filtered = apps.filter(
+    const filtered = originalApps.filter(
       (app) =>
         app.name.toLowerCase().includes(query) ||
         (app.description && app.description.toLowerCase().includes(query)),
     );
     
-    console.log(`📊 Apps matching "${value}":`, filtered.length);
+    // console.log(`📊 Apps matching "${value}":`, filtered.length);
     
     // If no local matches, try searching by package name
     if (filtered.length === 0) {
-      console.log("🔎 No local matches found. Searching by package name...");
+      // console.log("🔎 No local matches found. Searching by package name...");
+      setIsLoading(true);
       try {
         const pkgApp = await api.app.getAppByPackageName(value);
+
         if (pkgApp) {
-          console.log("✅ Found app by package name:", pkgApp.name, `(${pkgApp.packageName})`);
+          // console.log("✅ Found app by package name:", pkgApp.name, `(${pkgApp.packageName})`);
+          // Check if user is authenticated to get install status
+          if (isAuthenticated && isAuthTokenReady()) {
+            try {
+              const installedApps = await api.app.getInstalledApps();
+              pkgApp.isInstalled = installedApps.some(app => app.packageName === pkgApp.packageName);
+              console.log(`📱 App install status: ${pkgApp.isInstalled ? 'INSTALLED' : 'NOT INSTALLED'}`);
+            } catch (error) {
+              console.error("⚠️ Error checking install status:", error);
+              pkgApp.isInstalled = false;
+            }
+          } else {
+            pkgApp.isInstalled = false;
+            // console.log("🔒 User not authenticated - showing as not installed");
+          }
+          
+          setApps([pkgApp]);
+          // Don't clear search query - let filteredApps handle it
         } else {
           console.log("❌ No app found with package name:", value);
         }
       } catch (error) {
         console.error("⚠️ Error searching by package name:", error);
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, [apps]);
+    
+    
+  }, [apps, originalApps, isAuthenticated, isAuthTokenReady]);
 
 
   return (
