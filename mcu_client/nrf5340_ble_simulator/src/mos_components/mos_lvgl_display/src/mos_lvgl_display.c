@@ -575,8 +575,8 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     // Create scrollable container with 20px margins on all sides
     // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
+    lv_obj_set_size(container, 128, 64);  // 640-40 = 600, 480-40 = 440
+    lv_obj_set_pos(container, 0, 0);     // 20px margins from all edges
 
     // **NEW: Store global reference for protobuf text updates**
     protobuf_container = container;
@@ -586,14 +586,14 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // NO SCROLLBARS
 
     // Style the container - NO BORDERS, minimal styling for performance
-    lv_obj_set_style_bg_color(container, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(container, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
     lv_obj_set_style_pad_all(container, 5, 0);       // Reduced padding for performance
 
     // Create label inside container with protobuf text
     lv_obj_t *label = lv_label_create(container);
-    lv_obj_set_width(label, 590);                       // Container width minus minimal padding (600-10=590)
+    lv_obj_set_width(label, 128);                       // Container width minus minimal padding (600-10=590)
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Wrap text to fit width
 
     // **NEW: Store global reference for protobuf text updates**
@@ -601,17 +601,17 @@ static void create_scrolling_text_container(lv_obj_t *screen)
 
     // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
     const char *initial_text =
-        "MentraOS AR Display Ready\n\n"
-        "Waiting for protobuf text messages...\n\n"
-        "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!";
+        "MentraOS AR Display Ready\n"
+        "Waiting for protobuf text messages...\n"
+        "This container will automatically update with incoming text content from the mobile app.\n"
+        "System initialized and ready for messages!";
 
     lv_label_set_text(label, initial_text);
 
     // Style the label text - optimized settings
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_line_space(label, 3, 0);  // Reduced line spacing for performance
+    lv_obj_set_style_text_color(label, lv_color_black(), 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_line_space(label, 1, 0);  // Reduced line spacing for performance
 
     // Position label at top of container
     lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
