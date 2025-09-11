@@ -14,6 +14,7 @@ import {View} from "react-native"
 import {Text} from "@/components/ignite"
 import * as Sentry from "@sentry/react-native"
 import Constants from "expo-constants"
+import {registerGlobals} from "@livekit/react-native-webrtc"
 
 Sentry.init({
   dsn: Constants.expoConfig?.extra?.SENTRY_DSN,
@@ -61,6 +62,13 @@ function Root() {
         // Still set initialized to true to prevent app from being stuck
         setIsI18nInitialized(true)
       })
+
+    try {
+      // initialize webrtc
+      registerGlobals()
+    } catch (error) {
+      // console.error("LivekitManager: Error registering globals", error)// safe to ignore
+    }
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized

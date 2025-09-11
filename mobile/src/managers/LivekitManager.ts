@@ -9,6 +9,7 @@ import {
 } from "@livekit/react-native"
 
 import {Room, LocalAudioTrack, Track, AudioPreset} from "livekit-client"
+import Toast from "react-native-toast-message"
 
 class LivekitManager {
   private static instance: LivekitManager
@@ -16,15 +17,7 @@ class LivekitManager {
 
   private static sequence = 0
 
-  private constructor() {
-    // this.livekit = new Livekit()
-
-    try {
-      registerGlobals()
-    } catch (error) {
-      // console.error("LivekitManager: Error registering globals", error)// safe to ignore
-    }
-  }
+  private constructor() {}
 
   private static getSequence() {
     LivekitManager.sequence += 1
@@ -44,17 +37,29 @@ class LivekitManager {
     //   url,
     //   token,
     // })
+
+    if (this.room) {
+      await this.room.disconnect()
+      this.room = null
+    }
+
     try {
       console.log(`LivekitManager: Connecting to room`)
       const room = new Room()
       this.room = room
       await room.connect(url, token)
-      room.on("connected", () => {
-        console.log("LivekitManager: Connected to room")
-      })
+      // room.on("connected", () => {
+      //   console.log("LivekitManager: Connected to room")
+      // })
+      // room.on("reconnected", () => {
+      //   console.log("LivekitManager: Reconnected to room")
+      // })
       room.on("disconnected", () => {
         console.log("LivekitManager: Disconnected from room")
       })
+      // setInterval(() => {
+      //   console.log("LivekitManager: Room state", this.room?.state)
+      // }, 1000)
     } catch (error) {
       console.error("LivekitManager: Error connecting to room", error)
     }
@@ -67,14 +72,18 @@ class LivekitManager {
     }
 
     // if (Math.random() < 0.01) {
-    //   console.log(`LivekitManager: Adding PCM data to room, ${data.length} bytes`)
+    // console.log(`LivekitManager: Adding PCM data to room, ${data.length} bytes`)
     // }
 
     // prepend a sequence number:
     const sequence = LivekitManager.getSequence()
     data = new Uint8Array([sequence, ...data])
 
-    console.error(`number: ${sequence}`)
+    // console.error(`number: ${sequence}`)
+    Toast.show({
+      text1: `number: ${sequence}`,
+      type: "error",
+    })
 
     this.room?.localParticipant.publishData(data, {reliable: false})
     // socketComms.sendBinary(data)
