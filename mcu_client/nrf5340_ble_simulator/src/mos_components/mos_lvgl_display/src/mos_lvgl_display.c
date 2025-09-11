@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-11 15:09:18
+ * @LastEditTime : 2025-09-11 21:08:42
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -216,12 +216,12 @@ void display_send_frame(void *data_ptr)
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
     // mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
-void lvgl_dispaly_text(void)
+void lvgl_display_text(void)
 {
     lv_obj_t *hello_world_label = lv_label_create(lv_screen_active());
     lv_label_set_text(hello_world_label, "Hello LVGL World");
     lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);  // 居中对齐
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐720
     // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);  // 左对齐
     // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
     lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  // 白色对应非零值
@@ -528,7 +528,7 @@ static void anim_set_x_cb(void *obj, int32_t v)
 static void create_center_rectangle_pattern_ssd1306(lv_obj_t *screen)
 {
     const char *text = "Welcome to MentraOS NExFirmware!";
-    const lv_font_t *font = &lv_font_montserrat_24;   
+    const lv_font_t *font = &lv_font_montserrat_12;   
     const uint32_t ms_per_px = 25;   
     const lv_coord_t sw = lv_obj_get_width(screen);
     const lv_coord_t sh = lv_obj_get_height(screen);
@@ -627,8 +627,8 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     // Create 600x440 bordered viewing area centered on screen
     // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
+    lv_obj_set_size(container, 128, 64);  // 640-40 = 600, 480-40 = 440
+    lv_obj_set_pos(container, 0, 0);     // 20px margins from all edges
 
     // **NEW: Store global reference for XY text positioning**
     xy_text_container = container;
@@ -638,9 +638,9 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // No scrollbars
 
     // Style the container with visible border for positioning reference
-    lv_obj_set_style_bg_color(container, lv_color_black(), 0);  // Black background
+    lv_obj_set_style_bg_color(container, lv_color_white(), 0);  // Black background
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(container, lv_color_white(), 0);  // White border
+    lv_obj_set_style_border_color(container, lv_color_black(), 0);  // White border
     lv_obj_set_style_border_width(container, 2, 0);                 // 2px border width
     lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);        // Visible border
     lv_obj_set_style_pad_all(container, 10, 0);                     // 10px internal padding
@@ -805,7 +805,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
 
     // Apply font and styling - **SAME AS PATTERN 4: Use white text**
     lv_obj_set_style_text_font(current_xy_text_label, font, 0);
-    lv_obj_set_style_text_color(current_xy_text_label, lv_color_white(), 0);  // White text like Pattern 4
+    lv_obj_set_style_text_color(current_xy_text_label, lv_color_black(), 0);  // White text like Pattern 4
     lv_obj_set_style_bg_opa(current_xy_text_label, LV_OPA_TRANSP, 0);         // Transparent background
 
     // Set text wrapping and width constraints
