@@ -9,6 +9,7 @@ import {
 } from "@livekit/react-native"
 
 import {Room, LocalAudioTrack, Track, AudioPreset} from "livekit-client"
+import socketComms from "./SocketComms"
 
 class LivekitManager {
   private static instance: LivekitManager
@@ -50,6 +51,7 @@ class LivekitManager {
     }
 
     this.room.localParticipant.publishData(data, {reliable: false})
+    // socketComms.sendBinary(data)
   }
 }
 
