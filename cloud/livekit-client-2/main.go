@@ -290,21 +290,48 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 			c.sendEvent(Event{Type: "disconnected", State: "disconnected"})
 		},
 		ParticipantCallback: lksdk.ParticipantCallback{
+			// Data-only bridge: ignore all track subscriptions (no audio track playout/forwarding)
 			OnTrackSubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
-				// remember track and owner
-				c.tracksMu.Lock()
-				c.subTracks[string(publication.SID())] = track
-				c.subTrackOwner[string(publication.SID())] = string(rp.Identity())
-				c.tracksMu.Unlock()
-				c.onTrackSubscribed(track, publication, rp)
+				// Intentionally do nothing; we only consume DataPackets from publishData
+				if track.Kind() == webrtc.RTPCodecTypeAudio {
+					log.Printf("Data-only: ignoring audio track from %s (sid=%s)", rp.Identity(), publication.SID())
+				}
 			},
 			OnTrackUnsubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
 				log.Printf("Remote track unsubscribed: %s from %s", publication.Name(), rp.Identity())
-				c.tracksMu.Lock()
-				delete(c.subTracks, string(publication.SID()))
-				delete(c.subTrackOwner, string(publication.SID()))
-				delete(c.subActive, string(publication.SID()))
-				c.tracksMu.Unlock()
+				// Nothing else to clean up in data-only mode
+			},
+			// Minimal data receive path: accept arbitrary-size PCM16 payloads over DataPacket (RELIABLE)
+			OnDataPacket: func(pkt lksdk.DataPacket, params lksdk.DataReceiveParams) {
+				// Only forward when subscribe is enabled
+				if !c.subscribeEnabled {
+					return
+				}
+				// Optional identity filter when target is set
+				if c.targetIdentity != "" && params.SenderIdentity != c.targetIdentity {
+					return
+				}
+				var data []byte
+				if udp, ok := pkt.(*lksdk.UserDataPacket); ok {
+					data = udp.Payload
+				} else {
+					return
+				}
+				if len(data) == 0 {
+					return
+				}
+				c.mu.Lock()
+				ws := c.ws
+				c.mu.Unlock()
+				if ws == nil {
+					return
+				}
+				// Best-effort forward to TS over WS (binary)
+				if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
+					if time.Now().UnixNano()%100 == 0 {
+						log.Printf("data forward write error: %v", err)
+					}
+				}
 			},
 		},
 	}
@@ -324,7 +351,8 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 		lkpacer.WithMaxLatency(100*time.Millisecond),
 	)
 	go func() {
-		r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback, lksdk.WithPacer(pf))
+		// AutoSubscribe=false ensures the server doesn't auto-subscribe us to A/V tracks
+		r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback, lksdk.WithPacer(pf), lksdk.WithAutoSubscribe(false))
 		if err != nil {
 			errCh <- err
 			return
@@ -579,7 +607,7 @@ func (c *LiveKitClient) enableSubscribe(target string) {
 			continue
 		}
 		c.subActive[sid] = true
-		go c.forwardTrack(tr, owner, sid)
+		go c.forwardTrack(tr, sid)
 	}
 	c.tracksMu.Unlock()
 }
@@ -622,11 +650,11 @@ func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication
 	c.tracksMu.Lock()
 	c.subActive[sid] = true
 	c.tracksMu.Unlock()
-	go c.forwardTrack(track, owner, sid)
+	go c.forwardTrack(track, sid)
 }
 
 // forwardTrack uses SDK's PCM remote track at 16 kHz mono and streams fixed 10 ms frames over WS.
-func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, owner string, sid string) {
+func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, sid string) {
 	writer := &pcm16WSWriter{client: c}
 	pcmTrack, err := lkmedia.NewPCMRemoteTrack(track, writer,
 		lkmedia.WithTargetSampleRate(16000),

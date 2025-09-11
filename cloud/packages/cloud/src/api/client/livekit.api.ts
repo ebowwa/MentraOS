@@ -35,11 +35,11 @@ async function mintTestToken(req: Request, res: Response) {
       });
     }
 
-    const { url, token, identity, expiresAt } = await LiveKitService.mintTestToken(email, roomName);
+    const { url, token, identity } = await LiveKitService.mintTestToken(email, roomName);
 
     return res.json({
       success: true,
-      data: { url, token, room: roomName, identity, expiresAt },
+      data: { url, token, room: roomName, identity },
       timestamp: new Date(),
     });
   } catch (error) {

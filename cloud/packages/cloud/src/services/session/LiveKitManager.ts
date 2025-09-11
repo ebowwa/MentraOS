@@ -1,7 +1,7 @@
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import UserSession from './UserSession';
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken, VideoGrant } from 'livekit-server-sdk';
 import LiveKitClientTS from './LiveKitClient';
 
 
@@ -20,6 +20,7 @@ export class LiveKitManager {
 
   constructor(session: UserSession) {
     this.session = session;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const startMs = (session as any).startTime instanceof Date ? (session as any).startTime.getTime() : Date.now();
     const lkTraceId = `livekit:${session.userId}:${startMs}`;
     this.logger = rootLogger.child({ service: 'LiveKitManager', userId: session.userId, feature: 'livekit', lkTraceId });
@@ -43,8 +44,9 @@ export class LiveKitManager {
   async mintClientPublishToken(): Promise<string | null> {
     if (!this.apiKey || !this.apiSecret) return null;
     try {
-      const at = new AccessToken(this.apiKey, this.apiSecret, { identity: this.session.userId, ttl: 300 });
-      at.addGrant({ roomJoin: true, canPublish: true, canSubscribe: false, room: this.getRoomName() } as any);
+  const at = new AccessToken(this.apiKey, this.apiSecret, { identity: this.session.userId, ttl: 300 });
+  const grant: VideoGrant = { roomJoin: true, room: this.getRoomName(), canPublish: true, canSubscribe: false, canPublishData: true } as VideoGrant;
+  at.addGrant(grant);
       const token = await at.toJwt();
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client publish token');
       return token;
@@ -84,7 +86,8 @@ export class LiveKitManager {
     if (!this.apiKey || !this.apiSecret) return null;
     try {
       const at = new AccessToken(this.apiKey, this.apiSecret, { identity: this.session.userId, ttl: 300 });
-      at.addGrant({ roomJoin: true, canPublish: false, canSubscribe: true, room: this.getRoomName() } as any);
+  const grant: VideoGrant = { roomJoin: true, room: this.getRoomName(), canPublish: false, canSubscribe: true } as VideoGrant;
+  at.addGrant(grant);
       const token = await at.toJwt();
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted client subscribe token');
       return token;
@@ -98,7 +101,8 @@ export class LiveKitManager {
     if (!this.apiKey || !this.apiSecret) return null;
     try {
       const at = new AccessToken(this.apiKey, this.apiSecret, { identity: `cloud-agent:${this.session.userId}`, ttl: 60000 });
-      at.addGrant({ roomJoin: true, canPublish: false, canSubscribe: true, room: this.getRoomName() } as any);
+  const grant: VideoGrant = { roomJoin: true, room: this.getRoomName(), canPublish: false, canSubscribe: true } as VideoGrant;
+  at.addGrant(grant);
       const token = await at.toJwt();
       this.logger.info({ roomName: this.getRoomName(), token }, 'Minted agent subscribe token');
       return token;
@@ -136,7 +140,7 @@ export class LiveKitManager {
   }
 
   // Signal from MicrophoneManager
-  public onMicStateChange(isOn: boolean): void {
+  public onMicStateChange(): void {
     // this.micEnabled = isOn;
     this.applySubscribeState();
   }

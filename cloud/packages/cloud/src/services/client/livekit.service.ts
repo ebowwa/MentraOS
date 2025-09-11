@@ -20,7 +20,6 @@ export async function mintTestToken(email: string, roomName: string) {
     throw new Error("roomName not allowed");
   }
 
-  const ttlSec = Number(process.env.LIVEKIT_TEST_TTL_SECONDS ?? DEFAULT_TTL);
   const identity = sanitizeIdentity(email);
 
   const grant: VideoGrant & { canPublishData?: boolean } = {
@@ -31,15 +30,13 @@ export async function mintTestToken(email: string, roomName: string) {
     // data channels for signaling/controls if needed
     canPublishData: true,
   };
-  const at = new AccessToken(apiKey, apiSecret, { identity, name: identity });
+  const at = new AccessToken(apiKey, apiSecret, { identity, name: identity, ttl: "5m" });
   at.addGrant(grant);
-  at.ttl = ttlSec;
 
   const token = await at.toJwt();
-  const expiresAt = Math.floor(Date.now() / 1000) + ttlSec;
 
   logger.info({ identity, roomName }, "Minted LiveKit test token");
-  return { url, token, identity, expiresAt };
+  return { url, token, identity };
 }
 
 function sanitizeIdentity(email: string): string {
