@@ -62,7 +62,7 @@ func main() {
 	flag.StringVar(&device, "device", "default", "Audio output device hint (ignored on macOS)")
 	flag.BoolVar(&inspect, "inspect", false, "List rooms/participants via RoomService before connecting")
 	flag.BoolVar(&watch, "watch", false, "Poll participants every 5s via RoomService and log")
-	flag.IntVar(&expectedSR, "expected-sr", 48000, "Expected audio sample rate for throughput metrics (Hz)")
+	flag.IntVar(&expectedSR, "expected-sr", 16000, "Expected audio sample rate for throughput metrics (Hz)")
 	flag.BoolVar(&beep, "beep", false, "Play a 1s 440Hz test tone on start to verify audio output")
 	flag.Float64Var(&beepDur, "beep-dur", 1.0, "Test tone duration in seconds (with --beep)")
 	flag.BoolVar(&pipeBeep, "pipe-beep", false, "Inject a 1s 440Hz test tone into the main player pipe")
@@ -165,8 +165,8 @@ func main() {
 		}
 	}
 
-	// Prepare audio output (48kHz mono, 16-bit)
-	const outSampleRate = 48000
+	// Prepare audio output (16kHz mono, 16-bit)
+	const outSampleRate = 16000
 	const outChannels = 1
 	ctx, ready, err := oto.NewContext(outSampleRate, outChannels, 2)
 	if err != nil {
@@ -201,7 +201,7 @@ func main() {
 	}
 
 	// Prepare subscribe handler BEFORE connecting so new tracks trigger immediately
-	var cancelFns []context.CancelFunc
+	cancelFns := make([]context.CancelFunc, 0)
 	pcw := &pcmWriter{w: pw, levelEvery: 50}
 	pcw.metrics.expectedBps = expectedSR * outChannels * 2
 	if !framesOnly {
@@ -258,8 +258,7 @@ func main() {
 				log.Printf("track unmuted: %s by %s", pub.Name(), p.Identity())
 			}
 		},
-		// Data receive path: accept arbitrary PCM16 @16k mono payloads over data channel.
-		// We'll upsample 16k->48k with a naive 3x duplicate for playout.
+		// Data receive path: payload format Uint8Array[seq, ...pcm16@16k].
 		OnDataPacket: func(pkt lksdk.DataPacket, params lksdk.DataReceiveParams) {
 			if target != "" && params.SenderIdentity != target {
 				return
@@ -270,32 +269,43 @@ func main() {
 			}
 			data := udp.Payload
 			pktCount++
-			// log per-packet details
-			preview := 8
-			if len(data) < preview {
-				preview = len(data)
+			if len(data) == 0 {
+				return
 			}
-			log.Printf("data frame #%d from=%s bytes=%d even=%t preview=% x", pktCount, params.SenderIdentity, len(data), len(data)%2 == 0, data[:preview])
-			if len(data) < 2 {
+			// If length is odd, treat first byte as sequence number, rest as PCM16.
+			// If even, accept headerless PCM16 for backward-compat.
+			var (
+				haveSeq bool
+				seq     byte
+				pcm     []byte
+			)
+			if len(data)%2 == 1 {
+				haveSeq = true
+				seq = data[0]
+				pcm = data[1:]
+			} else {
+				pcm = data
+			}
+			// log per-packet details with seq (if present) and first few bytes of pcm
+			preview := 8
+			if len(pcm) < preview {
+				preview = len(pcm)
+			}
+			if haveSeq {
+				log.Printf("data frame #%d from=%s seq=%d bytes=%d pcmEven=%t pcmPreview=% x", pktCount, params.SenderIdentity, seq, len(pcm), len(pcm)%2 == 0, pcm[:preview])
+			} else {
+				log.Printf("data frame #%d from=%s bytes=%d pcmEven=%t pcmPreview=% x", pktCount, params.SenderIdentity, len(pcm), len(pcm)%2 == 0, pcm[:preview])
+			}
+			if len(pcm) < 2 {
 				return
 			}
 			// enforce even length for PCM16
-			if len(data)%2 != 0 {
-				data = data[:len(data)-1]
+			if len(pcm)%2 != 0 {
+				pcm = pcm[:len(pcm)-1]
 			}
-			// Simple 16k -> 48k upsample by 3x duplication per sample
-			// Input: N samples (mono int16) -> Output: 3N samples
-			in := data
-			out := make([]byte, 0, len(in)*3)
-			for i := 0; i+1 < len(in); i += 2 {
-				v := in[i : i+2]
-				// duplicate 3x
-				out = append(out, v...)
-				out = append(out, v...)
-				out = append(out, v...)
-			}
-			_ = writeAll(pw, out)
-			pcw.metrics.addBytes(len(out))
+			// Write 16k PCM directly to player (oto context is 16kHz)
+			_ = writeAll(pw, pcm)
+			pcw.metrics.addBytes(len(pcm))
 		},
 	}
 
@@ -307,14 +317,30 @@ func main() {
 	)
 	roomCallback := &lksdk.RoomCallback{
 		ParticipantCallback: trackCb,
-		OnDisconnected:      func() { if !framesOnly { log.Printf("room disconnected") } },
-		OnReconnecting:      func() { if !framesOnly { log.Printf("room reconnecting...") } },
-		OnReconnected:       func() { if !framesOnly { log.Printf("room reconnected") } },
+		OnDisconnected: func() {
+			if !framesOnly {
+				log.Printf("room disconnected")
+			}
+		},
+		OnReconnecting: func() {
+			if !framesOnly {
+				log.Printf("room reconnecting...")
+			}
+		},
+		OnReconnected: func() {
+			if !framesOnly {
+				log.Printf("room reconnected")
+			}
+		},
 		OnParticipantConnected: func(rp *lksdk.RemoteParticipant) {
-			if !framesOnly { log.Printf("participant connected: %s", rp.Identity()) }
+			if !framesOnly {
+				log.Printf("participant connected: %s", rp.Identity())
+			}
 		},
 		OnParticipantDisconnected: func(rp *lksdk.RemoteParticipant) {
-			if !framesOnly { log.Printf("participant disconnected: %s", rp.Identity()) }
+			if !framesOnly {
+				log.Printf("participant disconnected: %s", rp.Identity())
+			}
 		},
 		OnActiveSpeakersChanged: func(parts []lksdk.Participant) {
 			if !framesOnly {
