@@ -5,6 +5,7 @@ import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
+import livekitManager from "./LivekitManager"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -421,7 +422,8 @@ class SocketComms {
     if (msg.livekit) {
       const {url, token} = msg.livekit
       if (url && token) {
-        bridge.sendCommand("connect_livekit", {url, token})
+        // bridge.sendCommand("connect_livekit", {url, token})
+        livekitManager.connect(url, token)
       }
     }
   }
