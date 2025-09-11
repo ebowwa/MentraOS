@@ -54,6 +54,9 @@ func main() {
 	var beepDur float64
 	var pipeBeep bool
 	var framesOnly bool
+	var maxLatencyMs int
+	var targetLatencyMs int
+	var enableDrop bool
 	flag.StringVar(&url, "url", os.Getenv("LIVEKIT_URL"), "LiveKit URL (wss://...) or env LIVEKIT_URL")
 	flag.StringVar(&token, "token", os.Getenv("LIVEKIT_TOKEN"), "Access token or env LIVEKIT_TOKEN")
 	flag.StringVar(&target, "target", os.Getenv("TARGET_IDENTITY"), "Subscribe only to this participant identity (optional)")
@@ -67,6 +70,9 @@ func main() {
 	flag.Float64Var(&beepDur, "beep-dur", 1.0, "Test tone duration in seconds (with --beep)")
 	flag.BoolVar(&pipeBeep, "pipe-beep", false, "Inject a 1s 440Hz test tone into the main player pipe")
 	flag.BoolVar(&framesOnly, "frames-only", false, "Only log data packet frames; suppress periodic/status logs")
+	flag.IntVar(&maxLatencyMs, "max-latency-ms", 250, "Maximum buffered latency before dropping (ms)")
+	flag.IntVar(&targetLatencyMs, "target-latency-ms", 120, "Target latency after drops (ms)")
+	flag.BoolVar(&enableDrop, "drop-old", true, "Enable dropping of oldest frames when backlog exceeds max-latency-ms")
 	flag.Parse()
 
 	if url == "" {
@@ -235,6 +241,75 @@ func main() {
 		}()
 	}
 	var pktCount uint64
+	type rxFrame struct {
+		haveSeq bool
+		seq     byte
+		pcm     []byte
+		at      time.Time
+	}
+	framesCh := make(chan rxFrame, 128)
+
+	// Jitter buffer + drop policy + writer
+	go func() {
+		queue := make([]rxFrame, 0, 256)
+		calcBacklogMs := func() int {
+			// bytes -> samples -> ms at 16 kHz mono 16-bit
+			var bytes int
+			for i := range queue {
+				bytes += len(queue[i].pcm)
+			}
+			if bytes == 0 {
+				return 0
+			}
+			samples := bytes / 2
+			ms := samples * 1000 / outSampleRate
+			return ms
+		}
+		droppedFrames := 0
+		droppedBytes := 0
+		lastDropLog := time.Now()
+		for {
+			// Drain inbound without blocking to keep queue up to date
+			drained := false
+			for {
+				select {
+				case f := <-framesCh:
+					queue = append(queue, f)
+					drained = true
+				default:
+					goto drainedDone
+				}
+			}
+		drainedDone:
+			if drained && enableDrop {
+				// If backlog too large, drop oldest until at/below target
+				for len(queue) > 0 && calcBacklogMs() > maxLatencyMs {
+					droppedFrames++
+					droppedBytes += len(queue[0].pcm)
+					queue = queue[1:]
+				}
+				if droppedFrames > 0 && time.Since(lastDropLog) > 500*time.Millisecond {
+					if !framesOnly {
+						log.Printf("drop-old: frames=%d bytes=%d newBacklog=%dms target=%dms", droppedFrames, droppedBytes, calcBacklogMs(), targetLatencyMs)
+					}
+					droppedFrames = 0
+					droppedBytes = 0
+					lastDropLog = time.Now()
+				}
+			}
+			if len(queue) == 0 {
+				time.Sleep(2 * time.Millisecond)
+				continue
+			}
+			// Pop head and write to audio device (blocking at device rate)
+			f := queue[0]
+			queue = queue[1:]
+			if len(f.pcm) > 0 {
+				_ = writeAll(pw, f.pcm)
+				pcw.metrics.addBytes(len(f.pcm))
+			}
+		}
+	}()
 	trackCb := lksdk.ParticipantCallback{
 		// Data-only mode: ignore all audio/video tracks entirely
 		OnTrackSubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
@@ -303,9 +378,15 @@ func main() {
 			if len(pcm)%2 != 0 {
 				pcm = pcm[:len(pcm)-1]
 			}
-			// Write 16k PCM directly to player (oto context is 16kHz)
-			_ = writeAll(pw, pcm)
-			pcw.metrics.addBytes(len(pcm))
+			// Enqueue into jitter buffer for paced write/drop policy
+			select {
+			case framesCh <- rxFrame{haveSeq: haveSeq, seq: seq, pcm: pcm, at: time.Now()}:
+			default:
+				// If channel is full, drop oldest by consuming one and pushing new
+				// to prefer fresher audio
+				<-framesCh
+				framesCh <- rxFrame{haveSeq: haveSeq, seq: seq, pcm: pcm, at: time.Now()}
+			}
 		},
 	}
 
