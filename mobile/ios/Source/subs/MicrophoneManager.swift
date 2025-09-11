@@ -327,7 +327,7 @@ class OnboardMicrophoneManager {
             return false
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 512, format: inputFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 256, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
 
             let frameCount = Int(buffer.frameLength)

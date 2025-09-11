@@ -66,9 +66,15 @@ class LivekitManager {
       return
     }
 
-    if (Math.random() < 0.01) {
-      console.log(`LivekitManager: Adding PCM data to room, ${data.length} bytes`)
-    }
+    // if (Math.random() < 0.01) {
+    //   console.log(`LivekitManager: Adding PCM data to room, ${data.length} bytes`)
+    // }
+
+    // prepend a sequence number:
+    const sequence = LivekitManager.getSequence()
+    data = new Uint8Array([sequence, ...data])
+
+    console.error(`number: ${sequence}`)
 
     this.room?.localParticipant.publishData(data, {reliable: false})
     // socketComms.sendBinary(data)

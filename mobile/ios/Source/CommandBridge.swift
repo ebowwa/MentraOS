@@ -17,7 +17,7 @@ import Foundation
     }
 
     @objc func handleCommand(_ command: String) -> Any {
-        Bridge.log("CommandBridge: Received command: \(command)")
+        // Bridge.log("CommandBridge: Received command: \(command)")
 
         let m = MentraManager.shared
 
