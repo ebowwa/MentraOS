@@ -96,6 +96,11 @@ const AppStore: React.FC = () => {
         appList = await api.app.getAvailableApps(
           orgId ? filterOptions : undefined,
         );
+        const pkgapps = await api.app.getAppByPackageName("com.mentra.link");
+        const pkgapps1 = await api.app.getAppByPackageName("com.mentra.link");
+        
+
+        console.log("Fetched available apps:", pkgapps);
 
         // If we're filtering by organization, get the organization name from the first app
         if (orgId && appList.length > 0) {
@@ -165,6 +170,7 @@ const AppStore: React.FC = () => {
    */
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Searching for:");
 
     if (!searchQuery.trim()) {
       fetchApps(); // If search query is empty, reset to all apps
@@ -355,6 +361,41 @@ const AppStore: React.FC = () => {
     navigate("/login");
   }, [navigate]);
 
+  const handleSearchChange = useCallback(async (value: string) => {
+    setSearchQuery(value);
+    console.log("🔍 Search input:", value);
+    
+    if (value.trim() === "") {
+      console.log("📊 Total apps available:", apps.length);
+      return;
+    }
+
+    const query = value.toLowerCase();
+    const filtered = apps.filter(
+      (app) =>
+        app.name.toLowerCase().includes(query) ||
+        (app.description && app.description.toLowerCase().includes(query)),
+    );
+    
+    console.log(`📊 Apps matching "${value}":`, filtered.length);
+    
+    // If no local matches, try searching by package name
+    if (filtered.length === 0) {
+      console.log("🔎 No local matches found. Searching by package name...");
+      try {
+        const pkgApp = await api.app.getAppByPackageName(value);
+        if (pkgApp) {
+          console.log("✅ Found app by package name:", pkgApp.name, `(${pkgApp.packageName})`);
+        } else {
+          console.log("❌ No app found with package name:", value);
+        }
+      } catch (error) {
+        console.error("⚠️ Error searching by package name:", error);
+      }
+    }
+  }, [apps]);
+
+
   return (
     <div
       className="min-h-screen text-white"
@@ -382,7 +423,7 @@ const AppStore: React.FC = () => {
           >
             <SearchBar
               searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
+              onSearchChange={handleSearchChange}
               onSearchSubmit={handleSearch}
               onClear={() => {
                 setSearchQuery("");
