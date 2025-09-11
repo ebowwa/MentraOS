@@ -55,8 +55,8 @@ static volatile bool display_onoff = false;
 static lv_obj_t *protobuf_container = NULL;
 static lv_obj_t *protobuf_label     = NULL;
 
-// **NEW: Pattern 5 - XY Text Positioning Area (Global references)**
-static lv_obj_t *xy_text_container     = NULL;  // 600x440 bordered viewing area
+// **NEW: Pattern 5 XY Text Positioning Area (Global references)**
+static lv_obj_t *xy_text_container     = NULL;  // 124x60 bordered viewing area for SSD1306 128x64
 static lv_obj_t *current_xy_text_label = NULL;  // Current positioned text label
 
 static void fps_timer_cb(struct k_timer *timer_id)
@@ -78,17 +78,17 @@ void lv_example_scroll_text(void)
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-    // 设置标签区域宽度（可视区域）
-    lv_obj_set_width(label, 640);  // 根据你屏幕宽度设置，单位像素
+    // 设置标签区域宽度（可视区域）- SSD1306 128x64
+    lv_obj_set_width(label, 128);  // SSD1306 display width (was 640)
 
-    // 设置标签位置
-    lv_obj_set_pos(label, 0, 410);  // x/y 位置，根据屏幕设置
+    // 设置标签位置 - SSD1306 128x64
+    lv_obj_set_pos(label, 0, 50);  // x/y 位置 (was 0, 410 for larger display)
 
     // 设置长文本（会触发滚动）
     lv_label_set_text(label, "!!!!!nRF5340 + NCS 3.0.0 + LVGL!!!!");
 
     lv_obj_set_style_text_color(label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);  // Smaller font for SSD1306 (was 48)
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 
@@ -111,7 +111,7 @@ void lvgl_display_sem_give(void)
 
 int lvgl_display_sem_take(int64_t time)
 {
-    mos_sem_take(&lvgl_display_sem, time);
+    return mos_sem_take(&lvgl_display_sem, time);
 }
 
 void display_open(void)
@@ -386,9 +386,10 @@ static void show_default_ui(void)
 // Test pattern functions
 static void create_chess_pattern(lv_obj_t *screen)
 {
-    const int chess_size = 40;                // 40x40 pixel squares
-    const int chess_cols = 640 / chess_size;  // 16 columns
-    const int chess_rows = 480 / chess_size;  // 12 rows
+    // **SSD1306 128x64: Optimized chess pattern for small display**
+    const int chess_size = 8;                 // 8x8 pixel squares (was 40x40)
+    const int chess_cols = 128 / chess_size;  // 16 columns (fits 128px width)
+    const int chess_rows = 64 / chess_size;   // 8 rows (fits 64px height)
 
     for (int row = 0; row < chess_rows; row++)
     {
@@ -410,15 +411,16 @@ static void create_chess_pattern(lv_obj_t *screen)
 
 static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 {
-    const int stripe_height = 20;                   // 20 pixel high stripes
-    const int num_stripes   = 480 / stripe_height;  // 24 stripes
+    // **SSD1306 128x64: Horizontal bars/lines pattern**
+    const int stripe_height = 4;               // 4 pixel high stripes (was 20)
+    const int num_stripes   = 64 / stripe_height;  // 16 stripes (fits 64px height)
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, 640, stripe_height);  // Full width
+        lv_obj_set_size(stripe, 128, stripe_height);  // Full width (128px)
         lv_obj_set_pos(stripe, 0, i * stripe_height);
         lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
@@ -429,15 +431,16 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 
 static void create_vertical_zebra_pattern(lv_obj_t *screen)
 {
-    const int stripe_width = 20;                  // 20 pixel wide stripes
-    const int num_stripes  = 640 / stripe_width;  // 32 stripes
+    // **SSD1306 128x64: Vertical bars/lines pattern**
+    const int stripe_width = 4;               // 4 pixel wide stripes (was 20)
+    const int num_stripes  = 128 / stripe_width;  // 32 stripes (fits 128px width)
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, stripe_width, 480);  // Full height
+        lv_obj_set_size(stripe, stripe_width, 64);  // Full height (64px)
         lv_obj_set_pos(stripe, i * stripe_width, 0);
         lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
@@ -621,14 +624,14 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
 }
 
-// **NEW: Pattern 5 - XY Text Positioning Area with 600x440 bordered view**
+// **NEW: Pattern 5 - XY Text Positioning Area with 128x64 SSD1306 view**
 static void create_xy_text_positioning_area(lv_obj_t *screen)
 {
-    // Create 600x440 bordered viewing area centered on screen
-    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    // Create 128x64 bordered viewing area for SSD1306 display
+    // Screen size: 128x64, so container fills full screen with minimal border
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 128, 64);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 0, 0);     // 20px margins from all edges
+    lv_obj_set_size(container, 124, 60);  // Slightly smaller for border (128-4, 64-4)
+    lv_obj_set_pos(container, 2, 2);     // 2px margins from all edges
 
     // **NEW: Store global reference for XY text positioning**
     xy_text_container = container;
@@ -638,17 +641,17 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // No scrollbars
 
     // Style the container with visible border for positioning reference
-    lv_obj_set_style_bg_color(container, lv_color_white(), 0);  // Black background
+    lv_obj_set_style_bg_color(container, lv_color_white(), 0);  // White background
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(container, lv_color_black(), 0);  // White border
-    lv_obj_set_style_border_width(container, 2, 0);                 // 2px border width
+    lv_obj_set_style_border_color(container, lv_color_black(), 0);  // Black border
+    lv_obj_set_style_border_width(container, 1, 0);                 // 1px border width (was 2px)
     lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);        // Visible border
-    lv_obj_set_style_pad_all(container, 10, 0);                     // 10px internal padding
-    lv_obj_set_style_radius(container, 5, 0);                       // Rounded corners
+    lv_obj_set_style_pad_all(container, 2, 0);                      // 2px internal padding (was 10px)
+    lv_obj_set_style_radius(container, 2, 0);                       // Small rounded corners (was 5px)
 
     // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
 
-    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (600x440 with border)");
+    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (124x60 with border for SSD1306)");
 }
 
 static int       current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
