@@ -19,7 +19,7 @@ class Bridge: RCTEventEmitter {
 
     @objc
     override static func requiresMainQueueSetup() -> Bool {
-        return false
+        false
     }
 
     static func log(_ message: String) {
@@ -68,9 +68,28 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("save_setting", body: body)
     }
 
+    static func sendGlassesSerialNumber(_ serialNumber: String, style: String, color: String) {
+        let body = ["serialNumber": serialNumber, "style": style, "color": color]
+        Bridge.sendTypedMessage("glasses_serial_number", body: body)
+    }
+
+    static func sendCompatibleGlassesSearchResult(_ modelName: String, deviceName: String) {
+        let body = ["model_name": modelName, "device_name": deviceName]
+        Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
+    }
+
+    static func sendStatus(_ statusObject: [String: Any]) {
+        Bridge.sendTypedMessage("status", body: statusObject)
+    }
+
+    static func sendCompatibleGlassesSearchStop(_ modelName: String) {
+        let body = ["model_name": modelName]
+        Bridge.sendTypedMessage("compatible_glasses_search_stop", body: body)
+    }
+
     override func supportedEvents() -> [String] {
         // don't add to this list, use a typed message instead
-        return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
+        ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
     }
 
     // Arbitrary WS Comms (dont use these, make a dedicated function for your use case):
