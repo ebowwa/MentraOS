@@ -416,8 +416,9 @@ class SocketComms {
 
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
-    console.log("SocketCommsTS: connection ack", msg)
+    console.log("SocketCommsTS: connection ack, connecting to livekit")
     livekitManager.connect()
+    GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 
   private handle_app_state_change(msg: any) {

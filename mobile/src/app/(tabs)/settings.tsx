@@ -175,8 +175,8 @@ export default function SettingsPage() {
         />
       </View>
 
-      <Button text="Disconnect Livekit" onPress={() => livekitManager.disconnect()} />
-      <Button text="Connect Livekit" onPress={() => livekitManager.connect()} />
+      {/* <Button text="Disconnect Livekit" onPress={() => livekitManager.disconnect()} />
+      <Button text="Connect Livekit" onPress={() => livekitManager.connect()} /> */}
 
       {/* Loading overlay for sign out */}
       <Modal visible={isSigningOut} transparent={true} animationType="fade">
