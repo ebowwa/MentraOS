@@ -39,6 +39,39 @@ export async function mintTestToken(email: string, roomName: string) {
   return { url, token, identity };
 }
 
+
+export async function mintToken(email: string, roomName: string) {
+  const url = process.env.LIVEKIT_URL;
+  const apiKey = process.env.LIVEKIT_API_KEY;
+  const apiSecret = process.env.LIVEKIT_API_SECRET;
+  if (!url || !apiKey || !apiSecret) {
+    throw new Error("LIVEKIT_URL/API_KEY/API_SECRET not configured");
+  }
+
+  const allowRegex = process.env.LIVEKIT_ALLOWED_ROOMS_REGEX;
+  if (allowRegex && !new RegExp(allowRegex).test(roomName)) {
+    throw new Error("roomName not allowed");
+  }
+
+  const identity = email; //sanitizeIdentity(email);
+
+  const grant: VideoGrant & { canPublishData?: boolean } = {
+    roomJoin: true,
+    room: roomName,
+    canPublish: true,
+    canSubscribe: true,
+    // data channels for signaling/controls if needed
+    canPublishData: true,
+  };
+  const at = new AccessToken(apiKey, apiSecret, { identity, name: identity, ttl: "1440m" });
+  at.addGrant(grant);
+
+  const token = await at.toJwt();
+
+  logger.info({ identity, roomName }, "Minted LiveKit test token");
+  return { url, token, identity };
+}
+
 function sanitizeIdentity(email: string): string {
   const base = String(email).trim().toLowerCase();
   const safe = base.replace(/\s+/g, "_").replace(/[^a-z0-9@._-]/g, "");

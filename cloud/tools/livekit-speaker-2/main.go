@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -57,6 +58,8 @@ func main() {
 	var maxLatencyMs int
 	var targetLatencyMs int
 	var enableDrop bool
+	var autoRejoin bool
+	var stallMs int
 	flag.StringVar(&url, "url", os.Getenv("LIVEKIT_URL"), "LiveKit URL (wss://...) or env LIVEKIT_URL")
 	flag.StringVar(&token, "token", os.Getenv("LIVEKIT_TOKEN"), "Access token or env LIVEKIT_TOKEN")
 	flag.StringVar(&target, "target", os.Getenv("TARGET_IDENTITY"), "Subscribe only to this participant identity (optional)")
@@ -73,6 +76,8 @@ func main() {
 	flag.IntVar(&maxLatencyMs, "max-latency-ms", 250, "Maximum buffered latency before dropping (ms)")
 	flag.IntVar(&targetLatencyMs, "target-latency-ms", 120, "Target latency after drops (ms)")
 	flag.BoolVar(&enableDrop, "drop-old", true, "Enable dropping of oldest frames when backlog exceeds max-latency-ms")
+	flag.BoolVar(&autoRejoin, "auto-rejoin-on-stall", true, "Automatically rejoin the room if no data arrives for stall-ms")
+	flag.IntVar(&stallMs, "stall-ms", 2000, "No-data stall duration before triggering rejoin (ms)")
 	flag.Parse()
 
 	if url == "" {
@@ -241,6 +246,10 @@ func main() {
 		}()
 	}
 	var pktCount uint64
+	var lastPktAt int64 // unix nano
+	// Per-sender sequence tracking to detect resets after reconnect
+	lastSeq := make(map[string]uint8)
+	lastRx := make(map[string]time.Time)
 	type rxFrame struct {
 		haveSeq bool
 		seq     byte
@@ -248,6 +257,7 @@ func main() {
 		at      time.Time
 	}
 	framesCh := make(chan rxFrame, 128)
+	clearJB := make(chan struct{}, 4)
 
 	// Jitter buffer + drop policy + writer
 	go func() {
@@ -271,16 +281,23 @@ func main() {
 		for {
 			// Drain inbound without blocking to keep queue up to date
 			drained := false
+		drainLoop:
 			for {
 				select {
 				case f := <-framesCh:
 					queue = append(queue, f)
 					drained = true
+				case <-clearJB:
+					queue = queue[:0]
+					droppedFrames = 0
+					droppedBytes = 0
+					if !framesOnly {
+						log.Printf("jitter-buffer: cleared due to reconnect/participant change")
+					}
 				default:
-					goto drainedDone
+					break drainLoop
 				}
 			}
-		drainedDone:
 			if drained && enableDrop {
 				// If backlog too large, drop oldest until at/below target
 				for len(queue) > 0 && calcBacklogMs() > maxLatencyMs {
@@ -368,9 +385,37 @@ func main() {
 			}
 			if haveSeq {
 				log.Printf("data frame #%d from=%s seq=%d bytes=%d pcmEven=%t pcmPreview=% x", pktCount, params.SenderIdentity, seq, len(pcm), len(pcm)%2 == 0, pcm[:preview])
+				// Detect apparent stream reset: sequence wrapped backwards significantly or large RX gap
+				if prev, ok := lastSeq[params.SenderIdentity]; ok {
+					// backward jump more than 8 indicates reset (avoid wrap from 255->0 by allowing small negatives)
+					if prev > seq && int(prev-seq) > 8 {
+						if !framesOnly {
+							log.Printf("seq reset detected for %s (prev=%d -> seq=%d); clearing jitter buffer", params.SenderIdentity, prev, seq)
+						}
+						select {
+						case clearJB <- struct{}{}:
+						default:
+						}
+					}
+				}
+				lastSeq[params.SenderIdentity] = seq
+				if tprev, ok := lastRx[params.SenderIdentity]; ok {
+					if time.Since(tprev) > 800*time.Millisecond {
+						if !framesOnly {
+							log.Printf("rx stall detected for %s (>800ms); clearing jitter buffer", params.SenderIdentity)
+						}
+						select {
+						case clearJB <- struct{}{}:
+						default:
+						}
+					}
+				}
+				lastRx[params.SenderIdentity] = time.Now()
 			} else {
 				log.Printf("data frame #%d from=%s bytes=%d pcmEven=%t pcmPreview=% x", pktCount, params.SenderIdentity, len(pcm), len(pcm)%2 == 0, pcm[:preview])
 			}
+			// update last-packet timestamp
+			atomic.StoreInt64(&lastPktAt, time.Now().UnixNano())
 			if len(pcm) < 2 {
 				return
 			}
@@ -410,17 +455,29 @@ func main() {
 		},
 		OnReconnected: func() {
 			if !framesOnly {
-				log.Printf("room reconnected")
+				log.Printf("room reconnected; clearing jitter buffer")
+			}
+			select {
+			case clearJB <- struct{}{}:
+			default:
 			}
 		},
 		OnParticipantConnected: func(rp *lksdk.RemoteParticipant) {
 			if !framesOnly {
-				log.Printf("participant connected: %s", rp.Identity())
+				log.Printf("participant connected: %s (clear JB)", rp.Identity())
+			}
+			select {
+			case clearJB <- struct{}{}:
+			default:
 			}
 		},
 		OnParticipantDisconnected: func(rp *lksdk.RemoteParticipant) {
 			if !framesOnly {
-				log.Printf("participant disconnected: %s", rp.Identity())
+				log.Printf("participant disconnected: %s (clear JB)", rp.Identity())
+			}
+			select {
+			case clearJB <- struct{}{}:
+			default:
 			}
 		},
 		OnActiveSpeakersChanged: func(parts []lksdk.Participant) {
@@ -441,6 +498,41 @@ func main() {
 	defer lkRoom.Disconnect()
 
 	log.Printf("connected: local=%s remotes=%d", lkRoom.LocalParticipant.Identity(), len(lkRoom.GetRemoteParticipants()))
+
+	// Stall watchdog: reconnect on no data activity
+	if autoRejoin {
+		go func() {
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+			for range ticker.C {
+				last := time.Unix(0, atomic.LoadInt64(&lastPktAt))
+				if last.IsZero() {
+					continue
+				}
+				if time.Since(last) > time.Duration(stallMs)*time.Millisecond {
+					log.Printf("watchdog: no data for %dms; reconnecting", stallMs)
+					// Clear jitter buffer and reconnect room
+					select { case clearJB <- struct{}{}: default: }
+					lkRoom.Disconnect()
+					time.Sleep(500 * time.Millisecond)
+					for attempt := 1; attempt <= 5; attempt++ {
+						r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback, lksdk.WithPacer(pf), lksdk.WithAutoSubscribe(false))
+						if err == nil {
+							lkRoom = r
+							atomic.StoreInt64(&lastPktAt, time.Now().UnixNano())
+							log.Printf("watchdog: rejoined on attempt %d", attempt)
+							break
+						}
+						if attempt == 5 {
+							log.Printf("watchdog: reconnect failed after %d attempts: %v", attempt, err)
+						} else {
+							time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+						}
+					}
+				}
+			}
+		}()
+	}
 
 	// Enumerate existing participants and publications
 	for _, rp := range lkRoom.GetRemoteParticipants() {
