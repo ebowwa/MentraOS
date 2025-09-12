@@ -8,13 +8,14 @@
 import Foundation
 import React
 
+// Use BridgeModule to emit events
+// has commands for the core to use to send messages to the mantle
+// also has a handleCommand function for the core / bridge module to use to
+// communicate with the rest of the core
 @objc(Bridge)
 class Bridge: RCTEventEmitter {
-    static var emitter: RCTEventEmitter!
-
     override init() {
         super.init()
-        Bridge.emitter = self
     }
 
     @objc
@@ -23,13 +24,12 @@ class Bridge: RCTEventEmitter {
     }
 
     static func log(_ message: String) {
-        // print(message)
         let msg = "SWIFT:\(message)"
-        emitter.sendEvent(withName: "CoreMessageEvent", body: msg)
+        BridgeModule.emitEvent(withName: "CoreMessageEvent", body: msg)
     }
 
     static func sendEvent(withName: String, body: String) {
-        emitter.sendEvent(withName: withName, body: body)
+        BridgeModule.emitEvent(withName: withName, body: body)
     }
 
     static func showBanner(type: String, message: String) {
@@ -92,13 +92,12 @@ class Bridge: RCTEventEmitter {
         body["type"] = type
         let jsonData = try! JSONSerialization.data(withJSONObject: body)
         let jsonString = String(data: jsonData, encoding: .utf8)
-        emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString!)
+        BridgeModule.emitEvent(withName: "CoreMessageEvent", body: jsonString!)
     }
 
     // handle commands from the mantle:
     @objc static func handleCommand(_ command: String) -> Any {
         // Bridge.log("CommandBridge: Received command: \(command)")
-
         let m = MentraManager.shared
 
         // Define command types enum

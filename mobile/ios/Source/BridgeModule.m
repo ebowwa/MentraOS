@@ -34,7 +34,6 @@ RCT_EXPORT_MODULE(BridgeModule);
     return sharedEmitter;
 }
 
-// Supported events - combined list from both classes
 - (NSArray<NSString *> *)supportedEvents {
   return @[@"CoreMessageEvent"];
 }

@@ -16,8 +16,8 @@ import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/Settin
 import socketComms from "@/managers/SocketComms"
 import livekitManager from "@/managers/LivekitManager"
 
-const {Bridge, BridgeModule, CoreCommsService} = NativeModules
-const eventEmitter = new NativeEventEmitter(Bridge)
+const {BridgeModule, CoreCommsService} = NativeModules
+const coreBridge = new NativeEventEmitter(BridgeModule)
 
 export class MantleBridge extends EventEmitter {
   private static instance: MantleBridge | null = null
@@ -212,7 +212,7 @@ export class MantleBridge extends EventEmitter {
     }
 
     // Create a fresh subscription
-    this.messageEventSubscription = eventEmitter.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
+    this.messageEventSubscription = coreBridge.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
 
     console.log("Core message event listener initialized")
   }
@@ -520,7 +520,7 @@ export class MantleBridge extends EventEmitter {
     this.isConnected = false
 
     // Reset the singleton instance
-    Bridge.instance = null
+    MantleBridge.instance = null
 
     console.log("Bridge cleaned up")
   }

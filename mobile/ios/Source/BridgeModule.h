@@ -17,7 +17,7 @@
 
 - (void)setup:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 - (void)sendCommand:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
-+ (void)emitEvent:(NSString *)eventName body:(id)body;
++ (void)emitEventWithName:(NSString *)eventName body:(id)body;
 
 // Add support for events
 - (NSArray<NSString *> *)supportedEvents;
