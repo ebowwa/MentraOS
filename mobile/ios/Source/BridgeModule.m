@@ -10,7 +10,6 @@
 #import "MentraOS-Swift.h"
 
 @interface BridgeModule ()
-@property (nonatomic, strong) CommandBridge *commandBridge;
 @end
 
 @implementation BridgeModule
@@ -24,8 +23,6 @@ RCT_EXPORT_MODULE(BridgeModule);
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // Use the singleton instance instead of creating a new one
-        _commandBridge = [CommandBridge getInstance];
         // Set the shared emitter reference
         sharedEmitter = self;
     }
@@ -57,7 +54,7 @@ RCT_EXPORT_METHOD(
 )
 {
   @try {
-    id result = [self.commandBridge handleCommand:command];
+    id result = [Bridge handleCommand:command];
     resolve(result);
   }
   @catch(NSException *exception) {
