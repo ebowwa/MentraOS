@@ -1,7 +1,14 @@
+//
+//  ServerComms.swift
+//  MentraOS_Manager
+//
+//  Created by Matthew Fosse on 3/5/25.
+//
 
 import Combine
 import Foundation
 
+// TODO: config: remove
 class ServerComms {
     static let shared = ServerComms()
 
@@ -135,14 +142,6 @@ class ServerComms {
         } catch {
             Bridge.log("ServerComms: Error building location_update JSON: \(error)")
         }
-    }
-
-    func sendLocationUpdates() {
-        guard wsManager.isConnected() else {
-            Bridge.log("Cannot send location updates: WebSocket not connected")
-            return
-        }
-
     }
 
     func sendGlassesConnectionState(modelName: String, status: String) {
@@ -329,149 +328,146 @@ class ServerComms {
 
     // MARK: - Message Handling
 
-    private func handleIncomingMessage(_ msg: [String: Any]) {
-        guard let type = msg["type"] as? String else { return }
-        let m = MentraManager.getInstance()
-
-        // CoreCommsService.log("Received message of type: \(type)")
-
-        switch type {
-        case "connection_ack":
-            MentraManager.getInstance().onAppStateChange(parseAppList(msg))
-            MentraManager.getInstance().onConnectionAck()
-            let livekitData = msg["livekit"] as? [String: Any] ?? [:]
-            let url = livekitData["url"] as? String ?? ""
-            let token = livekitData["token"] as? String ?? ""
-            if !url.isEmpty, !token.isEmpty {
-                Bridge.log("ServerComms: Connecting to LiveKit: \(url)")
-                Bridge.log("ServerComms: LiveKit token: \(token)")
-                LiveKitManager.shared.connect(url: url, token: token)
-            }
-
-        case "app_state_change":
-            m.onAppStateChange(parseAppList(msg))
-
-        case "connection_error":
-            let errorMsg = msg["message"] as? String ?? "Unknown error"
-
-            m.onConnectionError(errorMsg)
-
-        case "auth_error":
-            m.onAuthError()
-
-        case "microphone_state_change":
-            let bypassVad = msg["bypassVad"] as? Bool ?? false
-
-            var requiredDataStrings: [String] = []
-            if let requiredDataArray = msg["requiredData"] as? [String] {
-                requiredDataStrings = requiredDataArray
-            } else if let requiredDataArray = msg["requiredData"] as? [Any] {
-                // Handle case where it might come as mixed array
-                requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
-            }
-
-            // Convert string array to enum array
-            var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
-
-            // Bridge.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
-
-            m.handle_microphone_state_change(requiredData, bypassVad)
-
-        case "display_event":
-            if let view = msg["view"] as? String {
-                m.handle_display_event(msg)
-            }
-
-        case "audio_play_request":
-            handleAudioPlayRequest(msg)
-
-        case "audio_stop_request":
-            handleAudioStopRequest()
-
-        case "reconnect":
-            Bridge.log("ServerComms: TODO: Server is requesting a reconnect.")
-
-        case "set_location_tier":
-            if let tier = msg["tier"] as? String {
-            }
-
-        case "request_single_location":
-            if let accuracy = msg["accuracy"] as? String,
-               let correlationId = msg["correlationId"] as? String
-            {
-            }
-
-        case "app_started":
-            if let packageName = msg["packageName"] as? String {
-                Bridge.log("ServerComms: Received app_started message for package: \(packageName)")
-                m.onAppStarted(packageName)
-            }
-
-        case "app_stopped":
-            if let packageName = msg["packageName"] as? String {
-                Bridge.log("ServerComms: Received app_stopped message for package: \(packageName)")
-                m.onAppStopped(packageName)
-            }
-
-        case "photo_request":
-            let requestId = msg["requestId"] as? String ?? ""
-            let appId = msg["appId"] as? String ?? ""
-            let webhookUrl = msg["webhookUrl"] as? String ?? ""
-            let size = (msg["size"] as? String) ?? "medium"
-            Bridge.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
-            if !requestId.isEmpty, !appId.isEmpty {
-                m.onPhotoRequest(requestId, appId, webhookUrl, size)
-            } else {
-                Bridge.log("Invalid photo request: missing requestId or appId")
-            }
-
-        case "start_rtmp_stream":
-            let rtmpUrl = msg["rtmpUrl"] as? String ?? ""
-            if !rtmpUrl.isEmpty {
-                m.onRtmpStreamStartRequest(msg)
-            } else {
-                Bridge.log("Invalid RTMP stream request: missing rtmpUrl or callback")
-            }
-
-        case "stop_rtmp_stream":
-            Bridge.log("Received STOP_RTMP_STREAM")
-            m.onRtmpStreamStop()
-
-        case "keep_rtmp_stream_alive":
-            Bridge.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
-            m.onRtmpStreamKeepAlive(msg)
-
-        case "start_buffer_recording":
-            Bridge.log("ServerComms: Received START_BUFFER_RECORDING")
-            m.onStartBufferRecording()
-
-        case "stop_buffer_recording":
-            Bridge.log("ServerComms: Received STOP_BUFFER_RECORDING")
-            m.onStopBufferRecording()
-
-        case "save_buffer_video":
-            Bridge.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
-            let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
-            let durationSeconds = msg["durationSeconds"] as? Int ?? 30
-            m.onSaveBufferVideo(requestId, durationSeconds)
-
-        case "start_video_recording":
-            Bridge.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
-            let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
-            let save = msg["save"] as? Bool ?? true
-            m.onStartVideoRecording(requestId, save)
-
-        case "stop_video_recording":
-            Bridge.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
-            let requestId = msg["requestId"] as? String ?? ""
-            m.onStopVideoRecording(requestId)
-
-        default:
-            Bridge.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
-        }
-    }
+//    private func handleIncomingMessage(_ msg: [String: Any]) {
+//        guard let type = msg["type"] as? String else { return }
+//        let m = MentraManager.shared
+//
+//        // CoreCommsService.log("Received message of type: \(type)")
+//
+//        switch type {
+//        case "connection_ack":
+//            MentraManager.shared.onAppStateChange(parseAppList(msg))
+//            MentraManager.shared.onConnectionAck()
+//            let livekitData = msg["livekit"] as? [String: Any] ?? [:]
+//            let url = livekitData["url"] as? String ?? ""
+//            let token = livekitData["token"] as? String ?? ""
+//            if !url.isEmpty, !token.isEmpty {
+//                Bridge.log("ServerComms: Connecting to LiveKit: \(url)")
+//                Bridge.log("ServerComms: LiveKit token: \(token)")
+//                LiveKitManager.shared.connect(url: url, token: token)
+//            }
+//
+//        case "app_state_change":
+//            m.onAppStateChange(parseAppList(msg))
+//
+//        case "connection_error":
+//            let errorMsg = msg["message"] as? String ?? "Unknown error"
+//
+//            m.onConnectionError(errorMsg)
+//
+//        case "auth_error":
+//            m.onAuthError()
+//
+//        case "microphone_state_change":
+//            let bypassVad = msg["bypassVad"] as? Bool ?? false
+//
+//            var requiredDataStrings: [String] = []
+//            if let requiredDataArray = msg["requiredData"] as? [String] {
+//                requiredDataStrings = requiredDataArray
+//            } else if let requiredDataArray = msg["requiredData"] as? [Any] {
+//                // Handle case where it might come as mixed array
+//                requiredDataStrings = requiredDataArray.compactMap { $0 as? String }
+//            }
+//
+//            // Convert string array to enum array
+//            var requiredData = SpeechRequiredDataType.fromStringArray(requiredDataStrings)
+//
+//            // Core.log("ServerComms: requiredData = \(requiredDataStrings), bypassVad = \(bypassVad)")
+//
+//            m.handle_microphone_state_change(requiredData, bypassVad)
+//
+//        case "display_event":
+//            if let view = msg["view"] as? String {
+//                m.handle_display_event(msg)
+//            }
+//
+//        case "audio_play_request":
+//            handleAudioPlayRequest(msg)
+//
+//        case "reconnect":
+//            Bridge.log("ServerComms: TODO: Server is requesting a reconnect.")
+//
+//        case "set_location_tier":
+//            if let tier = msg["tier"] as? String {
     ////                LocationManager.shared.setTier(tier: tier)
+//            }
+//
+//        case "request_single_location":
+//            if let accuracy = msg["accuracy"] as? String,
+//               let correlationId = msg["correlationId"] as? String
+//            {
     ////                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
+//            }
+//
+//        case "app_started":
+//            if let packageName = msg["packageName"] as? String {
+//                Bridge.log("ServerComms: Received app_started message for package: \(packageName)")
+//                m.onAppStarted(packageName)
+//            }
+//
+//        case "app_stopped":
+//            if let packageName = msg["packageName"] as? String {
+//                Bridge.log("ServerComms: Received app_stopped message for package: \(packageName)")
+//                m.onAppStopped(packageName)
+//            }
+//
+//        case "photo_request":
+//            let requestId = msg["requestId"] as? String ?? ""
+//            let appId = msg["appId"] as? String ?? ""
+//            let webhookUrl = msg["webhookUrl"] as? String ?? ""
+//            let size = (msg["size"] as? String) ?? "medium"
+//            Bridge.log("Received photo_request, requestId: \(requestId), appId: \(appId), webhookUrl: \(webhookUrl), size: \(size)")
+//            if !requestId.isEmpty, !appId.isEmpty {
+//                m.onPhotoRequest(requestId, appId, webhookUrl, size)
+//            } else {
+//                Bridge.log("Invalid photo request: missing requestId or appId")
+//            }
+//
+//        case "start_rtmp_stream":
+//            let rtmpUrl = msg["rtmpUrl"] as? String ?? ""
+//            if !rtmpUrl.isEmpty {
+//                m.onRtmpStreamStartRequest(msg)
+//            } else {
+//                Bridge.log("Invalid RTMP stream request: missing rtmpUrl or callback")
+//            }
+//
+//        case "stop_rtmp_stream":
+//            Bridge.log("Received STOP_RTMP_STREAM")
+//            m.onRtmpStreamStop()
+//
+//        case "keep_rtmp_stream_alive":
+//            Bridge.log("ServerComms: Received KEEP_RTMP_STREAM_ALIVE: \(msg)")
+//            m.onRtmpStreamKeepAlive(msg)
+//
+//        case "start_buffer_recording":
+//            Bridge.log("ServerComms: Received START_BUFFER_RECORDING")
+//            m.onStartBufferRecording()
+//
+//        case "stop_buffer_recording":
+//            Bridge.log("ServerComms: Received STOP_BUFFER_RECORDING")
+//            m.onStopBufferRecording()
+//
+//        case "save_buffer_video":
+//            Bridge.log("ServerComms: Received SAVE_BUFFER_VIDEO: \(msg)")
+//            let requestId = msg["requestId"] as? String ?? "buffer_\(Int(Date().timeIntervalSince1970 * 1000))"
+//            let durationSeconds = msg["durationSeconds"] as? Int ?? 30
+//            m.onSaveBufferVideo(requestId, durationSeconds)
+//
+//        case "start_video_recording":
+//            Bridge.log("ServerComms: Received START_VIDEO_RECORDING: \(msg)")
+//            let requestId = msg["requestId"] as? String ?? "video_\(Int(Date().timeIntervalSince1970 * 1000))"
+//            let save = msg["save"] as? Bool ?? true
+//            m.onStartVideoRecording(requestId, save)
+//
+//        case "stop_video_recording":
+//            Bridge.log("ServerComms: Received STOP_VIDEO_RECORDING: \(msg)")
+//            let requestId = msg["requestId"] as? String ?? ""
+//            m.onStopVideoRecording(requestId)
+//
+//        default:
+//            Bridge.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
+//        }
+//    }
 
     private func handleAudioPlayRequest(_ msg: [String: Any]) {
         Bridge.log("ServerComms: Handling audio play request: \(msg)")
@@ -495,79 +491,6 @@ class ServerComms {
         )
     }
 
-    private func handleAudioStopRequest() {
-        Bridge.log("ServerComms: Handling audio stop request")
-        let audioManager = AudioManager.getInstance()
-        audioManager.stopAllAudio()
-    }
-
-    private func attemptReconnect(_ override: Bool = false) {
-        if reconnecting, !override { return }
-        reconnecting = true
-
-        connectWebSocket()
-
-        // if after some time we're still not connected, run this function again:
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-            // if self.wsManager.isConnected() {
-            if self.wsManager.isConnected() {
-                self.reconnectionAttempts = 0
-                self.reconnecting = false
-                return
-            }
-            self.reconnectionAttempts += 1
-            self.attemptReconnect(true)
-        }
-    }
-
-    private func handleStatusChange(_ status: WebSocketStatus) {
-        Bridge.log("handleStatusChange: \(status)")
-
-        if status == .disconnected || status == .error {
-            stopAudioSenderThread()
-            attemptReconnect()
-        }
-    }
-
-    // MARK: - Audio Queue Sender Thread
-
-    private func startAudioSenderThread() {
-        if audioSenderThread != nil { return }
-
-        audioSenderRunning = true
-        audioSenderThread = Thread {
-            while self.audioSenderRunning {
-                if let chunk = self.audioBuffer.poll() {
-                    // Bridge.log("ServerComms: polling audio chunk")
-                    // check if we're connected to livekit:
-                    if LiveKitManager.shared.enabled {
-                        LiveKitManager.shared.addPcm(chunk)
-                    } else if self.wsManager.isConnected() {
-                        // Bridge.log("ServerComms: LIVEKIT NOT ENABLED, SENDING TO WS")
-                        self.wsManager.sendBinary(chunk)
-                    } else {
-                        // Re-enqueue the chunk if not connected, then wait a bit
-                        // self.audioBuffer.offer(chunk)
-                        // Thread.sleep(forTimeInterval: 0.1)
-                        Bridge.sendWSBinary(chunk)
-                    }
-                } else {
-                    // No data in queue, wait a bit
-                    Thread.sleep(forTimeInterval: 0.01)
-                }
-            }
-        }
-
-        audioSenderThread?.name = "AudioSenderThread"
-        audioSenderThread?.start()
-    }
-
-    private func stopAudioSenderThread() {
-        Bridge.log("stopping audio sender thread")
-        audioSenderRunning = false
-        audioSenderThread = nil
-    }
-
     // MARK: - Helper methods
 
     func sendUserDatetimeToBackend(isoDatetime: String) {
@@ -589,7 +512,7 @@ class ServerComms {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = jsonData
 
-            // Bridge.log("ServerComms: Sending datetime to: \(url)")
+            // Core.log("ServerComms: Sending datetime to: \(url)")
 
             URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
@@ -752,6 +675,7 @@ class ServerComms {
     }
 }
 
+// A simple implementation of ArrayBlockingQueue for Swift
 class ArrayBlockingQueue<T> {
     private let queue = DispatchQueue(label: "ArrayBlockingQueue", attributes: .concurrent)
     private var array: [T] = []
