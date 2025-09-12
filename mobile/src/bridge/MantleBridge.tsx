@@ -1055,30 +1055,7 @@ export class MantleBridge extends EventEmitter {
       command: "request_vad_config",
     })
   }
-
-  async setImuEnabled(enabled: boolean) {
-    console.log("setImuEnabled", enabled)
-    return await this.sendData({
-      command: "set_imu_enabled",
-      enabled: enabled,
-    })
-  }
-
-  async setImuStreamEnabled(enabled: boolean) {
-    console.log("setImuStreamEnabled", enabled)
-    return await this.sendData({
-      command: "set_imu_stream_enabled",
-      enabled: enabled,
-    })
-  }
-
-  async sendImuSingleRequest() {
-    console.log("sendImuSingleRequest")
-    return await this.sendData({
-      command: "send_imu_single_request",
-    })
-  }
-
+  
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({

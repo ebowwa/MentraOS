@@ -281,10 +281,6 @@ export default function NexDeveloperSettings() {
   const [vadEnabled, setVadEnabled] = useState(true)
   const [vadSensitivity, setVadSensitivity] = useState(50)
 
-  // IMU control state
-  const [imuEnabled, setImuEnabled] = useState(true)
-  const [imuStreamEnabled, setImuStreamEnabled] = useState(true)
-
   // Get both protobuf versions from core status
   const protobufSchemaVersion = status.core_info.protobuf_schema_version || "Unknown"
   const glassesProtobufVersion = status.core_info.glasses_protobuf_version || "Unknown"
@@ -420,45 +416,6 @@ export default function NexDeveloperSettings() {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
         showAlert("Error", `Failed to request VAD data: ${errorMessage}`, [
-          {
-            text: "OK",
-            onPress: () => {},
-          },
-        ])
-      }
-    }
-  }
-
-  const onImuToggle = async (enabled: boolean) => {
-    setImuEnabled(enabled)
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.setImuEnabled(enabled)
-    }
-  }
-
-  const onImuStreamToggle = async (enabled: boolean) => {
-    if (enabled) {
-      setImuEnabled(enabled)
-    }
-    setImuStreamEnabled(enabled)
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.setImuStreamEnabled(enabled)
-    }
-  }
-
-  const onRequestImuData = async () => {
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      try {
-        await coreCommunicator.sendImuSingleRequest()
-        showAlert("Success", "IMU data request sent successfully", [
-          {
-            text: "OK",
-            onPress: () => {},
-          },
-        ])
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-        showAlert("Error", `Failed to request IMU data: ${errorMessage}`, [
           {
             text: "OK",
             onPress: () => {},
@@ -785,36 +742,6 @@ export default function NexDeveloperSettings() {
                     buttonStyle={$fullWidthButton}
                   />
                 </View>
-            </View>
-
-            {/* IMU Control*/}
-            <View style={themed($settingsGroup)}>
-              <Text style={themed($sectionTitle)}>IMU Control</Text>
-              <Text style={themed($description)}>Enable or disable imu from glasses</Text>
-              <ToggleSetting
-                label="IMU"
-                subtitle="Enable or disable imu from glasses"
-                value={imuEnabled}
-                onValueChange={onImuToggle}
-                containerStyle={$toggleContainer}
-              />
-
-              <ToggleSetting
-                label="IMU Stream"
-                subtitle="Enable or disable imu stream from glasses"
-                value={imuStreamEnabled}
-                onValueChange={onImuStreamToggle}
-                containerStyle={$toggleContainer}
-              />
-              <View style={$buttonRow}>
-                <PillButton
-                  text="Request IMU Single"
-                  variant="secondary"
-                  onPress={onRequestImuData}
-                  disabled={!imuEnabled}
-                  buttonStyle={$fullWidthButton}
-                />
-              </View>
             </View>
 
             {/* Ping-Pong Console */}

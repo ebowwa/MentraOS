@@ -342,23 +342,6 @@ public class AugmentOsManagerMessageParser {
             }
             break;
 
-            case "set_imu_enabled": {
-                boolean enabled = commandObject.getBoolean("enabled");
-                callback.setImuEnabled(enabled);
-            }
-            break;
-
-            case "set_imu_stream_enabled": {
-                boolean enabled = commandObject.getBoolean("enabled");
-                callback.setImuStreamEnabled(enabled);
-            }
-            break;
-
-            case "send_imu_single_request": {
-                callback.sendImuSingleRequest();
-            }
-            break;
-
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }

@@ -65,10 +65,6 @@ public interface AugmentOsActionsCallback {
     void setVadSensitivity(int sensitivity);
     void requestVadConfig();
 
-    void setImuEnabled(boolean enabled);
-    void setImuStreamEnabled(boolean enabled);
-    void sendImuSingleRequest();
-
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();
     void stopBufferRecording();
