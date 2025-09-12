@@ -6,7 +6,6 @@ import path from "path";
 import fs from "fs";
 import { User } from "../models/user.model";
 import { GalleryPhoto } from "../models/gallery-photo.model";
-import sessionService from "../services/session/session.service";
 // Email service import removed - no longer needed for account deletion
 import { logger } from "../services/logging/pino-logger";
 import UserSession from "../services/session/UserSession";

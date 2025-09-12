@@ -1,7 +1,6 @@
 import Icon from "react-native-vector-icons/MaterialIcons"
 
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useCameraPermissions, CameraType, CameraView} from "expo-camera"
@@ -13,9 +12,9 @@ import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import RNFS from "react-native-fs"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-// import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
 import {SimulatedGlassesControls} from "@/components/misc/SimulatedGlassesControls"
 import GlassesDisplayMirror from "@/components/misc/GlassesDisplayMirror"
+import {useDisplayStore} from "@/stores/display"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -24,7 +23,7 @@ const requestMicrophonePermission = async () => {
 
 export default function GlassesMirrorFullscreen() {
   const {status} = useCoreStatus()
-  const {lastEvent} = useGlassesMirror() // From context
+  const {currentEvent} = useDisplayStore()
   const {theme} = useAppTheme()
   const insets = useSafeAreaInsets()
   const [permission, requestPermission] = useCameraPermissions()
@@ -316,7 +315,7 @@ export default function GlassesMirrorFullscreen() {
 
   return (
     <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.fullscreenBackground}]}>
-      {isGlassesConnected && lastEvent ? (
+      {isGlassesConnected && currentEvent.layout ? (
         <View style={{flex: 1}}>
           {/* Camera feed - only render if camera is on */}
           {isCameraOn && (
@@ -336,7 +335,7 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Overlay the glasses display content */}
           <View style={styles.fullscreenOverlay}>
-            <GlassesDisplayMirror layout={lastEvent.layout} fullscreen={true} fallbackMessage="Unknown layout data" />
+            <GlassesDisplayMirror fullscreen={true} fallbackMessage="Unknown layout data" />
           </View>
 
           {/* Fullscreen exit button */}

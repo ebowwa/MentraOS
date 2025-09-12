@@ -26,7 +26,7 @@
     "build:types": "tsc --emitDeclarationOnly --declaration --declarationMap",
     "build:esm": "bun build src/index.ts --outdir dist --format esm --external ws --external node:* --target node",
     "build:cjs": "bun build src/index.ts --outdir dist --format cjs --external ws --external node:* --target node",
-    "dev": "bun run src/examples/basic-test.ts",
+    "dev": "bun run src/examples/connection-test.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:accounts": "bun run src/examples/account-test.ts",
@@ -55,7 +55,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/AugmentOS-Community/AugmentOS.git",
-    "directory": "cloud/cloud-client"
+  "directory": "cloud/packages/cloud-client"
   },
   "dependencies": {
     "ws": "^8.18.0",

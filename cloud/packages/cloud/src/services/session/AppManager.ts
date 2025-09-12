@@ -25,7 +25,7 @@ import { PosthogService } from "../logging/posthog.service";
 import UserSession, { LOG_PING_PONG } from "./UserSession";
 import { User } from "../../models/user.model";
 import { logger as rootLogger } from "../logging/pino-logger";
-import sessionService from "./session.service";
+// session.service APIs are being consolidated into UserSession
 import axios, { AxiosError } from "axios";
 import App from "../../models/app.model";
 import { locationService } from "../core/location.service";
@@ -89,11 +89,11 @@ interface AppStartResult {
   success: boolean;
   error?: {
     stage:
-      | "WEBHOOK"
-      | "CONNECTION"
-      | "AUTHENTICATION"
-      | "TIMEOUT"
-      | "HARDWARE_CHECK";
+    | "WEBHOOK"
+    | "CONNECTION"
+    | "AUTHENTICATION"
+    | "TIMEOUT"
+    | "HARDWARE_CHECK";
     message: string;
     details?: any;
   };
@@ -522,48 +522,12 @@ export class AppManager {
       );
 
       // Set up the websocket URL for the App connection
-      let augmentOSWebsocketUrl = "";
+      const augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/app-ws`;
 
-      // Determine the appropriate WebSocket URL based on the environment and app type
-      if (app.isSystemApp) {
-        // For system apps in container environments, use internal service name
-        if (
-          process.env.CONTAINER_ENVIRONMENT === "true" ||
-          process.env.CLOUD_HOST_NAME === "cloud" ||
-          process.env.PORTER_APP_NAME
-        ) {
-          // Porter environment (Kubernetes)
-          if (process.env.PORTER_APP_NAME) {
-            augmentOSWebsocketUrl = `ws://${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80/app-ws`;
-            this.logger.info(
-              `Using Porter internal URL for system app ${packageName}`,
-            );
-          } else {
-            // Docker Compose environment
-            augmentOSWebsocketUrl = "ws://cloud/app-ws";
-            this.logger.info(
-              `Using Docker internal URL for system app ${packageName}`,
-            );
-          }
-        } else {
-          // Local development for system apps
-          augmentOSWebsocketUrl = "ws://localhost:8002/app-ws";
-          this.logger.info(`Using local URL for system app ${packageName}`);
-        }
-      } else {
-        // For non-system apps, use the public host
-        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/app-ws`;
-        this.logger.info(
-          { augmentOSWebsocketUrl, packageName, name },
-          `Using public URL for app ${packageName}`,
-        );
-      }
-
-      this.logger.info(`Server WebSocket URL: ${augmentOSWebsocketUrl}`);
       // Construct the webhook URL from the app's public URL
       const webhookURL = `${app.publicUrl}/webhook`;
       this.logger.info(
-        { userId: this.userSession.userId, packageName, service: "AppManager" },
+        { augmentOSWebsocketUrl, packageName },
         `Triggering webhook for ${packageName}: ${webhookURL}`,
       );
 
@@ -1149,8 +1113,7 @@ export class AppManager {
       await this.refreshInstalledApps();
 
       // Transform session for client
-      const clientSessionData =
-        await sessionService.transformUserSessionForClient(this.userSession);
+      const clientSessionData = await this.userSession.snapshotForClient();
       this.logger.debug(
         { clientSessionData },
         `Transformed user session data for ${this.userSession.userId}`,

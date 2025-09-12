@@ -1,14 +1,7 @@
-//
-//  ServerComms.swift
-//  MentraOS_Manager
-//
-//  Created by Matthew Fosse on 3/5/25.
-//
 
 import Combine
 import Foundation
 
-// TODO: config: remove
 class ServerComms {
     static let shared = ServerComms()
 
@@ -16,35 +9,7 @@ class ServerComms {
     var userid: String = ""
     private var serverUrl: String = ""
 
-    // Audio queue system
-    private let audioQueue = DispatchQueue(label: "com.mentra.audioQueue")
-    private var audioBuffer = ArrayBlockingQueue<Data>(capacity: 100) // 10 seconds of audio assuming similar frame rates
-    private var audioSenderThread: Thread?
-    private var audioSenderRunning = false
-    private var cancellables = Set<AnyCancellable>()
-
-    private var reconnecting: Bool = false
-    private var reconnectionAttempts: Int = 0
-
-    private let wsManager = WebSocketManager.shared
-
     private init() {
-        // Subscribe to WebSocket messages
-        wsManager.messages
-            .sink { [weak self] message in
-                self?.handleIncomingMessage(message)
-            }
-            .store(in: &cancellables)
-
-        // Subscribe to WebSocket status changes
-        wsManager.status
-            .sink { [weak self] status in
-                self?.handleStatusChange(status)
-            }
-            .store(in: &cancellables)
-
-        startAudioSenderThread()
-
         // every hour send calendar events again:
         let oneHour: TimeInterval = 1 * 60 * 60 // 1hr
         Timer.scheduledTimer(withTimeInterval: oneHour, repeats: true) { [weak self] _ in
@@ -81,28 +46,6 @@ class ServerComms {
     func setServerUrl(_ url: String) {
         serverUrl = url
         Bridge.log("ServerComms: setServerUrl: \(url)")
-        if wsManager.isConnected() {
-            wsManager.disconnect()
-            connectWebSocket()
-        }
-    }
-
-    // MARK: - Connection Management
-
-    func connectWebSocket() {
-        guard let url = URL(string: getServerUrl()) else {
-            Bridge.log("Invalid server URL")
-            return
-        }
-        wsManager.connect(url: url, coreToken: coreToken)
-    }
-
-    // MARK: - Audio / VAD
-
-    func sendAudioChunk(_ audioData: Data) {
-        // If the queue is full, remove the oldest entry before adding a new one
-        // CoreCommsService.log("ServerComms: Sending audio chunk: \(audioData.count)")
-        audioBuffer.offer(audioData)
     }
 
     func sendVadStatus(_ isSpeaking: Bool) {
@@ -113,7 +56,7 @@ class ServerComms {
 
         let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
-            wsManager.sendText(jsonString)
+            Bridge.sendWSText(jsonString)
         }
     }
 
@@ -128,16 +71,11 @@ class ServerComms {
 
         let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
         if let jsonString = String(data: jsonData, encoding: .utf8) {
-            wsManager.sendText(jsonString)
+            Bridge.sendWSText(jsonString)
         }
     }
 
     func sendCalendarEvent(_ calendarItem: CalendarItem) {
-        guard wsManager.isConnected() else {
-            Bridge.log("Cannot send calendar event: not connected.")
-            return
-        }
-
         do {
             let event: [String: Any] = [
                 "type": "calendar_event",
@@ -151,7 +89,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("Error building calendar_event JSON: \(error)")
@@ -159,7 +97,6 @@ class ServerComms {
     }
 
     func sendCalendarEvents() {
-        guard wsManager.isConnected() else { return }
         Task {
             if let events = await CalendarManager.shared.fetchUpcomingEvents(days: 2) {
                 guard events.count > 0 else { return }
@@ -193,7 +130,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building location_update JSON: \(error)")
@@ -206,12 +143,6 @@ class ServerComms {
             return
         }
 
-//        if let locationData = LocationManager.shared.getCurrentLocation() {
-//            Bridge.log("ServerComms: Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
-//            sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude, accuracy: nil, correlationId: nil)
-//        } else {
-//            Bridge.log("ServerComms: Cannot send location update: No location data available")
-//        }
     }
 
     func sendGlassesConnectionState(modelName: String, status: String) {
@@ -224,7 +155,7 @@ class ServerComms {
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building location_update JSON: \(error)")
@@ -232,11 +163,6 @@ class ServerComms {
     }
 
     func updateAsrConfig(languages: [[String: Any]]) {
-        guard wsManager.isConnected() else {
-            Bridge.log("ServerComms: Cannot send ASR config: not connected.")
-            return
-        }
-
         do {
             let configMsg: [String: Any] = [
                 "type": "config",
@@ -245,7 +171,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: configMsg)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building config message: \(error)")
@@ -262,7 +188,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building core_status_update JSON: \(error)")
@@ -282,7 +208,7 @@ class ServerComms {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: message)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
                 Bridge.log("ServerComms: Sent audio play response to server")
             }
         } catch {
@@ -302,7 +228,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: msg)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building start_app JSON: \(error)")
@@ -319,7 +245,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: msg)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building stop_app JSON: \(error)")
@@ -339,7 +265,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building button_press JSON: \(error)")
@@ -357,7 +283,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building photo_response JSON: \(error)")
@@ -375,7 +301,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error building video_stream_response JSON: \(error)")
@@ -392,7 +318,7 @@ class ServerComms {
 
             let jsonData = try JSONSerialization.data(withJSONObject: event)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
             }
         } catch {
             Bridge.log("ServerComms: Error sending head position: \(error)")
@@ -467,14 +393,12 @@ class ServerComms {
 
         case "set_location_tier":
             if let tier = msg["tier"] as? String {
-//                LocationManager.shared.setTier(tier: tier)
             }
 
         case "request_single_location":
             if let accuracy = msg["accuracy"] as? String,
                let correlationId = msg["correlationId"] as? String
             {
-//                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
             }
 
         case "app_started":
@@ -546,6 +470,8 @@ class ServerComms {
             Bridge.log("ServerComms: Unknown message type: \(type) / full: \(msg)")
         }
     }
+    ////                LocationManager.shared.setTier(tier: tier)
+    ////                LocationManager.shared.requestSingleUpdate(accuracy: accuracy, correlationId: correlationId)
 
     private func handleAudioPlayRequest(_ msg: [String: Any]) {
         Bridge.log("ServerComms: Handling audio play request: \(msg)")
@@ -807,11 +733,6 @@ class ServerComms {
      * Matches the Java ServerComms structure exactly
      */
     func sendTranscriptionResult(transcription: [String: Any]) {
-        guard wsManager.isConnected() else {
-            Bridge.log("Cannot send transcription result: WebSocket not connected")
-            return
-        }
-
         guard let text = transcription["text"] as? String, !text.isEmpty else {
             Bridge.log("Skipping empty transcription result")
             return
@@ -820,7 +741,7 @@ class ServerComms {
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: transcription)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
-                wsManager.sendText(jsonString)
+                Bridge.sendWSText(jsonString)
 
                 let isFinal = transcription["isFinal"] as? Bool ?? false
                 Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
@@ -831,7 +752,6 @@ class ServerComms {
     }
 }
 
-// A simple implementation of ArrayBlockingQueue for Swift
 class ArrayBlockingQueue<T> {
     private let queue = DispatchQueue(label: "ArrayBlockingQueue", attributes: .concurrent)
     private var array: [T] = []

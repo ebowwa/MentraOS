@@ -35,7 +35,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
-import {loadSetting} from "@/utils/SettingsHelper"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
@@ -213,7 +213,8 @@ export default function DeviceSettings() {
     }
 
     setPreferredMic(val)
-    await bridge.sendSetPreferredMic(val)
+    await bridge.sendSetPreferredMic(val) // TODO: config: remove
+    saveSetting(SETTINGS_KEYS.preferred_mic, val)
   }
 
   const setButtonModeWithSave = async (mode: string) => {

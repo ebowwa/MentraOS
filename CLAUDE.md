@@ -12,7 +12,7 @@ MentraOS is an open source operating system, app store, and development framewor
 - Backend & web portals: `cloud` (includes developer portal & app store)
 - Android-based smart glasses client: `asg_client` (uses `android_core` as a library)
 - MentraOS Store: `cloud/store/` (web app for app discovery)
-- Developer Console: `cloud/developer-portal/` (web app for app management)
+- Developer Console: `cloud/websites/console/` (web app for app management)
 
 ## Build Commands
 

@@ -18,23 +18,24 @@ struct ViewState {
     var title: String
     var layoutType: String
     var text: String
-    var eventStr: String
     var data: String?
     var animationData: [String: Any]?
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(MentraManager) class MentraManager: NSObject {
-    private static var instance: MentraManager?
+    static let shared = MentraManager()
+//    private static var instance: MentraManager?
 
     @objc static func getInstance() -> MentraManager {
-        if instance == nil {
-            instance = MentraManager()
-        }
-        return instance!
+//        if instance == nil {
+//            instance = MentraManager()
+//        }
+//        return instance!
+        return MentraManager.shared
     }
 
-    private var coreToken: String = ""
+    var coreToken: String = ""
     private var coreTokenOwner: String = ""
 
     @objc var g1Manager: ERG1Manager?
@@ -44,7 +45,6 @@ struct ViewState {
     @objc var frameManager: FrameManager?
     var serverComms = ServerComms.shared
     var micManager = OnboardMicrophoneManager.shared
-    var livekit = LiveKitManager.shared
 
     private var lastStatusObj: [String: Any] = [:]
 
@@ -82,19 +82,18 @@ struct ViewState {
     var viewStates: [ViewState] = [
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
-            eventStr: ""
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
-            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: ""
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$",
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
-            eventStr: "", data: nil, animationData: nil
+            data: nil, animationData: nil
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
-            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", eventStr: "", data: nil,
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$", data: nil,
             animationData: nil
         ),
     ]
@@ -109,7 +108,12 @@ struct ViewState {
     private var currentRequiredData: [SpeechRequiredDataType] = []
 
     // button settings:
-    private var buttonPressMode = "photo"
+    var buttonPressMode = "photo"
+    var buttonPhotoSize = "medium"
+    var buttonVideoWidth = 1280
+    var buttonVideoHeight = 720
+    var buttonVideoFps = 30
+    var buttonCameraLed = true
 
     // VAD:
     private var vad: SileroVADStrategy?
@@ -143,7 +147,6 @@ struct ViewState {
         }
 
         Task {
-            await loadSettings()
             self.vad?.setup(
                 sampleRate: .rate_16k,
                 frameSize: .size_1024,
@@ -163,14 +166,6 @@ struct ViewState {
 
         // Set up voice data handling
         setupVoiceDataHandling()
-
-        // Subscribe to WebSocket status changes
-        WebSocketManager.shared.status
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }
-            .store(in: &cancellables)
     }
 
     func initManager(_ wearable: String) {
@@ -278,7 +273,7 @@ struct ViewState {
                     let pcmConverter = PcmConverter()
                     let pcmData = pcmConverter.decode(lc3Data) as Data
                     //        self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
+                    Bridge.sendMicData(pcmData)
                     return
                 }
 
@@ -316,7 +311,7 @@ struct ViewState {
                     // first send out whatever's in the vadBuffer (if there is anything):
                     emptyVadBuffer()
                     //        self.serverComms.sendAudioChunk(lc3Data)
-                    self.serverComms.sendAudioChunk(pcmData)
+                    Bridge.sendMicData(pcmData)
                 } else {
                     checkSetVadStatus(speaking: false)
                     // add to the vadBuffer:
@@ -475,7 +470,7 @@ struct ViewState {
     func updateHeadUp(_ isHeadUp: Bool) {
         self.isHeadUp = isHeadUp
         sendCurrentState(isHeadUp)
-        ServerComms.shared.sendHeadPosition(isUp: isHeadUp)
+        Bridge.sendHeadPosition(isHeadUp)
     }
 
     // MARK: - Audio Bridge Methods
@@ -542,7 +537,7 @@ struct ViewState {
         // go through the buffer, popping from the first element in the array (FIFO):
         while !vadBuffer.isEmpty {
             let chunk = vadBuffer.removeFirst()
-            serverComms.sendAudioChunk(chunk)
+            Bridge.sendMicData(chunk)
         }
     }
 
@@ -576,7 +571,7 @@ struct ViewState {
                     //          self.serverComms.sendAudioChunk(lc3Data)
                     if self.shouldSendPcmData {
                         // Bridge.log("Mentra: Sending PCM data to server")
-                        self.serverComms.sendAudioChunk(pcmData)
+                        Bridge.sendMicData(pcmData)
                     }
 
                     // Also send to local transcriber when bypassing VAD - DISABLED
@@ -612,7 +607,7 @@ struct ViewState {
                     emptyVadBuffer()
                     //          self.serverComms.sendAudioChunk(lc3Data)
                     if self.shouldSendPcmData {
-                        self.serverComms.sendAudioChunk(pcmData)
+                        Bridge.sendMicData(pcmData)
                     }
 
                     // Send to local transcriber when speech is detected - DISABLED
@@ -868,12 +863,6 @@ struct ViewState {
                 return
             }
 
-            // TODO: config: remove
-            let eventStr = currentViewState.eventStr
-            if eventStr != "" {
-                Bridge.sendEvent(withName: "CoreMessageEvent", body: eventStr)
-            }
-
             if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
                 // dont send the event to glasses that aren't there:
                 return
@@ -949,8 +938,10 @@ struct ViewState {
             placeholders["$GBATT$"] = "\(batteryLevel)%"
         }
 
-        placeholders["$CONNECTION_STATUS$"] =
-            WebSocketManager.shared.isConnected() ? "Connected" : "Disconnected"
+//        placeholders["$CONNECTION_STATUS$"] =
+//            WebSocketManager.shared.isConnected() ? "Connected" : "Disconnected"
+        // TODO: config:
+        placeholders["$CONNECTION_STATUS$"] = "Connected"
 
         var result = text
         for (key, value) in placeholders {
@@ -984,18 +975,6 @@ struct ViewState {
             stateIndex = 0
         }
 
-        // save the state string to forward to the mirror:
-        // forward to the glasses mirror:
-        // TODO: config: remove
-        let wrapperObj: [String: Any] = ["glasses_display_event": event]
-        var eventStr = ""
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
-            eventStr = String(data: jsonData, encoding: .utf8) ?? ""
-        } catch {
-            Bridge.log("Mentra: Error converting to JSON: \(error)")
-        }
-
         let layout = event["layout"] as! [String: Any]
         let layoutType = layout["layoutType"] as! String
         var text = layout["text"] as? String ?? " "
@@ -1011,7 +990,7 @@ struct ViewState {
 
         var newViewState = ViewState(
             topText: topText, bottomText: bottomText, title: title, layoutType: layoutType,
-            text: text, eventStr: eventStr, data: data, animationData: nil
+            text: text, data: data, animationData: nil
         )
 
         if layoutType == "bitmap_animation" {
@@ -1151,15 +1130,11 @@ struct ViewState {
     }
 
     // command functions:
-
-    // TODO: config: remove
     func setAuthCreds(_ token: String, _ userId: String) {
         Bridge.log("Mentra: Setting core token to: \(token) for user: \(userId)")
         setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
-        serverComms.setAuthCreds(token, userId)
-        serverComms.connectWebSocket()
         handleRequestStatus()
     }
 
@@ -1187,7 +1162,6 @@ struct ViewState {
         // self.g1Manager = nil
         // self.liveManager = nil
         handleRequestStatus()
-        saveSettings()
     }
 
     func handleSearchForCompatibleDeviceNames(_ modelName: String) {
@@ -1195,11 +1169,9 @@ struct ViewState {
         if modelName.contains("Simulated") {
             defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
             handleRequestStatus()
-            saveSettings()
         } else if modelName.contains("Audio") {
             defaultWearable = "Audio Wearable" // there is no pairing process for audio wearable
             handleRequestStatus()
-            saveSettings()
         } else if modelName.contains("G1") {
             pendingWearable = "Even Realities G1"
             initManager(pendingWearable)
@@ -1222,31 +1194,27 @@ struct ViewState {
     func enableContextualDashboard(_ enabled: Bool) {
         contextualDashboard = enabled
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func setPreferredMic(_ mic: String) {
         preferredMic = mic
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func setButtonMode(_ mode: String) {
         buttonPressMode = mode
-        UserDefaults.standard.set(mode, forKey: "button_press_mode")
 
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonModeSetting(mode)
+            mentraLiveManager.sendButtonModeSetting()
         }
 
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func setButtonPhotoSize(_ size: String) {
-        UserDefaults.standard.set(size, forKey: "button_photo_size")
+        buttonPhotoSize = size
 
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
@@ -1254,13 +1222,12 @@ struct ViewState {
         }
 
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func setButtonVideoSettings(width: Int, height: Int, fps: Int) {
-        UserDefaults.standard.set(width, forKey: "button_video_width")
-        UserDefaults.standard.set(height, forKey: "button_video_height")
-        UserDefaults.standard.set(fps, forKey: "button_video_fps")
+        buttonVideoWidth = width
+        buttonVideoHeight = height
+        buttonVideoFps = fps
 
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
@@ -1268,19 +1235,15 @@ struct ViewState {
         }
 
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
-    func setButtonCameraLed(_ enabled: Bool) {
-        UserDefaults.standard.set(enabled, forKey: "button_camera_led")
-
+    func setButtonCameraLed(_: Bool) {
         // Forward to glasses if Mentra Live
         if let mentraLiveManager = liveManager {
             mentraLiveManager.sendButtonCameraLedSetting()
         }
 
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func startApp(_ target: String) {
@@ -1298,7 +1261,6 @@ struct ViewState {
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         g1Manager?.RN_setHeadUpAngle(value)
-        saveSettings()
         handleRequestStatus() // to update the UI
     }
 
@@ -1318,7 +1280,6 @@ struct ViewState {
             sendText(" ") // clear screen
         }
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func updateGlassesDepth(_ value: Int) {
@@ -1328,7 +1289,6 @@ struct ViewState {
             Bridge.log("Mentra: Set dashboard position to \(value)")
         }
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func updateGlassesHeight(_ value: Int) {
@@ -1338,7 +1298,6 @@ struct ViewState {
             Bridge.log("Mentra: Set dashboard position to \(value)")
         }
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func enableSensing(_ enabled: Bool) {
@@ -1346,25 +1305,21 @@ struct ViewState {
         // Update microphone state when sensing is toggled
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func enablePowerSavingMode(_ enabled: Bool) {
         powerSavingMode = enabled
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func enableAlwaysOnStatusBar(_ enabled: Bool) {
         alwaysOnStatusBar = enabled
-        saveSettings()
         handleRequestStatus() // to update the UI
     }
 
     func bypassVad(_ enabled: Bool) {
         bypassVad = enabled
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func enforceLocalTranscription(_ enabled: Bool) {
@@ -1382,7 +1337,6 @@ struct ViewState {
         }
 
         handleRequestStatus() // to update the UI
-        saveSettings()
     }
 
     func startBufferRecording() {
@@ -1400,7 +1354,6 @@ struct ViewState {
     func setMetricSystemEnabled(_ enabled: Bool) {
         metricSystemEnabled = enabled
         handleRequestStatus()
-        saveSettings()
     }
 
     func toggleUpdatingScreen(_ enabled: Bool) {
@@ -1874,28 +1827,24 @@ struct ViewState {
             "dashboard_depth": dashboardDepth,
             "head_up_angle": headUpAngle,
             "button_mode": buttonPressMode,
-            "button_photo_size": UserDefaults.standard.string(forKey: "button_photo_size")
-                ?? "medium",
+            "button_photo_size": buttonPhotoSize,
             "button_video_settings": [
-                "width": UserDefaults.standard.integer(forKey: "button_video_width") != 0
-                    ? UserDefaults.standard.integer(forKey: "button_video_width") : 1280,
-                "height": UserDefaults.standard.integer(forKey: "button_video_height") != 0
-                    ? UserDefaults.standard.integer(forKey: "button_video_height") : 720,
-                "fps": UserDefaults.standard.integer(forKey: "button_video_fps") != 0
-                    ? UserDefaults.standard.integer(forKey: "button_video_fps") : 30,
+                "width": buttonVideoWidth,
+                "height": buttonVideoHeight,
+                "fps": buttonVideoFps,
             ],
-            "button_camera_led": UserDefaults.standard.bool(forKey: "button_camera_led"),
+            "button_camera_led": buttonCameraLed,
         ]
 
-        let cloudConnectionStatus =
-            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
-        // let cloudConnectionStatus = self.serverComms.wsManager.status
+//        let cloudConnectionStatus =
+//            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
+        // TODO: config
+        let cloudConnectionStatus = "CONNECTED"
 
         let coreInfo: [String: Any] = [
             "augmentos_core_version": "Unknown",
             "cloud_connection_status": cloudConnectionStatus,
             "default_wearable": defaultWearable as Any,
-            "force_core_onboard_mic": useOnboardMic,
             "preferred_mic": preferredMic,
             // "is_searching": self.isSearching && !self.defaultWearable.isEmpty,
             "is_searching": isSearching,
@@ -1945,7 +1894,6 @@ struct ViewState {
         } catch {
             Bridge.log("Mentra: Error converting to JSON: \(error)")
         }
-        saveSettings()
     }
 
     func triggerStatusUpdate() {
@@ -2035,6 +1983,9 @@ struct ViewState {
         } else if defaultWearable.contains("Nex") {
             handleNexReady()
         }
+        // save the default_wearable now that we're connected:
+        Bridge.saveSetting("default_wearable", defaultWearable)
+        Bridge.saveSetting("device_name", deviceName)
     }
 
     private func handleG1Ready() {
@@ -2151,7 +2102,6 @@ struct ViewState {
 
             if deviceName != "" {
                 self.deviceName = deviceName
-                saveSettings()
             }
 
             initManager(self.pendingWearable)
@@ -2185,29 +2135,6 @@ struct ViewState {
         //        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
         //      }
         //    }
-    }
-
-    // MARK: - Settings Management
-
-    private enum SettingsKeys {
-        static let defaultWearable = "defaultWearable"
-        static let deviceName = "deviceName"
-        static let useOnboardMic = "useBoardMic"
-        static let contextualDashboard = "contextualDashboard"
-        static let headUpAngle = "headUpAngle"
-        static let brightness = "brightness"
-        static let autoBrightness = "autoBrightness"
-        static let sensingEnabled = "sensingEnabled"
-        static let powerSavingMode = "powerSavingMode"
-        static let dashboardHeight = "dashboardHeight"
-        static let dashboardDepth = "dashboardDepth"
-        static let alwaysOnStatusBar = "alwaysOnStatusBar"
-        static let bypassVad = "bypassVad"
-        static let bypassAudioEncoding = "bypassAudioEncoding"
-        static let preferredMic = "preferredMic"
-        static let metricSystemEnabled = "metricSystemEnabled"
-        static let enforceLocalTranscription = "enforceLocalTranscription"
-        static let buttonPressMode = "buttonPressMode"
     }
 
     func onStatusUpdate(_ status: [String: Any]) {
@@ -2264,7 +2191,6 @@ struct ViewState {
 
     func handle_update_settings(_ settings: [String: Any]) {
         Bridge.log("Mentra: Received update settings: \(settings)")
-        // saveSettings()
 
         // update our settings with the new values:
         if let newPreferredMic = settings["preferred_mic"] as? String,
@@ -2346,12 +2272,11 @@ struct ViewState {
            newDefaultWearable != defaultWearable
         {
             defaultWearable = newDefaultWearable
-            saveSettings()
         }
     }
 
     private func saveSettings() {
-        // Bridge.log("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
+        // Core.log("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
         if !settingsLoaded {
             // Wait for settings to load with a timeout
             let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
@@ -2385,10 +2310,10 @@ struct ViewState {
         // Force immediate save (optional, as UserDefaults typically saves when appropriate)
         defaults.synchronize()
 
-        // Bridge.log("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
+        // Core.log("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
         //       "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
 
-        // Bridge.log("Sending settings to server")
+        // Core.log("Sending settings to server")
         serverComms.sendCoreStatus(status: lastStatusObj)
     }
 
@@ -2472,7 +2397,6 @@ struct ViewState {
         transcriber = nil
 
         cancellables.removeAll()
-        saveSettings()
     }
 
     // MARK: - SherpaOnnxTranscriber / STT Model Management

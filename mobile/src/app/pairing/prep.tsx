@@ -14,6 +14,7 @@ import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {LinearGradient} from "expo-linear-gradient"
+import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -277,6 +278,7 @@ export default function PairingPrepScreen() {
 
     // skip pairing for simulated glasses:
     if (glassesModelName.startsWith("Simulated")) {
+      await saveSetting(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
       bridge.sendSearchForCompatibleDeviceNames("Simulated Glasses")
       bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses", "")
       clearHistoryAndGoHome()
