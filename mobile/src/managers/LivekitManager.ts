@@ -8,7 +8,7 @@ import {
   registerGlobals,
 } from "@livekit/react-native"
 
-import {Room, LocalAudioTrack, Track, AudioPreset} from "livekit-client"
+import {Room, LocalAudioTrack, Track, AudioPreset, RoomEvent} from "livekit-client"
 import Toast from "react-native-toast-message"
 import restComms from "./RestComms"
 
@@ -41,26 +41,45 @@ class LivekitManager {
     //   token,
     // })
 
-    if (this.room) {
-      await this.room.disconnect()
-      this.room = null
-    }
+    // if (this.room) {
+    //   await this.room.disconnect()
+    //   this.room = null
+    // }
 
     try {
       const {url, token} = await restComms.getLivekitUrlAndToken()
 
-      const room = new Room()
-      this.room = room
-      await room.connect(url, token)
+      this.room = new Room()
+      await this.room.connect(url, token)
+      this.room.on(RoomEvent.Connected, () => {
+        console.log("LivekitManager: Connected to room")
+      })
+      this.room.on(RoomEvent.Disconnected, () => {
+        console.log("LivekitManager: Disconnected from room")
+      })
+
+      // const room = new Room()
+      // room.on(RoomEvent.Connected, () => {
+      //   console.log("LivekitManager: Connected to room")
+      // })
+      // room.on(RoomEvent.Disconnected, () => {
+      //   console.log("LivekitManager: Disconnected from room")
+      // })
+      // room.on(RoomEvent.ConnectionStateChanged, () => {
+      //   console.log("LivekitManager: Connection state changed")
+      // })
+      // await this.room.connect(url, token)
+      // this.room = room
+
       // room.on("connected", () => {
       //   console.log("LivekitManager: Connected to room")
       // })
       // room.on("reconnected", () => {
       //   console.log("LivekitManager: Reconnected to room")
       // })
-      room.on("disconnected", () => {
-        console.log("LivekitManager: Disconnected from room")
-      })
+      // room.on("disconnected", () => {
+      //   console.log("LivekitManager: Disconnected from room")
+      // })
       // setInterval(() => {
       //   console.log("LivekitManager: Room state", this.room?.state)
       // }, 1000)
@@ -89,12 +108,21 @@ class LivekitManager {
 
     // console.error(`number: ${sequence}`)
     Toast.show({
-      text1: `number: ${sequence}`,
+      text1: `number: ${sequence} ${data.length}`,
       type: "error",
     })
 
-    this.room?.localParticipant.publishData(data, {reliable: false})
+    if (this.room && this.room.state === "connected") {
+      this.room?.localParticipant.publishData(data, {reliable: false})
+    }
     // socketComms.sendBinary(data)
+  }
+
+  async disconnect() {
+    if (this.room) {
+      await this.room.disconnect()
+      this.room = null
+    }
   }
 }
 
