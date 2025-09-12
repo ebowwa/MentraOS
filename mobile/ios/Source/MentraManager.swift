@@ -41,7 +41,6 @@ struct ViewState {
     @objc var g1Manager: ERG1Manager?
     @objc var liveManager: MentraLiveManager?
     @objc var mach1Manager: Mach1Manager?
-    @objc var nexManager: MentraNexSGC?
     @objc var frameManager: FrameManager?
     var serverComms = ServerComms.shared
     var micManager = OnboardMicrophoneManager.shared
@@ -176,8 +175,6 @@ struct ViewState {
             liveManager = MentraLiveManager()
         } else if wearable.contains("Mach1") && mach1Manager == nil {
             mach1Manager = Mach1Manager()
-        } else if wearable.contains("Nex") && nexManager == nil {
-            nexManager = MentraNexSGC.getInstance()
         } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"),
                   frameManager == nil
         {
@@ -416,55 +413,6 @@ struct ViewState {
                 updateHeadUp(value)
             }.store(in: &cancellables)
         }
-
-        if nexManager != nil {
-            nexManager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                Bridge.log("Nex glasses connection changed to: \(self.nexManager!.isConnected() ? "Connected" : "Disconnected")")
-                if self.nexManager!.isConnected() {
-                    self.handleDeviceReady()
-                } else {
-                    self.handleDeviceDisconnected()
-                    self.handleRequestStatus()
-                }
-            }
-
-            // Subscribe to @Published properties (G1-compatible approach)
-            nexManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: self.nexManager!.isCharging)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            nexManager!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self = self else { return }
-                updateHeadUp(value)
-            }.store(in: &cancellables)
-
-            nexManager!.$vadActive.sink { [weak self] (active: Bool) in
-                guard let self = self else { return }
-                // Handle VAD state changes if needed
-                Bridge.log("NEX: VAD active state changed: \(active)")
-            }.store(in: &cancellables)
-
-            // Audio subscriptions (G1-compatible)
-            nexManager!.$compressedVoiceData.sink { [weak self] (data: Data) in
-                guard let self = self else { return }
-                // Handle compressed voice data like G1 does
-                if data.count > 0 {
-                    Bridge.log("NEX: Received compressed voice data: \(data.count) bytes")
-                    // Forward to audio processing system if needed
-                }
-            }.store(in: &cancellables)
-
-            nexManager!.$aiListening.sink { [weak self] (listening: Bool) in
-                guard let self = self else { return }
-                Bridge.log("NEX: AI listening state changed: \(listening)")
-                // Handle AI listening state changes if needed
-            }.store(in: &cancellables)
-        }
     }
 
     func updateHeadUp(_ isHeadUp: Bool) {
@@ -574,7 +522,7 @@ struct ViewState {
                         Bridge.sendMicData(pcmData)
                     }
 
-                    // Also send to local transcriber when bypassing VAD - DISABLED
+                    // Also send to local transcriber when bypassing VAD
                     if self.shouldSendTranscript {
                         self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
@@ -610,7 +558,7 @@ struct ViewState {
                         Bridge.sendMicData(pcmData)
                     }
 
-                    // Send to local transcriber when speech is detected - DISABLED
+                    // Send to local transcriber when speech is detected
                     if self.shouldSendTranscript {
                         self.transcriber?.acceptAudio(pcm16le: pcmData)
                     }
@@ -658,7 +606,7 @@ struct ViewState {
 
         currentRequiredData = requiredData
 
-        // Bridge.log("Mentra: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
+        // Core.log("Mentra: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
         // in any case, clear the vadBuffer:
         vadBuffer.removeAll()
@@ -704,7 +652,7 @@ struct ViewState {
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            // Bridge.log(
+            // Core.log(
             //     "Mentra: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
             //         "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
             //         "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
@@ -815,9 +763,9 @@ struct ViewState {
     }
 
     //  func onDashboardDisplayEvent(_ event: [String: Any]) {
-    //    Bridge.log("got dashboard display event")
+    //    Core.log("got dashboard display event")
     ////    onDisplayEvent?(["event": event, "type": "dashboard"])
-    //    Bridge.log(event)
+    //    Core.log(event)
     ////    Task {
     ////      await self.g1Manager.sendText(text: "\(event)")
     ////    }
@@ -1019,7 +967,7 @@ struct ViewState {
             nS.layoutType + nS.text + nS.topText + nS.bottomText + nS.title + (nS.data ?? "")
 
         if currentState == newState {
-            // Bridge.log("Mentra: View state is the same, skipping update")
+            // Core.log("Mentra: View state is the same, skipping update")
             return
         }
 
@@ -1052,9 +1000,9 @@ struct ViewState {
         Bridge.log("Mentra: onRouteChange: reason: \(reason)")
         Bridge.log("Mentra: onRouteChange: inputs: \(availableInputs)")
 
-        // Bridge.log the available inputs and see if any are an onboard mic:
+        // Core.log the available inputs and see if any are an onboard mic:
         // for input in availableInputs {
-        //   Bridge.log("input: \(input.portType)")
+        //   Core.log("input: \(input.portType)")
         // }
 
         // if availableInputs.isEmpty {
@@ -1113,7 +1061,7 @@ struct ViewState {
     }
 
     private func sendText(_ text: String) {
-        // Bridge.log("Mentra: Sending text: \(text)")
+        // Core.log("Mentra: Sending text: \(text)")
         if defaultWearable.contains("Simulated") || defaultWearable.isEmpty {
             return
         }
@@ -1125,7 +1073,6 @@ struct ViewState {
 
         g1Manager?.sendTextWall(text)
         mach1Manager?.sendTextWall(text)
-        nexManager?.sendTextWall(text)
         frameManager?.displayTextWall(text)
     }
 
@@ -1145,7 +1092,6 @@ struct ViewState {
             self.g1Manager?.disconnect()
             self.liveManager?.disconnect()
             self.mach1Manager?.disconnect()
-            self.nexManager?.disconnect()
             self.isSearching = false
             handleRequestStatus()
         }
@@ -1158,7 +1104,6 @@ struct ViewState {
         g1Manager?.forget()
         //    self.liveManager?.forget()
         mach1Manager?.forget()
-        nexManager?.disconnect() // For Nex, we just disconnect since there's no forget method
         // self.g1Manager = nil
         // self.liveManager = nil
         handleRequestStatus()
@@ -1180,10 +1125,6 @@ struct ViewState {
             pendingWearable = "Mentra Live"
             initManager(pendingWearable)
             liveManager?.findCompatibleDevices()
-        } else if modelName.contains("Nex") {
-            defaultWearable = "Mentra Nex"
-            initManager(defaultWearable)
-            nexManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             pendingWearable = "Mach1"
             initManager(pendingWearable)
@@ -1744,9 +1685,6 @@ struct ViewState {
         if defaultWearable.contains("Mach1") {
             return false
         }
-        if defaultWearable.contains("Nex") {
-            return true
-        }
         return false
     }
 
@@ -1760,10 +1698,9 @@ struct ViewState {
         let g1Connected = g1Manager?.g1Ready ?? false
         let liveConnected = liveManager?.connectionState == .connected
         let mach1Connected = mach1Manager?.ready ?? false
-        let nexConnected = nexManager?.isConnected() ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected =
-            g1Connected || liveConnected || mach1Connected || nexConnected || simulatedConnected
+            g1Connected || liveConnected || mach1Connected || simulatedConnected
         if isGlassesConnected {
             isSearching = false
         }
@@ -1884,7 +1821,7 @@ struct ViewState {
 
         let wrapperObj: [String: Any] = ["status": statusObj]
 
-        // Bridge.log("wrapperStatusObj \(wrapperObj)")
+        // Core.log("wrapperStatusObj \(wrapperObj)")
         // must convert to string before sending:
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
@@ -1980,8 +1917,6 @@ struct ViewState {
             handleG1Ready()
         } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
-        } else if defaultWearable.contains("Nex") {
-            handleNexReady()
         }
         // save the default_wearable now that we're connected:
         Bridge.saveSetting("default_wearable", defaultWearable)
@@ -2051,13 +1986,6 @@ struct ViewState {
         }
     }
 
-    private func handleNexReady() {
-        Bridge.log("AOS: Mentra Nex device ready")
-        isSearching = false
-        defaultWearable = "Mentra Nex"
-        handleRequestStatus()
-    }
-
     private func handleDeviceDisconnected() {
         Bridge.log("Mentra: Device disconnected")
         handle_microphone_state_change([], false)
@@ -2111,8 +2039,6 @@ struct ViewState {
                 self.g1Manager?.connectById(self.deviceName)
             } else if self.pendingWearable.contains("Mach1") {
                 self.mach1Manager?.connectById(self.deviceName)
-            } else if self.pendingWearable.contains("Nex") {
-                self.nexManager?.connect(name: self.deviceName)
             }
         }
 
@@ -2120,8 +2046,8 @@ struct ViewState {
         //    connectTask?.cancel()
         //    connectTask = Task {
         //      while !(connectTask?.isCancelled ?? true) {
-        //        Bridge.log("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
-        //        Bridge.log("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
+        //        Core.log("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
+        //        Core.log("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
         //        if self.g1Manager?.g1Ready ?? false {
         //          // we actualy don't need this line:
         //          //          handleDeviceReady()
@@ -2139,7 +2065,7 @@ struct ViewState {
 
     func onStatusUpdate(_ status: [String: Any]) {
         // handle the settings from the server:
-        // Bridge.log("onStatusUpdate: \(status)")
+        // Core.log("onStatusUpdate: \(status)")
 
         // get the core_info and glasses_settings objects from the status:
         let coreInfo = status["core_info"] as? [String: Any]
@@ -2273,101 +2199,6 @@ struct ViewState {
         {
             defaultWearable = newDefaultWearable
         }
-    }
-
-    private func saveSettings() {
-        // Core.log("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
-        if !settingsLoaded {
-            // Wait for settings to load with a timeout
-            let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
-            let result = settingsLoadedSemaphore.wait(timeout: timeout)
-
-            if result == .timedOut {
-                Bridge.log("Mentra: Warning: Settings load timed out, proceeding with default values")
-            }
-        }
-
-        let defaults = UserDefaults.standard
-
-        // Save each setting with its corresponding key
-        defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
-        defaults.set(deviceName, forKey: SettingsKeys.deviceName)
-        defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
-        defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
-        defaults.set(brightness, forKey: SettingsKeys.brightness)
-        defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
-        defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
-        defaults.set(powerSavingMode, forKey: SettingsKeys.powerSavingMode)
-        defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
-        defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
-        defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
-        defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
-        defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
-        defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
-        defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
-        defaults.set(enforceLocalTranscription, forKey: SettingsKeys.enforceLocalTranscription)
-
-        // Force immediate save (optional, as UserDefaults typically saves when appropriate)
-        defaults.synchronize()
-
-        // Core.log("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), " +
-        //       "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
-
-        // Core.log("Sending settings to server")
-        serverComms.sendCoreStatus(status: lastStatusObj)
-    }
-
-    private func loadSettings() async {
-        // set default settings here:
-        UserDefaults.standard.register(defaults: [SettingsKeys.defaultWearable: ""])
-        UserDefaults.standard.register(defaults: [SettingsKeys.deviceName: ""])
-        UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "phone"])
-        UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.powerSavingMode: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardHeight: 4])
-        UserDefaults.standard.register(defaults: [SettingsKeys.dashboardDepth: 5])
-        UserDefaults.standard.register(defaults: [SettingsKeys.alwaysOnStatusBar: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: true])
-        UserDefaults.standard.register(defaults: [SettingsKeys.bypassAudioEncoding: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
-        UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
-        UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.enforceLocalTranscription: false])
-        UserDefaults.standard.register(defaults: [SettingsKeys.buttonPressMode: "photo"])
-
-        let defaults = UserDefaults.standard
-
-        // Load each setting with appropriate type handling
-        defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)!
-        deviceName = defaults.string(forKey: SettingsKeys.deviceName)!
-        preferredMic = defaults.string(forKey: SettingsKeys.preferredMic)!
-        contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
-        autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
-        sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
-        powerSavingMode = defaults.bool(forKey: SettingsKeys.powerSavingMode)
-        dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
-        dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
-        alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
-        bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
-        bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
-        headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
-        brightness = defaults.integer(forKey: SettingsKeys.brightness)
-        metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
-        enforceLocalTranscription = defaults.bool(forKey: SettingsKeys.enforceLocalTranscription)
-        buttonPressMode = defaults.string(forKey: SettingsKeys.buttonPressMode)!
-
-        // TODO: load settings from the server
-
-        // Mark settings as loaded and signal completion
-        settingsLoaded = true
-        settingsLoadedSemaphore.signal()
-
-        Bridge.log(
-            "Mentra: Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Preferred Mic: \(preferredMic), "
-                + "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)"
-        )
     }
 
     // MARK: - Helper Functions
