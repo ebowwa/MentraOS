@@ -33,6 +33,20 @@ struct FrameCommand {
 // MARK: - FrameManager
 
 @objc(FrameManager) class FrameManager: NSObject, SGCManager {
+    var wifiSsid: String?
+
+    var wifiConnected: Bool?
+
+    var wifiLocalIp: String?
+
+    var isHotspotEnabled: Bool?
+
+    var hotspotSsid: String?
+
+    var hotspotPassword: String?
+
+    var hotspotGatewayIp: String?
+
     var caseBatteryLevel: Int?
 
     var glassesAppVersion: String?
@@ -50,20 +64,6 @@ struct FrameCommand {
     var glassesStyle: String?
 
     var glassesColor: String?
-
-    var wifiSsid: String
-
-    var wifiConnected: Bool
-
-    var wifiLocalIp: String
-
-    var isHotspotEnabled: Bool
-
-    var hotspotSsid: String
-
-    var hotspotPassword: String
-
-    var hotspotGatewayIp: String
 
     func sendButtonPhotoSettings() {}
 
@@ -85,7 +85,9 @@ struct FrameCommand {
 
     func showDashboard() {}
 
-    func getConnectedBluetoothName() -> String? {}
+    func getConnectedBluetoothName() -> String? {
+        return nil
+    }
 
     func setDashboardPosition(_: Int, _: Int) {}
 

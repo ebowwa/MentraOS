@@ -233,7 +233,6 @@ class G1: NSObject, SGCManager {
     @Published var aiListening: Bool = false
     @Published var quickNotes: [QuickNote] = []
     @Published var batteryLevel: Int = -1
-    @Published var caseBatteryLevel: Int = -1
     @Published var leftBatteryLevel: Int = -1
     @Published var rightBatteryLevel: Int = -1
     @Published var caseCharging = false

@@ -731,35 +731,11 @@ typealias JSONObject = [String: Any]
 class MentraLive: NSObject, SGCManager {
     var caseBatteryLevel: Int?
 
-    var glassesAppVersion: String?
-
-    var glassesBuildNumber: String?
-
-    var glassesDeviceModel: String?
-
-    var glassesAndroidVersion: String?
-
-    var glassesOtaVersionUrl: String?
-
     var glassesSerialNumber: String?
 
     var glassesStyle: String?
 
     var glassesColor: String?
-
-    var wifiSsid: String?
-
-    var wifiConnected: Bool?
-
-    var wifiLocalIp: String?
-
-    var isHotspotEnabled: Bool?
-
-    var hotspotSsid: String?
-
-    var hotspotPassword: String?
-
-    var hotspotGatewayIp: String?
 
     func setDashboardPosition(_: Int, _: Int) {}
 
@@ -860,11 +836,11 @@ class MentraLive: NSObject, SGCManager {
     private var isNewVersion = false
     private var globalMessageId = 0
     private var lastReceivedMessageId = 0
-    var glassesAppVersion: String = ""
-    var glassesBuildNumber: String = ""
-    var glassesOtaVersionUrl: String = ""
-    var glassesDeviceModel: String = ""
-    var glassesAndroidVersion: String = ""
+    var glassesAppVersion: String? = ""
+    var glassesBuildNumber: String? = ""
+    var glassesOtaVersionUrl: String? = ""
+    var glassesDeviceModel: String? = ""
+    var glassesAndroidVersion: String? = ""
 
     var ready: Bool {
         get { return glassesReady }
@@ -885,13 +861,13 @@ class MentraLive: NSObject, SGCManager {
     // Data Properties
     @Published var batteryLevel: Int = -1
     @Published var isCharging: Bool = false
-    @Published var wifiConnected: Bool = false
-    @Published var wifiSsid: String = ""
-    @Published var wifiLocalIp: String = ""
-    @Published var isHotspotEnabled: Bool = false
-    @Published var hotspotSsid: String = ""
-    @Published var hotspotPassword: String = ""
-    @Published var hotspotGatewayIp: String = "" // The gateway IP to connect to when on hotspot
+    @Published var wifiConnected: Bool? = false
+    @Published var wifiSsid: String? = ""
+    @Published var wifiLocalIp: String? = ""
+    @Published var isHotspotEnabled: Bool? = false
+    @Published var hotspotSsid: String? = ""
+    @Published var hotspotPassword: String? = ""
+    @Published var hotspotGatewayIp: String? = "" // The gateway IP to connect to when on hotspot
 
     // Queue Management
     private let commandQueue = CommandQueue()
