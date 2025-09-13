@@ -117,8 +117,8 @@ export default function TranscriptionSettingsScreen() {
     if (info.downloaded) {
       try {
         await STTModelManager.activateModel(modelId)
-        showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
         await bridge.restartTranscription()
+        showAlert("Restarted Transcription", "Switched to new model", [{text: "OK"}])
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -144,6 +144,9 @@ export default function TranscriptionSettingsScreen() {
 
       // Re-check model status after download
       await checkModelStatus()
+
+      await STTModelManager.activateModel(targetModelId)
+      await bridge.restartTranscription()
 
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
@@ -182,16 +185,6 @@ export default function TranscriptionSettingsScreen() {
         },
       ],
     )
-  }
-
-  const getProgressText = () => {
-    if (downloadProgress > 0 && downloadProgress < 100) {
-      return `Downloading... ${downloadProgress}%`
-    }
-    if (extractionProgress > 0) {
-      return `Extracting... ${extractionProgress}%`
-    }
-    return "Preparing..."
   }
 
   const initSelectedModel = async () => {
