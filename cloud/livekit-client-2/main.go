@@ -321,8 +321,8 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 					return
 				}
 				// Data packets from the mobile sender include an optional 1-byte sequence header.
-				// The cloud expects raw PCM16 (16kHz mono) framed into 10ms (320-byte) chunks.
-				// Strip the header if present, ensure even length, then enqueue for framing/WS write.
+				// The cloud can accept full PCM16 chunks, so we forward the complete blob (no 10ms re-framing).
+				// Strip the header if present, ensure even length, then write over WS as a single binary message.
 				pcm := data
 				if len(pcm)%2 == 1 {
 					// Treat first byte as sequence header, remainder should be even PCM bytes
@@ -336,7 +336,7 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 				if len(pcm) == 0 {
 					return
 				}
-				c.handleIncomingPCM16_16k(pcm)
+				c.writeWSBinary(pcm)
 
 			},
 		},
@@ -558,6 +558,21 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
 			log.Printf("Failed to write PCM sample: %v", err)
 			break
 		}
+	}
+}
+
+// writeWSBinary writes a binary WebSocket message with a short deadline; closes on error.
+func (c *LiveKitClient) writeWSBinary(payload []byte) {
+	c.mu.Lock()
+	ws := c.ws
+	c.mu.Unlock()
+	if ws == nil {
+		return
+	}
+	_ = ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := ws.WriteMessage(websocket.BinaryMessage, payload); err != nil {
+		log.Printf("WS binary write failed for user %s: %v", c.userId, err)
+		go c.Close()
 	}
 }
 
