@@ -320,18 +320,24 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 				if len(data) == 0 {
 					return
 				}
-				c.mu.Lock()
-				ws := c.ws
-				c.mu.Unlock()
-				if ws == nil {
+				// Data packets from the mobile sender include an optional 1-byte sequence header.
+				// The cloud expects raw PCM16 (16kHz mono) framed into 10ms (320-byte) chunks.
+				// Strip the header if present, ensure even length, then enqueue for framing/WS write.
+				pcm := data
+				if len(pcm)%2 == 1 {
+					// Treat first byte as sequence header, remainder should be even PCM bytes
+					// seq := pcm[0] // currently unused; could log/debug if needed
+					pcm = pcm[1:]
+				}
+				// Ensure even number of bytes (pairs of 16-bit samples)
+				if len(pcm)%2 == 1 {
+					pcm = pcm[:len(pcm)-1]
+				}
+				if len(pcm) == 0 {
 					return
 				}
-				// Best-effort forward to TS over WS (binary)
-				if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
-					if time.Now().UnixNano()%100 == 0 {
-						log.Printf("data forward write error: %v", err)
-					}
-				}
+				c.handleIncomingPCM16_16k(pcm)
+
 			},
 		},
 	}
