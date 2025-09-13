@@ -1032,6 +1032,30 @@ export class MantleBridge extends EventEmitter {
       enabled: enabled,
     })
   }
+
+  async setVadEnabled(enabled: boolean) {
+    console.log("setVadEnabled", enabled)
+    return await this.sendData({
+      command: "set_vad_enabled",
+      enabled: enabled,
+    })
+  }
+
+  async setVadSensitivity(sensitivity: number) {
+    console.log("setVadSensitivity", sensitivity)
+    return await this.sendData({
+      command: "set_vad_sensitivity",
+      sensitivity: sensitivity,
+    })
+  }
+
+  async requestVadConfig() {
+    console.log("requestVadConfig")
+    return await this.sendData({
+      command: "request_vad_config",
+    })
+  }
+  
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({

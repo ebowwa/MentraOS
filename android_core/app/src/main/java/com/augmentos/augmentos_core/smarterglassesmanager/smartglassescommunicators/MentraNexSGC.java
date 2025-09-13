@@ -34,6 +34,8 @@ import mentraos.ble.MentraosBle.HeadUpAngleConfig;
 import mentraos.ble.MentraosBle.DisplayHeightConfig;
 import mentraos.ble.MentraosBle.VersionRequest;
 import mentraos.ble.MentraosBle.VersionResponse;
+import mentraos.ble.MentraosBle.VadEnabledRequest;
+import mentraos.ble.MentraosBle.VadConfigRequest;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -149,6 +151,9 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
 
     private boolean isDebugMode = true;
     private boolean isLc3AudioEnabled = true;
+
+    private boolean isVadEnabled = true;
+    private int vadSensitivity = 50;
 
     // Count of pings received from glasses (used for battery query timing)
     private int heartbeatCount = 0;
@@ -3404,6 +3409,47 @@ public final class MentraNexSGC extends SmartGlassesCommunicator {
                 }
             }
         }
+    }
+
+    public void setVadEnabled(boolean enabled) {
+        Log.d(TAG, "setVadEnabled: " + enabled);
+        this.isVadEnabled = enabled;
+
+        VadEnabledRequest vadEnabledRequest = VadEnabledRequest.newBuilder().setEnabled(enabled).build();
+        
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setSetVadEnabled(vadEnabledRequest)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
+    public void setVadSensitivity(int sensitivity) {
+        Log.d(TAG, "setVadSensitivity: " + sensitivity);
+        this.vadSensitivity = sensitivity;
+
+        VadConfigRequest vadConfigRequest = VadConfigRequest.newBuilder().setSensitivity(sensitivity).build();
+        
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setSetVadConfig(vadConfigRequest)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
+    }
+
+    public void requestVadConfig() {
+        Log.d(TAG, "requestVadConfig");
+
+        MentraosBle.VadStatusRequest request = MentraosBle.VadStatusRequest.newBuilder().build();
+
+        PhoneToGlasses phoneToGlasses = PhoneToGlasses.newBuilder()
+            .setRequestVadStatus(request)
+            .build();
+
+        byte[] versionQueryPacket = generateProtobufCommandBytes(phoneToGlasses);
+        sendDataSequentially(versionQueryPacket, 100);
     }
 
     public boolean isLc3AudioEnabled() {

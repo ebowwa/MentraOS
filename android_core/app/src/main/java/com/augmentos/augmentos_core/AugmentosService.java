@@ -3425,6 +3425,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void setVadEnabled(boolean enabled) {
+        Log.d(TAG, "setVadEnabled called: " + enabled);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.setVadEnabled(enabled);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control VAD");
+        }
+    }
+
+    @Override
+    public void setVadSensitivity(int sensitivity) {
+        Log.d(TAG, "setVadSensitivity called: " + sensitivity);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.setVadSensitivity(sensitivity);
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control VAD sensitivity");
+        }
+    }
+
+    @Override
+    public void requestVadConfig() {
+        Log.d(TAG, "requestVadConfig called");
+        if (smartGlassesManager != null) {
+            smartGlassesManager.requestVadConfig();
+        } else {
+            Log.e(TAG, "SmartGlassesManager is null or not connected to MentraNexSGC, cannot control VAD");
+        }
+    }
+
+    @Override
     public void startBufferRecording() {
         Log.d(TAG, "Starting buffer recording on smart glasses");
         if (smartGlassesManager != null) {

@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
 
 import {useFocusEffect} from "@react-navigation/native"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import coreCommunicator from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -16,6 +16,7 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 import {PillButton} from "@/components/ignite"
 import {MOCK_CONNECTION} from "@/consts"
 import {SvgXml} from "react-native-svg"
+import SliderSetting from "../settings/SliderSetting"
 
 // Nex Interface Version - Single source of truth
 export const NEX_INTERFACE_VERSION = "1.0.0"
@@ -276,6 +277,10 @@ export default function NexDeveloperSettings() {
   // LC3 Audio Control state
   const [lc3AudioEnabled, setLc3AudioEnabled] = useState(true)
 
+  // VAD Control state
+  const [vadEnabled, setVadEnabled] = useState(true)
+  const [vadSensitivity, setVadSensitivity] = useState(50)
+
   // Get both protobuf versions from core status
   const protobufSchemaVersion = status.core_info.protobuf_schema_version || "Unknown"
   const glassesProtobufVersion = status.core_info.glasses_protobuf_version || "Unknown"
@@ -386,6 +391,37 @@ export default function NexDeveloperSettings() {
     setLc3AudioEnabled(enabled)
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
       await coreCommunicator.setLc3AudioEnabled(enabled)
+    }
+  }
+
+  const onVadToggle = async (enabled: boolean) => {
+    setVadEnabled(enabled)
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.setVadEnabled(enabled)
+    }
+  }
+
+  const onVadSensitivitySet = async (sensitivity: number) => {
+    setVadSensitivity(sensitivity)
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      await coreCommunicator.setVadSensitivity(sensitivity)
+    }
+  }
+
+  const onRequestVadData = async () => {
+    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+      try {
+        // Toggle VAD to trigger a new data point
+        await coreCommunicator.requestVadConfig();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+        showAlert("Error", `Failed to request VAD data: ${errorMessage}`, [
+          {
+            text: "OK",
+            onPress: () => {},
+          },
+        ])
+      }
     }
   }
 
@@ -663,6 +699,49 @@ export default function NexDeveloperSettings() {
                 onValueChange={onLc3AudioToggle}
                 containerStyle={$toggleContainer}
               />
+            </View>
+
+
+            {/* VAD Control */}
+            <View style={themed($settingsGroup)}>
+              <Text style={themed($sectionTitle)}>VAD Control</Text>
+              <Text style={themed($description)}>Enable or disable vad from glasses</Text>
+
+              <ToggleSetting
+                label="VAD"
+                subtitle="Enable or disable vad from glasses"
+                value={vadEnabled}
+                onValueChange={onVadToggle}
+                containerStyle={$toggleContainer}
+              />
+
+                <View
+                  style={{
+                    height: StyleSheet.hairlineWidth,
+                    backgroundColor: theme.colors.separator,
+                    marginBottom: theme.spacing.xs,
+                    marginTop: theme.spacing.sm,
+                  }}
+                />
+                <SliderSetting
+                  label="VAD sensitivity"
+                  value={vadSensitivity}
+                  onValueChange={setVadSensitivity}
+                  min={0}
+                  max={100}
+                  onValueSet={onVadSensitivitySet}
+                  containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
+                  disableBorder
+                />
+                <View style={$buttonRow}>
+                  <PillButton
+                    text="Request VAD Status"
+                    variant="secondary"
+                    onPress={onRequestVadData}
+                    disabled={!vadEnabled}
+                    buttonStyle={$fullWidthButton}
+                  />
+                </View>
             </View>
 
             {/* Ping-Pong Console */}

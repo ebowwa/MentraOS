@@ -380,4 +380,35 @@ public abstract class SmartGlassesCommunicator {
         Log.d("SmartGlassesCommunicator", "Protobuf schema version not implemented for this device");
         return "Schema v1 | Unknown";
     }
+
+    /**
+     * Set VAD (Voice Activity Detection) enabled on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param enabled Whether to enable VAD
+     */
+    public void setVadEnabled(boolean enabled) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "VAD not implemented for this device");
+    }
+    
+    /**
+     * Set VAD (Voice Activity Detection) sensitivity on smart glasses
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param sensitivity The sensitivity level for VAD (0-100)
+     */
+    public void setVadSensitivity(int sensitivity) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "VAD sensitivity not implemented for this device");
+    }
+
+    /**
+     * Request VAD (Voice Activity Detection) configuration from smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void requestVadConfig() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "VAD config not implemented for this device");
+    }
 }

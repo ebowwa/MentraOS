@@ -325,6 +325,23 @@ public class AugmentOsManagerMessageParser {
             }
             break;
 
+            case "set_vad_enabled": {
+                boolean enabled = commandObject.getBoolean("enabled");
+                callback.setVadEnabled(enabled);
+            }
+            break;
+
+            case "set_vad_sensitivity": {
+                int sensitivity = commandObject.getInt("sensitivity");
+                callback.setVadSensitivity(sensitivity);
+            }
+            break;
+
+            case "request_vad_config": {
+                callback.requestVadConfig();
+            }
+            break;
+
             default:
                 Log.w(TAG, "Unknown command: " + command);
         }
