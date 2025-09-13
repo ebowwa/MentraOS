@@ -1,5 +1,5 @@
 //
-//  MentraLiveManager.swift
+//  MentraLive.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 7/3/25.
@@ -412,7 +412,7 @@ private struct BlePhotoTransfer {
 
 // MARK: - CBCentralManagerDelegate
 
-extension MentraLiveManager: CBCentralManagerDelegate {
+extension MentraLive: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
@@ -518,7 +518,7 @@ extension MentraLiveManager: CBCentralManagerDelegate {
 
 // MARK: - CBPeripheralDelegate
 
-extension MentraLiveManager: CBPeripheralDelegate {
+extension MentraLive: CBPeripheralDelegate {
     func peripheral(_: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
         if let error = error {
             Bridge.log("Error reading RSSI: \(error.localizedDescription)")
@@ -659,7 +659,7 @@ extension MentraLiveManager: CBPeripheralDelegate {
 
 // MARK: - Display Method Stubs (Mentra Live has no display)
 
-extension MentraLiveManager {
+extension MentraLive {
     @objc func RN_setFontSize(_ fontSize: String) {
         Bridge.log("[STUB] Device has no display. Cannot set font size: \(fontSize)")
     }
@@ -728,8 +728,74 @@ typealias JSONObject = [String: Any]
 
 // MARK: - Main Manager Class
 
-@objc(MentraLiveManager) class MentraLiveManager: NSObject {
-    // MARK: - Constants
+class MentraLive: NSObject, SGCManager {
+    var caseBatteryLevel: Int?
+
+    var glassesAppVersion: String?
+
+    var glassesBuildNumber: String?
+
+    var glassesDeviceModel: String?
+
+    var glassesAndroidVersion: String?
+
+    var glassesOtaVersionUrl: String?
+
+    var glassesSerialNumber: String?
+
+    var glassesStyle: String?
+
+    var glassesColor: String?
+
+    var wifiSsid: String?
+
+    var wifiConnected: Bool?
+
+    var wifiLocalIp: String?
+
+    var isHotspotEnabled: Bool?
+
+    var hotspotSsid: String?
+
+    var hotspotPassword: String?
+
+    var hotspotGatewayIp: String?
+
+    func setDashboardPosition(_: Int, _: Int) {}
+
+    func setSilentMode(_: Bool) {}
+
+    func exit() {}
+
+    func showDashboard() {}
+
+    func displayBitmap(base64ImageData _: String) async -> Bool {
+        return true
+    }
+
+    func sendDoubleTextWall(_: String, _: String) {}
+
+    func setHeadUpAngle(_: Int) {}
+
+    func getBatteryStatus() {}
+
+    func setBrightness(_: Int, autoMode _: Bool) {}
+
+    func clearDisplay() {}
+
+    func sendTextWall(_: String) {}
+
+    func forget() {}
+
+    let type = "live"
+    let hasMic = false
+    var isHeadUp = false
+    var caseOpen = false
+    var caseRemoved = true
+    var caseCharging = false
+    func setMicEnabled(_: Bool) {
+        // N/A
+    }
 
     // BLE UUIDs
     private let SERVICE_UUID = CBUUID(string: "00004860-0000-1000-8000-00805f9b34fb")
@@ -819,7 +885,7 @@ typealias JSONObject = [String: Any]
     // Data Properties
     @Published var batteryLevel: Int = -1
     @Published var isCharging: Bool = false
-    @Published var isWifiConnected: Bool = false
+    @Published var wifiConnected: Bool = false
     @Published var wifiSsid: String = ""
     @Published var wifiLocalIp: String = ""
     @Published var isHotspotEnabled: Bool = false
@@ -899,7 +965,7 @@ typealias JSONObject = [String: Any]
         }
     }
 
-    @objc func getConnectedBluetoothName() -> String? {
+    func getConnectedBluetoothName() -> String? {
         return connectedPeripheral?.name
     }
 
@@ -930,7 +996,7 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
-    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
+    func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
         Bridge.log("Requesting photo: \(requestId) for app: \(appId)")
 
         var json: [String: Any] = [
@@ -1442,7 +1508,7 @@ typealias JSONObject = [String: Any]
         sendJson(json)
     }
 
-    func sendWifiCredentials(_ ssid: String, password: String) {
+    func sendWifiCredentials(_ ssid: String, _ password: String) {
         Bridge.log("LiveManager: Sending WiFi credentials for SSID: \(ssid)")
 
         guard !ssid.isEmpty else {
@@ -2113,7 +2179,7 @@ typealias JSONObject = [String: Any]
 
     private func updateWifiStatus(connected: Bool, ssid: String, ip: String) {
         Bridge.log("🌐 Updating WiFi status - connected: \(connected), ssid: \(ssid)")
-        isWifiConnected = connected
+        wifiConnected = connected
         wifiSsid = ssid
         wifiLocalIp = ip
         emitWifiStatusChange()
@@ -2308,7 +2374,7 @@ typealias JSONObject = [String: Any]
 
     private func emitWifiStatusChange() {
         let eventBody = ["glasses_wifi_status_change": [
-            "connected": isWifiConnected,
+            "connected": wifiConnected,
             "ssid": wifiSsid,
             "local_ip": wifiLocalIp,
         ]]
@@ -2399,7 +2465,7 @@ typealias JSONObject = [String: Any]
 
 // MARK: - K900 Protocol Utilities
 
-extension MentraLiveManager {
+extension MentraLive {
     /**
      * Pack raw byte data with K900 BES2700 protocol format
      * Format: ## + command_type + length(2bytes) + data + $$

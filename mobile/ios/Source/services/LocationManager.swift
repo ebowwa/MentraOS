@@ -46,7 +46,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
             Bridge.log("LocationManager: Location updated to \(location.coordinate.latitude), \(location.coordinate.longitude) with accuracy \(location.horizontalAccuracy)m")
 
             // Notify ServerComms to send the update to the cloud
-            ServerComms.shared.sendLocationUpdate(
+            Bridge.sendLocationUpdate(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 accuracy: location.horizontalAccuracy,

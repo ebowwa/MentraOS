@@ -1,5 +1,5 @@
 //
-//  ERG1Manager.swift
+//  G1.swift
 //  MentraOS_Manager
 //
 //  Created by Matthew Fosse on 3/3/25.
@@ -110,18 +110,81 @@ enum GlassesError: Error {
     case missingGlasses(String)
 }
 
-@objc(ERG1Manager) class ERG1Manager: NSObject {
+class G1: NSObject, SGCManager {
+    var caseBatteryLevel: Int?
+
+    var glassesAppVersion: String?
+
+    var glassesBuildNumber: String?
+
+    var glassesDeviceModel: String?
+
+    var glassesAndroidVersion: String?
+
+    var glassesOtaVersionUrl: String?
+
+    var wifiSsid: String?
+
+    var wifiConnected: Bool?
+
+    var wifiLocalIp: String?
+
+    var isHotspotEnabled: Bool?
+
+    var hotspotSsid: String?
+
+    var hotspotPassword: String?
+
+    var hotspotGatewayIp: String?
+
+    func sendButtonPhotoSettings() {}
+
+    func sendButtonModeSetting() {}
+
+    func sendButtonVideoRecordingSettings() {}
+
+    func sendButtonCameraLedSetting() {}
+
+    func requestWifiScan() {}
+
+    func sendWifiCredentials(_: String, _: String) {}
+
+    func sendHotspotState(_: Bool) {}
+
+    func queryGalleryStatus() {}
+
+    func showDashboard() {}
+
+    func setSilentMode(_: Bool) {}
+
+    func connectById(_: String) {}
+
+    func sendJson(_: [String: Any], wakeUp _: Bool) {}
+
+    func requestPhoto(_: String, appId _: String, webhookUrl _: String?, size _: String?) {}
+
+    func startRtmpStream(_: [String: Any]) {}
+
+    func stopRtmpStream() {}
+
+    func sendRtmpKeepAlive(_: [String: Any]) {}
+
+    func startBufferRecording() {}
+
+    func stopBufferRecording() {}
+
+    func saveBufferVideo(requestId _: String, durationSeconds _: Int) {}
+
+    func startVideoRecording(requestId _: String, save _: Bool) {}
+
+    func stopVideoRecording(requestId _: String) {}
+
+    let type = "g1"
+    let hasMic = true
+    var onConnectionStateChanged: ((Bool) -> Void)?
+
     // TODO: we probably don't need this
     @objc static func requiresMainQueueSetup() -> Bool { return true }
-
-    private static var instance: ERG1Manager?
-
-    static func getInstance() -> ERG1Manager {
-        if instance == nil {
-            instance = ERG1Manager()
-        }
-        return instance!
-    }
 
     // Duplicate BMP prevention with timeout
     private var isDisplayingBMP = false
@@ -145,16 +208,14 @@ enum GlassesError: Error {
     private let ackCompletionsQueue = DispatchQueue(label: "com.erg1.ackCompletions", attributes: .concurrent)
     private var writeCompletionCount = 0
 
-    var onConnectionStateChanged: (() -> Void)?
-    private var _g1Ready: Bool = false
-    var g1Ready: Bool {
-        get { return _g1Ready }
+    private var _ready: Bool = false
+    var ready: Bool {
+        get { return _ready }
         set {
-            let oldValue = _g1Ready
-            _g1Ready = newValue
+            let oldValue = _ready
+            _ready = newValue
             if oldValue != newValue {
-                // Call the callback when state changes
-                onConnectionStateChanged?()
+                MentraManager.shared.handleConnectionStateChange(newValue)
             }
             if !newValue {
                 // Reset battery levels when disconnected
@@ -183,9 +244,6 @@ enum GlassesError: Error {
     @Published var glassesSerialNumber: String?
     @Published var glassesStyle: String?
     @Published var glassesColor: String?
-
-    // Callback for serial number discovery
-    var onSerialNumberDiscovered: (() -> Void)?
 
     var isDisconnecting = false
     private var reconnectionTimer: Timer?
@@ -271,7 +329,7 @@ enum GlassesError: Error {
         }
     }
 
-    override private init() {
+    override init() {
         super.init()
         startHeartbeatTimer()
     }
@@ -407,7 +465,7 @@ enum GlassesError: Error {
 
                 // Trigger status update to include serial number in status JSON
                 DispatchQueue.main.async {
-                    self.onSerialNumberDiscovered?()
+                    MentraManager.shared.handleRequestStatus()
                 }
             }
         } catch {
@@ -427,7 +485,7 @@ enum GlassesError: Error {
         Task {
 
             if centralManager == nil {
-                centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
+                centralManager = CBCentralManager(delegate: self, queue: G1._bluetoothQueue, options: ["CBCentralManagerOptionShowPowerAlertKey": 0])
                 setupCommandQueue()
                 // wait for the central manager to be fully initialized before we start scanning:
                 try? await Task.sleep(nanoseconds: 100 * 1_000_000) // 100ms
@@ -571,7 +629,7 @@ enum GlassesError: Error {
         }
     }
 
-    @objc func sendDoubleTextWall(_ top: String, _ bottom: String) {
+    func sendDoubleTextWall(_ top: String, _ bottom: String) {
         let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
         queueChunks(chunks, sleepAfterMs: 10)
 
@@ -699,9 +757,9 @@ enum GlassesError: Error {
             }
         }
 
-//         CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady) left: \(left), right: \(right)")
-        g1Ready = leftReady && rightReady
-        if g1Ready {
+        //         CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady) left: \(left), right: \(right)")
+        ready = leftReady && rightReady
+        if ready {
             stopReconnectionTimer()
         }
     }
@@ -857,11 +915,11 @@ enum GlassesError: Error {
                 Bridge.log("SEND (\(side)) \(firstFewBytes)")
             }
 
-//      if (lastChunk[0] == 0x4E) {
-//        sequenceNumber = Int(lastChunk[1])
-//      }
+            //      if (lastChunk[0] == 0x4E) {
+            //        sequenceNumber = Int(lastChunk[1])
+            //      }
 
-//      CoreCommsService.log("G1: SENDING with sequenceNumber: \(sequenceNumber)")
+            //      CoreCommsService.log("G1: SENDING with sequenceNumber: \(sequenceNumber)")
 
             // for heartbeats, don't retry and assume success since the glasses don't respond:
             if lastChunk[0] == Commands.BLE_REQ_HEARTBEAT.rawValue {
@@ -1089,9 +1147,11 @@ enum GlassesError: Error {
             case .HEAD_UP:
                 Bridge.log("G1: HEAD_UP")
                 isHeadUp = true
+                MentraManager.shared.updateHeadUp(isHeadUp)
             case .HEAD_UP2:
                 Bridge.log("G1: HEAD_UP2")
                 isHeadUp = true
+                MentraManager.shared.updateHeadUp(isHeadUp)
             // case .HEAD_DOWN:
             //   CoreCommsService.log("HEAD_DOWN")
             //   isHeadUp = false
@@ -1099,6 +1159,7 @@ enum GlassesError: Error {
             case .HEAD_DOWN2:
                 Bridge.log("G1: HEAD_DOWN2")
                 isHeadUp = false
+                MentraManager.shared.updateHeadUp(isHeadUp)
             case .ACTIVATED:
                 Bridge.log("G1: ACTIVATED")
             case .SILENCED:
@@ -1115,17 +1176,21 @@ enum GlassesError: Error {
             case .CASE_REMOVED:
                 Bridge.log("G1: REMOVED FROM CASE")
                 caseRemoved = true
+                MentraManager.shared.handleRequestStatus()
             case .CASE_REMOVED2:
                 Bridge.log("G1: REMOVED FROM CASE2")
                 caseRemoved = true
+                MentraManager.shared.handleRequestStatus()
             case .CASE_OPEN:
                 caseOpen = true
                 caseRemoved = false
                 Bridge.log("G1: CASE OPEN")
+                MentraManager.shared.handleRequestStatus()
             case .CASE_CLOSED:
                 caseOpen = false
                 caseRemoved = false
                 Bridge.log("G1: CASE CLOSED")
+                MentraManager.shared.handleRequestStatus()
             case .CASE_CHARGING_STATUS:
                 guard data.count >= 3 else { break }
                 let status = data[2]
@@ -1155,7 +1220,7 @@ enum GlassesError: Error {
             //          clearState()
             //        }
             default:
-//                 Core.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+                //                 Core.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
                 break
             }
         default:
@@ -1166,7 +1231,7 @@ enum GlassesError: Error {
 
 // MARK: Commands
 
-extension ERG1Manager {
+extension G1 {
     // Handle whitelist functionality
     func getWhitelistChunks() -> [[UInt8]] {
         // Define the hardcoded whitelist JSON
@@ -1280,7 +1345,7 @@ extension ERG1Manager {
         queueChunks([initDataArray])
     }
 
-    func RN_exit() {
+    func exit() {
         let exitData = Data([Commands.BLE_EXIT_ALL_FUNCTIONS.rawValue])
         let exitDataArray = exitData.map { UInt8($0) }
         queueChunks([exitDataArray])
@@ -1315,7 +1380,7 @@ extension ERG1Manager {
 
         var heartbeatArray = heartbeatData.map { UInt8($0) }
 
-        if g1Ready {
+        if ready {
             queueChunks([heartbeatArray])
         }
         //    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
@@ -1459,7 +1524,7 @@ extension ERG1Manager {
         queueChunks(whitelistChunks, sendLeft: true, sendRight: true, sleepAfterMs: 100)
     }
 
-    @objc func RN_setBrightness(_ level: Int, autoMode: Bool = false) {
+    func setBrightness(_ level: Int, autoMode: Bool = false) {
         // Convert from percentage (0-100) to the correct range (0-41)
         let mappedLevel = min(41, max(0, Int((Double(level) / 100.0) * 41.0)))
 
@@ -1468,14 +1533,14 @@ extension ERG1Manager {
 
         // Call the async function from a non-async context
         Task {
-            let success = await setBrightness(brightnessLevel, autoMode: autoMode)
+            let success = await setBrightnessRaw(brightnessLevel, autoMode: autoMode)
             if !success {
                 NSLog("Failed to set brightness to level \(level)% (mapped to \(mappedLevel))")
             }
         }
     }
 
-    func setBrightness(_ level: UInt8, autoMode: Bool = false) async -> Bool {
+    func setBrightnessRaw(_ level: UInt8, autoMode: Bool = false) async -> Bool {
         Bridge.log("G1: setBrightness()")
         // Ensure level is between 0x00 and 0x29 (0-41)
         var lvl: UInt8 = level
@@ -1505,7 +1570,7 @@ extension ERG1Manager {
         return true
     }
 
-    @objc func RN_setHeadUpAngle(_ angle: Int) {
+    func setHeadUpAngle(_ angle: Int) {
         var agl: Int = angle
         if angle < 0 {
             agl = 0
@@ -1515,14 +1580,14 @@ extension ERG1Manager {
 
         // Call the async function from a non-async context
         Task {
-            let success = await setHeadUpAngle(UInt8(agl))
+            let success = await setHeadUpAngleRaw(UInt8(agl))
             if !success {
                 NSLog("Failed to set angle to \(angle)")
             }
         }
     }
 
-    func setHeadUpAngle(_ angle: UInt8) async -> Bool {
+    func setHeadUpAngleRaw(_ angle: UInt8) async -> Bool {
         Bridge.log("G1: setHeadUpAngle()")
         let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
         queueChunks([command])
@@ -1541,9 +1606,9 @@ extension ERG1Manager {
         return true
     }
 
-    @objc func RN_setDashboardPosition(_ height: Int, _ depth: Int) {
+    func setDashboardPosition(_ height: Int, _ depth: Int) {
         Task {
-            await setDashboardPosition(UInt8(height), UInt8(depth))
+            await setDashboardPositionRaw(UInt8(height), UInt8(depth))
         }
     }
 
@@ -1567,7 +1632,7 @@ extension ERG1Manager {
         // nothing for now
     }
 
-    func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
+    func setDashboardPositionRaw(_ height: UInt8, _ depth: UInt8) async -> Bool {
         let h: UInt8 = min(max(height, 0), 8)
         let d: UInt8 = min(max(depth, 1), 9)
 
@@ -1594,7 +1659,7 @@ extension ERG1Manager {
         return true
     }
 
-    func setMicEnabled(enabled: Bool) async -> Bool {
+    func setMicEnabled(_ enabled: Bool) {
         Bridge.log("G1: setMicEnabled() \(enabled)")
         var micOnData = Data()
         micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
@@ -1611,7 +1676,6 @@ extension ERG1Manager {
         //    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
         //      peripheral.writeValue(micOnData, for: txChar, type: .withResponse)
         //    }
-        return true
     }
 
     // MARK: - Enhanced BMP Display Methods
@@ -1729,13 +1793,13 @@ extension ERG1Manager {
         let iosDelayMs = 8 // iOS delay from MentraOS
         let addressBytes: [UInt8] = [0x00, 0x1C, 0x00, 0x00] // Address from MentraOS
 
-//    // Debug: Check bmpData integrity before chunking
-//    let pixelDataStart = 62
-//    if bmpData.count > pixelDataStart + 50 {
-//      let beforeChunkSample = Array(bmpData[pixelDataStart..<(pixelDataStart + 20)])
-//      let beforeChunkHex = beforeChunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
-//      CoreCommsService.log("G1: 🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
-//    }
+        //    // Debug: Check bmpData integrity before chunking
+        //    let pixelDataStart = 62
+        //    if bmpData.count > pixelDataStart + 50 {
+        //      let beforeChunkSample = Array(bmpData[pixelDataStart..<(pixelDataStart + 20)])
+        //      let beforeChunkHex = beforeChunkSample.map { String(format: "%02X", $0) }.joined(separator: " ")
+        //      CoreCommsService.log("G1: 🔍 Before chunking - pixel data sample (bytes 62-82): \(beforeChunkHex)")
+        //    }
 
         // Create chunks exactly like MentraOS
         var multiPacks: [Data] = []
@@ -1778,8 +1842,8 @@ extension ERG1Manager {
             chunks.append(Array(packData))
         }
 
-//    queueChunks(chunks)
-//    chunks.removeAll()
+        //    queueChunks(chunks)
+        //    chunks.removeAll()
 
         // add end command:
         chunks.append([0x20, 0x0D, 0x0E])
@@ -1933,7 +1997,7 @@ extension ERG1Manager {
 
 // MARK: BLE Stubs
 
-extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
+extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
     func getWriteCharacteristic(for peripheral: CBPeripheral?) -> CBCharacteristic? {
         guard let peripheral = peripheral else { return nil }
         for service in peripheral.services ?? [] {
@@ -2012,7 +2076,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
                     Bridge.log("G1: 📱 Decoded serial number: \(decodedSerial)")
 
                     // Decode style and color from serial number
-                    let (style, color) = ERG1Manager.decodeEvenG1SerialNumber(decodedSerial)
+                    let (style, color) = G1.decodeEvenG1SerialNumber(decodedSerial)
                     Bridge.log("G1: 📱 Style: \(style), Color: \(color)")
 
                     // Store the information
@@ -2195,7 +2259,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     @objc private func attemptReconnection() {
         Bridge.log("G1: Attempting reconnection (attempt \(reconnectionAttempts))...")
         // Check if we're already connected
-        if g1Ready {
+        if ready {
             Bridge.log("G1: G1 is already ready, cancelling reconnection attempt (& timer)")
             stopReconnectionTimer()
             return

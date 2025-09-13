@@ -37,16 +37,6 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("show_banner", body: data)
     }
 
-    static func sendAppStartedEvent(_ packageName: String) {
-        let data = ["packageName": packageName]
-        Bridge.sendTypedMessage("app_started", body: data)
-    }
-
-    static func sendAppStoppedEvent(_ packageName: String) {
-        let data = ["packageName": packageName]
-        Bridge.sendTypedMessage("app_stopped", body: data)
-    }
-
     static func sendHeadPosition(_ isUp: Bool) {
         let data = ["position": isUp ? "up" : "down"]
         Bridge.sendTypedMessage("head_position", body: data)
@@ -67,6 +57,301 @@ class Bridge: RCTEventEmitter {
         let body = ["key": key, "value": value]
         Bridge.sendTypedMessage("save_setting", body: body)
     }
+
+    static func sendVadStatus(_ isSpeaking: Bool) {
+        let vadMsg: [String: Any] = [
+            "type": "VAD",
+            "status": isSpeaking,
+        ]
+
+        let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
+        if let jsonString = String(data: jsonData, encoding: .utf8) {
+            Bridge.sendWSText(jsonString)
+        }
+    }
+
+    static func sendBatteryStatus(level: Int, charging: Bool) {
+        let vadMsg: [String: Any] = [
+            "type": "glasses_battery_update",
+            "level": level,
+            "charging": charging,
+            "timestamp": Date().timeIntervalSince1970 * 1000,
+            // TODO: time remaining
+        ]
+
+        let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
+        if let jsonString = String(data: jsonData, encoding: .utf8) {
+            Bridge.sendWSText(jsonString)
+        }
+    }
+
+    static func sendCalendarEvent(_ calendarItem: CalendarItem) {
+        do {
+            let event: [String: Any] = [
+                "type": "calendar_event",
+                "title": calendarItem.title,
+                "eventId": calendarItem.eventId,
+                "dtStart": calendarItem.dtStart,
+                "dtEnd": calendarItem.dtEnd,
+                "timeZone": calendarItem.timeZone,
+                "timestamp": Int(Date().timeIntervalSince1970),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("Error building calendar_event JSON: \(error)")
+        }
+    }
+
+    static func sendCalendarEvents() {
+        Task {
+            if let events = await CalendarManager.shared.fetchUpcomingEvents(days: 2) {
+                guard events.count > 0 else { return }
+                // Send up to 5 events
+                let eventsToSend = events.prefix(5)
+                for event in eventsToSend {
+                    let calendarItem = convertEKEventToCalendarItem(event)
+                    Bridge.log("CALENDAR EVENT \(calendarItem)")
+                    Bridge.sendCalendarEvent(calendarItem)
+                }
+            }
+        }
+    }
+
+    static func sendLocationUpdate(lat: Double, lng: Double, accuracy: Double?, correlationId: String?) {
+        do {
+            var event: [String: Any] = [
+                "type": "location_update",
+                "lat": lat,
+                "lng": lng,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            if let acc = accuracy {
+                event["accuracy"] = acc
+            }
+
+            if let corrId = correlationId {
+                event["correlationId"] = corrId
+            }
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building location_update JSON: \(error)")
+        }
+    }
+
+    static func sendGlassesConnectionState(modelName: String, status: String) {
+        do {
+            let event: [String: Any] = [
+                "type": "glasses_connection_state",
+                "modelName": modelName,
+                "status": status,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building location_update JSON: \(error)")
+        }
+    }
+
+    static func updateAsrConfig(languages: [[String: Any]]) {
+        do {
+            let configMsg: [String: Any] = [
+                "type": "config",
+                "streams": languages,
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: configMsg)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building config message: \(error)")
+        }
+    }
+
+    func sendCoreStatus(status: [String: Any]) {
+        do {
+            let event: [String: Any] = [
+                "type": "core_status_update",
+                "status": ["status": status],
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building core_status_update JSON: \(error)")
+        }
+    }
+
+    func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+        Bridge.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+        let message: [String: Any] = [
+            "type": "audio_play_response",
+            "requestId": requestId,
+            "success": success,
+            "error": error as Any,
+            "duration": duration as Any,
+        ].compactMapValues { $0 }
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: message)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+                Bridge.log("ServerComms: Sent audio play response to server")
+            }
+        } catch {
+            Bridge.log("ServerComms: Failed to serialize audio play response: \(error)")
+        }
+    }
+
+    // MARK: - App Lifecycle
+
+    func startApp(packageName: String) {
+        do {
+            let msg: [String: Any] = [
+                "type": "start_app",
+                "packageName": packageName,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: msg)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building start_app JSON: \(error)")
+        }
+    }
+
+    func stopApp(packageName: String) {
+        do {
+            let msg: [String: Any] = [
+                "type": "stop_app",
+                "packageName": packageName,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: msg)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building stop_app JSON: \(error)")
+        }
+    }
+
+    // MARK: - Hardware Events
+
+    static func sendButtonPress(buttonId: String, pressType: String) {
+        do {
+            let event: [String: Any] = [
+                "type": "button_press",
+                "buttonId": buttonId,
+                "pressType": pressType,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building button_press JSON: \(error)")
+        }
+    }
+
+    static func sendPhotoResponse(requestId: String, photoUrl: String) {
+        do {
+            let event: [String: Any] = [
+                "type": "photo_response",
+                "requestId": requestId,
+                "photoUrl": photoUrl,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building photo_response JSON: \(error)")
+        }
+    }
+
+    static func sendVideoStreamResponse(appId: String, streamUrl: String) {
+        do {
+            let event: [String: Any] = [
+                "type": "video_stream_response",
+                "appId": appId,
+                "streamUrl": streamUrl,
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error building video_stream_response JSON: \(error)")
+        }
+    }
+
+    static func sendHeadPosition(isUp: Bool) {
+        do {
+            let event: [String: Any] = [
+                "type": "head_position",
+                "position": isUp ? "up" : "down",
+                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            ]
+
+            let jsonData = try JSONSerialization.data(withJSONObject: event)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+            }
+        } catch {
+            Bridge.log("ServerComms: Error sending head position: \(error)")
+        }
+    }
+
+    /**
+     * Send transcription result to server
+     * Used by AOSManager to send pre-formatted transcription results
+     * Matches the Java ServerComms structure exactly
+     */
+    static func sendTranscriptionResult(transcription: [String: Any]) {
+        guard let text = transcription["text"] as? String, !text.isEmpty else {
+            Bridge.log("Skipping empty transcription result")
+            return
+        }
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: transcription)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendWSText(jsonString)
+
+                let isFinal = transcription["isFinal"] as? Bool ?? false
+                Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
+            }
+        } catch {
+            Bridge.log("Error sending transcription result: \(error)")
+        }
+    }
+
+    // core bridge funcs:
 
     override func supportedEvents() -> [String] {
         // don't add to this list, use a typed message instead
@@ -102,46 +387,24 @@ class Bridge: RCTEventEmitter {
 
         // Define command types enum
         enum CommandType: String {
-            case set_auth_secret_key
             case request_status
             case connect_wearable
             case disconnect_wearable
             case search_for_compatible_device_names
-            case enable_contextual_dashboard
-            case set_preferred_mic
-            case set_button_mode
-            case set_button_photo_size
-            case set_button_video_settings
-            case set_button_camera_led
             case ping
             case forget_smart_glasses
-            case start_app
-            case stop_app
-            case update_glasses_head_up_angle
-            case update_glasses_brightness
-            case update_glasses_depth
-            case update_glasses_height
-            case enable_sensing
-            case enable_power_saving_mode
-            case enable_always_on_status_bar
-            case bypass_vad_for_debugging
-            case bypass_audio_encoding_for_debugging
-            case enforce_local_transcription
-            case set_server_url
-            case set_metric_system_enabled
             case toggle_updating_screen
             case show_dashboard
             case request_wifi_scan
             case send_wifi_credentials
             case set_hotspot_state
             case query_gallery_status
-            case simulate_head_position
-            case simulate_button_press
             case start_buffer_recording
             case stop_buffer_recording
             case save_buffer_video
             case start_video_recording
             case stop_video_recording
+            case set_auth_secret_key
             case set_stt_model_details
             case get_stt_model_path
             case check_stt_model_available
@@ -152,7 +415,6 @@ class Bridge: RCTEventEmitter {
             case update_settings
             case microphone_state_change
             case restart_transcriber
-            case connect_livekit
             case unknown
         }
 
@@ -177,14 +439,6 @@ class Bridge: RCTEventEmitter {
                 switch commandType {
                 case .setup:
                     m.setup()
-                // TODO: config: remove
-                case .set_server_url:
-                    guard let params = params, let url = params["url"] as? String else {
-                        Bridge.log("CommandBridge: set_server_url invalid params")
-                        break
-                    }
-                    ServerComms.shared.setServerUrl(url)
-                // TODO: config: remove
                 case .set_auth_secret_key:
                     guard let params = params,
                           let userId = params["userId"] as? String,
@@ -221,122 +475,8 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.handleSearchForCompatibleDeviceNames(modelName)
-                case .enable_contextual_dashboard:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: enable_contextual_dashboard invalid params")
-                        break
-                    }
-                    m.enableContextualDashboard(enabled)
-                case .set_preferred_mic:
-                    guard let params = params, let mic = params["mic"] as? String else {
-                        Bridge.log("CommandBridge: set_preferred_mic invalid params")
-                        break
-                    }
-                    m.setPreferredMic(mic)
-                case .set_button_mode:
-                    guard let params = params, let mode = params["mode"] as? String else {
-                        Bridge.log("CommandBridge: set_button_mode invalid params")
-                        break
-                    }
-                    m.setButtonMode(mode)
-                case .set_button_photo_size:
-                    guard let params = params, let size = params["size"] as? String else {
-                        Bridge.log("CommandBridge: set_button_photo_size invalid params")
-                        break
-                    }
-                    m.setButtonPhotoSize(size)
-                case .set_button_video_settings:
-                    guard let params = params,
-                          let width = params["width"] as? Int,
-                          let height = params["height"] as? Int,
-                          let fps = params["fps"] as? Int
-                    else {
-                        Bridge.log("CommandBridge: set_button_video_settings invalid params")
-                        break
-                    }
-                    m.setButtonVideoSettings(width: width, height: height, fps: fps)
-                case .set_button_camera_led:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: set_button_camera_led invalid params")
-                        break
-                    }
-                    m.setButtonCameraLed(enabled)
-                case .start_app:
-                    guard let params = params, let target = params["target"] as? String else {
-                        Bridge.log("CommandBridge: start_app invalid params")
-                        break
-                    }
-                    m.startApp(target)
-                case .stop_app:
-                    guard let params = params, let target = params["target"] as? String else {
-                        Bridge.log("CommandBridge: stop_app invalid params")
-                        break
-                    }
-                    m.stopApp(target)
-                case .update_glasses_head_up_angle:
-                    guard let params = params, let value = params["headUpAngle"] as? Int else {
-                        Bridge.log("CommandBridge: update_glasses_head_up_angle invalid params")
-                        break
-                    }
-                    m.updateGlassesHeadUpAngle(value)
-                case .update_glasses_brightness:
-                    guard let params = params, let value = params["brightness"] as? Int,
-                          let autoBrightness = params["autoBrightness"] as? Bool
-                    else {
-                        Bridge.log("CommandBridge: update_glasses_brightness invalid params")
-                        break
-                    }
-                    m.updateGlassesBrightness(value, autoBrightness: autoBrightness)
-                case .update_glasses_height:
-                    guard let params = params, let value = params["height"] as? Int else {
-                        Bridge.log("CommandBridge: update_glasses_height invalid params")
-                        break
-                    }
-                    m.updateGlassesHeight(value)
                 case .show_dashboard:
                     m.showDashboard()
-                case .update_glasses_depth:
-                    guard let params = params, let value = params["depth"] as? Int else {
-                        Bridge.log("CommandBridge: update_glasses_depth invalid params")
-                        break
-                    }
-                    m.updateGlassesDepth(value)
-                case .enable_sensing:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: enable_sensing invalid params")
-                        break
-                    }
-                    m.enableSensing(enabled)
-                case .enable_power_saving_mode:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: enable_power_saving_mode invalid params")
-                        break
-                    }
-                    m.enablePowerSavingMode(enabled)
-                case .enable_always_on_status_bar:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: enable_always_on_status_bar invalid params")
-                        break
-                    }
-                    m.enableAlwaysOnStatusBar(enabled)
-                case .bypass_vad_for_debugging:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: bypass_vad invalid params")
-                        break
-                    }
-                    m.bypassVad(enabled)
-                case .bypass_audio_encoding_for_debugging:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: bypass_audio_encoding invalid params")
-                        break
-                    }
-                    m.setBypassAudioEncoding(enabled)
-                case .set_metric_system_enabled:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: set_metric_system_enabled invalid params")
-                        break
-                    }
-                    m.setMetricSystemEnabled(enabled)
                 case .toggle_updating_screen:
                     guard let params = params, let enabled = params["enabled"] as? Bool else {
                         Bridge.log("CommandBridge: toggle_updating_screen invalid params")
@@ -362,31 +502,6 @@ class Bridge: RCTEventEmitter {
                 case .query_gallery_status:
                     Bridge.log("CommandBridge: Querying gallery status")
                     m.queryGalleryStatus()
-                // TODO: config: remove
-                case .simulate_head_position:
-                    guard let params = params, let position = params["position"] as? String else {
-                        Bridge.log("CommandBridge: simulate_head_position invalid params")
-                        break
-                    }
-                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
-                    // Trigger dashboard display locally
-                    m.sendCurrentState(position == "up")
-                case .simulate_button_press:
-                    guard let params = params,
-                          let buttonId = params["buttonId"] as? String,
-                          let pressType = params["pressType"] as? String
-                    else {
-                        Bridge.log("CommandBridge: simulate_button_press invalid params")
-                        break
-                    }
-                    // Use existing sendButtonPress method
-                    ServerComms.shared.sendButtonPress(buttonId: buttonId, pressType: pressType)
-                case .enforce_local_transcription:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("CommandBridge: enforce_local_transcription invalid params")
-                        break
-                    }
-                    m.enforceLocalTranscription(enabled)
                 case .start_buffer_recording:
                     Bridge.log("CommandBridge: Starting buffer recording")
                     m.startBufferRecording()
@@ -483,13 +598,6 @@ class Bridge: RCTEventEmitter {
                     m.handle_update_settings(params)
                 case .restart_transcriber:
                     m.restartTranscriber()
-                case .connect_livekit:
-                    guard let params = params, let url = params["url"] as? String, let token = params["token"] as? String else {
-                        Bridge.log("CommandBridge: connect_livekit invalid params")
-                        break
-                    }
-                    Bridge.log("CommandBridge: Connecting to LiveKit: \(url)")
-                    LiveKitManager.shared.connect(url: url, token: token)
                 }
             }
         } catch {

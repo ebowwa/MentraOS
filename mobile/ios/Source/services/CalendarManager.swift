@@ -163,6 +163,6 @@ class CalendarManager {
     }
 
     private func handleCalendarChanged() {
-        ServerComms.shared.sendCalendarEvents()
+        Bridge.sendCalendarEvents()
     }
 }

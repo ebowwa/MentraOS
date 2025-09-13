@@ -25,30 +25,23 @@ struct ViewState {
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(MentraManager) class MentraManager: NSObject {
     static let shared = MentraManager()
-//    private static var instance: MentraManager?
+    //    private static var instance: MentraManager?
 
     @objc static func getInstance() -> MentraManager {
-//        if instance == nil {
-//            instance = MentraManager()
-//        }
-//        return instance!
+        //        if instance == nil {
+        //            instance = MentraManager()
+        //        }
+        //        return instance!
         return MentraManager.shared
     }
 
     var coreToken: String = ""
     private var coreTokenOwner: String = ""
-
-    @objc var g1Manager: ERG1Manager?
-    @objc var liveManager: MentraLiveManager?
-    @objc var mach1Manager: Mach1Manager?
-    @objc var frameManager: FrameManager?
-    var serverComms = ServerComms.shared
-    var micManager = OnboardMicrophoneManager.shared
+    var sgc: SGCManager?
 
     private var lastStatusObj: [String: Any] = [:]
 
     private var cancellables = Set<AnyCancellable>()
-    private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
     //  private var cachedWhatToStream = [String]()
     private var defaultWearable: String = ""
     private var pendingWearable: String = ""
@@ -161,258 +154,97 @@ struct ViewState {
     func setup() {
         Bridge.log("Mentra: setup()")
         LocationManager.shared.setup()
-        MediaManager.shared.setup()
-
-        // Set up voice data handling
-        setupVoiceDataHandling()
     }
 
     func initManager(_ wearable: String) {
         Bridge.log("Initializing manager for wearable: \(wearable)")
-        if wearable.contains("G1") && g1Manager == nil {
-            g1Manager = ERG1Manager.getInstance()
-        } else if wearable.contains("Live") && liveManager == nil {
-            liveManager = MentraLiveManager()
-        } else if wearable.contains("Mach1") && mach1Manager == nil {
-            mach1Manager = Mach1Manager()
+        if wearable.contains("G1") && sgc == nil {
+            sgc = G1()
+        } else if wearable.contains("Live") && sgc == nil {
+            sgc = MentraLive()
+        } else if wearable.contains("Mach1") && sgc == nil {
+            sgc = Mach1()
         } else if wearable.contains("Frame") || wearable.contains("Brilliant Labs"),
-                  frameManager == nil
+                  sgc == nil
         {
-            frameManager = FrameManager.shared
+            sgc = FrameManager()
         }
-        initManagerCallbacks()
     }
 
     func initManagerCallbacks() {
-        // calback to handle actions when the connectionState changes (when g1 is ready)
+        // TODO: make sure this functionality is baked into the SGCs!
 
-        if g1Manager != nil {
-            g1Manager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                Bridge.log(
-                    "G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")"
-                )
-                //      self.handleRequestStatus()
-                if self.g1Manager!.g1Ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            // listen to changes in battery level:
-            g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // listen to headUp events:
-            g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self = self else { return }
-                updateHeadUp(value)
-            }.store(in: &cancellables)
-
-            // listen to case events:
-            g1Manager!.$caseOpen.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1Manager!.$caseRemoved.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1Manager!.$caseCharging.sink { [weak self] (_: Bool) in
-                guard let self = self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // Set up serial number discovery callback
-            g1Manager!.onSerialNumberDiscovered = { [weak self] in
-                self?.handleRequestStatus()
-            }
-            //    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
-            //        guard let self = self else { return }
-            //      handleRequestStatus()
-            //    }.store(in: &cancellables)
-
-            // decode the g1 audio data to PCM and feed to the VAD:
-            g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-                guard let self = self else { return }
-
-                // Ensure we have enough data to process
-                guard rawLC3Data.count > 2 else {
-                    Bridge.log("Received invalid PCM data size: \(rawLC3Data.count)")
-                    return
-                }
-
-                // Skip the first 2 bytes which are command bytes
-                let lc3Data = rawLC3Data.subdata(in: 2 ..< rawLC3Data.count)
-
-                // Ensure we have valid PCM data
-                guard lc3Data.count > 0 else {
-                    Bridge.log("No LC3 data after removing command bytes")
-                    return
-                }
-
-                if self.bypassVad || self.bypassVadForPCM {
-                    Bridge.log(
-                        "Mentra: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)"
-                    )
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    let pcmConverter = PcmConverter()
-                    let pcmData = pcmConverter.decode(lc3Data) as Data
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    Bridge.sendMicData(pcmData)
-                    return
-                }
-
-                let pcmConverter = PcmConverter()
-                let pcmData = pcmConverter.decode(lc3Data) as Data
-
-                guard pcmData.count > 0 else {
-                    Bridge.log("PCM conversion resulted in empty data")
-                    return
-                }
-
-                // feed PCM to the VAD:
-                guard let vad = self.vad else {
-                    Bridge.log("VAD not initialized")
-                    return
-                }
-
-                // convert audioData to Int16 array:
-                let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(
-                        UnsafeBufferPointer(
-                            start: pointer.bindMemory(to: Int16.self).baseAddress,
-                            count: pointer.count / MemoryLayout<Int16>.stride
-                        ))
-                }
-
-                vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-                    guard let self = self else { return }
-                    Bridge.log("VAD State: \(state)")
-                }
-
-                let vadState = vad.currentState()
-                if vadState == .speeching {
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    Bridge.sendMicData(pcmData)
-                } else {
-                    checkSetVadStatus(speaking: false)
-                    // add to the vadBuffer:
-                    //        addToVadBuffer(lc3Data)
-                    addToVadBuffer(pcmData)
-                }
-            }
-            .store(in: &cancellables)
-        }
-
-        if frameManager != nil {
-            frameManager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                let isConnected = self.frameManager?.connectionState == "CONNECTED"
-                Bridge.log(
-                    "Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")"
-                )
-                if isConnected {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            // Listen to battery level changes if Frame supports it
-            frameManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-        }
-
-        if liveManager != nil {
-            liveManager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                Bridge.log(
-                    "Live glasses connection changed to: \(self.liveManager!.ready ? "Connected" : "Disconnected")"
-                )
-                if self.liveManager!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            liveManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.$isWifiConnected.sink { [weak self] (isConnected: Bool) in
-                guard let self = self else { return }
-                self.glassesWifiConnected = isConnected
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
-                guard let self = self else { return }
-                self.serverComms.sendButtonPress(buttonId: buttonId, pressType: pressType)
-            }
-            liveManager!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
-                guard let self = self else { return }
-                self.serverComms.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
-            }
-            liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
-                guard let self = self else { return }
-                self.serverComms.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
-            }
-        }
-
-        if mach1Manager != nil {
-            mach1Manager!.onConnectionStateChanged = { [weak self] in
-                guard let self = self else { return }
-                Bridge.log(
-                    "Mach1 glasses connection changed to: \(self.mach1Manager!.ready ? "Connected" : "Disconnected")"
-                )
-                if self.mach1Manager!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            mach1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self = self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            mach1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self = self else { return }
-                updateHeadUp(value)
-            }.store(in: &cancellables)
-        }
+        //    if sgc is MentraLive {
+        //      let live = sgc as? MentraLive
+        //      live!.onConnectionStateChanged = { [weak self] in
+        //        guard let self = self else { return }
+        //        Bridge.log(
+        //          "Live glasses connection changed to: \(live!.ready ? "Connected" : "Disconnected")"
+        //        )
+        //        if live!.ready {
+        //          handleDeviceReady()
+        //        } else {
+        //          handleDeviceDisconnected()
+        //          handleRequestStatus()
+        //        }
+        //      }
+        //
+        //      live!.$batteryLevel.sink { [weak self] (level: Int) in
+        //        guard let self = self else { return }
+        //        guard level >= 0 else { return }
+        //        self.batteryLevel = level
+        //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      live!.$wifiConnected.sink { [weak self] (isConnected: Bool) in
+        //        guard let self = self else { return }
+        //        self.glassesWifiConnected = isConnected
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      live!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendButtonPress(buttonId: buttonId, pressType: pressType)
+        //      }
+        //      live!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
+        //      }
+        //      live!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
+        //      }
+        //    }
+        //
+        //    if sgc is Mach1 {
+        //      let mach1 = sgc as? Mach1
+        //      mach1!.onConnectionStateChanged = { [weak self] in
+        //        guard let self = self else { return }
+        //        Bridge.log(
+        //          "Mach1 glasses connection changed to: \(mach1!.ready ? "Connected" : "Disconnected")"
+        //        )
+        //        if mach1!.ready {
+        //          handleDeviceReady()
+        //        } else {
+        //          handleDeviceDisconnected()
+        //          handleRequestStatus()
+        //        }
+        //      }
+        //
+        //      mach1!.$batteryLevel.sink { [weak self] (level: Int) in
+        //        guard let self = self else { return }
+        //        guard level >= 0 else { return }
+        //        self.batteryLevel = level
+        //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      mach1!.$isHeadUp.sink { [weak self] (value: Bool) in
+        //        guard let self = self else { return }
+        //        updateHeadUp(value)
+        //      }.store(in: &cancellables)
+        //    }
     }
 
     func updateHeadUp(_ isHeadUp: Bool) {
@@ -421,48 +253,7 @@ struct ViewState {
         Bridge.sendHeadPosition(isHeadUp)
     }
 
-    // MARK: - Audio Bridge Methods
-
-    @objc func playAudio(
-        _ requestId: String,
-        audioUrl: String,
-        volume: Float,
-        stopOtherAudio: Bool
-    ) {
-        Bridge.log("AOS: playAudio bridge called for requestId: \(requestId)")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.playAudio(
-            requestId: requestId,
-            audioUrl: audioUrl,
-            volume: volume,
-            stopOtherAudio: stopOtherAudio
-        )
-    }
-
-    @objc func stopAudio(_ requestId: String) {
-        Bridge.log("AOS: stopAudio bridge called for requestId: \(requestId)")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.stopAudio(requestId: requestId)
-    }
-
-    @objc func stopAllAudio() {
-        Bridge.log("AOSManager: stopAllAudio bridge called")
-
-        let audioManager = AudioManager.getInstance()
-        audioManager.stopAllAudio()
-    }
-
-    func onConnectionAck() {
-        handleRequestStatus()
-
-        let isoDatetime = ServerComms.getCurrentIsoDatetime()
-        serverComms.sendUserDatetimeToBackend(isoDatetime: isoDatetime)
-    }
-
-    func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
-        cachedThirdPartyAppList = apps
+    func onAppStateChange(_: [ThirdPartyCloudApp]) {
         handleRequestStatus()
     }
 
@@ -477,7 +268,7 @@ struct ViewState {
     private func checkSetVadStatus(speaking: Bool) {
         if speaking != isSpeaking {
             isSpeaking = speaking
-            serverComms.sendVadStatus(isSpeaking)
+            Bridge.sendVadStatus(isSpeaking)
         }
     }
 
@@ -498,78 +289,159 @@ struct ViewState {
         }
     }
 
-    private func setupVoiceDataHandling() {
+    func handleGlassesMicData(_ rawLC3Data: Data) {
+        // decode the g1 audio data to PCM and feed to the VAD:
+
+        // Ensure we have enough data to process
+        guard rawLC3Data.count > 2 else {
+            Bridge.log("Received invalid PCM data size: \(rawLC3Data.count)")
+            return
+        }
+
+        // Skip the first 2 bytes which are command bytes
+        let lc3Data = rawLC3Data.subdata(in: 2 ..< rawLC3Data.count)
+
+        // Ensure we have valid PCM data
+        guard lc3Data.count > 0 else {
+            Bridge.log("No LC3 data after removing command bytes")
+            return
+        }
+
+        if bypassVad || bypassVadForPCM {
+            Bridge.log(
+                "Mentra: Glasses mic VAD bypassed - bypassVad=\(bypassVad), bypassVadForPCM=\(bypassVadForPCM)"
+            )
+            checkSetVadStatus(speaking: true)
+            // first send out whatever's in the vadBuffer (if there is anything):
+            emptyVadBuffer()
+            let pcmConverter = PcmConverter()
+            let pcmData = pcmConverter.decode(lc3Data) as Data
+            //        self.serverComms.sendAudioChunk(lc3Data)
+            Bridge.sendMicData(pcmData)
+            return
+        }
+
+        let pcmConverter = PcmConverter()
+        let pcmData = pcmConverter.decode(lc3Data) as Data
+
+        guard pcmData.count > 0 else {
+            Bridge.log("PCM conversion resulted in empty data")
+            return
+        }
+
+        // feed PCM to the VAD:
+        guard let vad = vad else {
+            Bridge.log("VAD not initialized")
+            return
+        }
+
+        // convert audioData to Int16 array:
+        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+            Array(
+                UnsafeBufferPointer(
+                    start: pointer.bindMemory(to: Int16.self).baseAddress,
+                    count: pointer.count / MemoryLayout<Int16>.stride
+                ))
+        }
+
+        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+            guard let self = self else { return }
+            Bridge.log("VAD State: \(state)")
+        }
+
+        let vadState = vad.currentState()
+        if vadState == .speeching {
+            checkSetVadStatus(speaking: true)
+            // first send out whatever's in the vadBuffer (if there is anything):
+            emptyVadBuffer()
+            //        self.serverComms.sendAudioChunk(lc3Data)
+            Bridge.sendMicData(pcmData)
+        } else {
+            checkSetVadStatus(speaking: false)
+            // add to the vadBuffer:
+            //        addToVadBuffer(lc3Data)
+            addToVadBuffer(pcmData)
+        }
+    }
+
+    func handlePcm(_ pcmData: Data) {
         // handle incoming PCM data from the microphone manager and feed to the VAD:
-        micManager.voiceData
-            .sink { [weak self] pcmData in
-                guard let self = self else { return }
 
-                // feed PCM to the VAD:
-                guard let vad = self.vad else {
-                    Bridge.log("VAD not initialized")
-                    return
-                }
+        // feed PCM to the VAD:
+        guard let vad = vad else {
+            Bridge.log("VAD not initialized")
+            return
+        }
 
-                if self.bypassVad || self.bypassVadForPCM {
-                    //          let pcmConverter = PcmConverter()
-                    //          let lc3Data = pcmConverter.encode(pcmData) as Data
-                    //          checkSetVadStatus(speaking: true)
-                    //          // first send out whatever's in the vadBuffer (if there is anything):
-                    //          emptyVadBuffer()
-                    //          self.serverComms.sendAudioChunk(lc3Data)
-                    if self.shouldSendPcmData {
-                        // Bridge.log("Mentra: Sending PCM data to server")
-                        Bridge.sendMicData(pcmData)
-                    }
-
-                    // Also send to local transcriber when bypassing VAD
-                    if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
-                    }
-                    return
-                }
-
-                // convert audioData to Int16 array:
-                let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(
-                        UnsafeBufferPointer(
-                            start: pointer.bindMemory(to: Int16.self).baseAddress,
-                            count: pointer.count / MemoryLayout<Int16>.stride
-                        ))
-                }
-
-                vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-                    guard let self = self else { return }
-                    //            self.handler?(state)
-                    Bridge.log("VAD State: \(state)")
-                }
-
-                // encode the pcmData as LC3:
-                //        let pcmConverter = PcmConverter()
-                //        let lc3Data = pcmConverter.encode(pcmData) as Data
-
-                let vadState = vad.currentState()
-                if vadState == .speeching {
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    //          self.serverComms.sendAudioChunk(lc3Data)
-                    if self.shouldSendPcmData {
-                        Bridge.sendMicData(pcmData)
-                    }
-
-                    // Send to local transcriber when speech is detected
-                    if self.shouldSendTranscript {
-                        self.transcriber?.acceptAudio(pcm16le: pcmData)
-                    }
-                } else {
-                    checkSetVadStatus(speaking: false)
-                    // add to the vadBuffer:
-                    //          addToVadBuffer(lc3Data)
-                    addToVadBuffer(pcmData)
-                }
+        if bypassVad || bypassVadForPCM {
+            //          let pcmConverter = PcmConverter()
+            //          let lc3Data = pcmConverter.encode(pcmData) as Data
+            //          checkSetVadStatus(speaking: true)
+            //          // first send out whatever's in the vadBuffer (if there is anything):
+            //          emptyVadBuffer()
+            //          self.serverComms.sendAudioChunk(lc3Data)
+            if shouldSendPcmData {
+                // Bridge.log("Mentra: Sending PCM data to server")
+                Bridge.sendMicData(pcmData)
             }
-            .store(in: &cancellables)
+
+            // Also send to local transcriber when bypassing VAD
+            if shouldSendTranscript {
+                transcriber?.acceptAudio(pcm16le: pcmData)
+            }
+            return
+        }
+
+        // convert audioData to Int16 array:
+        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+            Array(
+                UnsafeBufferPointer(
+                    start: pointer.bindMemory(to: Int16.self).baseAddress,
+                    count: pointer.count / MemoryLayout<Int16>.stride
+                ))
+        }
+
+        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+            guard let self = self else { return }
+            //            self.handler?(state)
+            Bridge.log("VAD State: \(state)")
+        }
+
+        // encode the pcmData as LC3:
+        //        let pcmConverter = PcmConverter()
+        //        let lc3Data = pcmConverter.encode(pcmData) as Data
+
+        let vadState = vad.currentState()
+        if vadState == .speeching {
+            checkSetVadStatus(speaking: true)
+            // first send out whatever's in the vadBuffer (if there is anything):
+            emptyVadBuffer()
+            //          self.serverComms.sendAudioChunk(lc3Data)
+            if shouldSendPcmData {
+                Bridge.sendMicData(pcmData)
+            }
+
+            // Send to local transcriber when speech is detected
+            if shouldSendTranscript {
+                transcriber?.acceptAudio(pcm16le: pcmData)
+            }
+        } else {
+            checkSetVadStatus(speaking: false)
+            // add to the vadBuffer:
+            //          addToVadBuffer(lc3Data)
+            addToVadBuffer(pcmData)
+        }
+    }
+
+    func handleConnectionStateChange(_ isConnected: Bool) {
+        Bridge.log("Mentra: Glasses: connection state: \(isConnected)")
+        if sgc == nil { return }
+        if sgc!.ready {
+            handleDeviceReady()
+        } else {
+            handleDeviceDisconnected()
+            handleRequestStatus()
+        }
     }
 
     // MARK: - ServerCommsCallback Implementation
@@ -617,7 +489,7 @@ struct ViewState {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = micEnabled && self.sensingEnabled
 
-            let glassesHasMic = getGlassesHasMic()
+            let glassesHasMic = sgc!.hasMic
 
             var useGlassesMic = false
             var useOnboardMic = false
@@ -660,83 +532,64 @@ struct ViewState {
             // )
 
             // if a g1 is connected, set the mic enabled:
-            if g1Manager?.g1Ready ?? false {
-                await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
+            if sgc?.type == "g1", sgc!.ready {
+                await sgc!.setMicEnabled(useGlassesMic)
             }
 
             setOnboardMicEnabled(useOnboardMic)
         }
     }
 
-    // MARK: - App Started/Stopped Handling
-
-    func onAppStarted(_ packageName: String) {
-        // tell the server what pair of glasses we're using:
-        serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
-        Bridge.sendAppStartedEvent(packageName)
-
-        Bridge.log("Mentra: App started: \(packageName)")
-
-        if !defaultWearable.isEmpty, !isSomethingConnected() {
-            handleConnectWearable(deviceName)
-        }
-    }
-
-    func onAppStopped(_ packageName: String) {
-        Bridge.log("Mentra: App stopped: \(packageName)")
-        Bridge.sendAppStoppedEvent(packageName)
-    }
-
     func onJsonMessage(_ message: [String: Any]) {
         Bridge.log("Mentra: onJsonMessage: \(message)")
-        liveManager?.sendJson(message)
+        sgc?.sendJson(message, wakeUp: false)
     }
 
     func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
         Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
-        liveManager?.requestPhoto(
+        sgc?.requestPhoto(
             requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size
         )
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
         Bridge.log("Mentra: onRtmpStreamStartRequest: \(message)")
-        liveManager?.startRtmpStream(message)
+        sgc?.startRtmpStream(message)
     }
 
     func onRtmpStreamStop() {
         Bridge.log("Mentra: onRtmpStreamStop")
-        liveManager?.stopRtmpStream()
+        sgc?.stopRtmpStream()
     }
 
     func onRtmpStreamKeepAlive(_ message: [String: Any]) {
         Bridge.log("Mentra: onRtmpStreamKeepAlive: \(message)")
-        liveManager?.sendRtmpKeepAlive(message)
+        sgc?.sendRtmpKeepAlive(message)
     }
 
     func onStartBufferRecording() {
         Bridge.log("Mentra: onStartBufferRecording")
-        liveManager?.startBufferRecording()
+        sgc?.startBufferRecording()
     }
 
     func onStopBufferRecording() {
         Bridge.log("Mentra: onStopBufferRecording")
-        liveManager?.stopBufferRecording()
+        sgc?.stopBufferRecording()
     }
 
     func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
         Bridge.log("Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
-        liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+        sgc?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
     }
 
     func onStartVideoRecording(_ requestId: String, _ save: Bool) {
         Bridge.log("Mentra: onStartVideoRecording: requestId=\(requestId), save=\(save)")
-        liveManager?.startVideoRecording(requestId: requestId, save: save)
+        sgc?.startVideoRecording(requestId: requestId, save: save)
     }
 
     func onStopVideoRecording(_ requestId: String) {
         Bridge.log("Mentra: onStopVideoRecording: requestId=\(requestId)")
-        liveManager?.stopVideoRecording(requestId: requestId)
+        sgc?.stopVideoRecording(requestId: requestId)
     }
 
     func setOnboardMicEnabled(_ isEnabled: Bool) {
@@ -744,12 +597,12 @@ struct ViewState {
             if isEnabled {
                 // Just check permissions - we no longer request them directly from Swift
                 // Permissions should already be granted via React Native UI flow
-                if !(micManager.checkPermissions()) {
+                if !(PhoneMic.shared.checkPermissions()) {
                     Bridge.log("Microphone permissions not granted. Cannot enable microphone.")
                     return
                 }
 
-                let success = micManager.startRecording()
+                let success = PhoneMic.shared.startRecording()
                 if !success {
                     // fallback to glasses mic if possible:
                     if getGlassesHasMic() {
@@ -757,7 +610,7 @@ struct ViewState {
                     }
                 }
             } else {
-                micManager.stopRecording()
+                PhoneMic.shared.stopRecording()
             }
         }
     }
@@ -773,7 +626,7 @@ struct ViewState {
 
     // send whatever was there before sending something else:
     func clearState() {
-        sendCurrentState(g1Manager?.isHeadUp ?? false)
+        sendCurrentState(sgc?.isHeadUp ?? false)
     }
 
     func sendCurrentState(_ isDashboard: Bool) {
@@ -831,8 +684,8 @@ struct ViewState {
             case "double_text_wall":
                 let topText = currentViewState.topText
                 let bottomText = currentViewState.bottomText
-                self.g1Manager?.sendDoubleTextWall(topText, bottomText)
-                self.mach1Manager?.sendDoubleTextWall(topText, bottomText)
+                sgc?.sendDoubleTextWall(topText, bottomText)
+                sgc?.sendDoubleTextWall(topText, bottomText)
             case "reference_card":
                 sendText(currentViewState.title + "\n\n" + currentViewState.text)
             case "bitmap_view":
@@ -842,12 +695,10 @@ struct ViewState {
                     return
                 }
                 Bridge.log("Mentra: Processing bitmap_view with base64 data, length: \(data.count)")
-                await self.g1Manager?.displayBitmap(base64ImageData: data)
-                await self.mach1Manager?.displayBitmap(base64ImageData: data)
+                await sgc?.displayBitmap(base64ImageData: data)
             case "clear_view":
                 Bridge.log("Mentra: Processing clear_view layout - clearing display")
-                self.g1Manager?.clearDisplay()
-                self.mach1Manager?.clearDisplay()
+                clearDisplay()
             default:
                 Bridge.log("UNHANDLED LAYOUT_TYPE \(layoutType)")
             }
@@ -886,8 +737,8 @@ struct ViewState {
             placeholders["$GBATT$"] = "\(batteryLevel)%"
         }
 
-//        placeholders["$CONNECTION_STATUS$"] =
-//            WebSocketManager.shared.isConnected() ? "Connected" : "Disconnected"
+        //        placeholders["$CONNECTION_STATUS$"] =
+        //            WebSocketManager.shared.isConnected() ? "Connected" : "Disconnected"
         // TODO: config:
         placeholders["$CONNECTION_STATUS$"] = "Connected"
 
@@ -1026,11 +877,11 @@ struct ViewState {
     }
 
     private func clearDisplay() {
-        mach1Manager?.clearDisplay()
-        frameManager?.blankScreen()
+        sgc!.clearDisplay()
 
-        if defaultWearable.contains("G1") {
-            g1Manager?.sendTextWall(" ")
+        if sgc is G1 {
+            let g1 = sgc as? G1
+            g1?.sendTextWall(" ")
 
             // clear the screen after 3 seconds if the text is empty or a space:
             if powerSavingMode {
@@ -1042,7 +893,7 @@ struct ViewState {
                     if self.isHeadUp {
                         return
                     }
-                    self.g1Manager?.clearDisplay()
+                    g1?.clearDisplay()
                 }
                 sendStateWorkItem = workItem
                 sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
@@ -1052,7 +903,7 @@ struct ViewState {
 
     private func sendText(_ text: String) {
         // Core.log("Mentra: Sending text: \(text)")
-        if defaultWearable.contains("Simulated") || defaultWearable.isEmpty {
+        if sgc == nil {
             return
         }
 
@@ -1061,9 +912,7 @@ struct ViewState {
             return
         }
 
-        g1Manager?.sendTextWall(text)
-        mach1Manager?.sendTextWall(text)
-        frameManager?.displayTextWall(text)
+        sgc?.sendTextWall(text)
     }
 
     // command functions:
@@ -1079,9 +928,7 @@ struct ViewState {
         sendText(" ") // clear the screen
         Task {
             connectTask?.cancel()
-            self.g1Manager?.disconnect()
-            self.liveManager?.disconnect()
-            self.mach1Manager?.disconnect()
+            sgc?.disconnect()
             self.isSearching = false
             handleRequestStatus()
         }
@@ -1091,11 +938,8 @@ struct ViewState {
         disconnectWearable()
         defaultWearable = ""
         deviceName = ""
-        g1Manager?.forget()
-        //    self.liveManager?.forget()
-        mach1Manager?.forget()
-        // self.g1Manager = nil
-        // self.liveManager = nil
+        sgc?.forget()
+        sgc = nil
         handleRequestStatus()
     }
 
@@ -1104,22 +948,17 @@ struct ViewState {
         if modelName.contains("Simulated") {
             defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
             handleRequestStatus()
-        } else if modelName.contains("Audio") {
-            defaultWearable = "Audio Wearable" // there is no pairing process for audio wearable
-            handleRequestStatus()
-        } else if modelName.contains("G1") {
+            return
+        }
+        if modelName.contains("G1") {
             pendingWearable = "Even Realities G1"
-            initManager(pendingWearable)
-            g1Manager?.findCompatibleDevices()
         } else if modelName.contains("Live") {
             pendingWearable = "Mentra Live"
-            initManager(pendingWearable)
-            liveManager?.findCompatibleDevices()
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             pendingWearable = "Mach1"
-            initManager(pendingWearable)
-            mach1Manager?.findCompatibleDevices()
         }
+        initManager(pendingWearable)
+        sgc?.findCompatibleDevices()
     }
 
     func enableContextualDashboard(_ enabled: Bool) {
@@ -1135,23 +974,13 @@ struct ViewState {
 
     func setButtonMode(_ mode: String) {
         buttonPressMode = mode
-
-        // Forward to glasses if Mentra Live
-        if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonModeSetting()
-        }
-
+        sgc?.sendButtonModeSetting()
         handleRequestStatus() // to update the UI
     }
 
     func setButtonPhotoSize(_ size: String) {
         buttonPhotoSize = size
-
-        // Forward to glasses if Mentra Live
-        if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonPhotoSettings()
-        }
-
+        sgc?.sendButtonPhotoSettings()
         handleRequestStatus() // to update the UI
     }
 
@@ -1159,39 +988,19 @@ struct ViewState {
         buttonVideoWidth = width
         buttonVideoHeight = height
         buttonVideoFps = fps
-
-        // Forward to glasses if Mentra Live
-        if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonVideoRecordingSettings()
-        }
-
+        sgc?.sendButtonVideoRecordingSettings()
         handleRequestStatus() // to update the UI
     }
 
     func setButtonCameraLed(_: Bool) {
-        // Forward to glasses if Mentra Live
-        if let mentraLiveManager = liveManager {
-            mentraLiveManager.sendButtonCameraLedSetting()
-        }
+        sgc?.sendButtonCameraLedSetting()
 
         handleRequestStatus() // to update the UI
     }
 
-    func startApp(_ target: String) {
-        Bridge.log("Mentra: Starting app: \(target)")
-        serverComms.startApp(packageName: target)
-        handleRequestStatus()
-    }
-
-    func stopApp(_ target: String) {
-        Bridge.log("Mentra: Stopping app: \(target)")
-        serverComms.stopApp(packageName: target)
-        handleRequestStatus()
-    }
-
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
-        g1Manager?.RN_setHeadUpAngle(value)
+        sgc?.setHeadUpAngle(value)
         handleRequestStatus() // to update the UI
     }
 
@@ -1200,8 +1009,7 @@ struct ViewState {
         brightness = value
         self.autoBrightness = autoBrightness
         Task {
-            self.mach1Manager?.setBrightness(value)
-            self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
+            sgc?.setBrightness(value, autoMode: autoBrightness)
             if autoBrightnessChanged {
                 sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
             } else {
@@ -1216,8 +1024,8 @@ struct ViewState {
     func updateGlassesDepth(_ value: Int) {
         dashboardDepth = value
         Task {
-            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-            Bridge.log("Mentra: Set dashboard position to \(value)")
+            await sgc?.setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
+            Bridge.log("Mentra: Set dashboard depth to \(value)")
         }
         handleRequestStatus() // to update the UI
     }
@@ -1225,8 +1033,8 @@ struct ViewState {
     func updateGlassesHeight(_ value: Int) {
         dashboardHeight = value
         Task {
-            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-            Bridge.log("Mentra: Set dashboard position to \(value)")
+            await sgc?.setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
+            Bridge.log("Mentra: Set dashboard height to \(value)")
         }
         handleRequestStatus() // to update the UI
     }
@@ -1271,11 +1079,11 @@ struct ViewState {
     }
 
     func startBufferRecording() {
-        liveManager?.startBufferRecording()
+        sgc?.startBufferRecording()
     }
 
     func stopBufferRecording() {
-        liveManager?.stopBufferRecording()
+        sgc?.stopBufferRecording()
     }
 
     func setBypassAudioEncoding(_ enabled: Bool) {
@@ -1290,379 +1098,52 @@ struct ViewState {
     func toggleUpdatingScreen(_ enabled: Bool) {
         Bridge.log("Mentra: Toggling updating screen: \(enabled)")
         if enabled {
-            g1Manager?.RN_exit()
+            sgc?.exit()
             isUpdatingScreen = true
         } else {
             isUpdatingScreen = false
         }
     }
 
+    func showDashboard() {
+        sgc?.showDashboard()
+    }
+
     func saveBufferVideo(requestId: String, durationSeconds: Int) {
-        liveManager?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+        sgc?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
     }
 
     func startVideoRecording(requestId: String, save: Bool) {
-        liveManager?.startVideoRecording(requestId: requestId, save: save)
+        sgc?.startVideoRecording(requestId: requestId, save: save)
     }
 
     @objc func stopVideoRecording(requestId: String) {
-        liveManager?.stopVideoRecording(requestId: requestId)
+        sgc?.stopVideoRecording(requestId: requestId)
     }
 
     func requestWifiScan() {
         Bridge.log("Mentra: Requesting wifi scan")
-        liveManager?.requestWifiScan()
+        sgc?.requestWifiScan()
     }
 
     func sendWifiCredentials(_ ssid: String, _ password: String) {
         Bridge.log("Mentra: Sending wifi credentials: \(ssid) \(password)")
-        liveManager?.sendWifiCredentials(ssid, password: password)
+        sgc?.sendWifiCredentials(ssid, password)
     }
 
     func setGlassesHotspotState(_ enabled: Bool) {
         Bridge.log("Mentra: 🔥 Setting glasses hotspot state: \(enabled)")
-        liveManager?.sendHotspotState(enabled)
+        sgc?.sendHotspotState(enabled)
     }
 
     func queryGalleryStatus() {
         Bridge.log("Mentra: 📸 Querying gallery status from glasses")
-        liveManager?.queryGalleryStatus()
-    }
-
-    func showDashboard() {
-        Task {
-            await self.g1Manager?.RN_showDashboard()
-        }
+        sgc?.queryGalleryStatus()
     }
 
     func restartTranscriber() {
         Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
         transcriber?.restart()
-    }
-
-    @objc func handleCommand(_ command: String) {
-        Bridge.log("Mentra: Received command: \(command)")
-
-        if !settingsLoaded {
-            // Wait for settings to load with a timeout
-            let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
-            let result = settingsLoadedSemaphore.wait(timeout: timeout)
-
-            if result == .timedOut {
-                Bridge.log("Warning: Settings load timed out, proceeding with default values")
-            }
-        }
-
-        // Define command types enum
-        enum CommandType: String {
-            case requestStatus = "request_status"
-            case connectWearable = "connect_wearable"
-            case disconnectWearable = "disconnect_wearable"
-            case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
-            case enableContextualDashboard = "enable_contextual_dashboard"
-            case setPreferredMic = "set_preferred_mic"
-            case restartTranscriber = "restart_transcriber"
-            case setButtonMode = "set_button_mode"
-            case setButtonPhotoSize = "set_button_photo_size"
-            case setButtonVideoSettings = "set_button_video_settings"
-            case setButtonCameraLed = "set_button_camera_led"
-            case ping
-            case forgetSmartGlasses = "forget_smart_glasses"
-            case startApp = "start_app"
-            case stopApp = "stop_app"
-            case updateGlassesHeadUpAngle = "update_glasses_head_up_angle"
-            case updateGlassesBrightness = "update_glasses_brightness"
-            case updateGlassesDepth = "update_glasses_depth"
-            case updateGlassesHeight = "update_glasses_height"
-            case enableSensing = "enable_sensing"
-            case enablePowerSavingMode = "enable_power_saving_mode"
-            case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
-            case bypassVad = "bypass_vad_for_debugging"
-            case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
-            case enforceLocalTranscription = "enforce_local_transcription"
-            case setMetricSystemEnabled = "set_metric_system_enabled"
-            case toggleUpdatingScreen = "toggle_updating_screen"
-            case showDashboard = "show_dashboard"
-            case requestWifiScan = "request_wifi_scan"
-            case sendWifiCredentials = "send_wifi_credentials"
-            case setHotspotState = "set_hotspot_state"
-            case queryGalleryStatus = "query_gallery_status"
-            case simulateHeadPosition = "simulate_head_position"
-            case simulateButtonPress = "simulate_button_press"
-            case startBufferRecording = "start_buffer_recording"
-            case stopBufferRecording = "stop_buffer_recording"
-            case saveBufferVideo = "save_buffer_video"
-            case startVideoRecording = "start_video_recording"
-            case stopVideoRecording = "stop_video_recording"
-            case unknown
-        }
-
-        // Try to parse JSON
-        guard let data = command.data(using: .utf8) else {
-            Bridge.log("Mentra: Could not convert command string to data")
-            return
-        }
-
-        do {
-            if let jsonDict = try JSONSerialization.jsonObject(with: data, options: [])
-                as? [String: Any]
-            {
-                // Extract command type
-                guard let commandString = jsonDict["command"] as? String else {
-                    Bridge.log("Mentra: Invalid command format: missing 'command' field")
-                    return
-                }
-
-                let commandType = CommandType(rawValue: commandString) ?? .unknown
-                let params = jsonDict["params"] as? [String: Any]
-
-                // Process based on command type
-                switch commandType {
-                case .requestStatus:
-                    handleRequestStatus()
-                case .connectWearable:
-                    guard let params = params, let modelName = params["model_name"] as? String,
-                          let deviceName = params["device_name"] as? String
-                    else {
-                        Bridge.log("Mentra: connect_wearable invalid params")
-                        handleConnectWearable("")
-                        break
-                    }
-                    handleConnectWearable(deviceName, modelName: modelName)
-                case .disconnectWearable:
-                    disconnectWearable()
-                case .forgetSmartGlasses:
-                    forgetSmartGlasses()
-                case .searchForCompatibleDeviceNames:
-                    guard let params = params, let modelName = params["model_name"] as? String
-                    else {
-                        Bridge.log("Mentra: search_for_compatible_device_names invalid params")
-                        break
-                    }
-                    handleSearchForCompatibleDeviceNames(modelName)
-                case .enableContextualDashboard:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: enable_contextual_dashboard invalid params")
-                        break
-                    }
-                    enableContextualDashboard(enabled)
-                case .setPreferredMic:
-                    guard let params = params, let mic = params["mic"] as? String else {
-                        Bridge.log("Mentra: set_preferred_mic invalid params")
-                        break
-                    }
-                    setPreferredMic(mic)
-                case .restartTranscriber:
-                    Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
-                    transcriber?.restart()
-                case .setButtonMode:
-                    guard let params = params, let mode = params["mode"] as? String else {
-                        Bridge.log("Mentra: set_button_mode invalid params")
-                        break
-                    }
-                    setButtonMode(mode)
-                case .setButtonPhotoSize:
-                    guard let params = params, let size = params["size"] as? String else {
-                        Bridge.log("Mentra: set_button_photo_size invalid params")
-                        break
-                    }
-                    setButtonPhotoSize(size)
-                case .setButtonVideoSettings:
-                    guard let params = params,
-                          let width = params["width"] as? Int,
-                          let height = params["height"] as? Int,
-                          let fps = params["fps"] as? Int
-                    else {
-                        Bridge.log("Mentra: set_button_video_settings invalid params")
-                        break
-                    }
-                    setButtonVideoSettings(width: width, height: height, fps: fps)
-                case .setButtonCameraLed:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: set_button_camera_led invalid params")
-                        break
-                    }
-                    setButtonCameraLed(enabled)
-                case .startApp:
-                    guard let params = params, let target = params["target"] as? String else {
-                        Bridge.log("Mentra: start_app invalid params")
-                        break
-                    }
-                    startApp(target)
-                case .stopApp:
-                    guard let params = params, let target = params["target"] as? String else {
-                        Bridge.log("Mentra: stop_app invalid params")
-                        break
-                    }
-                    stopApp(target)
-                case .updateGlassesHeadUpAngle:
-                    guard let params = params, let value = params["headUpAngle"] as? Int else {
-                        Bridge.log("Mentra: update_glasses_head_up_angle invalid params")
-                        break
-                    }
-                    updateGlassesHeadUpAngle(value)
-                case .updateGlassesBrightness:
-                    guard let params = params, let value = params["brightness"] as? Int,
-                          let autoBrightness = params["autoBrightness"] as? Bool
-                    else {
-                        Bridge.log("Mentra: update_glasses_brightness invalid params")
-                        break
-                    }
-                    updateGlassesBrightness(value, autoBrightness: autoBrightness)
-                case .updateGlassesHeight:
-                    guard let params = params, let value = params["height"] as? Int else {
-                        Bridge.log("Mentra: update_glasses_height invalid params")
-                        break
-                    }
-                    updateGlassesHeight(value)
-                case .showDashboard:
-                    showDashboard()
-                case .updateGlassesDepth:
-                    guard let params = params, let value = params["depth"] as? Int else {
-                        Bridge.log("Mentra: update_glasses_depth invalid params")
-                        break
-                    }
-                    updateGlassesDepth(value)
-                case .enableSensing:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: enable_sensing invalid params")
-                        break
-                    }
-                    enableSensing(enabled)
-                case .enablePowerSavingMode:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: enable_power_saving_mode invalid params")
-                        break
-                    }
-                    enablePowerSavingMode(enabled)
-                case .enableAlwaysOnStatusBar:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: enable_always_on_status_bar invalid params")
-                        break
-                    }
-                    enableAlwaysOnStatusBar(enabled)
-                case .bypassVad:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: bypass_vad invalid params")
-                        break
-                    }
-                    bypassVad(enabled)
-                case .bypassAudioEncoding:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: bypass_audio_encoding invalid params")
-                        break
-                    }
-                    bypassAudioEncoding = enabled
-                case .setMetricSystemEnabled:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: set_metric_system_enabled invalid params")
-                        break
-                    }
-                    setMetricSystemEnabled(enabled)
-                case .toggleUpdatingScreen:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: toggle_updating_screen invalid params")
-                        break
-                    }
-                    toggleUpdatingScreen(enabled)
-                case .requestWifiScan:
-                    requestWifiScan()
-                case .sendWifiCredentials:
-                    guard let params = params, let ssid = params["ssid"] as? String,
-                          let password = params["password"] as? String
-                    else {
-                        Bridge.log("Mentra: send_wifi_credentials invalid params")
-                        break
-                    }
-                    sendWifiCredentials(ssid, password)
-                case .setHotspotState:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: set_hotspot_state invalid params")
-                        break
-                    }
-                    setGlassesHotspotState(enabled)
-                case .queryGalleryStatus:
-                    Bridge.log("Mentra: Querying gallery status")
-                    queryGalleryStatus()
-                // TODO: config: remove
-                case .simulateHeadPosition:
-                    guard let params = params, let position = params["position"] as? String else {
-                        Bridge.log("Mentra: simulate_head_position invalid params")
-                        break
-                    }
-                    // Send to server
-                    ServerComms.shared.sendHeadPosition(isUp: position == "up")
-                    // Trigger dashboard display locally
-                    sendCurrentState(position == "up")
-                // TODO: config: remove
-                case .simulateButtonPress:
-                    guard let params = params,
-                          let buttonId = params["buttonId"] as? String,
-                          let pressType = params["pressType"] as? String
-                    else {
-                        Bridge.log("Mentra: simulate_button_press invalid params")
-                        break
-                    }
-                    // Use existing sendButtonPress method
-                    ServerComms.shared.sendButtonPress(
-                        buttonId: buttonId, pressType: pressType
-                    )
-                case .enforceLocalTranscription:
-                    guard let params = params, let enabled = params["enabled"] as? Bool else {
-                        Bridge.log("Mentra: enforce_local_transcription invalid params")
-                        break
-                    }
-                    enforceLocalTranscription(enabled)
-                case .startBufferRecording:
-                    Bridge.log("Mentra: Starting buffer recording")
-                    liveManager?.startBufferRecording()
-                case .stopBufferRecording:
-                    Bridge.log("Mentra: Stopping buffer recording")
-                    liveManager?.stopBufferRecording()
-                case .saveBufferVideo:
-                    guard let params = params,
-                          let requestId = params["request_id"] as? String,
-                          let durationSeconds = params["duration_seconds"] as? Int
-                    else {
-                        Bridge.log("Mentra: save_buffer_video invalid params")
-                        break
-                    }
-                    Bridge.log(
-                        "Mentra: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s"
-                    )
-                    liveManager?.saveBufferVideo(
-                        requestId: requestId, durationSeconds: durationSeconds
-                    )
-                case .startVideoRecording:
-                    guard let params = params,
-                          let requestId = params["request_id"] as? String,
-                          let save = params["save"] as? Bool
-                    else {
-                        Bridge.log("Mentra: start_video_recording invalid params")
-                        break
-                    }
-                    Bridge.log(
-                        "Mentra: Starting video recording: requestId=\(requestId), save=\(save)")
-                    liveManager?.startVideoRecording(requestId: requestId, save: save)
-                case .stopVideoRecording:
-                    guard let params = params,
-                          let requestId = params["request_id"] as? String
-                    else {
-                        Bridge.log("Mentra: stop_video_recording invalid params")
-                        break
-                    }
-                    Bridge.log("Mentra: Stopping video recording: requestId=\(requestId)")
-                    liveManager?.stopVideoRecording(requestId: requestId)
-                case .unknown:
-                    Bridge.log("Mentra: Unknown command type: \(commandString)")
-                    handleRequestStatus()
-                case .ping:
-                    break
-                }
-            }
-        } catch {
-            Bridge.log("Mentra: Error parsing JSON command: \(error.localizedDescription)")
-        }
     }
 
     private func getGlassesHasMic() -> Bool {
@@ -1679,18 +1160,13 @@ struct ViewState {
     }
 
     func enableGlassesMic(_: Bool) async {
-        await g1Manager?.setMicEnabled(enabled: true)
+        await sgc?.setMicEnabled(true)
     }
 
     func handleRequestStatus() {
         // construct the status object:
-
-        let g1Connected = g1Manager?.g1Ready ?? false
-        let liveConnected = liveManager?.connectionState == .connected
-        let mach1Connected = mach1Manager?.ready ?? false
         let simulatedConnected = defaultWearable == "Simulated Glasses"
-        let isGlassesConnected =
-            g1Connected || liveConnected || mach1Connected || simulatedConnected
+        let isGlassesConnected = sgc?.ready ?? false
         if isGlassesConnected {
             isSearching = false
         }
@@ -1703,11 +1179,11 @@ struct ViewState {
             connectedGlasses = [
                 "model_name": defaultWearable,
                 "battery_level": batteryLevel,
-                "glasses_app_version": liveManager?.glassesAppVersion ?? "",
-                "glasses_build_number": liveManager?.glassesBuildNumber ?? "",
-                "glasses_device_model": liveManager?.glassesDeviceModel ?? "",
-                "glasses_android_version": liveManager?.glassesAndroidVersion ?? "",
-                "glasses_ota_version_url": liveManager?.glassesOtaVersionUrl ?? "",
+                "glasses_app_version": sgc?.glassesAppVersion ?? "",
+                "glasses_build_number": sgc?.glassesBuildNumber ?? "",
+                "glasses_device_model": sgc?.glassesDeviceModel ?? "",
+                "glasses_android_version": sgc?.glassesAndroidVersion ?? "",
+                "glasses_ota_version_url": sgc?.glassesOtaVersionUrl ?? "",
             ]
         }
 
@@ -1715,35 +1191,35 @@ struct ViewState {
             connectedGlasses["model_name"] = defaultWearable
         }
 
-        if g1Connected {
-            connectedGlasses["case_removed"] = g1Manager?.caseRemoved ?? true
-            connectedGlasses["case_open"] = g1Manager?.caseOpen ?? true
-            connectedGlasses["case_charging"] = g1Manager?.caseCharging ?? false
-            connectedGlasses["case_battery_level"] = g1Manager?.caseBatteryLevel ?? -1
+        if sgc is G1 {
+            connectedGlasses["case_removed"] = sgc?.caseRemoved ?? true
+            connectedGlasses["case_open"] = sgc?.caseOpen ?? true
+            connectedGlasses["case_charging"] = sgc?.caseCharging ?? false
+            connectedGlasses["case_battery_level"] = sgc?.caseBatteryLevel ?? -1
 
-            if let serialNumber = g1Manager?.glassesSerialNumber, !serialNumber.isEmpty {
+            if let serialNumber = sgc?.glassesSerialNumber, !serialNumber.isEmpty {
                 connectedGlasses["glasses_serial_number"] = serialNumber
-                connectedGlasses["glasses_style"] = g1Manager?.glassesStyle ?? ""
-                connectedGlasses["glasses_color"] = g1Manager?.glassesColor ?? ""
+                connectedGlasses["glasses_style"] = sgc?.glassesStyle ?? ""
+                connectedGlasses["glasses_color"] = sgc?.glassesColor ?? ""
             }
         }
 
-        if liveConnected {
-            if let wifiSsid = liveManager?.wifiSsid, !wifiSsid.isEmpty {
+        if sgc is MentraLive {
+            if let wifiSsid = sgc?.wifiSsid, !wifiSsid.isEmpty {
                 connectedGlasses["glasses_wifi_ssid"] = wifiSsid
-                connectedGlasses["glasses_wifi_connected"] = glassesWifiConnected
-                connectedGlasses["glasses_wifi_local_ip"] = liveManager?.wifiLocalIp
+                connectedGlasses["glasses_wifi_connected"] = sgc?.wifiConnected
+                connectedGlasses["glasses_wifi_local_ip"] = sgc?.wifiLocalIp
             }
 
             // Add hotspot information - always include all fields for consistency
-            connectedGlasses["glasses_hotspot_enabled"] = liveManager?.isHotspotEnabled ?? false
-            connectedGlasses["glasses_hotspot_ssid"] = liveManager?.hotspotSsid ?? ""
-            connectedGlasses["glasses_hotspot_password"] = liveManager?.hotspotPassword ?? ""
-            connectedGlasses["glasses_hotspot_gateway_ip"] = liveManager?.hotspotGatewayIp ?? ""
+            connectedGlasses["glasses_hotspot_enabled"] = sgc?.isHotspotEnabled ?? false
+            connectedGlasses["glasses_hotspot_ssid"] = sgc?.hotspotSsid ?? ""
+            connectedGlasses["glasses_hotspot_password"] = sgc?.hotspotPassword ?? ""
+            connectedGlasses["glasses_hotspot_gateway_ip"] = sgc?.hotspotGatewayIp ?? ""
         }
 
         // Add Bluetooth device name if available
-        if let bluetoothName = getConnectedGlassesBluetoothName() {
+        if let bluetoothName = sgc?.getConnectedBluetoothName() {
             connectedGlasses["bluetooth_name"] = bluetoothName
         }
 
@@ -1763,8 +1239,8 @@ struct ViewState {
             "button_camera_led": buttonCameraLed,
         ]
 
-//        let cloudConnectionStatus =
-//            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
+        //        let cloudConnectionStatus =
+        //            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
         // TODO: config
         let cloudConnectionStatus = "CONNECTED"
 
@@ -1881,13 +1357,7 @@ struct ViewState {
     }
 
     private func isSomethingConnected() -> Bool {
-        if g1Manager?.g1Ready ?? false {
-            return true
-        }
-        if liveManager?.connectionState == .connected {
-            return true
-        }
-        if mach1Manager?.ready ?? false {
+        if sgc?.ready == true {
             return true
         }
         if defaultWearable.contains("Simulated") {
@@ -1898,8 +1368,8 @@ struct ViewState {
 
     private func handleDeviceReady() {
         // send to the server our battery status:
-        serverComms.sendBatteryStatus(level: batteryLevel, charging: false)
-        serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
+        Bridge.sendBatteryStatus(level: batteryLevel, charging: false)
+        Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
         if pendingWearable.contains("Live") {
             handleLiveReady()
@@ -1924,21 +1394,18 @@ struct ViewState {
         Task {
             // give the glasses some extra time to finish booting:
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
-            await self.g1Manager?.setSilentMode(false) // turn off silent mode
-            await self.g1Manager?.getBatteryStatus()
+            await sgc?.setSilentMode(false) // turn off silent mode
+            await sgc?.getBatteryStatus()
 
             if shouldSendBootingMessage {
                 sendText("// BOOTING MENTRAOS")
             }
 
             // send loaded settings to glasses:
-            self.g1Manager?.getBatteryStatus()
             try? await Task.sleep(nanoseconds: 400_000_000)
-            self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
+            sgc?.setHeadUpAngle(headUpAngle)
             try? await Task.sleep(nanoseconds: 400_000_000)
-            self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
+            sgc?.setBrightness(brightness, autoMode: autoBrightness)
             try? await Task.sleep(nanoseconds: 400_000_000)
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
@@ -1979,7 +1446,7 @@ struct ViewState {
     private func handleDeviceDisconnected() {
         Bridge.log("Mentra: Device disconnected")
         handle_microphone_state_change([], false)
-        serverComms.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
+        Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handleRequestStatus()
     }
 
@@ -2023,13 +1490,7 @@ struct ViewState {
             }
 
             initManager(self.pendingWearable)
-            if pendingWearable.contains("Live") {
-                self.liveManager?.connectById(self.deviceName)
-            } else if self.pendingWearable.contains("G1") {
-                self.g1Manager?.connectById(self.deviceName)
-            } else if self.pendingWearable.contains("Mach1") {
-                self.mach1Manager?.connectById(self.deviceName)
-            }
+            sgc?.connectById(self.deviceName)
         }
 
         // wait for the g1's to be fully ready:
@@ -2183,31 +1644,32 @@ struct ViewState {
             enableContextualDashboard(newContextualDashboard)
         }
 
+        if let newButtonMode = settings["button_mode"] as? String, newButtonMode != buttonPressMode {
+            setButtonMode(newButtonMode)
+        }
+
+        if let newFps = settings["button_video_fps"] as? Int, newFps != buttonVideoFps {
+            setButtonVideoSettings(width: buttonVideoWidth, height: buttonVideoHeight, fps: newFps)
+        }
+
+        if let newWidth = settings["button_video_width"] as? Int, newWidth != buttonVideoWidth {
+            setButtonVideoSettings(width: newWidth, height: buttonVideoHeight, fps: buttonVideoFps)
+        }
+
+        if let newHeight = settings["button_video_height"] as? Int, newHeight != buttonVideoHeight {
+            setButtonVideoSettings(width: buttonVideoWidth, height: newHeight, fps: buttonVideoFps)
+        }
+
+        if let newPhotoSize = settings["button_photo_size"] as? String, newPhotoSize != buttonPhotoSize {
+            setButtonPhotoSize(newPhotoSize)
+        }
+
         // get default wearable from core_info:
         if let newDefaultWearable = settings["default_wearable"] as? String,
            newDefaultWearable != defaultWearable
         {
             defaultWearable = newDefaultWearable
         }
-    }
-
-    // MARK: - Helper Functions
-
-    private func getConnectedGlassesBluetoothName() -> String? {
-        // Check each connected glasses type and return the Bluetooth name
-        if let liveManager = liveManager, liveManager.glassesReady {
-            return liveManager.getConnectedBluetoothName()
-        }
-
-        if let g1Manager = g1Manager, g1Manager.g1Ready {
-            return g1Manager.getConnectedBluetoothName()
-        }
-
-        if let mach1Manager = mach1Manager, mach1Manager.ready {
-            return mach1Manager.getConnectedBluetoothName()
-        }
-
-        return nil
     }
 
     // MARK: - Cleanup
@@ -2223,7 +1685,7 @@ struct ViewState {
     // MARK: - SherpaOnnxTranscriber / STT Model Management
 
     func didReceivePartialTranscription(_ text: String) {
-        // Send partial result to server with proper formatting
+        // Send partial result to server witgetConnectedBluetoothNameh proper formatting
         let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
         Bridge.log("Mentra: Sending partial transcription: \(text), \(transcriptionLanguage)")
         let transcription: [String: Any] = [
@@ -2237,7 +1699,7 @@ struct ViewState {
             "provider": "sherpa-onnx",
         ]
 
-        serverComms.sendTranscriptionResult(transcription: transcription)
+        Bridge.sendTranscriptionResult(transcription: transcription)
     }
 
     func didReceiveFinalTranscription(_ text: String) {
@@ -2256,7 +1718,7 @@ struct ViewState {
                 "provider": "sherpa-onnx",
             ]
 
-            serverComms.sendTranscriptionResult(transcription: transcription)
+            Bridge.sendTranscriptionResult(transcription: transcription)
         }
     }
 

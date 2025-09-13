@@ -1,5 +1,5 @@
 //
-//  Mach1Manager.swift
+//  Mach1.swift
 //  MentraOS_Manager
 //
 //  Created by Mach1 Device Integration
@@ -12,7 +12,101 @@ import React
 import UIKit
 import UltraliteSDK
 
-class Mach1Manager: UltraliteBaseViewController {
+class Mach1: UltraliteBaseViewController, SGCManager {
+    var caseBatteryLevel: Int?
+
+    var glassesAppVersion: String?
+
+    var glassesBuildNumber: String?
+
+    var glassesDeviceModel: String?
+
+    var glassesAndroidVersion: String?
+
+    var glassesOtaVersionUrl: String?
+
+    var glassesSerialNumber: String?
+
+    var glassesStyle: String?
+
+    var glassesColor: String?
+
+    var wifiSsid: String?
+
+    var wifiConnected: Bool?
+
+    var wifiLocalIp: String?
+
+    var isHotspotEnabled: Bool?
+
+    var hotspotSsid: String?
+
+    var hotspotPassword: String?
+
+    var hotspotGatewayIp: String?
+
+    func sendButtonPhotoSettings() {}
+
+    func sendButtonModeSetting() {}
+
+    func sendButtonVideoRecordingSettings() {}
+
+    func sendButtonCameraLedSetting() {}
+
+    func exit() {}
+
+    func requestWifiScan() {}
+
+    func sendWifiCredentials(_: String, _: String) {}
+
+    func sendHotspotState(_: Bool) {}
+
+    func queryGalleryStatus() {}
+
+    func showDashboard() {}
+
+    func setDashboardPosition(_: Int, _: Int) {}
+
+    func setSilentMode(_: Bool) {}
+
+    func sendJson(_: [String: Any], wakeUp _: Bool) {}
+
+    func requestPhoto(_: String, appId _: String, webhookUrl _: String?, size _: String?) {}
+
+    func sendJson(_: [String: Any]) {}
+
+    func startRtmpStream(_: [String: Any]) {}
+
+    func stopRtmpStream() {}
+
+    func sendRtmpKeepAlive(_: [String: Any]) {}
+
+    func startBufferRecording() {}
+
+    func stopBufferRecording() {}
+
+    func saveBufferVideo(requestId _: String, durationSeconds _: Int) {}
+
+    func startVideoRecording(requestId _: String, save _: Bool) {}
+
+    func stopVideoRecording(requestId _: String) {}
+
+    func setHeadUpAngle(_: Int) {}
+
+    func getBatteryStatus() {}
+
+    func setBrightness(_: Int, autoMode _: Bool) {}
+
+    let type = "mach1"
+    let hasMic: Bool = false
+    var caseOpen = false
+    var caseRemoved = true
+    var caseCharging = false
+
+    func setMicEnabled(_: Bool) {
+        // N/A
+    }
+
     var CONNECTING_DEVICE = ""
     var onConnectionStateChanged: (() -> Void)?
     @Published var batteryLevel: Int = -1
