@@ -68,6 +68,11 @@ type LiveKitClient struct {
 	subBuf16k     []byte
 	subFrameCount int
 
+	// diagnostics
+	subPktCount int   // number of data packets received
+	wsSendCount int   // number of WS sends
+	wsSendBytes int64 // cumulative WS bytes sent
+
 	// lifecycle
 	closedCh  chan struct{}
 	closeOnce sync.Once
@@ -320,13 +325,20 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 				if len(data) == 0 {
 					return
 				}
+				c.subPktCount++
+				if c.subPktCount <= 5 || c.subPktCount%100 == 0 {
+					log.Printf("[bridge] DataPacket rx #%d from=%s bytes=%d", c.subPktCount, params.SenderIdentity, len(data))
+				}
 				// Data packets from the mobile sender include an optional 1-byte sequence header.
 				// The cloud can accept full PCM16 chunks, so we forward the complete blob (no 10ms re-framing).
 				// Strip the header if present, ensure even length, then write over WS as a single binary message.
 				pcm := data
 				if len(pcm)%2 == 1 {
 					// Treat first byte as sequence header, remainder should be even PCM bytes
-					// seq := pcm[0] // currently unused; could log/debug if needed
+					seq := pcm[0]
+					// if c.subPktCount <= 5 || c.subPktCount%100 == 0 {
+					log.Printf("[bridge] seq header=%d payloadBytes(before)=%d", seq, len(pcm))
+					// }
 					pcm = pcm[1:]
 				}
 				// Ensure even number of bytes (pairs of 16-bit samples)
@@ -335,6 +347,34 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 				}
 				if len(pcm) == 0 {
 					return
+				}
+				// Light PCM diagnostics on first N packets
+				if c.subPktCount <= 5 {
+					minV := int16(32767)
+					maxV := int16(-32768)
+					var sumAbs int64
+					var sumSq int64
+					for i := 0; i+1 < len(pcm); i += 2 {
+						v := int16(binary.LittleEndian.Uint16(pcm[i : i+2]))
+						if v < minV {
+							minV = v
+						}
+						if v > maxV {
+							maxV = v
+						}
+						if v < 0 {
+							sumAbs += int64(-v)
+						} else {
+							sumAbs += int64(v)
+						}
+						sumSq += int64(v) * int64(v)
+					}
+					cnt := len(pcm) / 2
+					if cnt > 0 {
+						meanAbs := float64(sumAbs) / float64(cnt)
+						rms := math.Sqrt(float64(sumSq) / float64(cnt))
+						log.Printf("[bridge] pcm stats: samples=%d bytes=%d meanAbs=%.1f rms=%.1f min=%d max=%d", cnt, len(pcm), meanAbs, rms, minV, maxV)
+					}
 				}
 				c.writeWSBinary(pcm)
 
@@ -571,8 +611,13 @@ func (c *LiveKitClient) writeWSBinary(payload []byte) {
 	}
 	_ = ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if err := ws.WriteMessage(websocket.BinaryMessage, payload); err != nil {
-		log.Printf("WS binary write failed for user %s: %v", c.userId, err)
+		log.Printf("[bridge] WS binary write failed for user %s: %v", c.userId, err)
 		go c.Close()
+	}
+	c.wsSendCount++
+	c.wsSendBytes += int64(len(payload))
+	if c.wsSendCount <= 5 || c.wsSendCount%200 == 0 {
+		log.Printf("[bridge] WS sent #%d bytes=%d totalBytes=%d", c.wsSendCount, len(payload), c.wsSendBytes)
 	}
 }
 
