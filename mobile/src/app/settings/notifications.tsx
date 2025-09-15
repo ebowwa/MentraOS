@@ -190,12 +190,12 @@ export default function NotificationSettingsScreen() {
       {/* Add New App */}
       <View
         style={{
-          backgroundColor: theme.colors.background,
+          backgroundColor: "rgba(255, 255, 255, 0.05)",
           borderRadius: 12,
           padding: theme.spacing.lg,
           marginBottom: theme.spacing.lg,
           borderWidth: 1,
-          borderColor: theme.colors.palette.neutral200,
+          borderColor: "rgba(255, 255, 255, 0.1)",
         }}>
         <Text
           style={{
@@ -219,20 +219,20 @@ export default function NotificationSettingsScreen() {
 
         <View style={{flexDirection: "row", alignItems: "center"}}>
           <TextInput
-            placeholder="App name (Discord, WhatsApp, Instagram...)"
+            placeholder="App name"
             value={newAppName}
             onChangeText={setNewAppName}
             style={{
               flex: 1,
               fontSize: 16,
               color: theme.colors.text,
-              backgroundColor: theme.colors.palette.neutral100,
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
               borderRadius: 8,
               paddingHorizontal: theme.spacing.md,
               paddingVertical: theme.spacing.sm,
               marginRight: theme.spacing.sm,
               borderWidth: 1,
-              borderColor: theme.colors.palette.neutral300,
+              borderColor: "rgba(255, 255, 255, 0.2)",
             }}
             placeholderTextColor={theme.colors.textDim}
             onSubmitEditing={addApp}
@@ -257,10 +257,12 @@ export default function NotificationSettingsScreen() {
       {/* Stats */}
       <View
         style={{
-          backgroundColor: theme.colors.palette.neutral100,
-          padding: theme.spacing.sm,
+          backgroundColor: "rgba(255, 255, 255, 0.05)",
+          padding: theme.spacing.md,
           borderRadius: 8,
           marginBottom: theme.spacing.md,
+          borderWidth: 1,
+          borderColor: "rgba(255, 255, 255, 0.1)",
         }}>
         <Text style={{fontSize: 14, color: theme.colors.textDim, textAlign: "center"}}>
           {blacklistedApps.filter(app => app.blocked).length} of {blacklistedApps.length} apps blocked
@@ -283,19 +285,14 @@ export default function NotificationSettingsScreen() {
             <View
               key={app.name}
               style={{
-                backgroundColor: theme.colors.background,
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
                 borderRadius: 12,
                 padding: theme.spacing.md,
                 marginBottom: theme.spacing.md,
                 flexDirection: "row",
                 alignItems: "center",
                 borderWidth: 1,
-                borderColor: app.blocked ? theme.colors.error : theme.colors.palette.neutral200,
-                shadowColor: "#000",
-                shadowOffset: {width: 0, height: 1},
-                shadowOpacity: 0.1,
-                shadowRadius: 2,
-                elevation: 2,
+                borderColor: app.blocked ? theme.colors.error : "rgba(255, 255, 255, 0.1)",
               }}>
               {/* App Icon (Letter) */}
               <View
@@ -361,10 +358,12 @@ export default function NotificationSettingsScreen() {
                   ])
                 }}
                 style={{
-                  backgroundColor: theme.colors.palette.neutral200,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
                   borderRadius: 8,
                   padding: theme.spacing.sm,
                   marginLeft: theme.spacing.xs,
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.2)",
                 }}>
                 <Text style={{fontSize: 16}}>🗑️</Text>
               </TouchableOpacity>
