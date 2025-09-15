@@ -12,10 +12,11 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {
   getCoreSettings,
   getSettingDefault,
+  initUserSettings,
   loadSetting,
   saveSetting,
   SETTINGS_KEYS,
-  writeSettings,
+  writeSettingsLocally,
 } from "@/utils/SettingsHelper"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
@@ -132,9 +133,10 @@ export default function InitScreen() {
 
         try {
           const settings = await restComms.loadUserSettings() // get settings from server
-          await writeSettings(settings) // write settings to local storage
+          await writeSettingsLocally(settings) // write settings to local storage
+          await initUserSettings() // initialize user settings
         } catch (error) {
-          console.error("Failed to load user settings:", error)
+          console.error("Failed to load user settings from server:", error)
         }
 
         bridge.updateSettings(await getCoreSettings()) // send settings to core

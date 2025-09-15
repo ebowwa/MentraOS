@@ -1,5 +1,7 @@
 import bridge from "@/bridge/MantleBridge"
+import restComms from "@/managers/RestComms"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import {getTimeZone} from "react-native-localize"
 
 export const SETTINGS_KEYS = {
   PREVIOUSLY_BONDED_PUCK: "PREVIOUSLY_BONDED_PUCK",
@@ -37,6 +39,8 @@ export const SETTINGS_KEYS = {
   button_video_settings_width: "button_video_settings_width",
   core_token: "core_token",
   server_url: "server_url",
+  time_zone: "time_zone",
+  time_zone_override: "time_zone_override",
 }
 
 const DEFAULT_SETTINGS = {
@@ -70,13 +74,24 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.dashboard_depth]: 5,
   [SETTINGS_KEYS.button_mode]: "photo",
   [SETTINGS_KEYS.button_photo_size]: "medium",
+  // user settings:
+  [SETTINGS_KEYS.time_zone]: null,
+  [SETTINGS_KEYS.time_zone_override]: null,
 }
 
 export const getSettingDefault = (key: string) => {
+  if (key === SETTINGS_KEYS.time_zone) {
+    return getTimeZone()
+  }
   return DEFAULT_SETTINGS[key]
 }
 
-const saveSetting = async (key: string, value: any, updateCore: boolean = true): Promise<void> => {
+const saveSetting = async (
+  key: string,
+  value: any,
+  updateCore: boolean = true,
+  updateServer: boolean = true,
+): Promise<void> => {
   try {
     const jsonValue = JSON.stringify(value)
     await AsyncStorage.setItem(key, jsonValue)
@@ -85,13 +100,35 @@ const saveSetting = async (key: string, value: any, updateCore: boolean = true):
         bridge.updateSettings({[key]: value})
       }
     }
+
+    if (!updateServer) {
+      return
+    }
+
+    await restComms.writeUserSettings({[key]: value})
   } catch (error) {
     console.error(`Failed to save setting (${key}):`, error)
   }
 }
 
-const loadSetting = async (key: string, overrideDefaultValue?: any) => {
-  const defaultValue = overrideDefaultValue ?? DEFAULT_SETTINGS[key]
+const handleSpecialCases = async (key: string) => {
+  if (key === SETTINGS_KEYS.time_zone) {
+    const override = await loadSetting(SETTINGS_KEYS.time_zone_override)
+    if (override) {
+      return override
+    }
+    return getTimeZone()
+  }
+  return null
+}
+
+const loadSetting = async (key: string, overrideDefaultValue?: any): Promise<any> => {
+  const override = await handleSpecialCases(key)
+  if (override) {
+    return override
+  }
+
+  const defaultValue = overrideDefaultValue ?? getSettingDefault(key)
   try {
     const jsonValue = await AsyncStorage.getItem(key)
 
@@ -106,10 +143,16 @@ const loadSetting = async (key: string, overrideDefaultValue?: any) => {
   }
 }
 
-export const writeSettings = async (settings: any): Promise<any> => {
+export const writeSettingsLocally = async (settings: any): Promise<any> => {
   for (const key in settings) {
-    await saveSetting(key, settings[key])
+    await saveSetting(key, settings[key], true, false)
   }
+}
+
+export const initUserSettings = async (): Promise<any> => {
+  // tell the server our time zone on init:
+  const timeZone = await loadSetting(SETTINGS_KEYS.time_zone)
+  await saveSetting(SETTINGS_KEYS.time_zone, timeZone, true, true)
 }
 
 export const getRestUrl = async (): Promise<string> => {
