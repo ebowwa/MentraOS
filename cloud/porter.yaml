@@ -46,7 +46,7 @@ services:
     LOG_LEVEL: "info"
     PORT: "8080" # For the Go service
   # Optional: Configure health checks
-  healthCheck:
-    enabled: true
-    path: "/health" # Assuming your Bun service has a health endpoint
-    port: 80
+  # healthCheck:
+  #   enabled: true
+  #   path: "/health" # Assuming your Bun service has a health endpoint
+  #   port: 80
