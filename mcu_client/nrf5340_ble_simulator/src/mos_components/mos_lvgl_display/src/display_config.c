@@ -38,7 +38,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .fonts = {
             .primary = &lv_font_montserrat_12,
-            .secondary = &lv_font_montserrat_10, 
+            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
             .large = &lv_font_montserrat_14,
             .cjk = &lv_font_simsun_14_cjk,
             .line_spacing = 1
@@ -86,7 +86,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .fonts = {
             .primary = &lv_font_montserrat_12,
-            .secondary = &lv_font_montserrat_10,
+            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
             .large = &lv_font_montserrat_14,
             .cjk = &lv_font_simsun_14_cjk,
             .line_spacing = 1
