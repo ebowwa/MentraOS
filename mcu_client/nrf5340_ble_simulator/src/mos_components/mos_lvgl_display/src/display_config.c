@@ -51,7 +51,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         }
     },
 
-    // DISPLAY_TYPE_DUMMY_640x480 - Large projector/dummy display
+    // DISPLAY_TYPE_DUMMY_640x480 - Large projector/dummy display (limited fonts due to memory)
     [DISPLAY_TYPE_DUMMY_640x480] = {
         .type = DISPLAY_TYPE_DUMMY_640x480,
         .name = "Dummy Display 640x480",
@@ -61,10 +61,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 600, .usable_height = 440
         },
         .fonts = {
-            .primary = &lv_font_montserrat_24,
-            .secondary = &lv_font_montserrat_18,
-            .large = &lv_font_montserrat_48,
-            .cjk = &lv_font_simsun_16_cjk,
+            .primary = &lv_font_montserrat_14,    // Use 14 instead of 24 (not available)
+            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 18 (not available)
+            .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
+            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
             .line_spacing = 3
         },
         .patterns = {
@@ -99,7 +99,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         }
     },
 
-    // DISPLAY_TYPE_HLS12VGA_640x480 - Future HLS12VGA projector
+    // DISPLAY_TYPE_HLS12VGA_640x480 - Future HLS12VGA projector (limited fonts due to memory)
     [DISPLAY_TYPE_HLS12VGA_640x480] = {
         .type = DISPLAY_TYPE_HLS12VGA_640x480,
         .name = "HLS12VGA Projector 640x480", 
@@ -109,10 +109,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 610, .usable_height = 450
         },
         .fonts = {
-            .primary = &lv_font_montserrat_30,
-            .secondary = &lv_font_montserrat_24,
-            .large = &lv_font_montserrat_48,
-            .cjk = &lv_font_simsun_16_cjk,
+            .primary = &lv_font_montserrat_14,    // Use 14 instead of 30 (not available)
+            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 24 (not available)
+            .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
+            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
             .line_spacing = 4
         },
         .patterns = {

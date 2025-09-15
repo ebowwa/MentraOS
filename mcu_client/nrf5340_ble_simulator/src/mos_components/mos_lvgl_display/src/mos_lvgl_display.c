@@ -226,7 +226,7 @@ void lvgl_display_text(void)
     // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);  // 左对齐
     // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
     lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_14, 0);  // Was 48, using 14 for memory
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 }
 static lv_obj_t   *counter_label;
@@ -262,9 +262,9 @@ void ui_create(void)
 
     // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       // 左对齐
     lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
     lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_30, 0);
+    lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
     // 创建一个 100ms 周期的定时器，把 count 指针经 user_data 传给它
     static int count = 0;
@@ -507,7 +507,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
 
     // Set text properties
     lv_obj_set_style_text_color(scrolling_welcome_label, lv_color_white(), 0);  // White text
-    lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_48,
+    lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_14,  // Was 48, using 14 for memory
                                0);  // **UPGRADED: Largest font (48pt)**
 
     // **NEW: Use normal mode, no built-in scrolling**
@@ -975,7 +975,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     lv_label_set_text(lbl, cmd.p.text.text);
                     // lv_label_set_text(lbl, "Hello, world lvgl!"); //test
                     lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
-                    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_30, LV_PART_MAIN);
+                    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, LV_PART_MAIN);  // Was 30, using 14 for memory
                     lv_obj_set_pos(lbl, cmd.p.text.x, cmd.p.text.y);
                 }
                 break;
