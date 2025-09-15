@@ -29,6 +29,7 @@ target_sources(app PRIVATE
     src/BspLog/bsp_log.c
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
+    src/mos_components/mos_lvgl_display/src/display_config.c
 )
 
 # Add protobuf sources when available

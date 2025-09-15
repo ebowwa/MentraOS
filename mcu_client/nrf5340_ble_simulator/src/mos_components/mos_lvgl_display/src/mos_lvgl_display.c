@@ -23,6 +23,7 @@
 #include "bal_os.h"
 #include "bsp_log.h"
 #include "display_manager.h"  // **NEW: For font mapping function**
+#include "display_config.h"   // **NEW: Modular display configuration system**
 #include "mos_lvgl_display.h"
 // #include "bspal_icm42688p.h"
 // #include "task_ble_receive.h"
@@ -386,10 +387,16 @@ static void show_default_ui(void)
 // Test pattern functions
 static void create_chess_pattern(lv_obj_t *screen)
 {
-    // **SSD1306 128x64: Optimized chess pattern for small display**
-    const int chess_size = 8;                 // 8x8 pixel squares (was 40x40)
-    const int chess_cols = 128 / chess_size;  // 16 columns (fits 128px width)
-    const int chess_rows = 64 / chess_size;   // 8 rows (fits 64px height)
+    // **NEW: Get modular display configuration for adaptive chess pattern**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based chess square size**
+    const int chess_size = config->patterns.chess_square_size;
+    const int chess_cols = config->width / chess_size;
+    const int chess_rows = config->height / chess_size;
+
+    BSP_LOGI(TAG, "🏁 Creating adaptive chess pattern: %dx%d squares (%d cols x %d rows) for %s", 
+             chess_size, chess_size, chess_cols, chess_rows, config->name);
 
     for (int row = 0; row < chess_rows; row++)
     {
@@ -411,16 +418,22 @@ static void create_chess_pattern(lv_obj_t *screen)
 
 static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 {
-    // **SSD1306 128x64: Horizontal bars/lines pattern**
-    const int stripe_height = 4;               // 4 pixel high stripes (was 20)
-    const int num_stripes   = 64 / stripe_height;  // 16 stripes (fits 64px height)
+    // **NEW: Get modular display configuration for adaptive horizontal bars**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based bar thickness**
+    const int stripe_height = config->patterns.bar_thickness;
+    const int num_stripes   = config->height / stripe_height;
+
+    BSP_LOGI(TAG, "🦓 Creating adaptive horizontal zebra: %d stripes (%dpx height) for %s", 
+             num_stripes, stripe_height, config->name);
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, 128, stripe_height);  // Full width (128px)
+        lv_obj_set_size(stripe, config->width, stripe_height);
         lv_obj_set_pos(stripe, 0, i * stripe_height);
         lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
@@ -431,16 +444,22 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 
 static void create_vertical_zebra_pattern(lv_obj_t *screen)
 {
-    // **SSD1306 128x64: Vertical bars/lines pattern**
-    const int stripe_width = 4;               // 4 pixel wide stripes (was 20)
-    const int num_stripes  = 128 / stripe_width;  // 32 stripes (fits 128px width)
+    // **NEW: Get modular display configuration for adaptive vertical bars**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based bar thickness**
+    const int stripe_width = config->patterns.bar_thickness;
+    const int num_stripes  = config->width / stripe_width;
+
+    BSP_LOGI(TAG, "🦓 Creating adaptive vertical zebra: %d stripes (%dpx width) for %s", 
+             num_stripes, stripe_width, config->name);
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, stripe_width, 64);  // Full height (64px)
+        lv_obj_set_size(stripe, stripe_width, config->height);
         lv_obj_set_pos(stripe, i * stripe_width, 0);
         lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
@@ -575,64 +594,80 @@ static void create_center_rectangle_pattern_ssd1306(lv_obj_t *screen)
 
 static void create_scrolling_text_container(lv_obj_t *screen)
 {
-    // Create scrollable container with 20px margins on all sides
-    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    // **NEW: Get modular display configuration**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Create scrollable container using modular dimensions**
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 128, 64);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 0, 0);     // 20px margins from all edges
+    display_apply_container_config(container, screen, config);
 
     // **NEW: Store global reference for protobuf text updates**
     protobuf_container = container;
 
-    // Configure container scrolling - NO SCROLLBARS, NO BORDERS
+    // Configure container scrolling - NO SCROLLBARS, minimal borders
     lv_obj_set_scroll_dir(container, LV_DIR_VER);                 // Vertical scrolling only
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // NO SCROLLBARS
 
-    // Style the container - NO BORDERS, minimal styling for performance
+    // Style the container using configuration values
     lv_obj_set_style_bg_color(container, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
-    lv_obj_set_style_pad_all(container, 5, 0);       // Reduced padding for performance
+    lv_obj_set_style_border_color(container, lv_color_black(), 0);
+    lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);
 
     // Create label inside container with protobuf text
     lv_obj_t *label = lv_label_create(container);
-    lv_obj_set_width(label, 128);                       // Container width minus minimal padding (600-10=590)
+    lv_obj_set_width(label, config->layout.usable_width - (config->layout.padding * 2));
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Wrap text to fit width
 
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
 
-    // **NEW: Set initial placeholder text with English and Chinese - will be replaced by protobuf messages**
-    const char *initial_text =
-        "MentraOS AR Ready\n"
-        "Waiting for messages...\n" 
-        "EN/CN Support Ready\n"
-        "系统已初始化!\n"
-        "Hello 你好 World 世界";
+    // **NEW: Set adaptive initial text based on display size**
+    const char *initial_text;
+    if (config->width >= 500) {
+        // Large display - detailed welcome message
+        initial_text = 
+            "MentraOS AR Display System Ready\n"
+            "Waiting for protobuf text messages from mobile app...\n"
+            "This container will automatically update with incoming content.\n"
+            "English/Chinese multilingual support enabled.\n"
+            "系统已完全初始化，准备接收消息！\n"
+            "Hello 你好 World 世界";
+    } else {
+        // Small display - compact welcome message
+        initial_text =
+            "MentraOS AR Ready\n"
+            "Waiting for messages...\n" 
+            "EN/CN Support Ready\n"
+            "系统已初始化!\n"
+            "Hello 你好 World 世界";
+    }
 
     lv_label_set_text(label, initial_text);
 
-    // Style the label text - using SimSun 14 CJK for proper Chinese character support
+    // **NEW: Style the label using modular font configuration**
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_simsun_14_cjk, 0);  // SimSun 14 CJK for Chinese + English support
-    lv_obj_set_style_text_line_space(label, 1, 0);  // Reduced line spacing for performance
+    lv_obj_set_style_text_font(label, display_get_font("cjk"), 0);  // CJK font for Chinese support
+    lv_obj_set_style_text_line_space(label, config->fonts.line_spacing, 0);
 
     // Position label at top of container
     lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
 
     // AUTO-SCROLL TO BOTTOM to show latest content
     lv_obj_update_layout(container);  // Ensure layout is calculated
-    lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
+    BSP_LOGI(TAG, "📝 Created adaptive scrolling container: %dx%d with %s font", 
+             config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
-// **NEW: Pattern 5 - XY Text Positioning Area with 128x64 SSD1306 view**
+// **NEW: Pattern 5 - XY Text Positioning Area with modular configuration**
 static void create_xy_text_positioning_area(lv_obj_t *screen)
 {
-    // Create 128x64 bordered viewing area for SSD1306 display
-    // Screen size: 128x64, so container fills full screen with minimal border
+    // **NEW: Get modular display configuration**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Create XY positioning container using modular dimensions**
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 124, 60);  // Slightly smaller for border (128-4, 64-4)
-    lv_obj_set_pos(container, 2, 2);     // 2px margins from all edges
+    display_apply_container_config(container, screen, config);
 
     // **NEW: Store global reference for XY text positioning**
     xy_text_container = container;
@@ -645,14 +680,13 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     lv_obj_set_style_bg_color(container, lv_color_white(), 0);  // White background
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(container, lv_color_black(), 0);  // Black border
-    lv_obj_set_style_border_width(container, 1, 0);                 // 1px border width (was 2px)
     lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);        // Visible border
-    lv_obj_set_style_pad_all(container, 2, 0);                      // 2px internal padding (was 10px)
-    lv_obj_set_style_radius(container, 2, 0);                       // Small rounded corners (was 5px)
+    lv_obj_set_style_radius(container, config->layout.border_width, 0);  // Adaptive radius
 
     // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
 
-    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (124x60 with border for SSD1306)");
+    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (%dx%d) for %s", 
+             config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
 static int       current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
@@ -844,6 +878,17 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
         return;
     }
+    
+    // **NEW: Initialize modular display configuration system**
+    int config_result = display_config_init();
+    if (config_result != 0) {
+        BSP_LOGE(TAG, "Failed to initialize display configuration: %d", config_result);
+        return;
+    }
+    
+    const display_config_t *config = display_get_config();
+    BSP_LOGI(TAG, "🖼️ Display configuration loaded: %s (%dx%d)", 
+             config->name, config->width, config->height);
     // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
     // {
     //     BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
