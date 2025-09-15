@@ -1,10 +1,10 @@
 #!/bin/bash
-echo "🚀 Starting Go LiveKit bridge..."
-./livekit-bridge &
+echo "🚀 Starting Go LiveKit bridge on :8080..."
+PORT=8080 ./livekit-bridge &
 GO_PID=$!
 
-echo "☁️ Starting Bun cloud service..."
-cd packages/cloud && bun run start &
+echo "☁️ Starting Bun cloud service on :80..."
+cd packages/cloud && PORT=80 bun run start &
 BUN_PID=$!
 
 # Wait for any process to exit

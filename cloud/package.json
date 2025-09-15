@@ -16,6 +16,7 @@
     "dev:clean": "docker compose -f docker-compose.dev.yml -p dev down -v && docker system prune -f",
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
     "logs": "docker compose -f docker-compose.dev.yml -p dev logs -f --tail=50",
+    "porter": "docker compose -f docker-compose.porter.local.yml up --build",
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:bun": "bun test",
     "test:display": "bun run packages/cloud/src/tests/display-manager.test.ts",

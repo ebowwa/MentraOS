@@ -1,8 +1,15 @@
-# Multi-stage build: Build Go binary first
-FROM golang:1.24-alpine AS go-builder
+# Multi-stage build: Build Go binary first (Debian/glibc to match oven/bun:latest)
+FROM golang:1.24-bookworm AS go-builder
 
 # Install build dependencies including C compiler for CGO
-RUN apk add --no-cache git gcc musl-dev pkgconfig opus-dev opusfile-dev soxr-dev
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    pkg-config \
+    libopus-dev \
+    libopusfile-dev \
+    libsoxr-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -15,7 +22,7 @@ RUN go mod download
 # Copy Go source code
 COPY livekit-client-2/ ./
 
-# Build the binary with CGO enabled for opus codec
+# Build the binary with CGO enabled for opus/soxr
 RUN CGO_ENABLED=1 GOOS=linux go build -o livekit-bridge .
 
 # Final stage: Bun runtime with Go binary
@@ -67,6 +74,5 @@ ENV SERVICE_NAME=cloud
 ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
 
 
-# The porter.yaml file will run the supervisor script. starting both cloud and livekit-client services.
-CMD ["echo", "Ready to run service cloud service and livekit-client-2 ./start.sh"]
-# CMD ["./start.sh"]
+# The porter.yaml will run ./start.sh; keep image default benign for direct runs
+CMD ["bash", "-lc", "echo 'Image ready. Run ./start.sh to start both services.'"]
