@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 
@@ -110,6 +111,18 @@ public class NotificationService extends NotificationListenerService {
         // 🚨 Filter out blacklisted packages
         if (packageBlacklist.contains(packageName)) {
             Log.d(TAG, "Ignoring blacklisted package: " + packageName);
+            return;
+        }
+
+        // 🚨 Filter out Google/Samsung system packages
+        if (isSystemPackageToBlock(packageName)) {
+            Log.d(TAG, "🚫 Blocking system package: " + packageName);
+            return;
+        }
+
+        // 🚨 Check user preferences for this specific app
+        if (!isAppNotificationEnabled(packageName)) {
+            Log.d(TAG, "🔇 User disabled notifications for: " + packageName);
             return;
         }
         
@@ -231,6 +244,10 @@ public class NotificationService extends NotificationListenerService {
         try {
             String appName = getAppName(sbn.getPackageName());
             String notificationKey = sbn.getKey();
+            String packageName = sbn.getPackageName();
+            
+            // Track this app as having sent notifications for the settings UI
+            NotificationAppsModule.trackNotificationApp(packageName, appName);
             
             JSONObject obj = new JSONObject();
             obj.put("appName", appName);
@@ -244,7 +261,7 @@ public class NotificationService extends NotificationListenerService {
                 notificationUtils.onNotificationPosted(obj.toString());
 
                 // Track this notification for dismissal detection
-                activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, sbn.getPackageName()));
+                activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, packageName));
                 Log.d(TAG, "✅ Sent notification: " + title + " - " + text);
                 Log.d(TAG, "📝 Tracking notification with key: " + notificationKey);
             } else {
@@ -276,5 +293,63 @@ public class NotificationService extends NotificationListenerService {
             e.printStackTrace();
             return packageName;
         }
+    }
+
+    /**
+     * Check if notifications are enabled for a specific app based on user preferences
+     * This method reads from the same storage that React Native writes to
+     */
+    private boolean isAppNotificationEnabled(String packageName) {
+        try {
+            // Get SharedPreferences using the same key as React Native AsyncStorage
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            
+            // AsyncStorage stores data with a key prefix
+            String prefsJson = prefs.getString("NOTIFICATION_APP_PREFERENCES", "{}");
+            
+            if (prefsJson.equals("{}")) {
+                // No preferences set, default to enabled
+                return true;
+            }
+            
+            JSONObject preferences = new JSONObject(prefsJson);
+            
+            if (preferences.has(packageName)) {
+                JSONObject appPref = preferences.getJSONObject(packageName);
+                return appPref.optBoolean("enabled", true);
+            }
+            
+            // App not in preferences, default to enabled
+            return true;
+            
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking app notification preference for " + packageName + ": " + e.getMessage());
+            // Default to enabled on error
+            return true;
+        }
+    }
+
+    /**
+     * Check global notification setting
+     */
+    private boolean isGlobalNotificationEnabled() {
+        try {
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            String globalSetting = prefs.getString("ENABLE_PHONE_NOTIFICATIONS", "true");
+            return Boolean.parseBoolean(globalSetting);
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking global notification setting: " + e.getMessage());
+            return true;
+        }
+    }
+
+    /**
+     * Check if this is a system package that should be blocked from sending notifications
+     */
+    private boolean isSystemPackageToBlock(String packageName) {
+        String pkg = packageName.toLowerCase();
+        
+        // Block any package containing "google", "samsung", or ".sec."
+        return pkg.contains("google") || pkg.contains("samsung") || pkg.contains(".sec.");
     }
 }
