@@ -1,13 +1,8 @@
 protocol SGCManager {
+    // MARK: - Device Information
+
     var type: String { get }
-    var hasMic: Bool { get }
     var ready: Bool { get }
-    var batteryLevel: Int { get }
-    var isHeadUp: Bool { get }
-    var caseOpen: Bool { get }
-    var caseRemoved: Bool { get }
-    var caseCharging: Bool { get }
-    var caseBatteryLevel: Int? { get }
     var glassesAppVersion: String? { get }
     var glassesBuildNumber: String? { get }
     var glassesDeviceModel: String? { get }
@@ -16,6 +11,22 @@ protocol SGCManager {
     var glassesSerialNumber: String? { get }
     var glassesStyle: String? { get }
     var glassesColor: String? { get }
+
+    // MARK: - Hardware Status
+
+    var hasMic: Bool { get }
+    var batteryLevel: Int { get }
+    var isHeadUp: Bool { get }
+
+    // MARK: - Case Status
+
+    var caseOpen: Bool { get }
+    var caseRemoved: Bool { get }
+    var caseCharging: Bool { get }
+    var caseBatteryLevel: Int? { get }
+
+    // MARK: - Network Status
+
     var wifiSsid: String? { get }
     var wifiConnected: Bool? { get }
     var wifiLocalIp: String? { get }
@@ -24,11 +35,16 @@ protocol SGCManager {
     var hotspotPassword: String? { get }
     var hotspotGatewayIp: String? { get }
 
-    // setMicEnabled:
+    // MARK: - Audio Control
+
     func setMicEnabled(_ enabled: Bool)
 
-    // Message handlers
+    // MARK: - Messaging
+
     func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool)
+
+    // MARK: - Camera & Media
+
     func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?)
     func startRtmpStream(_ message: [String: Any])
     func stopRtmpStream()
@@ -38,32 +54,48 @@ protocol SGCManager {
     func saveBufferVideo(requestId: String, durationSeconds: Int)
     func startVideoRecording(requestId: String, save: Bool)
     func stopVideoRecording(requestId: String)
+
+    // MARK: - Button Settings
+
     func sendButtonPhotoSettings()
     func sendButtonModeSetting()
     func sendButtonVideoRecordingSettings()
     func sendButtonCameraLedSetting()
-    func setHeadUpAngle(_ angle: Int)
 
-    func getBatteryStatus()
+    // MARK: - Display Control
+
     func setBrightness(_ level: Int, autoMode: Bool)
     func clearDisplay()
     func sendTextWall(_ text: String)
     func sendDoubleTextWall(_ top: String, _ bottom: String)
+    func displayBitmap(base64ImageData: String) async -> Bool
+    func showDashboard()
+    func setDashboardPosition(_ height: Int, _ depth: Int)
+
+    // MARK: - Device Control
+
+    func setHeadUpAngle(_ angle: Int)
+    func getBatteryStatus()
+    func setSilentMode(_ enabled: Bool)
+    func exit()
+
+    // MARK: - Connection Management
+
     func disconnect()
     func forget()
-    func displayBitmap(base64ImageData: String) async -> Bool
-    func exit()
+    func findCompatibleDevices()
+    func connectById(_ id: String)
+    func getConnectedBluetoothName() -> String?
+
+    // MARK: - Network Management
+
     func requestWifiScan()
     func sendWifiCredentials(_ ssid: String, _ password: String)
     func sendHotspotState(_ enabled: Bool)
-    func queryGalleryStatus()
-    func showDashboard()
-    func getConnectedBluetoothName() -> String?
-    func setDashboardPosition(_ height: Int, _ depth: Int)
-    func setSilentMode(_ enabled: Bool)
 
-    func findCompatibleDevices()
-    func connectById(_ id: String)
+    // MARK: - Gallery
+
+    func queryGalleryStatus()
 }
 
 //// template:

@@ -489,7 +489,7 @@ struct ViewState {
             // Only enable microphone if sensing is also enabled
             var actuallyEnabled = micEnabled && self.sensingEnabled
 
-            let glassesHasMic = sgc!.hasMic
+            let glassesHasMic = sgc?.hasMic ?? false
 
             var useGlassesMic = false
             var useOnboardMic = false
@@ -1512,58 +1512,6 @@ struct ViewState {
         //        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
         //      }
         //    }
-    }
-
-    func onStatusUpdate(_ status: [String: Any]) {
-        // handle the settings from the server:
-        // Core.log("onStatusUpdate: \(status)")
-
-        // get the core_info and glasses_settings objects from the status:
-        let coreInfo = status["core_info"] as? [String: Any]
-        let glassesSettings = status["glasses_settings"] as? [String: Any]
-
-        // {
-        //   "status": {
-        //     "core_info": {
-        //       "augmentos_core_version": "1.1.3",
-        //       "cloud_connection_status": "CONNECTED",
-        //       "puck_battery_life": 100,
-        //       "charging_status": true,
-        //       "sensing_enabled": true,
-        //       "bypass_vad_for_debugging": false,
-        //       "bypass_audio_encoding_for_debugging": false,
-        //       "contextual_dashboard_enabled": true,
-        //       "always_on_status_bar_enabled": false,
-        //       "force_core_onboard_mic": true,
-        //       "preferred_mic": "phone",
-        //       "default_wearable": "Even Realities G1",
-        //       "is_mic_enabled_for_frontend": false,
-        //       "metric_system_enabled": false,
-        //       "is_searching": false
-        //     },
-        //     "connected_glasses": {
-        //       "glasses_serial_number": "100LAAJ110003",
-        //       "glasses_style": "Round",
-        //       "glasses_color": "Grey",
-        //       "model_name": "Even Realities G1",
-        //       "battery_level": 56,
-        //       "case_battery_level": 50,
-        //       "case_charging": false,
-        //       "case_open": false,
-        //       "case_removed": true,
-        //       "glasses_use_wifi": false
-        //     },
-        //     "glasses_settings": {
-        //       "auto_brightness": false,
-        //       "head_up_angle": 37,
-        //       "dashboard_height": 4,
-        //       "dashboard_depth": 5,
-        //       "brightness": 96
-        //     },
-        //   }
-        // }
-
-        // get device
     }
 
     func handle_update_settings(_ settings: [String: Any]) {
