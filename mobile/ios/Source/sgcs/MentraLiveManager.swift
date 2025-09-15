@@ -397,7 +397,6 @@ private struct BlePhotoTransfer {
     let bleImgId: String
     let requestId: String
     let webhookUrl: String
-    var authToken: String = ""
     var session: FileTransferSession?
     let phoneStartTime: Date
     var bleTransferStartTime: Date?
@@ -931,9 +930,8 @@ typealias JSONObject = [String: Any]
         sendJson(json, wakeUp: true)
     }
 
-    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, authToken: String?, size: String?) {
+    @objc func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
         Bridge.log("Requesting photo: \(requestId) for app: \(appId)")
-
 
         var json: [String: Any] = [
             "type": "take_photo",
@@ -948,15 +946,7 @@ typealias JSONObject = [String: Any]
 
         if let webhookUrl = webhookUrl, !webhookUrl.isEmpty {
             json["webhookUrl"] = webhookUrl
-            var transfer = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
-            if let authToken = authToken, !authToken.isEmpty {
-                transfer.authToken = authToken
-            }
-            blePhotoTransfers[bleImgId] = transfer
-        }
-
-        if let authToken = authToken, !authToken.isEmpty {
-            json["authToken"] = authToken
+            blePhotoTransfers[bleImgId] = BlePhotoTransfer(bleImgId: bleImgId, requestId: requestId, webhookUrl: webhookUrl)
         }
 
         // propagate size (default to medium if invalid)
@@ -1799,23 +1789,12 @@ typealias JSONObject = [String: Any]
         //      Core.log("Error saving BLE photo locally: \(error)")
         //    }
 
-        // Use the authToken from the transfer if available, otherwise fall back to core token
-        var authToken = transfer.authToken
-        if authToken.isEmpty {
-            authToken = UserDefaults.standard.string(forKey: "core_token") ?? ""
-        }
-
-        if authToken.isEmpty {
-            Core.log("LIVE: No auth token available for BLE photo upload!")
-        }
-          
         // Get core token for authentication
         let coreToken = MentraManager.shared.coreToken
         if coreToken.isEmpty {
             Bridge.log("LIVE: core_token not set!")
             return
         }
-
         BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
     }
 

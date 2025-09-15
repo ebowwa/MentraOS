@@ -327,6 +327,7 @@ class ServerComms {
     // Add other event methods as needed (sendGlassesBatteryUpdate, etc.)
 
     // MARK: - Message Handling
+
 //    private func handleIncomingMessage(_ msg: [String: Any]) {
 //        guard let type = msg["type"] as? String else { return }
 //        let m = MentraManager.shared
