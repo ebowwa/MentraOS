@@ -129,7 +129,7 @@ export class MicrophoneManager {
         this.lastSentRequiredData = this.pendingRequiredData!;
         this.enabled = this.pendingState!;
 
-        this.session.liveKitManager.onMicStateChange(this.enabled);
+        this.session.liveKitManager.onMicStateChange();
       }
 
       // Update transcription service state
