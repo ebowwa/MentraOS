@@ -1,79 +1,151 @@
-import React, {useState, useEffect, useMemo} from "react"
-import {View, ScrollView, Switch, Platform, TextInput, Image} from "react-native"
+import React, {useState, useEffect} from "react"
+import {View, ScrollView, Switch, Platform, TextInput, TouchableOpacity} from "react-native"
 import {useRouter} from "expo-router"
-import {NativeModules} from "react-native"
+import Toast from "react-native-toast-message"
 
 import {Screen, Text, Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {NotificationPreferences} from "@/utils/NotificationPreferences"
+import showAlert from "@/utils/AlertUtils"
 
-const {NotificationApps} = NativeModules
-
-interface NotificationApp {
-  packageName: string
-  appName: string
-  icon?: string
-  enabled?: boolean
+interface BlacklistedApp {
+  name: string
+  blocked: boolean
 }
 
 export default function NotificationSettingsScreen() {
   const {theme} = useAppTheme()
   const router = useRouter()
 
-  const [apps, setApps] = useState<NotificationApp[]>([])
+  const [blacklistedApps, setBlacklistedApps] = useState<BlacklistedApp[]>([])
+  const [newAppName, setNewAppName] = useState("")
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
-    loadApps()
+    loadBlacklistedApps()
   }, [])
 
-  const loadApps = async () => {
+  const loadBlacklistedApps = async () => {
     try {
-      console.log("🔍 Loading all installed apps...")
-      const allApps = await NotificationApps.getAllInstalledApps()
-      console.log("📱 Total apps discovered:", allApps.length)
+      console.log("📋 Loading notification blacklist...")
+      const appPrefs = await NotificationPreferences.getAppPreferences()
 
-      // Look for Discord specifically
-      const discordApp = allApps.find(
-        (app: any) =>
-          app.packageName.toLowerCase().includes("discord") || app.appName.toLowerCase().includes("discord"),
-      )
+      // Only load apps that are actually in the blacklist (manual apps)
+      const manualApps = Object.values(appPrefs)
+        .filter(pref => pref.packageName.startsWith("manual."))
+        .map(pref => ({
+          name: pref.appName,
+          blocked: !pref.enabled, // Inverted: enabled=false means blocked=true
+        }))
 
-      if (discordApp) {
-        console.log("🎮 DISCORD FOUND!")
-        console.log(`   Name: ${discordApp.appName}`)
-        console.log(`   Package: ${discordApp.packageName}`)
-        console.log(`   Has Icon: ${discordApp.icon ? "YES" : "NO"}`)
-        console.log(`   Category: ${discordApp.category}`)
-      } else {
-        console.log("❌ DISCORD NOT FOUND IN FILTERED LIST")
-      }
-
-      const appsWithToggle = allApps.map((app: any) => ({
-        ...app,
-        enabled: true, // Default all to enabled for now
-      }))
-
-      console.log("✅ Apps loaded for UI:", appsWithToggle.length)
-      setApps(appsWithToggle)
+      console.log("✅ Loaded blacklisted apps:", manualApps.length)
+      setBlacklistedApps(manualApps)
     } catch (error) {
-      console.error("❌ Error loading apps:", error)
+      console.error("❌ Error loading blocked apps:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleApp = (packageName: string, enabled: boolean) => {
-    setApps(prevApps => prevApps.map(app => (app.packageName === packageName ? {...app, enabled} : app)))
+  const addApp = async () => {
+    if (!newAppName.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter an app name",
+      })
+      return
+    }
+
+    const appName = newAppName.trim()
+
+    // Check if app already exists
+    if (blacklistedApps.some(app => app.name.toLowerCase() === appName.toLowerCase())) {
+      Toast.show({
+        type: "error",
+        text1: "App already in blacklist",
+      })
+      return
+    }
+
+    try {
+      console.log(`🚫 Adding app to blacklist: ${appName}`)
+
+      // Save to preferences (blocked = enabled false)
+      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
+      await NotificationPreferences.setAppPreference(packageName, appName, false) // false = blocked
+
+      // Add to local state
+      const newApp = {name: appName, blocked: true} // Added to blacklist = blocked
+      setBlacklistedApps(prev => [...prev, newApp].sort((a, b) => a.name.localeCompare(b.name)))
+
+      setNewAppName("")
+
+      Toast.show({
+        type: "success",
+        text1: `${appName} blocked`,
+      })
+
+      console.log(`✅ Added app to blacklist: ${appName}`)
+    } catch (error) {
+      console.error("❌ Error adding app:", error)
+      Toast.show({
+        type: "error",
+        text1: "Failed to add app",
+      })
+    }
   }
 
-  // Filter apps based on search query (app name only)
-  const filteredApps = useMemo(() => {
-    if (!searchQuery) return apps
+  const removeApp = async (appName: string) => {
+    try {
+      console.log(`🗑️ Completely removing app: ${appName}`)
 
-    const query = searchQuery.toLowerCase()
-    return apps.filter(app => app.appName.toLowerCase().includes(query))
-  }, [apps, searchQuery])
+      // Completely remove from preferences storage
+      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
+      await NotificationPreferences.removeAppPreference(packageName)
+
+      // Remove from local state
+      setBlacklistedApps(prev => prev.filter(app => app.name !== appName))
+
+      Toast.show({
+        type: "success",
+        text1: `${appName} removed`,
+      })
+
+      console.log(`✅ Completely removed app from storage: ${appName}`)
+    } catch (error) {
+      console.error("❌ Error removing app:", error)
+      Toast.show({
+        type: "error",
+        text1: "Failed to remove app",
+      })
+    }
+  }
+
+  const toggleApp = async (appName: string, blocked: boolean) => {
+    try {
+      console.log(`🔄 ${blocked ? "BLOCKING" : "UNBLOCKING"} ${appName}`)
+
+      // Save to preferences (inverted logic: blocked=true means enabled=false)
+      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
+      await NotificationPreferences.setAppPreference(packageName, appName, !blocked) // Invert for storage
+
+      // Update local state
+      setBlacklistedApps(prev => prev.map(app => (app.name === appName ? {...app, blocked} : app)))
+
+      Toast.show({
+        type: blocked ? "error" : "success",
+        text1: `${appName} ${blocked ? "blocked" : "unblocked"}`,
+      })
+
+      console.log(`✅ ${blocked ? "BLOCKED" : "UNBLOCKED"} ${appName}`)
+    } catch (error) {
+      console.error("❌ Error toggling app:", error)
+      Toast.show({
+        type: "error",
+        text1: "Failed to update app",
+      })
+    }
+  }
 
   // Show iOS message if on iOS
   if (Platform.OS === "ios") {
@@ -105,7 +177,7 @@ export default function NotificationSettingsScreen() {
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <Text style={{color: theme.colors.textDim}}>Loading apps...</Text>
+          <Text style={{color: theme.colors.textDim}}>Loading...</Text>
         </View>
       </Screen>
     )
@@ -115,90 +187,190 @@ export default function NotificationSettingsScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
 
-      {/* Search Bar */}
+      {/* Add New App */}
       <View
         style={{
-          backgroundColor: theme.colors.palette.neutral200,
-          borderRadius: 8,
-          paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.sm,
-          marginBottom: theme.spacing.md,
+          backgroundColor: theme.colors.background,
+          borderRadius: 12,
+          padding: theme.spacing.lg,
+          marginBottom: theme.spacing.lg,
+          borderWidth: 1,
+          borderColor: theme.colors.palette.neutral200,
         }}>
-        <TextInput
-          placeholder="Search apps..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          style={{
-            fontSize: 16,
-            color: theme.colors.text,
-          }}
-          placeholderTextColor={theme.colors.textDim}
-        />
-      </View>
-
-      <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={false}>
         <Text
           style={{
-            fontSize: 16,
+            fontSize: 18,
+            fontWeight: "700",
             color: theme.colors.text,
-            marginBottom: theme.spacing.md,
-            textAlign: "center",
+            marginBottom: theme.spacing.sm,
           }}>
-          {searchQuery
-            ? `${filteredApps.filter(app => app.enabled).length} of ${filteredApps.length} apps enabled (filtered)`
-            : `${apps.filter(app => app.enabled).length} of ${apps.length} apps enabled`}
+          🚫 Notification Blacklist
         </Text>
 
-        {filteredApps.map(app => (
-          <View
-            key={app.packageName}
+        <Text
+          style={{
+            fontSize: 14,
+            color: theme.colors.textDim,
+            marginBottom: theme.spacing.md,
+            lineHeight: 20,
+          }}>
+          Add apps to block their notifications from reaching your glasses
+        </Text>
+
+        <View style={{flexDirection: "row", alignItems: "center"}}>
+          <TextInput
+            placeholder="App name (Discord, WhatsApp, Instagram...)"
+            value={newAppName}
+            onChangeText={setNewAppName}
             style={{
-              backgroundColor: theme.colors.background,
+              flex: 1,
+              fontSize: 16,
+              color: theme.colors.text,
+              backgroundColor: theme.colors.palette.neutral100,
               borderRadius: 8,
-              padding: theme.spacing.md,
-              marginBottom: theme.spacing.sm,
-              flexDirection: "row",
-              alignItems: "center",
+              paddingHorizontal: theme.spacing.md,
+              paddingVertical: theme.spacing.sm,
+              marginRight: theme.spacing.sm,
               borderWidth: 1,
-              borderColor: theme.colors.palette.neutral200,
+              borderColor: theme.colors.palette.neutral300,
+            }}
+            placeholderTextColor={theme.colors.textDim}
+            onSubmitEditing={addApp}
+            returnKeyType="done"
+          />
+
+          <TouchableOpacity
+            onPress={addApp}
+            style={{
+              backgroundColor: theme.colors.error,
+              paddingHorizontal: theme.spacing.lg,
+              paddingVertical: theme.spacing.sm,
+              borderRadius: 8,
+              minWidth: 60,
+              alignItems: "center",
             }}>
-            {/* App Icon */}
-            <Image
-              source={{uri: app.icon}}
-              style={{
-                width: 32,
-                height: 32,
-                marginRight: theme.spacing.md,
-                borderRadius: 6,
-              }}
-              onError={() => {
-                console.log(`❌ Icon failed to load for ${app.appName}`)
-              }}
-            />
+            <Text style={{color: "white", fontWeight: "600", fontSize: 16}}>Block</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-            {/* App Name */}
-            <Text
-              style={{
-                fontSize: 16,
-                color: theme.colors.text,
-                flex: 1,
-                marginRight: theme.spacing.md,
-              }}>
-              {app.appName}
+      {/* Stats */}
+      <View
+        style={{
+          backgroundColor: theme.colors.palette.neutral100,
+          padding: theme.spacing.sm,
+          borderRadius: 8,
+          marginBottom: theme.spacing.md,
+        }}>
+        <Text style={{fontSize: 14, color: theme.colors.textDim, textAlign: "center"}}>
+          {blacklistedApps.filter(app => app.blocked).length} of {blacklistedApps.length} apps blocked
+        </Text>
+      </View>
+
+      {/* Apps List */}
+      <ScrollView style={{flex: 1}} showsVerticalScrollIndicator={false}>
+        {blacklistedApps.length === 0 ? (
+          <View style={{padding: theme.spacing.lg, alignItems: "center"}}>
+            <Text style={{color: theme.colors.textDim, textAlign: "center", fontSize: 16}}>
+              No apps blacklisted yet
             </Text>
-
-            {/* Toggle Switch */}
-            <Switch
-              value={app.enabled}
-              onValueChange={enabled => toggleApp(app.packageName, enabled)}
-              trackColor={{
-                false: theme.colors.palette.neutral300,
-                true: theme.colors.tint,
-              }}
-              thumbColor={app.enabled ? "#ffffff" : "#f4f3f4"}
-            />
+            <Text style={{color: theme.colors.textDim, textAlign: "center", marginTop: theme.spacing.sm}}>
+              Add app names above to block their notifications
+            </Text>
           </View>
-        ))}
+        ) : (
+          blacklistedApps.map(app => (
+            <View
+              key={app.name}
+              style={{
+                backgroundColor: theme.colors.background,
+                borderRadius: 12,
+                padding: theme.spacing.md,
+                marginBottom: theme.spacing.md,
+                flexDirection: "row",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: app.blocked ? theme.colors.error : theme.colors.palette.neutral200,
+                shadowColor: "#000",
+                shadowOffset: {width: 0, height: 1},
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+                elevation: 2,
+              }}>
+              {/* App Icon (Letter) */}
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  marginRight: theme.spacing.md,
+                  backgroundColor: app.blocked ? theme.colors.error : theme.colors.palette.primary100,
+                  borderRadius: 12,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    color: "white",
+                    fontWeight: "700",
+                  }}>
+                  {app.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+
+              {/* App Info */}
+              <View style={{flex: 1, marginRight: theme.spacing.md}}>
+                <Text
+                  style={{
+                    fontSize: 17,
+                    fontWeight: "600",
+                    color: theme.colors.text,
+                    marginBottom: 2,
+                  }}>
+                  {app.name}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: app.blocked ? theme.colors.error : theme.colors.palette.success500,
+                    fontWeight: "500",
+                  }}>
+                  {app.blocked ? "🚫 Notifications blocked" : "✅ Notifications allowed"}
+                </Text>
+              </View>
+
+              {/* Block Toggle */}
+              <View style={{alignItems: "center", marginRight: theme.spacing.sm}}>
+                <Switch
+                  value={app.blocked}
+                  onValueChange={blocked => toggleApp(app.name, blocked)}
+                  trackColor={{
+                    false: theme.colors.palette.success100,
+                    true: theme.colors.error,
+                  }}
+                  thumbColor="#ffffff"
+                />
+              </View>
+
+              {/* Remove Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  showAlert("Remove from Blacklist", `Remove ${app.name} from the notification blacklist?`, [
+                    {text: "Cancel", style: "cancel"},
+                    {text: "Remove", style: "destructive", onPress: () => removeApp(app.name)},
+                  ])
+                }}
+                style={{
+                  backgroundColor: theme.colors.palette.neutral200,
+                  borderRadius: 8,
+                  padding: theme.spacing.sm,
+                  marginLeft: theme.spacing.xs,
+                }}>
+                <Text style={{fontSize: 16}}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </ScrollView>
     </Screen>
   )

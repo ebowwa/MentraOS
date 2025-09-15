@@ -72,6 +72,20 @@ export class NotificationPreferences {
   }
 
   /**
+   * Completely remove an app preference
+   */
+  static async removeAppPreference(packageName: string): Promise<void> {
+    try {
+      const preferences = await this.getAppPreferences()
+      delete preferences[packageName]
+
+      await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(preferences))
+    } catch (error) {
+      console.error("Error removing app preference:", error)
+    }
+  }
+
+  /**
    * Bulk update multiple app preferences
    */
   static async bulkUpdateAppPreferences(

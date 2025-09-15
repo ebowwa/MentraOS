@@ -246,8 +246,7 @@ public class NotificationService extends NotificationListenerService {
             String notificationKey = sbn.getKey();
             String packageName = sbn.getPackageName();
             
-            // Track this app as having sent notifications for the settings UI
-            NotificationAppsModule.trackNotificationApp(packageName, appName);
+            // Note: App tracking removed - using manual blacklist approach
             
             JSONObject obj = new JSONObject();
             obj.put("appName", appName);
