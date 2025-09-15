@@ -80,11 +80,6 @@ export default function NotificationSettingsScreen() {
 
       setNewAppName("")
 
-      Toast.show({
-        type: "success",
-        text1: `${appName} blocked`,
-      })
-
       console.log(`✅ Added app to blacklist: ${appName}`)
     } catch (error) {
       console.error("❌ Error adding app:", error)
@@ -105,11 +100,6 @@ export default function NotificationSettingsScreen() {
 
       // Remove from local state
       setBlacklistedApps(prev => prev.filter(app => app.name !== appName))
-
-      Toast.show({
-        type: "success",
-        text1: `${appName} removed`,
-      })
 
       console.log(`✅ Completely removed app from storage: ${appName}`)
     } catch (error) {

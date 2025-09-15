@@ -18,6 +18,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -123,6 +124,13 @@ public class NotificationService extends NotificationListenerService {
         // 🚨 Check user preferences for this specific app
         if (!isAppNotificationEnabled(packageName)) {
             Log.d(TAG, "🔇 User disabled notifications for: " + packageName);
+            return;
+        }
+
+        // 🚨 Check manual blacklist by app name
+        String appName = getAppName(packageName);
+        if (isAppInManualBlacklist(appName)) {
+            Log.d(TAG, "🚫 App in manual blacklist: " + appName + " (" + packageName + ")");
             return;
         }
         
@@ -350,5 +358,43 @@ public class NotificationService extends NotificationListenerService {
         
         // Block any package containing "google", "samsung", or ".sec."
         return pkg.contains("google") || pkg.contains("samsung") || pkg.contains(".sec.");
+    }
+
+    /**
+     * Check if app is in the manual blacklist by app name
+     */
+    private boolean isAppInManualBlacklist(String appName) {
+        try {
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            String prefsJson = prefs.getString("NOTIFICATION_APP_PREFERENCES", "{}");
+            
+            if (prefsJson.equals("{}")) {
+                return false; // No blacklist entries
+            }
+            
+            JSONObject preferences = new JSONObject(prefsJson);
+            
+            // Check all manual entries to see if this app name is blacklisted
+            for (Iterator<String> keys = preferences.keys(); keys.hasNext(); ) {
+                String key = keys.next();
+                if (key.startsWith("manual.")) {
+                    JSONObject appPref = preferences.getJSONObject(key);
+                    String blacklistedAppName = appPref.optString("appName", "");
+                    boolean enabled = appPref.optBoolean("enabled", true);
+                    
+                    // If app name matches and it's disabled (blocked), return true
+                    if (blacklistedAppName.toLowerCase().contains(appName.toLowerCase()) && !enabled) {
+                        Log.d(TAG, "📋 Found in manual blacklist: " + appName + " (blocked=" + !enabled + ")");
+                        return true;
+                    }
+                }
+            }
+            
+            return false; // Not found in blacklist
+            
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking manual blacklist for " + appName + ": " + e.getMessage());
+            return false; // Default to not blocked on error
+        }
     }
 }
