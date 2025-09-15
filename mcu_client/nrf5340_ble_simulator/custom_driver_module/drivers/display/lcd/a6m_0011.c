@@ -447,7 +447,7 @@ static int a6m_0011_read(struct device *dev, int x, int y, const struct display_
  */
 int a6m_0011_set_brightness(uint8_t brightness)
 {
-    LOG_INF("set Brightness: [%d]", brightness);
+    LOG_INF("set Brightness: [0x%x]", brightness);
     uint8_t cmd[3] = {0};
     uint8_t level  = 0;
     if (brightness > 0x3a)

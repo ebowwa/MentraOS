@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-09 16:33:15
+ * @LastEditTime : 2025-09-15 14:42:58
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -809,6 +809,10 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     a6m_0011_read_reg(0, 0xBE);
                     a6m_0011_read_reg(0, 0xE2);
 
+                    a6m_0011_write_reg(0xE0, 0x18);
+                    mos_delay_us(6);
+                    a6m_0011_write_reg(0xE3, 0x08);
+                    mos_delay_us(6);
                     a6m_0011_set_brightness(0x3A);
                     // a6m_0011_write_reg(0xBE, 0x82);
                     a6m_0011_set_gray16_mode();
@@ -834,7 +838,6 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     mos_delay_us(6);
                     a6m_0011_set_mirror(MIRROR_HORZ);
                     mos_delay_ms(2);
-                   
                     // a6m_0011_write_reg(0xE2, 0x19);
                     // mos_delay_ms(2);
                     a6m_0011_open_display();
