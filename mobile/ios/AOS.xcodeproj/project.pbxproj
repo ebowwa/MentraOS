@@ -12,14 +12,11 @@
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
-		6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */; };
-		6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */ = {isa = PBXBuildFile; fileRef = 6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */; };
 		6DDF1F572E2BED9800EAD638 /* SherpaOnnx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */; };
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5033C3B2E5668D6006A0718 /* CommandBridge.swift */; };
 		C5033F1F2E568874006A0718 /* LiveKit in Frameworks */ = {isa = PBXBuildFile; productRef = C5033F1E2E568874006A0718 /* LiveKit */; };
 		C540BE3D2E31AAEE001A328F /* UltraliteSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C540BE3C2E31AAEE001A328F /* UltraliteSDK */; };
 		C5DE979E2DDD0EA80032FC99 /* BridgeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */; };
@@ -52,8 +49,8 @@
 		C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980E2DDD0F420032FC99 /* bwdet.c */; };
 		C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98302DDD0F420032FC99 /* VADState.swift */; };
 		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
-		C5DE98972DE267CD0032FC99 /* CoreBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* CoreBridge.m */; };
-		C5DE98982DE267CD0032FC99 /* CoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* CoreBridge.swift */; };
+		C5DE98972DE267CD0032FC99 /* Bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98952DE267CD0032FC99 /* Bridge.m */; };
+		C5DE98982DE267CD0032FC99 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98962DE267CD0032FC99 /* Bridge.swift */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
@@ -68,16 +65,11 @@
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
-		6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = decoder.onnx; sourceTree = "<group>"; };
-		6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = encoder.onnx; sourceTree = "<group>"; };
-		6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */ = {isa = PBXFileReference; lastKnownFileType = text; path = joiner.onnx; sourceTree = "<group>"; };
-		6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = tokens.txt; sourceTree = "<group>"; };
 		6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "sherpa-onnx.xcframework"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-AOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.release.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C5033C3B2E5668D6006A0718 /* CommandBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandBridge.swift; sourceTree = "<group>"; };
 		C5DE97882DDD0EA80032FC99 /* MentraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MentraManager.swift; sourceTree = "<group>"; };
 		C5DE97892DDD0EA80032FC99 /* BridgeModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BridgeModule.h; sourceTree = "<group>"; };
 		C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BridgeModule.m; sourceTree = "<group>"; };
@@ -132,8 +124,8 @@
 		C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
 		C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
 		C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Bridging-Header.h"; sourceTree = "<group>"; };
-		C5DE98952DE267CD0032FC99 /* CoreBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreBridge.m; sourceTree = "<group>"; };
-		C5DE98962DE267CD0032FC99 /* CoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreBridge.swift; sourceTree = "<group>"; };
+		C5DE98952DE267CD0032FC99 /* Bridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Bridge.m; sourceTree = "<group>"; };
+		C5DE98962DE267CD0032FC99 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -141,29 +133,21 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C5033C232E56654E006A0718 /* sgcs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = sgcs;
 			sourceTree = "<group>";
 		};
 		C5033C242E56657F006A0718 /* subs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = subs;
 			sourceTree = "<group>";
 		};
 		C5033C332E5665D4006A0718 /* utils */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = utils;
 			sourceTree = "<group>";
 		};
 		C5033C3A2E56664B006A0718 /* stt */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = stt;
 			sourceTree = "<group>";
 		};
@@ -214,22 +198,10 @@
 			isa = PBXGroup;
 			children = (
 				6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */,
-				6DAA264E2E2BF04E00B9AEC4 /* Model */,
 				6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */,
 			);
 			name = SherpaOnnx;
 			path = Packages/SherpaOnnx;
-			sourceTree = "<group>";
-		};
-		6DAA264E2E2BF04E00B9AEC4 /* Model */ = {
-			isa = PBXGroup;
-			children = (
-				6DAA264A2E2BF04E00B9AEC4 /* decoder.onnx */,
-				6DAA264B2E2BF04E00B9AEC4 /* encoder.onnx */,
-				6DAA264C2E2BF04E00B9AEC4 /* joiner.onnx */,
-				6DAA264D2E2BF04E00B9AEC4 /* tokens.txt */,
-			);
-			path = Model;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -289,13 +261,12 @@
 				C5033C332E5665D4006A0718 /* utils */,
 				C5033C242E56657F006A0718 /* subs */,
 				C5033C232E56654E006A0718 /* sgcs */,
-				C5DE98952DE267CD0032FC99 /* CoreBridge.m */,
-				C5DE98962DE267CD0032FC99 /* CoreBridge.swift */,
+				C5DE98952DE267CD0032FC99 /* Bridge.m */,
+				C5DE98962DE267CD0032FC99 /* Bridge.swift */,
 				C5DE97882DDD0EA80032FC99 /* MentraManager.swift */,
 				C5DE97892DDD0EA80032FC99 /* BridgeModule.h */,
 				C5DE978A2DDD0EA80032FC99 /* BridgeModule.m */,
 				C5DE98672DDD1FB00032FC99 /* Bridging-Header.h */,
-				C5033C3B2E5668D6006A0718 /* CommandBridge.swift */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -515,8 +486,6 @@
 				C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */,
 				C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */,
 				A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */,
-				6DAA264F2E2BF04E00B9AEC4 /* joiner.onnx in Resources */,
-				6DAA26522E2BF04E00B9AEC4 /* tokens.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -568,9 +537,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -604,9 +577,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -650,7 +627,6 @@
 				C5DE98502DDD0F420032FC99 /* VADType.swift in Sources */,
 				C5DE98512DDD0F420032FC99 /* spec.c in Sources */,
 				C5DE98522DDD0F420032FC99 /* tables.c in Sources */,
-				C5033C3C2E5668D6006A0718 /* CommandBridge.swift in Sources */,
 				C5DE98532DDD0F420032FC99 /* attdet.c in Sources */,
 				C5DE98542DDD0F420032FC99 /* mdct.c in Sources */,
 				C5DE98552DDD0F420032FC99 /* plc.c in Sources */,
@@ -660,8 +636,8 @@
 				C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */,
 				C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */,
 				C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */,
-				C5DE98972DE267CD0032FC99 /* CoreBridge.m in Sources */,
-				C5DE98982DE267CD0032FC99 /* CoreBridge.swift in Sources */,
+				C5DE98972DE267CD0032FC99 /* Bridge.m in Sources */,
+				C5DE98982DE267CD0032FC99 /* Bridge.swift in Sources */,
 				C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */,
 				C5DE985C2DDD0F420032FC99 /* bits.c in Sources */,
 				C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */,
@@ -825,7 +801,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = "MentraOS";
+				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -833,7 +809,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -847,6 +823,7 @@
 				CODE_SIGN_ENTITLEMENTS = AOS/AOS.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T5XXXL6N36;
+				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/universal\"",
@@ -983,14 +960,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = "MentraOS";
+				PRODUCT_NAME = MentraOS;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -1025,6 +1002,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				ENABLE_BITCODE = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -1051,10 +1029,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -1092,6 +1067,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				ENABLE_BITCODE = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -1110,10 +1086,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

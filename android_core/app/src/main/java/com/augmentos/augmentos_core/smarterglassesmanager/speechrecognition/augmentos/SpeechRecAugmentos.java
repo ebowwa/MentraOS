@@ -3,6 +3,9 @@ package com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.aug
 import android.content.Context;
 import android.util.Log;
 
+import androidx.preference.PreferenceManager;
+import android.content.SharedPreferences;
+
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
 import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
@@ -64,6 +67,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
 
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        enforceLocalTranscription = sharedPreferences.getBoolean("enforce_local_transcription", false);
+
         // 1) Create or fetch your single ServerComms (the new consolidated manager).
         //    For example, we create a new instance here:
 
@@ -103,13 +109,13 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         
         sherpaTranscriber.setTranscriptListener(new SherpaOnnxTranscriber.TranscriptListener() {
             @Override
-            public void onPartialResult(String text) {
-                sendFormattedTranscriptionToBackend(text, false, transcriptionSessionStart);
+            public void onPartialResult(String text, String language) {
+                sendFormattedTranscriptionToBackend(text, false, transcriptionSessionStart, language);
             }
 
             @Override
-            public void onFinalResult(String text) {
-                sendFormattedTranscriptionToBackend(text, true, transcriptionSessionStart);
+            public void onFinalResult(String text, String language) {
+                sendFormattedTranscriptionToBackend(text, true, transcriptionSessionStart, language);
             }
         });
         
@@ -130,9 +136,10 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      * @param text The transcription text
      * @param isFinal Whether this is a final result
      * @param sessionStartTime Session start time for relative timestamp calculation
+     * @param language The language of the transcription
      */
-    private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime) {
-        try {
+    private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime, String language) {
+        try {            
             JSONObject transcription = new JSONObject();
             transcription.put("type", "local_transcription");
             transcription.put("text", text);
@@ -153,13 +160,13 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             
             // Add metadata
             transcription.put("speakerId", 0);
-            transcription.put("transcribeLanguage", "en-US");
+            transcription.put("transcribeLanguage", language);
             transcription.put("provider", "sherpa-onnx");
             
             // Send the JSON to ServerComms
             ServerComms.getInstance().sendTranscriptionResult(transcription);
             
-            Log.d(TAG, "Sent " + (isFinal ? "final" : "partial") + " transcription: " + text);
+            Log.d(TAG, "Sent " + (isFinal ? "final" : "partial") + " transcription: " + text + " Language: " + language);
         } catch (org.json.JSONException e) {
             Log.e(TAG, "Error creating transcription JSON: " + e.getMessage(), e);
         }

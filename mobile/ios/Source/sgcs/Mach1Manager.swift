@@ -337,7 +337,7 @@ class Mach1Manager: UltraliteBaseViewController {
 
         guard let device = UltraliteManager.shared.currentDevice else {
             Bridge.log("MACH1: No current device")
-            MentraManager.getInstance().forgetSmartGlasses()
+            MentraManager.shared.forgetSmartGlasses()
             return false
         }
 

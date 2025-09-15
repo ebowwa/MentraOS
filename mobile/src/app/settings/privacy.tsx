@@ -29,14 +29,10 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 export default function PrivacySettingsScreen() {
-  const {status} = useCoreStatus()
-  const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled)
-  const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(status.core_info.force_core_onboard_mic)
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
-    status.core_info.contextual_dashboard_enabled,
-  )
+  const [isSensingEnabled, setIsSensingEnabled] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [calendarEnabled, setCalendarEnabled] = useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = useState(false)
@@ -45,6 +41,12 @@ export default function PrivacySettingsScreen() {
   const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
+
+  // load settings:
+  useEffect(() => {
+    loadSetting(SETTINGS_KEYS.sensing_enabled).then(setIsSensingEnabled)
+  }, [])
+
   // Check permissions when screen loads
   useEffect(() => {
     const checkPermissions = async () => {
@@ -144,7 +146,8 @@ export default function PrivacySettingsScreen() {
 
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled
-    await bridge.sendToggleSensing(newSensing)
+    await bridge.sendToggleSensing(newSensing) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.sensing_enabled, newSensing)
     setIsSensingEnabled(newSensing)
   }
 
@@ -229,11 +232,11 @@ export default function PrivacySettingsScreen() {
         {/* Notification Permission - Android Only */}
         {Platform.OS === "android" && !notificationsEnabled && (
           <>
-            <ToggleSetting
+            <PermissionButton
               label={translate("settings:notificationsLabel")}
               subtitle={translate("settings:notificationsSubtitle")}
               value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
+              onPress={handleToggleNotifications}
             />
             <Spacer height={theme.spacing.md} />
           </>

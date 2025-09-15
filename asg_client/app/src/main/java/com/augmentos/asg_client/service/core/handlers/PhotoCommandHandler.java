@@ -68,7 +68,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
             String size = data.optString("size", "medium");
-            boolean enableLed = data.optBoolean("enable_led", false); // Default false for phone commands
+            boolean enableLed = data.optBoolean("enable_led", true); // Default true for phone commands
 
             // Generate file path using base class functionality
             String fileName = generateUniqueFilename("IMG_", ".jpg");

@@ -9,7 +9,14 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {
+  getCoreSettings,
+  getSettingDefault,
+  loadSetting,
+  saveSetting,
+  SETTINGS_KEYS,
+  writeSettings,
+} from "@/utils/SettingsHelper"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
@@ -32,7 +39,7 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
-const useNewWsManager = false
+const useNewWsManager = Platform.OS === "ios"
 
 export default function InitScreen() {
   // Hooks
@@ -64,22 +71,29 @@ export default function InitScreen() {
 
   const checkCustomUrl = async (): Promise<boolean> => {
     const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    const isCustom = Boolean(customUrl?.trim())
+    const defaultUrl = await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const isCustom = customUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
   }
 
   const navigateToDestination = async () => {
-    const pendingRoute = getPendingRoute()
-
-    if (pendingRoute) {
-      setPendingRoute(null)
-      setTimeout(() => processUrl(pendingRoute), DEEPLINK_DELAY)
+    if (!user) {
+      replace("/auth/login")
       return
     }
 
-    if (!user) {
-      replace("/auth/login")
+    // Check onboarding status
+    const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+    if (!onboardingCompleted) {
+      replace("/onboarding/welcome")
+      return
+    }
+
+    const pendingRoute = getPendingRoute()
+    if (pendingRoute) {
+      setPendingRoute(null)
+      setTimeout(() => processUrl(pendingRoute), DEEPLINK_DELAY)
       return
     }
 
@@ -115,16 +129,17 @@ export default function InitScreen() {
       if (useNewWsManager) {
         bridge.setup()
         socketComms.setAuthCreds(coreToken, uid)
+
+        try {
+          const settings = await restComms.loadUserSettings() // get settings from server
+          await writeSettings(settings) // write settings to local storage
+        } catch (error) {
+          console.error("Failed to load user settings:", error)
+        }
+
+        bridge.updateSettings(await getCoreSettings()) // send settings to core
       } else {
         bridge.setAuthCreds(coreToken, uid)
-      }
-
-      // Check onboarding status
-      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
-
-      if (!onboardingCompleted) {
-        replace("/onboarding/welcome")
-        return
       }
 
       await navigateToDestination()
@@ -199,8 +214,9 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      await bridge.setServerUrl("")
+      const defaultUrl = (await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
+      await bridge.setServerUrl(defaultUrl)
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {
@@ -317,7 +333,9 @@ export default function InitScreen() {
                 preset="reversed"
                 disabled={isRetrying}
                 LeftAccessory={
-                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
+                  isRetrying
+                    ? () => <ActivityIndicator size="small" color={theme.colors.buttonPillIconText} />
+                    : undefined
                 }
               />
             )}
@@ -325,7 +343,7 @@ export default function InitScreen() {
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
                 preset="reversed"

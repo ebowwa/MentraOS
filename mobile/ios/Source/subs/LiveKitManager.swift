@@ -197,6 +197,15 @@ public class LiveKitManager: NSObject {
         //        injector.addBuffer(buffer)
     }
 
+    public func addPcm2(_ avBuffer: AVAudioPCMBuffer) {
+        counter += 1
+        if counter % 50 == 0 {
+            Bridge.log("LiveKit: Adding PCM2 buffer with \(avBuffer.frameLength) frames")
+        }
+
+        LiveKit.AudioManager.shared.mixer.capture(appAudio: avBuffer)
+    }
+
     /// Disconnect from LiveKit room
     @objc public func disconnect() {
         guard

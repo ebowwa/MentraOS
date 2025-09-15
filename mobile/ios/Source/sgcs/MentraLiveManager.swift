@@ -1810,12 +1810,13 @@ typealias JSONObject = [String: Any]
         }
           
         // Get core token for authentication
-        guard let coreToken = UserDefaults.standard.string(forKey: "core_token") else {
+        let coreToken = MentraManager.shared.coreToken
+        if coreToken.isEmpty {
             Bridge.log("LIVE: core_token not set!")
             return
         }
 
-        BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: authToken)
+        BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
     }
 
     private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
@@ -1944,7 +1945,8 @@ typealias JSONObject = [String: Any]
     private func sendCoreTokenToAsgClient() {
         Bridge.log("Preparing to send coreToken to ASG client")
 
-        guard let coreToken = UserDefaults.standard.string(forKey: "core_token"), !coreToken.isEmpty else {
+        let coreToken = MentraManager.shared.coreToken
+        if coreToken.isEmpty {
             Bridge.log("No coreToken available to send to ASG client")
             return
         }
@@ -2147,7 +2149,7 @@ typealias JSONObject = [String: Any]
         emitHotspotStatusChange()
 
         // Trigger a full status update so React Native gets the updated glasses_info
-        MentraManager.getInstance().handleRequestStatus()
+        MentraManager.shared.handleRequestStatus()
     }
 
     private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,
@@ -2593,7 +2595,8 @@ extension MentraLiveManager {
 
     // MARK: - Button Mode Settings
 
-    func sendButtonModeSetting(_ mode: String) {
+    func sendButtonModeSetting() {
+        let mode = MentraManager.shared.buttonPressMode
         Bridge.log("Sending button mode setting to glasses: \(mode)")
 
         guard connectionState == .connected else {
@@ -2658,8 +2661,7 @@ extension MentraLiveManager {
         Bridge.log("Sending user settings to glasses")
 
         // Send button mode setting
-        let buttonMode = UserDefaults.standard.string(forKey: "button_press_mode") ?? "photo"
-        sendButtonModeSetting(buttonMode)
+        sendButtonModeSetting()
 
         // Send button video recording settings
         sendButtonVideoRecordingSettings()
@@ -2672,9 +2674,9 @@ extension MentraLiveManager {
     }
 
     func sendButtonVideoRecordingSettings() {
-        let width = UserDefaults.standard.integer(forKey: "button_video_width")
-        let height = UserDefaults.standard.integer(forKey: "button_video_height")
-        let fps = UserDefaults.standard.integer(forKey: "button_video_fps")
+        let width = MentraManager.shared.buttonVideoWidth
+        let height = MentraManager.shared.buttonVideoHeight
+        let fps = MentraManager.shared.buttonVideoFps
 
         // Use defaults if not set
         let finalWidth = width > 0 ? width : 1280
@@ -2700,7 +2702,7 @@ extension MentraLiveManager {
     }
 
     func sendButtonPhotoSettings() {
-        let size = UserDefaults.standard.string(forKey: "button_photo_size") ?? "medium"
+        let size = MentraManager.shared.buttonPhotoSize
 
         Bridge.log("Sending button photo setting: \(size)")
 
@@ -2717,7 +2719,7 @@ extension MentraLiveManager {
     }
 
     func sendButtonCameraLedSetting() {
-        let enabled = UserDefaults.standard.bool(forKey: "button_camera_led")
+        let enabled = MentraManager.shared.buttonCameraLed
 
         Bridge.log("Sending button camera LED setting: \(enabled)")
 

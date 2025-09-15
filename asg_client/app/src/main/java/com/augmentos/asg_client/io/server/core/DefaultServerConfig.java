@@ -69,7 +69,7 @@ public class DefaultServerConfig implements ServerConfig {
         private int port = 8089;
         private String serverName = "ASG Server";
         private int maxRequestSize = 1024 * 1024; // 1MB
-        private int requestTimeout = 30000; // 30 seconds
+        private int requestTimeout = 600000; // 10 minutes for large video transfers (was 30 seconds)
         private boolean corsEnabled = true;
         private String[] allowedOrigins = {"*"};
         private Context context;

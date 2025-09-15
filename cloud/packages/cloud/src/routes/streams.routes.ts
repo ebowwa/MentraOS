@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { logger } from "../services/logging/pino-logger";
-import { sessionService } from "../services/session/session.service";
+import UserSession from "../services/session/UserSession";
 import { validateAppApiKey } from "../middleware/validateApiKey";
 import { RestreamDestination } from "@mentra/sdk";
 import { AppI } from "../models/app.model";
@@ -56,7 +56,7 @@ router.post(
       }
 
       // Find user session by app
-      const userSessions = sessionService.getAllSessions();
+  const userSessions = UserSession.getAllSessions();
       let targetUserSession = null;
       let targetStream = null;
 
@@ -158,7 +158,7 @@ router.delete(
 
     try {
       // Find user session by app
-      const userSessions = sessionService.getAllSessions();
+  const userSessions = UserSession.getAllSessions();
       let targetUserSession = null;
       let targetStream = null;
 
@@ -241,7 +241,7 @@ router.get(
 
     try {
       // Find user session by app
-      const userSessions = sessionService.getAllSessions();
+  const userSessions = UserSession.getAllSessions();
       let targetStream = null;
 
       for (const session of userSessions) {
