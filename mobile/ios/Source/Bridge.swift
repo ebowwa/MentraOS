@@ -85,42 +85,6 @@ class Bridge: RCTEventEmitter {
         }
     }
 
-    static func sendCalendarEvent(_ calendarItem: CalendarItem) {
-        do {
-            let event: [String: Any] = [
-                "type": "calendar_event",
-                "title": calendarItem.title,
-                "eventId": calendarItem.eventId,
-                "dtStart": calendarItem.dtStart,
-                "dtEnd": calendarItem.dtEnd,
-                "timeZone": calendarItem.timeZone,
-                "timestamp": Int(Date().timeIntervalSince1970),
-            ]
-
-            let jsonData = try JSONSerialization.data(withJSONObject: event)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendWSText(jsonString)
-            }
-        } catch {
-            Bridge.log("Error building calendar_event JSON: \(error)")
-        }
-    }
-
-    static func sendCalendarEvents() {
-        Task {
-            if let events = await CalendarManager.shared.fetchUpcomingEvents(days: 2) {
-                guard events.count > 0 else { return }
-                // Send up to 5 events
-                let eventsToSend = events.prefix(5)
-                for event in eventsToSend {
-                    let calendarItem = convertEKEventToCalendarItem(event)
-                    Bridge.log("CALENDAR EVENT \(calendarItem)")
-                    Bridge.sendCalendarEvent(calendarItem)
-                }
-            }
-        }
-    }
-
     static func sendLocationUpdate(lat: Double, lng: Double, accuracy: Double?, correlationId: String?) {
         do {
             var event: [String: Any] = [
