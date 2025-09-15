@@ -7,13 +7,13 @@ RUN apk add --no-cache git gcc musl-dev pkgconfig opus-dev opusfile-dev soxr-dev
 WORKDIR /app
 
 # Copy Go mod files
-COPY livekit-client/go.mod livekit-client/go.sum ./
+COPY livekit-client-2/go.mod livekit-client-2/go.sum ./
 
 # Download dependencies
 RUN go mod download
 
 # Copy Go source code
-COPY livekit-client/ ./
+COPY livekit-client-2/ ./
 
 # Build the binary with CGO enabled for opus codec
 RUN CGO_ENABLED=1 GOOS=linux go build -o livekit-bridge .
@@ -68,5 +68,5 @@ ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
 
 
 # The porter.yaml file will run the supervisor script. starting both cloud and livekit-client services.
-CMD ["echo", "Ready to run service cloud service and livekit-client ./start.sh"]
+CMD ["echo", "Ready to run service cloud service and livekit-client-2 ./start.sh"]
 # CMD ["./start.sh"]

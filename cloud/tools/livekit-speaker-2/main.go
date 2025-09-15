@@ -512,7 +512,10 @@ func main() {
 				if time.Since(last) > time.Duration(stallMs)*time.Millisecond {
 					log.Printf("watchdog: no data for %dms; reconnecting", stallMs)
 					// Clear jitter buffer and reconnect room
-					select { case clearJB <- struct{}{}: default: }
+					select {
+					case clearJB <- struct{}{}:
+					default:
+					}
 					lkRoom.Disconnect()
 					time.Sleep(500 * time.Millisecond)
 					for attempt := 1; attempt <= 5; attempt++ {
