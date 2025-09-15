@@ -18,6 +18,7 @@ import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
+import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -292,7 +293,7 @@ public class MediaCaptureService {
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
                             int randomSuffix = (int)(Math.random() * 1000);
                             String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium", false);
+                            takePhotoAndUpload(photoFilePath, requestId, null, "", save, "medium", false);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -429,6 +430,26 @@ public class MediaCaptureService {
      * Start video recording with specific parameters and settings
      */
     private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
+        // Check if RTMP streaming is active - videos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot start video - RTMP streaming active");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera busy with streaming", 
+                    MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
+        // Check if camera is actively in use (this will return false for kept-alive idle camera)
+        if (CameraNeo.isCameraInUse()) {
+            Log.e(TAG, "Cannot start video - camera actively in use");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera busy", 
+                    MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+            }
+            return;
+        }
+        
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
@@ -698,6 +719,29 @@ public class MediaCaptureService {
      * @param enableLed Whether to enable camera LED flash
      */
     public void takePhotoLocally(String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError("local", "Camera busy with streaming", 
+                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        
+        // Check if video recording is active - photos cannot interrupt video recording
+        if (isRecordingVideo) {
+            Log.e(TAG, "Cannot take photo - video recording in progress");
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError("local", "Camera busy with video recording", 
+                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        
+        // Note: No need to check CameraNeo.isCameraInUse() for photos
+        // The camera's keep-alive system handles rapid photo taking gracefully
+        
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
@@ -757,13 +801,15 @@ public class MediaCaptureService {
      * @param photoFilePath Local path where photo will be saved
      * @param requestId Unique request ID for tracking
      * @param webhookUrl Optional webhook URL for direct upload to app
+     * @param authToken Auth token for webhook authentication
      * @param save Whether to keep the photo on device after upload
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size, boolean enableLed) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for potential fallbacks
         photoRequestedSizes.put(requestId, size);
+
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -794,7 +840,7 @@ public class MediaCaptureService {
                             // Choose upload destination based on webhookUrl
                             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                                 // Upload directly to app webhook
-                                uploadPhotoToWebhook(filePath, requestId, webhookUrl);
+                                uploadPhotoToWebhook(filePath, requestId, webhookUrl, authToken);
                             }
                         }
 
@@ -826,7 +872,7 @@ public class MediaCaptureService {
     /**
      * Upload photo directly to app webhook
      */
-    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl) {
+    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken) {
         // Create a new thread for the upload
         new Thread(() -> {
             try {
@@ -838,6 +884,8 @@ public class MediaCaptureService {
                     }
                     return;
                 }
+
+                Log.d(TAG, "### Sending photo request");
 
                 // Create multipart form request
                 OkHttpClient client = new OkHttpClient.Builder()
@@ -854,10 +902,20 @@ public class MediaCaptureService {
                         .addFormDataPart("type", "photo_upload")
                         .build();
 
-                Request request = new Request.Builder()
+                // Build request with optional Authorization header
+                Request.Builder requestBuilder = new Request.Builder()
                         .url(webhookUrl)
-                        .post(requestBody)
-                        .build();
+                        .post(requestBody);
+
+                // Add Authorization header if auth token is available
+                if (authToken != null && !authToken.isEmpty()) {
+                    requestBuilder.header("Authorization", "Bearer " + authToken);
+                    Log.d(TAG, "📡 Adding Authorization header to webhook request for: " + requestId);
+                } else {
+                    Log.d(TAG, "📡 No auth token available for webhook request: " + requestId);
+                }
+
+                Request request = requestBuilder.build();
 
                 Response response = client.newCall(request).execute();
 
@@ -991,6 +1049,7 @@ public class MediaCaptureService {
                 photoBleIds.remove(requestId);
                 photoOriginalPaths.remove(requestId);
                 photoRequestedSizes.remove(requestId);
+                
 
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1057,6 +1116,7 @@ public class MediaCaptureService {
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
+    
 
                         // Notify listener about successful upload
                         if (mMediaCaptureListener != null) {
@@ -1117,6 +1177,7 @@ public class MediaCaptureService {
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
+    
 
                         // Notify listener about error
                         if (mMediaCaptureListener != null) {
@@ -1214,7 +1275,7 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID for fallback
      * @param save Whether to keep the photo on device
      */
-    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save, String size, boolean enableLed) {
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String authToken, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
@@ -1225,7 +1286,7 @@ public class MediaCaptureService {
         if (isWiFiConnected()) {
             Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
             // Try WiFi upload (with automatic BLE fallback on failure)
-            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
         } else {
             Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
             // No WiFi, go straight to BLE
@@ -1412,15 +1473,12 @@ public class MediaCaptureService {
 
                 // Clean up the flag
                 photoSaveFlags.remove(requestId);
-                photoRequestedSizes.remove(requestId);
-
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
                 sendBleTransferError(requestId, e.getMessage());
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
-                photoRequestedSizes.remove(requestId);
             }
         }).start();
     }

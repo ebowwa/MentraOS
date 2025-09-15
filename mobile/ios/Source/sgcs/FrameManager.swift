@@ -1,10 +1,9 @@
 //
-//  FrameDevice.swift
+//  FrameManager.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 8/20/25.
 //
-
 
 //
 //  FrameManager.swift
@@ -92,7 +91,7 @@ struct FrameCommand {
               centralManager.state == .poweredOn,
               !isScanning
         else {
-            Core.log("\(FrameManager.TAG): Cannot start scan - BLE not ready or already scanning")
+            Bridge.log("\(FrameManager.TAG): Cannot start scan - BLE not ready or already scanning")
             return
         }
 
@@ -108,7 +107,7 @@ struct FrameCommand {
             options: scanOptions
         )
 
-        Core.log("\(FrameManager.TAG): Started scanning for Frame devices")
+        Bridge.log("\(FrameManager.TAG): Started scanning for Frame devices")
 
         // Stop scan after 10 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
@@ -123,20 +122,20 @@ struct FrameCommand {
 
         centralManager?.stopScan()
         isScanning = false
-        Core.log("\(FrameManager.TAG): Stopped scanning")
+        Bridge.log("\(FrameManager.TAG): Stopped scanning")
     }
 
     func connect(deviceName: String? = nil) {
         let targetDevice = deviceName ?? savedDeviceName
 
         guard let name = targetDevice else {
-            Core.log("\(FrameManager.TAG): No device name available for connection")
+            Bridge.log("\(FrameManager.TAG): No device name available for connection")
             startScanning()
             return
         }
 
         if isConnecting {
-            Core.log("\(FrameManager.TAG): Already connecting")
+            Bridge.log("\(FrameManager.TAG): Already connecting")
             return
         }
 
@@ -158,7 +157,7 @@ struct FrameCommand {
 
     func displayTextWall(_ text: String) {
         guard isConnected else {
-            Core.log("\(FrameManager.TAG): Cannot display text - not connected")
+            Bridge.log("\(FrameManager.TAG): Cannot display text - not connected")
             return
         }
 
@@ -242,7 +241,7 @@ struct FrameCommand {
         guard let centralManager = centralManager,
               centralManager.state == .poweredOn
         else {
-            Core.log("\(FrameManager.TAG): BLE not ready for targeted scan")
+            Bridge.log("\(FrameManager.TAG): BLE not ready for targeted scan")
             isConnecting = false
             connectionState = "DISCONNECTED"
             return
@@ -263,7 +262,7 @@ struct FrameCommand {
                 self.centralManager?.stopScan()
                 self.isConnecting = false
                 self.connectionState = "DISCONNECTED"
-                Core.log("\(FrameManager.TAG): Connection timeout - device not found")
+                Bridge.log("\(FrameManager.TAG): Connection timeout - device not found")
             }
         }
     }
@@ -271,7 +270,7 @@ struct FrameCommand {
     private func queueCommand(_ command: String, completion: ((Bool) -> Void)? = nil) {
         queueLock.lock()
         commandQueue.append(FrameCommand(command: command, completion: completion))
-        Core.log("\(FrameManager.TAG): Queued command (queue size: \(commandQueue.count))")
+        Bridge.log("\(FrameManager.TAG): Queued command (queue size: \(commandQueue.count))")
         queueLock.unlock()
 
         processQueue()
@@ -320,7 +319,7 @@ struct FrameCommand {
         guard let txCharacteristic = txCharacteristic,
               let peripheral = framePeripheral
         else {
-            Core.log("\(FrameManager.TAG): Cannot send command - not connected")
+            Bridge.log("\(FrameManager.TAG): Cannot send command - not connected")
             completion(false)
             return
         }
@@ -340,18 +339,18 @@ struct FrameCommand {
         }
 
         guard var data = finalCommand.data(using: .utf8) else {
-            Core.log("\(FrameManager.TAG): Failed to encode command")
+            Bridge.log("\(FrameManager.TAG): Failed to encode command")
             completion(false)
             return
         }
 
         // Handle MTU limitation
         if data.count > 247 {
-            Core.log("\(FrameManager.TAG): Command too long, truncating")
+            Bridge.log("\(FrameManager.TAG): Command too long, truncating")
             data = data.prefix(247)
         }
 
-        Core.log("\(FrameManager.TAG): Sending Lua command: \(finalCommand.trimmingCharacters(in: .whitespacesAndNewlines))")
+        Bridge.log("\(FrameManager.TAG): Sending Lua command: \(finalCommand.trimmingCharacters(in: .whitespacesAndNewlines))")
 
         // Store completion for delegate callback
         currentWriteCompletion = completion
@@ -359,7 +358,7 @@ struct FrameCommand {
     }
 
     private func initializeFrame() {
-        Core.log("\(FrameManager.TAG): Initializing Frame display")
+        Bridge.log("\(FrameManager.TAG): Initializing Frame display")
 
         // Send break signal to stop any running main.lua
         sendBreakSignal()
@@ -376,7 +375,7 @@ struct FrameCommand {
 
         let breakSignal = Data([0x03])
         peripheral.writeValue(breakSignal, for: txCharacteristic, type: .withResponse)
-        Core.log("\(FrameManager.TAG): Sent break signal")
+        Bridge.log("\(FrameManager.TAG): Sent break signal")
     }
 
     private func escapeForLua(_ text: String) -> String {
@@ -419,12 +418,12 @@ extension FrameManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            Core.log("\(FrameManager.TAG): Bluetooth powered on")
+            Bridge.log("\(FrameManager.TAG): Bluetooth powered on")
         case .poweredOff:
-            Core.log("\(FrameManager.TAG): Bluetooth powered off")
+            Bridge.log("\(FrameManager.TAG): Bluetooth powered off")
             cleanup()
         default:
-            Core.log("\(FrameManager.TAG): Bluetooth state: \(central.state.rawValue)")
+            Bridge.log("\(FrameManager.TAG): Bluetooth state: \(central.state.rawValue)")
         }
     }
 
@@ -438,7 +437,7 @@ extension FrameManager: CBCentralManagerDelegate {
         if deviceName.contains("Frame") || deviceName.contains("frame") {
             if !discoveredDevices.contains(address) {
                 discoveredDevices.insert(address)
-                Core.log("\(FrameManager.TAG): Found Frame device: \(deviceName) (\(address))")
+                Bridge.log("\(FrameManager.TAG): Found Frame device: \(deviceName) (\(address))")
                 onDeviceDiscovered?(deviceName)
 
                 // If we're doing targeted scan, connect to matching device
@@ -447,14 +446,14 @@ extension FrameManager: CBCentralManagerDelegate {
                     framePeripheral = peripheral
                     peripheral.delegate = self
                     central.connect(peripheral, options: nil)
-                    Core.log("\(FrameManager.TAG): Connecting to \(deviceName)")
+                    Bridge.log("\(FrameManager.TAG): Connecting to \(deviceName)")
                 }
             }
         }
     }
 
     func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        Core.log("\(FrameManager.TAG): Connected to Frame - negotiating MTU")
+        Bridge.log("\(FrameManager.TAG): Connected to Frame - negotiating MTU")
         isConnecting = false
 
         // Save device name
@@ -470,13 +469,13 @@ extension FrameManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral _: CBPeripheral, error _: Error?) {
-        Core.log("\(FrameManager.TAG): Disconnected from Frame")
+        Bridge.log("\(FrameManager.TAG): Disconnected from Frame")
         cleanup()
         onConnectionStateChanged?()
     }
 
     func centralManager(_: CBCentralManager, didFailToConnect _: CBPeripheral, error: Error?) {
-        Core.log("\(FrameManager.TAG): Failed to connect: \(error?.localizedDescription ?? "Unknown error")")
+        Bridge.log("\(FrameManager.TAG): Failed to connect: \(error?.localizedDescription ?? "Unknown error")")
         isConnecting = false
         connectionState = "DISCONNECTED"
         cleanup()
@@ -488,7 +487,7 @@ extension FrameManager: CBCentralManagerDelegate {
 extension FrameManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         guard error == nil else {
-            Core.log("\(FrameManager.TAG): Service discovery failed: \(error!)")
+            Bridge.log("\(FrameManager.TAG): Service discovery failed: \(error!)")
             return
         }
 
@@ -496,7 +495,7 @@ extension FrameManager: CBPeripheralDelegate {
 
         for service in services {
             if service.uuid == FRAME_SERVICE_UUID {
-                Core.log("\(FrameManager.TAG): Found Frame service")
+                Bridge.log("\(FrameManager.TAG): Found Frame service")
                 peripheral.discoverCharacteristics([FRAME_TX_CHAR_UUID, FRAME_RX_CHAR_UUID], for: service)
             }
         }
@@ -504,7 +503,7 @@ extension FrameManager: CBPeripheralDelegate {
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         guard error == nil else {
-            Core.log("\(FrameManager.TAG): Characteristic discovery failed: \(error!)")
+            Bridge.log("\(FrameManager.TAG): Characteristic discovery failed: \(error!)")
             return
         }
 
@@ -513,11 +512,11 @@ extension FrameManager: CBPeripheralDelegate {
         for characteristic in characteristics {
             if characteristic.uuid == FRAME_TX_CHAR_UUID {
                 txCharacteristic = characteristic
-                Core.log("\(FrameManager.TAG): Found TX characteristic")
+                Bridge.log("\(FrameManager.TAG): Found TX characteristic")
             } else if characteristic.uuid == FRAME_RX_CHAR_UUID {
                 rxCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
-                Core.log("\(FrameManager.TAG): Found RX characteristic, enabling notifications")
+                Bridge.log("\(FrameManager.TAG): Found RX characteristic, enabling notifications")
             }
         }
 
@@ -525,7 +524,7 @@ extension FrameManager: CBPeripheralDelegate {
         if txCharacteristic != nil, rxCharacteristic != nil {
             isConnected = true
             connectionState = "CONNECTED"
-            Core.log("\(FrameManager.TAG): Frame fully connected")
+            Bridge.log("\(FrameManager.TAG): Frame fully connected")
             onConnectionStateChanged?()
             initializeFrame()
         }
@@ -536,16 +535,16 @@ extension FrameManager: CBPeripheralDelegate {
               let data = characteristic.value else { return }
 
         if let response = String(data: data, encoding: .utf8) {
-            Core.log("\(FrameManager.TAG): Received from Frame: \(response)")
+            Bridge.log("\(FrameManager.TAG): Received from Frame: \(response)")
         }
     }
 
     func peripheral(_: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
         if let error = error {
-            Core.log("\(FrameManager.TAG): Write failed: \(error)")
+            Bridge.log("\(FrameManager.TAG): Write failed: \(error)")
             currentWriteCompletion?(false)
         } else {
-            Core.log("\(FrameManager.TAG): Successfully wrote to Frame")
+            Bridge.log("\(FrameManager.TAG): Successfully wrote to Frame")
             currentWriteCompletion?(true)
         }
         currentWriteCompletion = nil

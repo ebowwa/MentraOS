@@ -13,7 +13,7 @@ export default function IndexPage() {
   useEffect(() => {
     const initializeApp = async () => {
       initializeCoreConnection()
-      replace("/auth/version-check")
+      replace("/init")
     }
 
     if (!loading) {

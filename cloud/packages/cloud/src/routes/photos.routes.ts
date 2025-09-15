@@ -12,7 +12,7 @@ import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import photoRequestService from '../services/core/photo-request.service';
 import photoTakenService from '../services/core/photo-taken.service';
 import { GalleryPhoto } from '../models/gallery-photo.model';
-import { getSessionService } from '../services/session/session.service';
+import UserSession from '../services/session/UserSession';
 
 // Function to clean up old photos
 async function cleanupOldPhotos(uploadDir: string) {
@@ -144,8 +144,7 @@ router.post('/upload', validateGlassesAuth, uploadMiddleware, async (req: Reques
     }
 
     // Get the user session
-    const sessionService = getSessionService();
-    const userSession = sessionService.getSessionByUserId("loriamistadi75@gmail.com");
+    const userSession = UserSession.getById("loriamistadi75@gmail.com");
     if (!userSession) {
       logger.error(`User session not found for ${req.headers['x-user-id']}`);
       return res.status(404).json({ error: 'User session not found' });

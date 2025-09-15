@@ -23,9 +23,9 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
         "Enable Notification Access",
         "MentraOS needs permission to read your phone notifications to display them on your smart glasses.\n\n" +
           "On the next screen:\n" +
-          '1. Find "MentraOS Manager" in the list\n' +
-          "2. Toggle the switch to ON\n" +
-          "3. Tap ALLOW when prompted",
+          '1. Find "MentraOS" in the list\n' +
+          '2. Toggle the switch to "on"\n' +
+          '3. Tap "Allow" when prompted',
         [
           {
             text: "Later",

@@ -31,6 +31,8 @@ import androidx.core.app.NotificationCompat;
 import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.utils.WakeLockManager;
 import com.augmentos.asg_client.reporting.domains.StreamingReporting;
+import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
+import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.events.StreamingCommand;
 import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
 import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
@@ -69,8 +71,8 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
-    private static final int SURFACE_WIDTH = 960;//720;//540;
-    private static final int SURFACE_HEIGHT = 960;//720;//960;
+    private static final int SURFACE_WIDTH = 1280;  // 16:9 aspect ratio for proper video streaming
+    private static final int SURFACE_HEIGHT = 720;  // HD resolution (720p)
 
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
@@ -113,6 +115,10 @@ public class RtmpStreamingService extends Service {
     // Reconnection sequence tracking to prevent stale handlers
     private int mReconnectionSequence = 0;
 
+    // LED control
+    private IHardwareManager mHardwareManager;
+    private boolean mLedEnabled = false;
+
     public class LocalBinder extends Binder {
         public RtmpStreamingService getService() {
             return RtmpStreamingService.this;
@@ -140,6 +146,9 @@ public class RtmpStreamingService extends Service {
         // Initialize handler for timeout logic
         mTimeoutHandler = new Handler(Looper.getMainLooper());
 
+        // Initialize hardware manager for LED control
+        mHardwareManager = HardwareManagerFactory.getInstance(this);
+
         // Initialize the streamer
         initStreamer();
     }
@@ -150,10 +159,11 @@ public class RtmpStreamingService extends Service {
         // Start as a foreground service with notification
         startForeground(NOTIFICATION_ID, createNotification());
 
-        // Get RTMP URL and stream ID from intent if provided
+        // Get RTMP URL, stream ID, and LED setting from intent if provided
         if (intent != null) {
             String rtmpUrl = intent.getStringExtra("rtmp_url");
             String streamId = intent.getStringExtra("stream_id");
+            mLedEnabled = intent.getBooleanExtra("enable_led", true); // Default true for livestreams
 
             if (rtmpUrl != null && !rtmpUrl.isEmpty()) {
                 setRtmpUrl(rtmpUrl);
@@ -163,6 +173,7 @@ public class RtmpStreamingService extends Service {
                     mCurrentStreamId = streamId;
                     Log.d(TAG, "Stream ID set: " + streamId);
                 }
+                Log.d(TAG, "LED enabled for stream: " + mLedEnabled);
 
                 // Reset reconnection attempts
                 mReconnectAttempts = 0;
@@ -418,6 +429,13 @@ public class RtmpStreamingService extends Service {
                                 }
 
                                 updateNotificationIfImportant();
+                                
+                                // Turn on LED if enabled for livestream
+                                if (mLedEnabled && mHardwareManager != null && mHardwareManager.supportsRecordingLed()) {
+                                    mHardwareManager.setRecordingLedOn();
+                                    Log.d(TAG, "📹 Recording LED turned ON for livestream");
+                                }
+                                
                                 EventBus.getDefault().post(new StreamingEvent.Connected());
                                 EventBus.getDefault().post(new StreamingEvent.Started());
                             }
@@ -951,6 +969,13 @@ public class RtmpStreamingService extends Service {
 
         // Notify listeners
         updateNotificationIfImportant();
+        
+        // Turn off LED if it was on
+        if (mLedEnabled && mHardwareManager != null && mHardwareManager.supportsRecordingLed()) {
+            mHardwareManager.setRecordingLedOff();
+            Log.d(TAG, "📹 Recording LED turned OFF (stream stopped)");
+        }
+        
         if (sStatusCallback != null) {
             sStatusCallback.onStreamStopped();
         }
@@ -1125,12 +1150,13 @@ public class RtmpStreamingService extends Service {
      */
 
     /**
-     * Start streaming to the specified RTMP URL
+     * Start streaming to the specified RTMP URL with LED control
      * @param context Context to use for starting the service
      * @param rtmpUrl RTMP URL to stream to
      * @param streamId Stream ID for tracking (can be null)
+     * @param enableLed Whether to enable recording LED during stream
      */
-    public static void startStreaming(Context context, String rtmpUrl, String streamId) {
+    public static void startStreaming(Context context, String rtmpUrl, String streamId, boolean enableLed) {
         // If service is running, send direct command
         if (sInstance != null) {
             // Cancel any pending reconnections first
@@ -1144,16 +1170,28 @@ public class RtmpStreamingService extends Service {
 
             sInstance.setRtmpUrl(rtmpUrl);
             sInstance.mCurrentStreamId = streamId; // Set the stream ID
+            sInstance.mLedEnabled = enableLed; // Set LED state
             sInstance.startStreaming();
         } else {
-            // Start the service with the provided URL and stream ID
+            // Start the service with the provided URL, stream ID, and LED setting
             Intent intent = new Intent(context, RtmpStreamingService.class);
             intent.putExtra("rtmp_url", rtmpUrl);
             if (streamId != null && !streamId.isEmpty()) {
                 intent.putExtra("stream_id", streamId);
             }
+            intent.putExtra("enable_led", enableLed);
             context.startService(intent);
         }
+    }
+
+    /**
+     * Start streaming to the specified RTMP URL with default LED enabled
+     * @param context Context to use for starting the service
+     * @param rtmpUrl RTMP URL to stream to
+     * @param streamId Stream ID for tracking (can be null)
+     */
+    public static void startStreaming(Context context, String rtmpUrl, String streamId) {
+        startStreaming(context, rtmpUrl, streamId, true); // Default LED on
     }
 
     /**
@@ -1162,7 +1200,7 @@ public class RtmpStreamingService extends Service {
      * @param rtmpUrl RTMP URL to stream to
      */
     public static void startStreaming(Context context, String rtmpUrl) {
-        startStreaming(context, rtmpUrl, null);
+        startStreaming(context, rtmpUrl, null, true); // Default LED on
     }
 
     /**

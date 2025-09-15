@@ -19,7 +19,7 @@ const gradientBorderStyle: ViewStyle = {
   padding: 2,
 }
 
-type Presets = "default" | "filled" | "reversed"
+type Presets = "default" | "filled" | "reversed" | "outlined"
 
 export interface ButtonAccessoryProps {
   style: StyleProp<any>
@@ -251,9 +251,18 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
   reversed: [
     $styles.row,
     $baseViewStyle,
-    ({colors, isDark}) => ({
-      backgroundColor: isDark ? colors.palette.neutral800 : colors.palette.neutral200,
-      borderColor: isDark ? colors.palette.neutral700 : colors.palette.neutral300,
+    ({colors}) => ({
+      backgroundColor: colors.buttonPillIcon,
+      borderWidth: 0,
+    }),
+  ],
+  outlined: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.transparent,
+      borderWidth: 1.5,
+      borderColor: colors.textDim,
     }),
   ],
 }
@@ -261,17 +270,20 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   default: [$baseTextStyle],
   filled: [$baseTextStyle],
-  reversed: [$baseTextStyle, ({colors}) => ({color: colors.text})],
+  reversed: [$baseTextStyle, ({colors}) => ({color: colors.buttonPillIconText})],
+  outlined: [$baseTextStyle, ({colors}) => ({color: colors.text})],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   default: ({colors, isDark}) => ({backgroundColor: isDark ? colors.palette.neutral200 : colors.palette.primary100}),
   filled: ({colors}) => ({backgroundColor: colors.palette.neutral400}),
-  reversed: ({colors}) => ({backgroundColor: colors.palette.neutral700}),
+  reversed: ({colors}) => ({opacity: 0.8}),
+  outlined: ({colors}) => ({backgroundColor: colors.palette.neutral100, opacity: 0.1}),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   default: () => ({opacity: 0.9}),
   filled: () => ({opacity: 0.9}),
   reversed: () => ({opacity: 0.9}),
+  outlined: () => ({opacity: 0.8}),
 }

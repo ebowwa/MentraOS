@@ -1,12 +1,10 @@
-
-
 mcuboot_secondary:
   address: 0x0
   device: DT_CHOSEN(nordic_pm_ext_flash)
   end_address: 0xEC000
   region: external_flash
   share_size:
-  - mcuboot_primary
+    - mcuboot_primary
   size: 0xEC000
 
 littlefs_storage:

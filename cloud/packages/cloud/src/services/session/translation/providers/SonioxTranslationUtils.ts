@@ -50,6 +50,10 @@ export class SonioxTranslationUtils {
     const specialMappings: Record<string, string> = {
       // Example: 'zh-cn': 'zh', 'zh-tw': 'zh' - but we already handle this above
       // Add any Soniox-specific mappings here if discovered
+
+      // Norwegian Bokmål uses 'nb' instead of 'no'
+      "nb": "no",
+      "nb-NO": "no",
     };
 
     return specialMappings[baseCode] || baseCode;

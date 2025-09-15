@@ -1,20 +1,16 @@
-// This file contains any auth middleware used by any AugmentOS client, such as the Mobile App, Appstore, developer console.
-// Auth scenarios.
-
-// 0. User is logged in, and sends a valid JWT (coreToken) token in the Authorization header, does not need to user db object populated. (will populate request with req.email of type string)
-// 1. User is logged in, and sends a valid JWT (coreToken) token in the Authorization header. (will populate request with req.user of type UserI)
-// 2. User is logged in, and sends a valid JWT (coreToken) token in the Authorization header, and has an active UserSession on the server. (will populate request with req.user and req.userSession)
-// 3. User is logged in, and sends a valid JWT (coreToken) token in the Authorization header, and having a UserSession is optional. (will populate request with req.user and optional req.userSession?)
+// middleware/client/client-auth-middleware.ts
+// Auth middleware for AugmentOS clients (Mobile App, Appstore, developer console)
+// Auth scenarios:
+// 0. User sends valid JWT - populates req.email
+// 1. User sends valid JWT - populates req.user  
+// 2. User sends valid JWT + has active session - populates req.user and req.userSession
+// 3. User sends valid JWT + optional session - populates req.user and optional req.userSession
 
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
 import { logger as rootLogger } from '../../services/logging';
 import { User, UserI } from "../../models/user.model";
-import { sessionService } from "../../services/session/session.service";
 import UserSession from "../../services/session/UserSession";
-// Import your user service/model functions
-// import { getUserByEmail } from '../../services/user.service';
-// import { getUserSession, getOptionalUserSession } from '../../services/session.service';
 
 const SERVICE_NAME = 'client-auth-middleware';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
@@ -26,38 +22,25 @@ if (!AUGMENTOS_AUTH_JWT_SECRET) {
   throw new Error('AUGMENTOS_AUTH_JWT_SECRET is not defined in environment variables');
 }
 
-// Define request interfaces that extend each other
-export interface AuthRequest extends Request {
-  email: string; // User's email, used as userId
-  logger: typeof logger; // Logger instance for this request
+// Define request types
+export type RequestWithEmail = Request & { 
+  email: string; 
+  logger: typeof logger; 
+};
+
+export type RequestWithUser = RequestWithEmail & { 
+  user: UserI; 
+};
+
+export interface RequestWithUserSession extends RequestWithUser {
+  userSession: UserSession;
 }
 
-export interface UserRequest extends AuthRequest {
-  user: UserI; // User object, populated after authentication
+export interface RequestWithOptionalUserSession extends RequestWithUser {
+  userSession?: UserSession;
 }
 
-export interface UserSessionRequest extends UserRequest {
-  userSession: UserSession; // Required user session, populated if available, returns 401 if not found.
-}
-
-export interface OptionalUserSessionRequest extends UserRequest {
-  userSession?: UserSession; // Optional user session, may or may not be present
-}
-
-// Internal helper to promisify middleware execution
-function runMiddleware(middleware: Function, req: Request, res: Response): Promise<void> {
-  return new Promise((resolve, reject) => {
-    middleware(req, res, (error?: any) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
-
-// Base JWT auth - only populates email (internal function)
+// Base JWT auth - only populates email
 async function clientAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
@@ -67,7 +50,7 @@ async function clientAuth(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: 'Authorization header missing or invalid' });
   }
 
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  const token = authHeader.substring(7);
 
   if (!token || token === 'null' || token === 'undefined') {
     logger.warn('Auth Middleware: Empty or invalid token value');
@@ -84,10 +67,9 @@ async function clientAuth(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ error: 'Invalid token data' });
     }
 
-    // Attach userId (email) to the request object
     const email = decoded.email.toLowerCase();
-    (req as AuthRequest).email = email;
-    (req as AuthRequest).logger = logger.child({ userId: email });
+    (req as RequestWithEmail).email = email;
+    (req as RequestWithEmail).logger = logger.child({ userId: email });
     logger.info(`Auth Middleware: User ${email} authenticated.`);
     next();
 
@@ -101,21 +83,19 @@ async function clientAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Optional client auth. Like clientAuth, but never blocks; unauthenticated requests continue.
+// Optional client auth - never blocks
 async function optionalClientAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
-  // If no Authorization header, proceed as anonymous and ensure a logger exists
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    (req as RequestWithEmail).logger = logger.child({ userId: 'anonymous' });
     return next();
   }
 
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  const token = authHeader.substring(7);
 
-  // If token is missing or clearly invalid, proceed anonymously
   if (!token || token === 'null' || token === 'undefined') {
-    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    (req as RequestWithEmail).logger = logger.child({ userId: 'anonymous' });
     return next();
   }
 
@@ -123,31 +103,27 @@ async function optionalClientAuth(req: Request, res: Response, next: NextFunctio
     const decoded = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
 
     if (!decoded || !decoded.email) {
-      (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+      (req as RequestWithEmail).logger = logger.child({ userId: 'anonymous' });
       return next();
     }
 
-    // Attach userId (email) to the request object
     const email = decoded.email.toLowerCase();
-    (req as AuthRequest).email = email;
-    (req as AuthRequest).logger = logger.child({ userId: email });
+    (req as RequestWithEmail).email = email;
+    (req as RequestWithEmail).logger = logger.child({ userId: email });
     return next();
 
   } catch (_error) {
-    // For optional auth, do not block on JWT errors; proceed as anonymous
-    (req as AuthRequest).logger = logger.child({ userId: 'anonymous' });
+    (req as RequestWithEmail).logger = logger.child({ userId: 'anonymous' });
     return next();
   }
 }
 
-
-// Fetches user object (internal function)
+// Fetches user object
 async function requireUser(req: Request, res: Response, next: NextFunction) {
-  const authReq = req as AuthRequest;
+  const authReq = req as RequestWithEmail;
   const logger = authReq.logger;
 
   try {
-    // Fetch user from database using email or create if not found (new user).
     const user = await User.findOrCreateUser(authReq.email);
 
     if (!user) {
@@ -155,8 +131,7 @@ async function requireUser(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Attach user to request
-    (req as UserRequest).user = user;
+    (req as RequestWithUser).user = user;
     logger.info(`requireUser: User object populated for ${authReq.email}`);
     next();
 
@@ -167,22 +142,20 @@ async function requireUser(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Fetches required user session (internal function)
+// Fetches required user session
 async function requireUserSession(req: Request, res: Response, next: NextFunction) {
-  const userReq = req as UserRequest;
+  const userReq = req as RequestWithUser;
   const logger = userReq.logger;
 
   try {
-    // Fetch user session from database/cache
-    const userSession = sessionService.getSessionByUserId(userReq.email);
+  const userSession = UserSession.getById(userReq.email);
 
     if (!userSession) {
       logger.warn(`requireUserSession: No active session found for user: ${userReq.email}`);
       return res.status(401).json({ error: 'No active session found' });
     }
 
-    // Attach session to request
-    (req as UserSessionRequest).userSession = userSession;
+    (req as RequestWithUserSession).userSession = userSession;
     logger.info(`requireUserSession: User session populated for ${userReq.email}`);
     next();
 
@@ -192,24 +165,22 @@ async function requireUserSession(req: Request, res: Response, next: NextFunctio
   }
 }
 
-// Fetches optional user session (internal function)
+// Fetches optional user session
 async function optionalUserSession(req: Request, res: Response, next: NextFunction) {
-  const maybeAuthReq = req as Partial<UserRequest>;
+  const maybeAuthReq = req as Partial<RequestWithUser>;
   const localLogger = maybeAuthReq.logger || logger.child({ userId: 'anonymous' });
 
   try {
-    // If no email set (anonymous request), skip session lookup
     const email = maybeAuthReq.email;
     if (!email) {
       localLogger.info(`optionalUserSession: Anonymous request, continuing without session`);
       return next();
     }
 
-    // Try to fetch user session, but don't fail if not found
-    const userSession = sessionService.getSessionByUserId(email);
+  const userSession = UserSession.getById(email);
 
     if (userSession) {
-      (req as OptionalUserSessionRequest).userSession = userSession;
+      (req as RequestWithOptionalUserSession).userSession = userSession;
       localLogger.info(`optionalUserSession: User session populated for ${email}`);
     } else {
       localLogger.info(`optionalUserSession: No session found for ${email}, continuing without session`);
@@ -218,105 +189,13 @@ async function optionalUserSession(req: Request, res: Response, next: NextFuncti
     return next();
   } catch (error) {
     localLogger.error(error as any, `optionalUserSession: Failed to fetch session`);
-    // Don't fail the request, just continue without session
     return next();
   }
 }
 
-// PUBLIC API - Each middleware calls its dependencies internally
-export async function authWithEmail(req: Request, res: Response, next: NextFunction) {
-  try {
-    await runMiddleware(clientAuth, req, res);
-    next();
-  } catch (error) {
-    // Error already handled by clientAuth middleware
-  }
-}
-
-export async function authWithUser(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Run clientAuth first
-    await runMiddleware(clientAuth, req, res);
-    // Then run requireUser
-    await runMiddleware(requireUser, req, res);
-    next();
-  } catch (error) {
-    // Error already handled by the middleware that failed
-  }
-}
-
-export async function authWithRequiredSession(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Run clientAuth first
-    await runMiddleware(clientAuth, req, res);
-    // Then run requireUser
-    await runMiddleware(requireUser, req, res);
-    // Finally run requireUserSession
-    await runMiddleware(requireUserSession, req, res);
-    next();
-  } catch (error) {
-    // Error already handled by the middleware that failed
-  }
-}
-
-export async function authWithOptionalSession(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Run clientAuth first
-    await runMiddleware(clientAuth, req, res);
-    // Then run requireUser
-    await runMiddleware(requireUser, req, res);
-    // Finally run optionalUserSession
-    await runMiddleware(optionalUserSession, req, res);
-    next();
-  } catch (error) {
-    // Error already handled by the middleware that failed
-  }
-}
-
-export async function optionalAuthWithOptionalSession(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Run clientAuth first
-    await runMiddleware(optionalClientAuth, req, res);
-    // Then run requireUser
-    // await runMiddleware(requireUser, req, res);
-    // Finally run optionalUserSession
-    await runMiddleware(optionalUserSession, req, res);
-    next();
-  } catch (error) {
-    // Error already handled by the middleware that failed
-  }
-}
-
-// Usage examples:
-/*
-import express from 'express';
-import { authWithEmail, authWithUser, authWithRequiredSession, authWithOptionalSession } from './auth.middleware';
-
-const app = express();
-
-// Scenario 0: Only email needed
-app.get('/ping', authWithEmail, (req: AuthRequest, res) => {
-  res.json({ message: `Hello ${req.email}` });
-});
-
-// Scenario 1: User object needed
-app.get('/profile', authWithUser, (req: UserRequest, res) => {
-  res.json({ user: req.user });
-});
-
-// Scenario 2: User and required session
-app.get('/dashboard', authWithRequiredSession, (req: UserSessionRequest, res) => {
-  res.json({ 
-    user: req.user, 
-    session: req.userSession 
-  });
-});
-
-// Scenario 3: User with optional session
-app.get('/settings', authWithOptionalSession, (req: OptionalUserSessionRequest, res) => {
-  res.json({ 
-    user: req.user, 
-    session: req.userSession || null 
-  });
-});
-*/
+// Simplified middleware composition - let Express handle the chain
+export const authWithEmail = [clientAuth];
+export const authWithUser = [clientAuth, requireUser];
+export const authWithRequiredSession = [clientAuth, requireUser, requireUserSession];
+export const authWithOptionalSession = [clientAuth, requireUser, optionalUserSession];
+export const optionalAuthWithOptionalSession = [optionalClientAuth, optionalUserSession];

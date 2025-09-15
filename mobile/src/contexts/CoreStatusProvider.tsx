@@ -1,13 +1,15 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import {Platform} from "react-native"
+import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/bridge/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {INTENSE_LOGGING} from "@/consts"
+import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {useConnectionStore} from "@/stores/connection"
+import {Platform} from "react-native"
+import {WebSocketStatus} from "@/managers/WebSocketManager"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -19,6 +21,8 @@ interface CoreStatusContextType {
 const CoreStatusContext = createContext<CoreStatusContextType | undefined>(undefined)
 
 export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
+  const connectionStatus = useConnectionStore(state => state.status)
+
   const [status, setStatus] = useState<CoreStatus>(() => {
     return CoreStatusParser.parseStatus({})
   })
@@ -30,6 +34,23 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
 
     const parsedStatus = CoreStatusParser.parseStatus(data)
     if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
+
+    // TODO: config: remove
+    if (Platform.OS === "android") {
+      if (parsedStatus.core_info.cloud_connection_status === "CONNECTED") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.CONNECTED)
+      } else if (parsedStatus.core_info.cloud_connection_status === "DISCONNECTED") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.DISCONNECTED)
+      } else if (parsedStatus.core_info.cloud_connection_status === "CONNECTING") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.CONNECTING)
+      } else if (parsedStatus.core_info.cloud_connection_status === "ERROR") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.ERROR)
+      }
+    }
 
     // only update the status if diff > 0
     setStatus(prevStatus => {
@@ -47,24 +68,23 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
     console.log("CoreStatus: Initializing core connection")
-    coreCommunicator.initialize()
+    bridge.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
 
   useEffect(() => {
-    const handleStatusUpdateReceived = (data: any) => {
+    const handleCoreStatusUpdate = (data: any) => {
       if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
       refreshStatus(data)
     }
 
-    coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    GlobalEventEmitter.on("CORE_STATUS_UPDATE", handleCoreStatusUpdate)
     return () => {
-      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      GlobalEventEmitter.removeListener("CORE_STATUS_UPDATE", handleCoreStatusUpdate)
     }
   }, [])
 
