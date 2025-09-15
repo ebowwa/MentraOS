@@ -378,7 +378,7 @@ static void show_default_ui(void)
 {
     BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
-    show_test_pattern(3);
+    show_test_pattern(4);
 
     BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
 }
@@ -602,18 +602,19 @@ static void create_scrolling_text_container(lv_obj_t *screen)
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
 
-    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
+    // **NEW: Set initial placeholder text with English and Chinese - will be replaced by protobuf messages**
     const char *initial_text =
-        "MentraOS AR Display Ready\n"
-        "Waiting for protobuf text messages...\n"
-        "This container will automatically update with incoming text content from the mobile app.\n"
-        "System initialized and ready for messages!";
+        "MentraOS AR Ready\n"
+        "Waiting for messages...\n" 
+        "EN/CN Support Ready\n"
+        "系统已初始化!\n"
+        "Hello 你好 World 世界";
 
     lv_label_set_text(label, initial_text);
 
-    // Style the label text - optimized settings
+    // Style the label text - using SimSun 14 CJK for proper Chinese character support
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(label, &lv_font_simsun_14_cjk, 0);  // SimSun 14 CJK for Chinese + English support
     lv_obj_set_style_text_line_space(label, 1, 0);  // Reduced line spacing for performance
 
     // Position label at top of container
