@@ -248,60 +248,6 @@ class SocketComms {
     }
   }
 
-  send_audio_play_response(requestId: string, success: boolean, error?: string, duration?: number) {
-    console.log(
-      `SocketCommsTS: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
-    )
-
-    const message: any = {
-      type: "audio_play_response",
-      requestId: requestId,
-      success: success,
-    }
-
-    if (error) message.error = error
-    if (duration !== undefined) message.duration = duration
-
-    try {
-      const jsonString = JSON.stringify(message)
-      this.ws.sendText(jsonString)
-      console.log("SocketCommsTS: Sent audio play response to server")
-    } catch (err) {
-      console.log(`SocketCommsTS: Failed to serialize audio play response: ${err}`)
-    }
-  }
-
-  // App Lifecycle
-  send_start_app(packageName: string) {
-    try {
-      const msg = {
-        type: "start_app",
-        packageName: packageName,
-        timestamp: Date.now(),
-      }
-
-      const jsonString = JSON.stringify(msg)
-      this.ws.sendText(jsonString)
-    } catch (error) {
-      console.log(`SocketCommsTS: Error building start_app JSON: ${error}`)
-    }
-  }
-
-  send_stop_app(packageName: string) {
-    try {
-      const msg = {
-        type: "stop_app",
-        packageName: packageName,
-        timestamp: Date.now(),
-      }
-
-      const jsonString = JSON.stringify(msg)
-      this.ws.sendText(jsonString)
-    } catch (error) {
-      console.log(`SocketCommsTS: Error building stop_app JSON: ${error}`)
-    }
-  }
-
   // Hardware Events
   sendButtonPress(buttonId: string, pressType: string) {
     try {
@@ -645,51 +591,6 @@ class SocketComms {
       default:
         console.log(`SocketCommsTS: Unknown message type: ${type} / full: ${JSON.stringify(msg)}`)
     }
-  }
-
-  parse_app_list(msg: any): ThirdPartyCloudApp[] {
-    let installedApps = msg.installedApps
-    let activeAppPackageNames = msg.activeAppPackageNames
-
-    // If not found at top level, look under userSession
-    if (!installedApps && msg.userSession) {
-      installedApps = msg.userSession.installedApps
-    }
-
-    if (!activeAppPackageNames && msg.userSession) {
-      activeAppPackageNames = msg.userSession.activeAppPackageNames
-    }
-
-    // Convert activeAppPackageNames into a Set for easy lookup
-    const runningPackageNames = new Set<string>()
-    if (activeAppPackageNames) {
-      for (const packageName of activeAppPackageNames) {
-        if (packageName) {
-          runningPackageNames.add(packageName)
-        }
-      }
-    }
-
-    // Build a list of ThirdPartyCloudApp objects from installedApps
-    const appList: ThirdPartyCloudApp[] = []
-    if (installedApps) {
-      for (const appJson of installedApps) {
-        const packageName = appJson.packageName || "unknown.package"
-        const isRunning = runningPackageNames.has(packageName)
-
-        const app: ThirdPartyCloudApp = {
-          packageName: packageName,
-          name: appJson.name || "Unknown App",
-          description: appJson.description || "No description available.",
-          webhookURL: appJson.webhookURL || "",
-          logoURL: appJson.logoURL || "",
-          isRunning: isRunning,
-        }
-        appList.push(app)
-      }
-    }
-
-    return appList
   }
 
   static get_current_iso_datetime(): string {
