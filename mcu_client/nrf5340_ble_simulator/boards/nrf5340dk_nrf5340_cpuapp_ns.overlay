@@ -1,6 +1,6 @@
 / {
     chosen {
-        zephyr,display = &ssd1306;  // Changed from &hls12vga to &ssd1306
+        zephyr,display = &hls12vga;  // Switch to HLS12VGA display
         nordic-nus-uart = &uart0;
     };
 };
@@ -130,6 +130,6 @@
         com-invdir;
         prechargep = <0x22>;
         segment-remap;
-        status = "okay";
+        status = "disabled";  // Disable SSD1306 when using HLS12VGA
     };
 };

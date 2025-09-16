@@ -2,6 +2,35 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.17.0] - 2025-09-16
+
+### 🖥️ HLS12VGA Projector Display Support & Modular Display System
+
+#### Complete HLS12VGA Integration
+- **📺 HLS12VGA 640x480 Support**: Full hardware support for TI DLP2000 projector module
+- **🔧 Modular Display Configuration**: Centralized display-specific settings system
+- **🎨 Adaptive Color Management**: Dynamic color handling for different display technologies
+- **🔄 Hardware Mirroring Correction**: Fixed horizontal display flipping for HLS12VGA
+- **🎭 Color Inversion Fix**: Proper white-on-black text display for projector hardware
+
+#### Display Configuration System
+- **⚙️ display_config.h/c**: Centralized configuration with display-type detection
+- **🎨 Adaptive Color Functions**: `display_get_text_color()`, `display_get_background_color()`, `display_get_adjusted_color()`
+- **🔧 Hardware-Level Fixes**: Direct pixel processing corrections in HLS12VGA driver
+- **🔀 Cross-Display Compatibility**: Maintains SSD1306 functionality while adding HLS12VGA support
+
+#### Technical Implementation
+- **🖥️ SPI Interface**: High-speed SPI communication for 640x480 projector data
+- **⚡ Performance Optimized**: Efficient pixel processing with hardware mirroring correction
+- **🎯 LVGL Integration**: Seamless integration with existing LVGL graphics system
+- **📋 Conditional Compilation**: Clean build system supporting multiple display types
+
+#### Multi-Display Architecture
+- **🔧 Display Type Detection**: Automatic configuration based on connected hardware
+- **🎨 Color Inversion Support**: Hardware-level bit mapping respects display configuration
+- **🔄 Mirroring Support**: Configurable horizontal mirroring for different display orientations
+- **✅ Backward Compatibility**: Preserves all existing SSD1306 OLED functionality
+
 ## [2.16.0] - 2025-09-02
 
 ### 🎵 LC3 Audio Codec Integration & Live Caption System

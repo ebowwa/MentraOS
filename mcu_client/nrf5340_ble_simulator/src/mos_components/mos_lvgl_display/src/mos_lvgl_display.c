@@ -88,9 +88,9 @@ void lv_example_scroll_text(void)
     // 设置长文本（会触发滚动）
     lv_label_set_text(label, "!!!!!nRF5340 + NCS 3.0.0 + LVGL!!!!");
 
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(label, display_get_text_color(), 0);  // Use adaptive text color
     lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);  // Smaller font for SSD1306 (was 48)
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
 }
 
 /**
@@ -225,9 +225,9 @@ void lvgl_display_text(void)
     // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐720
     // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);  // 左对齐
     // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
-    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(hello_world_label, display_get_text_color(), 0);  // Use adaptive text color
     lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_14, 0);  // Was 48, using 14 for memory
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
 }
 static lv_obj_t   *counter_label;
 static lv_timer_t *counter_timer;  // 指针即可
@@ -261,11 +261,11 @@ void ui_create(void)
     lv_obj_align(gyr_label, LV_TEXT_ALIGN_LEFT, 0, 380);
 
     // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       // 左对齐
-    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(acc_label, display_get_text_color(), 0);  // Use adaptive text color
     lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
-    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  // 白色对应非零值
+    lv_obj_set_style_text_color(gyr_label, display_get_text_color(), 0);  // Use adaptive text color
     lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
     // 创建一个 100ms 周期的定时器，把 count 指针经 user_data 传给它
     static int count = 0;
     counter_timer    = lv_timer_create(counter_timer_cb, 300, &count);
@@ -305,8 +305,8 @@ void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t
     lv_obj_set_pos(cont, x, y);
     lv_obj_set_scroll_dir(cont, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-    // 设置容器背景为黑色
-    lv_obj_set_style_bg_color(cont, lv_color_black(), LV_PART_MAIN);
+    // 设置容器背景为适应性背景色
+    lv_obj_set_style_bg_color(cont, display_get_background_color(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
     // 在容器中创建标签
@@ -315,8 +315,8 @@ void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t
     lv_obj_set_width(label, w);
     lv_label_set_text(label, txt);
 
-    // 设置文字为白色和指定字体
-    lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    // 设置文字为适应性颜色和指定字体
+    lv_obj_set_style_text_color(label, display_get_text_color(), LV_PART_MAIN);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
     // 强制标签布局更新，获取正确的内容高度
@@ -408,7 +408,8 @@ static void create_chess_pattern(lv_obj_t *screen)
             lv_obj_t *square = lv_obj_create(screen);
             lv_obj_set_size(square, chess_size, chess_size);
             lv_obj_set_pos(square, col * chess_size, row * chess_size);
-            lv_obj_set_style_bg_color(square, is_white ? lv_color_white() : lv_color_black(), 0);
+            lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+            lv_obj_set_style_bg_color(square, color, 0);
             lv_obj_set_style_bg_opa(square, LV_OPA_COVER, 0);
             lv_obj_set_style_border_width(square, 0, 0);
             lv_obj_set_style_pad_all(square, 0, 0);
@@ -435,7 +436,8 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
         lv_obj_t *stripe = lv_obj_create(screen);
         lv_obj_set_size(stripe, config->width, stripe_height);
         lv_obj_set_pos(stripe, 0, i * stripe_height);
-        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+        lv_obj_set_style_bg_color(stripe, color, 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
@@ -461,7 +463,8 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
         lv_obj_t *stripe = lv_obj_create(screen);
         lv_obj_set_size(stripe, stripe_width, config->height);
         lv_obj_set_pos(stripe, i * stripe_width, 0);
-        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+        lv_obj_set_style_bg_color(stripe, color, 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
@@ -506,7 +509,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_label_set_text(scrolling_welcome_label, "Welcome to MentraOS NExFirmware!");
 
     // Set text properties
-    lv_obj_set_style_text_color(scrolling_welcome_label, lv_color_white(), 0);  // White text
+    lv_obj_set_style_text_color(scrolling_welcome_label, display_get_text_color(), 0);  // Use adaptive text color
     lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_14,  // Was 48, using 14 for memory
                                0);  // **UPGRADED: Largest font (48pt)**
 
@@ -520,7 +523,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_obj_set_y(scrolling_welcome_label, (480 - lv_obj_get_height(scrolling_welcome_label)) / 2);
 
     // Optional: Add background for better visibility
-    lv_obj_set_style_bg_color(scrolling_welcome_label, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(scrolling_welcome_label, display_get_background_color(), 0);
     lv_obj_set_style_bg_opa(scrolling_welcome_label, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scrolling_welcome_label, 15, 0);  // Add padding
     lv_obj_set_style_radius(scrolling_welcome_label, 5, 0);    // Rounded corners
@@ -707,7 +710,7 @@ static void show_test_pattern(int pattern_id)
 
     // Get screen and set black background
     lv_obj_t *screen = lv_screen_active();
-    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(screen, display_get_background_color(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
     switch (pattern_id)

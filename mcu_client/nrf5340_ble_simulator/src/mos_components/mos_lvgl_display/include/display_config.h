@@ -70,6 +70,12 @@ typedef struct {
         uint16_t max_text_length;     // Maximum text length for this display
     } performance;
     
+    // Color configuration for display-specific handling
+    struct {
+        uint8_t invert_colors;        // Invert black/white colors (for HLS12VGA)
+        uint8_t hardware_mirroring;   // Hardware-level mirroring compensation
+    } color_config;
+    
 } display_config_t;
 
 /**
@@ -115,5 +121,24 @@ const lv_font_t* display_get_font(const char *text_type);
  * @param y Pointer to store calculated Y position
  */
 void display_calculate_container_dimensions(uint16_t *width, uint16_t *height, uint16_t *x, uint16_t *y);
+
+/**
+ * @brief Get display-appropriate text color
+ * @return LVGL color for text based on current display type
+ */
+lv_color_t display_get_text_color(void);
+
+/**
+ * @brief Get display-appropriate background color  
+ * @return LVGL color for background based on current display type
+ */
+lv_color_t display_get_background_color(void);
+
+/**
+ * @brief Apply display-specific color adjustments
+ * @param color Original color to adjust
+ * @return Adjusted color based on display characteristics
+ */
+lv_color_t display_get_adjusted_color(lv_color_t color);
 
 #endif /* DISPLAY_CONFIG_H */

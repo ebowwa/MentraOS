@@ -48,6 +48,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .performance = {
             .refresh_rate_ms = 16, .animation_enabled = 1, .max_text_length = 128
+        },
+        .color_config = {
+            .invert_colors = 0,        // Unknown display uses normal colors
+            .hardware_mirroring = 0    // Unknown display has no mirroring
         }
     },
 
@@ -72,6 +76,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .performance = {
             .refresh_rate_ms = 16, .animation_enabled = 1, .max_text_length = 512
+        },
+        .color_config = {
+            .invert_colors = 0,        // Dummy display uses normal colors
+            .hardware_mirroring = 0    // Dummy display has no mirroring
         }
     },
 
@@ -96,6 +104,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .performance = {
             .refresh_rate_ms = 16, .animation_enabled = 1, .max_text_length = 128
+        },
+        .color_config = {
+            .invert_colors = 0,        // SSD1306 works correctly, no inversion needed
+            .hardware_mirroring = 0    // SSD1306 displays correctly, no mirroring
         }
     },
 
@@ -120,6 +132,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .performance = {
             .refresh_rate_ms = 16, .animation_enabled = 1, .max_text_length = 512
+        },
+        .color_config = {
+            .invert_colors = 1,        // HLS12VGA needs color inversion (text LEDs off -> on)
+            .hardware_mirroring = 1    // HLS12VGA has mirrored output that needs correction
         }
     }
 };
@@ -256,4 +272,50 @@ void display_calculate_container_dimensions(uint16_t *width, uint16_t *height, u
     if (height) *height = config->layout.usable_height;
     if (x) *x = config->layout.margin;
     if (y) *y = config->layout.margin;
+}
+
+lv_color_t display_get_text_color(void)
+{
+    const display_config_t *config = display_get_config();
+    
+    if (config->color_config.invert_colors) {
+        // For HLS12VGA: invert to make text LEDs turn ON
+        return lv_color_black();
+    } else {
+        // For SSD1306 and normal displays: white text
+        return lv_color_white();
+    }
+}
+
+lv_color_t display_get_background_color(void)
+{
+    const display_config_t *config = display_get_config();
+    
+    if (config->color_config.invert_colors) {
+        // For HLS12VGA: invert to make background LEDs turn OFF
+        return lv_color_white();
+    } else {
+        // For SSD1306 and normal displays: black background
+        return lv_color_black();
+    }
+}
+
+lv_color_t display_get_adjusted_color(lv_color_t color)
+{
+    const display_config_t *config = display_get_config();
+    
+    if (config && config->color_config.invert_colors) {
+        // For color inversion, swap white and black
+        lv_color32_t color32 = lv_color_to_32(color, LV_OPA_COVER);
+        lv_color32_t white32 = lv_color_to_32(lv_color_white(), LV_OPA_COVER);
+        lv_color32_t black32 = lv_color_to_32(lv_color_black(), LV_OPA_COVER);
+        
+        if (lv_color32_eq(color32, white32)) {
+            return lv_color_black();
+        } else if (lv_color32_eq(color32, black32)) {
+            return lv_color_white();
+        }
+    }
+    
+    return color;
 }
