@@ -6,7 +6,6 @@ import { User } from '../models/user.model';
 import { Types } from 'mongoose';
 import { OrganizationService } from '../services/core/organization.service';
 import App from '../models/app.model';
-import sessionService from '../services/session/session.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import multer from 'multer';
 import FormData from 'form-data';

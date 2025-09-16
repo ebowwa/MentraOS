@@ -190,6 +190,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String bleImgId;
         String requestId;
         String webhookUrl;
+        String authToken;
         FileTransferSession session;
         long phoneStartTime;  // When phone received the request
         long bleTransferStartTime;  // When BLE transfer actually started
@@ -199,9 +200,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             this.bleImgId = bleImgId;
             this.requestId = requestId;
             this.webhookUrl = webhookUrl;
+            this.authToken = "";
             this.phoneStartTime = System.currentTimeMillis();
             this.bleTransferStartTime = 0;
             this.glassesCompressionDurationMs = 0;
+        }
+
+        void setAuthToken(String authToken) {
+            this.authToken = authToken != null ? authToken : "";
         }
     }
 
@@ -2467,8 +2473,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
-        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl + ", size=" + size);
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
+        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
         try {
             JSONObject json = new JSONObject();
@@ -2477,6 +2483,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             json.put("appId", appId);
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                 json.put("webhookUrl", webhookUrl);
+            }
+            if (authToken != null && !authToken.isEmpty()) {
+                json.put("authToken", authToken);
             }
             if (size != null && !size.isEmpty()) {
                 json.put("size", size);
@@ -2491,8 +2500,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             // Always prepare for potential BLE transfer
             if (webhookUrl != null && !webhookUrl.isEmpty()) {
-                // Store the transfer info for BLE route
-                blePhotoTransfers.put(bleImgId, new BlePhotoTransfer(bleImgId, requestId, webhookUrl));
+                // Store the transfer info for BLE route - include authToken
+                BlePhotoTransfer transfer = new BlePhotoTransfer(bleImgId, requestId, webhookUrl);
+                transfer.setAuthToken(authToken); // Store authToken for BLE transfer
+                blePhotoTransfers.put(bleImgId, transfer);
             }
 
             Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
@@ -3034,7 +3045,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try{
             JSONObject cmdObject = new JSONObject();
             cmdObject.put("C", "cs_hrt"); // Video command
-            cmdObject.put("B", "");     // Add the body
+            // cmdObject.put("W", 1);        // Wake up MTK system
+            cmdObject.put("B", "");       // Add the body
             String jsonStr = cmdObject.toString();
             Log.d(TAG, "Sending hrt command: " + jsonStr);
             byte[] packedData = K900ProtocolUtils.packDataToK900(jsonStr.getBytes(StandardCharsets.UTF_8), K900ProtocolUtils.CMD_TYPE_STRING);

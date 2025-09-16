@@ -990,6 +990,15 @@ export class TranslationManager {
     // Clean up failed stream
     await this.cleanupStream(subscription, "provider_error");
 
+    // If we don't have the subscription active anymore, don't retry
+    if (!this.activeSubscriptions.has(subscription)) {
+      this.logger.info(
+        { subscription },
+        "Subscription no longer active - not retrying translation stream",
+      );
+      return;
+    }
+
     // Implement retry logic
     const attempts = this.streamRetryAttempts.get(subscription) || 0;
 

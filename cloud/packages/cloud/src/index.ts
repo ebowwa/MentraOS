@@ -5,8 +5,7 @@
 // Load environment variables first
 import dotenv from "dotenv";
 import path from "path";
-// Look for .env file in the project root
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config();
 
 import express from "express";
 import { Server } from "http";
@@ -16,38 +15,13 @@ import helmet from "helmet";
 import pinoHttp from "pino-http";
 
 // Import services
-// import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from "./services/debug/debug-service";
-import { sessionService } from "./services/session/session.service";
+// sessionService consolidated into UserSession static APIs
 import { websocketService } from "./services/websocket/websocket.service";
 import * as AppUptimeService from "./services/core/app-uptime.service";
-
-// Import routes
-import appRoutes from "./routes/apps.routes";
-import authRoutes from "./routes/auth.routes";
-import transcriptRoutes from "./routes/transcripts.routes";
-import appSettingsRoutes from "./routes/app-settings.routes";
-import errorReportRoutes from "./routes/error-report.routes";
-import devRoutes from "./routes/developer.routes";
-import serverRoutes from "./routes/server.routes";
-import adminRoutes from "./routes/admin.routes";
-import photoRoutes from "./routes/photos.routes";
-import galleryRoutes from "./routes/gallery.routes";
-import toolsRoutes from "./routes/tools.routes";
-import hardwareRoutes from "./routes/hardware.routes";
-import audioRoutes from "./routes/audio.routes";
-import userDataRoutes from "./routes/user-data.routes";
-import permissionsRoutes from "./routes/permissions.routes";
-import accountRoutes from "./routes/account.routes";
-import organizationRoutes from "./routes/organization.routes";
-import onboardingRoutes from "./routes/onboarding.routes";
-// import rtmpRelayRoutes from "./routes/rtmp-relay.routes";
-import appUptimeRoutes from "./routes/app-uptime.routes";
-import streamsRoutes from "./routes/streams.routes";
-
-// import appCommunicationRoutes from './routes/app-communication.routes';
-
-// import path from "path";
+import UserSession from "./services/session/UserSession";
+// Register API routes from central index
+import { registerApi } from './api';
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
@@ -99,13 +73,9 @@ const server = new Server(app);
 
 // Initialize services in the correct order
 const debugService = new DebugService(server);
-// const sessionService = initializeSessionService(debugService);
-
-// Initialize websocket service after session service is ready
-// webSocketService.initialize();
 
 // Export services for use in other modules
-export { sessionService, debugService, websocketService };
+export { debugService, websocketService };
 
 // Middleware setup
 app.use(helmet());
@@ -217,33 +187,7 @@ app.use(
 );
 
 // Routes
-app.use("/api/apps", appRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/apps", appRoutes);
-app.use("/auth", authRoutes);
-app.use("/appsettings", appSettingsRoutes);
-app.use("/tpasettings", appSettingsRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
-app.use("/api/dev", devRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/orgs", organizationRoutes);
-// app.use('/api/app-server', appServerRoutes); // Removed as part of HeartbeatManager implementation
-app.use("/api/server", serverRoutes);
-app.use("/api/photos", photoRoutes);
-app.use("/api/gallery", galleryRoutes);
-app.use("/api/tools", toolsRoutes);
-app.use("/api/permissions", permissionsRoutes);
-app.use("/api/hardware", hardwareRoutes);
-// HTTP routes for augmentOS settings are now replaced by WebSocket implementation
-// app.use('/api/augmentos-settings', augmentosSettingsRoutes);
-app.use(errorReportRoutes);
-app.use(transcriptRoutes);
-app.use(audioRoutes);
-app.use("/api/user-data", userDataRoutes);
-app.use("/api/account", accountRoutes);
-app.use("/api/onboarding", onboardingRoutes);
-// app.use("/api/rtmp-relay", rtmpRelayRoutes);
-app.use("/api/app-uptime", appUptimeRoutes);
-app.use("/api/streams", streamsRoutes);
+registerApi(app);
 
 // app.use('/api/app-communication', appCommunicationRoutes);
 // app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
@@ -251,9 +195,7 @@ app.use("/api/streams", streamsRoutes);
 // Health check endpoint
 app.get("/health", (req, res) => {
   try {
-    const SessionStorage = require("./services/session/SessionStorage").default;
-    const sessionStorage = SessionStorage.getInstance();
-    const activeSessions = sessionStorage.getAllSessions();
+  const activeSessions = UserSession.getAllSessions();
 
     res.json({
       status: "ok",
@@ -273,60 +215,6 @@ app.get("/health", (req, res) => {
   }
 });
 
-// Transcription monitoring endpoint for detailed stats
-app.get("/api/transcription/stats", (req, res) => {
-  try {
-    // Import SessionStorage to get all active sessions
-    const SessionStorage = require("./services/session/SessionStorage").default;
-    const sessionStorage = SessionStorage.getInstance();
-    const activeSessions = sessionStorage.getAllSessions();
-
-    // Get per-session transcription stats
-    const sessionStats = activeSessions.map((session: any) => {
-      const metrics = session.transcriptionManager
-        ? session.transcriptionManager.getMetrics()
-        : {};
-      return {
-        sessionId: session.sessionId,
-        userId: session.userId,
-        isTranscribing: session.isTranscribing,
-        activeStreams: metrics.activeStreams || 0,
-        totalStreams: metrics.totalStreams || 0,
-        byProvider: metrics.byProvider || {},
-        connectedAt: session.connectedAt,
-        lastActivity: session.lastActivity,
-      };
-    });
-
-    // const totalStreams = sessionStats.reduce((sum, s) => sum + s.activeStreams, 0);
-    // const transcribingSessions = sessionStats.filter(s => s.isTranscribing).length;
-
-    res.json({
-      timestamp: new Date().toISOString(),
-      sessions: {
-        totalSessions: activeSessions.length,
-        // transcribingSessions,
-        // totalActiveStreams: totalStreams,
-        // avgStreamsPerSession: activeSessions.length > 0 ? (totalStreams / activeSessions.length).toFixed(2) : 0,
-        details: sessionStats,
-      },
-      // providers: {
-      //   // Aggregate provider usage across all sessions
-      //   summary: sessionStats.reduce((acc: any, session) => {
-      //     Object.entries(session.byProvider).forEach(([provider, count]) => {
-      //       acc[provider] = (acc[provider] || 0) + count;
-      //     });
-      //     return acc;
-      //   }, {})
-      // }
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: "Failed to get transcription stats",
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-});
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "./public")));
@@ -349,10 +237,12 @@ if (process.env.UPTIME_SERVICE_RUNNING === "true") {
 try {
   server.listen(PORT, () => {
     logger.info(`\n
-                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
-                😎 AugmentOS Cloud Server🚀
-                🌐 Listening on port ${PORT}             🌐
-                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
+        ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+        ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+        ☁️☁️☁️      😎 MentraOS Cloud Server 🚀     
+        ☁️☁️☁️      🌐 Listening on port ${PORT} 🌐
+        ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+        ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️\n`);
   });
 } catch (error) {
   logger.error(error, "Failed to start server:");

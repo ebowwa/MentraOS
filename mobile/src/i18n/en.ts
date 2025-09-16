@@ -1,7 +1,7 @@
 const en = {
   deviceSettings: {
     glassesNeededForGlassesMic: "Connect glasses to enable",
-    phoneMic: "Phone Microphone",
+    systemMic: "System Microphone",
     glassesMic: "Glasses Microphone",
     cameraButtonAction: "Camera Button Action",
     takeGalleryPhoto: "Take Gallery Photo",
@@ -20,7 +20,11 @@ const en = {
     update: "Update",
     retryConnection: "Retry Connection",
     skipUpdate: "Skip Update",
-    continueAnyways: "Continue Anyways",
+    continueAnyway: "Continue Anyway",
+    resetUrl: "Switch to Default Server",
+    connectingToServer: "Connecting to server...",
+    retrying: "Retrying...",
+    resetting: "Resetting...",
   },
   simulatedGlasses: {
     showDashboard: "Show Dashboard",
@@ -178,7 +182,7 @@ const en = {
     autoBrightnessLabel: "Auto Brightness",
     autoBrightnessSubtitle: "Automatically adjust the brightness of your smart glasses based on the ambient light.",
     notificationsLabel: "Notifications Access",
-    notificationsSubtitle: "Allow AugmentOS to forward your phone notifications to your smart glasses.",
+    notificationsSubtitle: "Allow Mentra to forward your phone notifications to your smart glasses.",
     selectMic: "Select which microphone to use",
     simulatedGlassesNote: "This setting has no effect when using Simulated Glasses",
     profileSettings: "Profile Settings",
@@ -218,6 +222,8 @@ const en = {
     newUi: "New UI",
     newUiSubtitle: "Enable the new home screen UI. (Requires restarting the app)",
     loggingOutMessage: "We're logging you out...",
+    themeSettings: "Theme Settings",
+    feedback: "Give Feedback",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -310,7 +316,7 @@ const en = {
     appNotOnlineTitle: "App Not Online",
     appNotOnlineMessage: "This app is not online. Please try again later.",
     pairingBatteryTooLow:
-      "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} and try again.",
+      "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} to at least 25% and try again.",
   },
   common: {
     ok: "OK",
@@ -359,6 +365,14 @@ const en = {
     mirror: "Mirror",
     store: "Store",
     account: "Account",
+  },
+  feedback: {
+    thankYou: "Thank You!",
+    feedbackReceived: "Your feedback has been received.",
+    submitFeedback: "Submit Feedback",
+    shareYourThoughts: "Share your thoughts, suggestions, or report issues...",
+    giveFeedback: "Give Feedback",
+    errorSendingFeedback: "There was an error sending your feedback. Please try again.",
   },
 }
 

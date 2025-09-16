@@ -2,10 +2,9 @@ import React, {useState, useEffect} from "react"
 import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
@@ -17,23 +16,18 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import ServerComms from "@/services/ServerComms"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const {replace} = useNavigationHistory()
-
-  const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
-    status.core_info.bypass_audio_encoding_for_debugging,
-  )
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
   const [showNewUi, setShowNewUi] = useState(false)
-  const [powerSavingMode, setPowerSavingMode] = useState(status.core_info.power_saving_mode)
+  const [powerSavingMode, setPowerSavingMode] = useState(false)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -43,12 +37,6 @@ export default function DeveloperSettingsScreen() {
     const newSetting = !reconnectOnAppForeground
     await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
     setReconnectOnAppForeground(newSetting)
-  }
-
-  const toggleBypassAudioEncodingForDebugging = async () => {
-    const newSetting = !isBypassAudioEncodingForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
-    setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
   }
 
   const toggleNewUi = async () => {
@@ -66,6 +54,7 @@ export default function DeveloperSettingsScreen() {
       showAlert("Empty URL", "Please enter a URL or reset to default.", [{text: "OK"}])
       return
     }
+
     if (!urlToTest.startsWith("http://") && !urlToTest.startsWith("https://")) {
       showAlert("Invalid URL", "Please enter a valid URL starting with http:// or https://", [{text: "OK"}])
       return
@@ -77,56 +66,67 @@ export default function DeveloperSettingsScreen() {
       // Test the URL by fetching the version endpoint
       const testUrl = `${urlToTest}/apps/version`
       console.log(`Testing URL: ${testUrl}`)
-      const response = await axios.get(testUrl, {timeout: 5000})
 
-      // Check if the request was successful (status 200-299)
-      if (response.status >= 200 && response.status < 300) {
-        console.log("URL Test Successful:", response.data)
-        // Save the URL if the test passes
-        await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await coreCommunicator.setServerUrl(urlToTest) // TODO: config: remove
-        setSavedCustomUrl(urlToTest)
-        await showAlert(
-          "Success",
-          "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
-          [
-            {
-              text: translate("common:ok"),
-              onPress: () => {
-                replace("/auth/core-token-exchange")
+      // Create an AbortController for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+      try {
+        const response = await fetch(testUrl, {
+          method: "GET",
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId) // Clear timeout if request completes
+
+        // Check if the request was successful (status 200-299)
+        if (response.ok) {
+          const data = await response.json()
+          console.log("URL Test Successful:", data)
+
+          // Save the URL if the test passes
+          await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
+          await bridge.setServerUrl(urlToTest) // TODO: config: remove
+          setSavedCustomUrl(urlToTest)
+
+          await showAlert(
+            "Success",
+            "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
+            [
+              {
+                text: translate("common:ok"),
+                onPress: () => {
+                  replace("/init")
+                },
               },
-            },
-          ],
-        )
-      } else {
-        // Handle non-2xx responses as errors
-        console.error(`URL Test Failed: Status ${response.status}`)
-        showAlert(
-          "Verification Failed",
-          `The server responded, but with status ${response.status}. Please check the URL and server status.`,
-          [{text: "OK"}],
-        )
+            ],
+          )
+        } else {
+          // Handle non-2xx responses as errors
+          console.error(`URL Test Failed: Status ${response.status}`)
+          showAlert(
+            "Verification Failed",
+            `The server responded, but with status ${response.status}. Please check the URL and server status.`,
+            [{text: "OK"}],
+          )
+        }
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId) // Ensure timeout is cleared
+        throw fetchError // Re-throw to be caught by outer try-catch
       }
     } catch (error: unknown) {
       // Handle network errors or timeouts
       console.error("URL Test Failed:", error instanceof Error ? error.message : "Unknown error")
+
       let errorMessage = "Could not connect to the specified URL. Please check the URL and your network connection."
 
-      // Type guard for axios error with code property
-      if (error && typeof error === "object" && "code" in error && error.code === "ECONNABORTED") {
+      // Check if it's an abort error (timeout)
+      if (error instanceof Error && error.name === "AbortError") {
         errorMessage = "Connection timed out. Please check the URL and server status."
       }
-      // Type guard for axios error with response property
-      else if (
-        error &&
-        typeof error === "object" &&
-        "response" in error &&
-        error.response &&
-        typeof error.response === "object" &&
-        "status" in error.response
-      ) {
-        // Server responded with an error status code (4xx, 5xx)
-        errorMessage = `Server responded with error ${error.response.status}. Please check the URL and server status.`
+      // Check for network errors
+      else if (error instanceof TypeError && error.message.includes("fetch")) {
+        errorMessage = "Network error occurred. Please check your internet connection and the URL."
       }
 
       showAlert("Verification Failed", errorMessage, [{text: "OK"}])
@@ -137,14 +137,14 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    await coreCommunicator.setServerUrl("") // TODO: config: remove
+    await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    showAlert("Success", "Backend URL reset to default.", [
+    showAlert("Success", "Reset backend URL to default.", [
       {
         text: "OK",
         onPress: () => {
-          replace("/auth/core-token-exchange")
+          replace("/init")
         },
       },
     ])
@@ -184,15 +184,18 @@ export default function DeveloperSettingsScreen() {
   // Load saved URL on mount
   useEffect(() => {
     const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI)
       setShowNewUi(newUiSetting)
+
+      const powerSavingMode = await loadSetting(SETTINGS_KEYS.power_saving_mode)
+      setPowerSavingMode(powerSavingMode)
     }
     loadSettings()
   }, [])
@@ -257,7 +260,7 @@ export default function DeveloperSettingsScreen() {
                 value={powerSavingMode}
                 onValueChange={async value => {
                   setPowerSavingMode(value)
-                  await coreCommunicator.sendTogglePowerSavingMode(value)
+                  await bridge.sendTogglePowerSavingMode(value)
                 }}
               />
               <Spacer height={theme.spacing.md} />

@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -12,15 +12,15 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
+import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {loadSetting} from "@/utils/SettingsHelper"
 
 export default function TranscriptionSettingsScreen() {
   const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack} = useNavigationHistory()
 
-  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(
-    status.core_info.enforce_local_transcription,
-  )
+  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState(STTModelManager.getCurrentModelId())
   const [modelInfo, setModelInfo] = useState<any>(null)
   const [allModels, setAllModels] = useState<any[]>([])
@@ -28,9 +28,13 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
-    status.core_info.bypass_vad_for_debugging,
-  )
+  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
+
+  // load settings:
+  useEffect(() => {
+    loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
+    loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+  }, [])
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -97,7 +101,8 @@ export default function TranscriptionSettingsScreen() {
     }
 
     const newSetting = !isEnforceLocalTranscriptionEnabled
-    await coreCommunicator.sendToggleEnforceLocalTranscription(newSetting)
+    await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
@@ -113,7 +118,7 @@ export default function TranscriptionSettingsScreen() {
       try {
         await STTModelManager.activateModel(modelId)
         showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-        await coreCommunicator.restartTranscription()
+        await bridge.restartTranscription()
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -167,7 +172,7 @@ export default function TranscriptionSettingsScreen() {
 
               // If local transcription is enabled, disable it
               if (isEnforceLocalTranscriptionEnabled) {
-                await coreCommunicator.sendToggleEnforceLocalTranscription(false)
+                await bridge.sendToggleEnforceLocalTranscription(false)
                 setIsEnforceLocalTranscriptionEnabled(false)
               }
             } catch (error: any) {
@@ -189,10 +194,18 @@ export default function TranscriptionSettingsScreen() {
     return "Preparing..."
   }
 
-  const checkModelStatus = async () => {
+  const initSelectedModel = async () => {
+    const modelId = await STTModelManager.getCurrentModelIdFromPreferences()
+    if (modelId) {
+      setSelectedModelId(modelId)
+    }
+    checkModelStatus(modelId)
+  }
+
+  const checkModelStatus = async (modelId?: string) => {
     setIsCheckingModel(true)
     try {
-      const info = await STTModelManager.getModelInfo(selectedModelId)
+      const info = await STTModelManager.getModelInfo(modelId || selectedModelId)
       setModelInfo(info)
       const models = await STTModelManager.getAllModelsInfo()
       setAllModels(models)
@@ -205,21 +218,14 @@ export default function TranscriptionSettingsScreen() {
 
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
+    await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   useEffect(() => {
-    setIsEnforceLocalTranscriptionEnabled(status.core_info.enforce_local_transcription)
-  }, [status.core_info.enforce_local_transcription])
-
-  useEffect(() => {
-    checkModelStatus()
+    initSelectedModel()
   }, [])
-
-  useEffect(() => {
-    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>

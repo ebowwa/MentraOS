@@ -2,6 +2,17 @@ syntax = "proto3";
 
 package mentraos.ble;
 
+
+import "google/protobuf/descriptor.proto";
+
+// ---- Schema version: single-number file option (build-time) ----
+extend google.protobuf.FileOptions {
+  uint32 mentra_schema_version = 70001; // single, monotonically increasing schema version
+}
+
+// Set current schema version here (bump on any schema change).
+option (mentra_schema_version) = 2;
+
 // ============================================
 // Base Message Types
 // ============================================
@@ -29,7 +40,7 @@ message PhoneToGlasses {
     // Display System - These queue until commit
     DisplayText display_text = 30;
     DisplayImage display_image = 31;
-    CacheImage cache_image = 32;  // Renamed from PreloadImage for consistency
+    CacheImage cache_image = 32;
     DisplayCachedImage display_cached_image = 33;
     ClearCachedImage clear_cached_image = 34;
     DisplayScrollingText display_scrolling_text = 35;
@@ -63,6 +74,9 @@ message PhoneToGlasses {
     // System Control
     RestartRequest restart = 60;
     FactoryResetRequest factory_reset = 61;
+
+    // Runtime protocol version query
+    VersionRequest version_request = 70;
   }
 }
 
@@ -94,6 +108,9 @@ message GlassesToPhone {
 
     // Dashboard System
     DashboardShown dashboard_shown = 43;
+
+    // Runtime protocol version response
+    VersionResponse version_response = 70;
   }
 }
 
@@ -243,7 +260,7 @@ message DisplayText {
   uint32 color = 2;      // RGB565 format (e.g., 0xF800 for red)
   uint32 x = 3;
   uint32 y = 4;
-  uint32 size = 5;       // Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+  uint32 size = 5;       // Font size as integer
 }
 
 // Initiates bitmap transfer - actual data comes via binary protocol
@@ -257,7 +274,7 @@ message DisplayImage {
   uint32 total_chunks = 7;
 }
 
-message CacheImage {  // Renamed from PreloadImage
+message CacheImage {
   string stream_id = 1;
   uint32 image_id = 2;    // ID for later reference
   uint32 width = 3;
@@ -295,7 +312,7 @@ message DisplayScrollingText {
 
   uint32 line_spacing = 8;   // pixels between lines
   uint32 speed = 9;          // pixels/sec scrolling up
-  uint32 size = 10;          // Font size as integer (e.g., 1=small, 2=medium, 3=large, or any custom size)
+  uint32 size = 10;          // Font size as integer
   bool loop = 11;            // wrap to top when finished
   uint32 pause_ms = 12;      // delay before restart (if looping)
 }
@@ -372,9 +389,9 @@ message DisplayQueueStatus {}
 
 // Response with queue information
 message DisplayQueueInfo {
-  uint32 queued_commands = 1;  // Number of commands waiting for commit
-  uint32 queue_bytes = 2;      // Memory used by queue
-  uint32 max_queue_size = 3;   // Maximum queue size in bytes
+  uint32 queued_commands = 1;   // Number of commands waiting for commit
+  uint32 queue_bytes = 2;       // Memory used by queue
+  uint32 max_queue_size = 3;    // Maximum queue size in bytes
   bool last_commit_success = 4; // Status of last commit operation
 }
 
@@ -426,17 +443,18 @@ message Vector3 {
 
 message ButtonEvent {
   enum Button {
-    CENTER = 0;
-    LEFT = 1;
-    RIGHT = 2;
+    LEFT_BACK = 0;
+    RIGHT_BACK = 1;
   }
   Button button = 1;
 
-  enum State {
-    UP = 0;
-    DOWN = 1;
+  enum Event {
+    SINGLE_TAP = 0;
+    DOUBLE_TAP = 1;
+    TRIPLE_TAP = 2;
+    LONG_HOLD = 3;
   }
-  State state = 2;
+  Event event = 2;
 }
 
 message HeadGesture {
@@ -508,4 +526,31 @@ message DashboardShown {
     MANUAL = 2;
   }
   TriggerSource source = 2;
+}
+
+// ============================================
+// Versioning Messages (Runtime)
+// ============================================
+//
+// Phone sends VersionRequest right after connect.
+// Glasses respond with VersionResponse.version (single number).
+//
+message VersionRequest {
+  string msg_id = 1;
+}
+
+message VersionResponse {
+  string msg_id = 1;   // echoes request
+
+  // Single, monotonically increasing runtime protocol version.
+  // Start at 1. Bump when wire semantics/behavior meaningfully change.
+  uint32 version = 2;
+
+  // Reserved for potential future split into major/minor/patch
+  // to preserve wire compatibility if you expand later.
+  reserved 3, 4, 5;
+
+  // Optional diagnostics
+  string commit = 10;     // git hash or build id
+  string build_date = 11; // ISO-8601 date string
 }

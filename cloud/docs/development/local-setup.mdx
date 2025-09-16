@@ -479,7 +479,7 @@ The public app store where users discover and install apps:
 
 ```bash
 # Navigate to store directory
-cd cloud/store/web
+cd cloud/websites/store
 
 # Install dependencies
 bun install
@@ -503,7 +503,7 @@ Portal for developers to create and manage their apps:
 
 ```bash
 # Navigate to developer portal
-cd cloud/developer-portal
+cd cloud/websites/console
 
 # Install dependencies
 bun install
@@ -529,14 +529,14 @@ Both portals need to connect to your local cloud:
 
 **1. Update API endpoints in code:**
 
-For Store (`cloud/store/web/src/api/index.ts`):
+For Store (`cloud/websites/store/src/api/index.ts`):
 ```typescript
 const API_URL = import.meta.env.DEV 
   ? 'http://localhost:8002/api'
   : 'https://api.mentra.glass/api';
 ```
 
-For Developer Console (`cloud/developer-portal/src/services/api.service.ts`):
+For Developer Console (`cloud/websites/console/src/services/api.service.ts`):
 ```typescript
 const API_URL = import.meta.env.DEV
   ? 'http://localhost:8002/api'

@@ -928,7 +928,7 @@ public class SmartGlassesManager extends Service {
             Log.w(TAG, "PhoneMicrophoneManager is null, skipping setRequiredData call");
         }
 
-        boolean isMicrophoneEnabled = requiredData.contains(SpeechRequiredDataType.PCM) || requiredData.contains((SpeechRequiredDataType.PCM_OR_TRANSCRIPTION));
+        boolean isMicrophoneEnabled = requiredData.size() > 0;
 
         // Simply delegate to the representative which will use PhoneMicrophoneManager
         // PhoneMicrophoneManager handles all the complexity of choosing the right mic
@@ -983,18 +983,19 @@ public class SmartGlassesManager extends Service {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param authToken Auth token for webhook authentication
      * @param size Requested photo size (small|medium|large)
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String size) {
+    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size=" + size);
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, size);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, authToken, size);
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");

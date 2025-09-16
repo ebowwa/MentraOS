@@ -1,7 +1,6 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
 import {View, ViewStyle, Animated, Easing} from "react-native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import EmptyAppsView from "../home/EmptyAppsView"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -13,6 +12,8 @@ import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import RestComms from "@/managers/RestComms"
+import restComms from "@/managers/RestComms"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -22,7 +23,6 @@ export default function AppsActiveList({
   searchQuery?: string
 }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
-  const backendComms = BackendServerComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
   const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)
@@ -133,7 +133,7 @@ export default function AppsActiveList({
 
     setIsLoading(true)
     try {
-      await backendComms.stopApp(packageName)
+      await restComms.stopApp(packageName)
       // Clear the pending operation since it completed successfully
       clearPendingOperation(packageName)
       // showToast()
@@ -158,6 +158,10 @@ export default function AppsActiveList({
     return (
       <>
         {runningApps.map((app, index) => {
+          // Ensure opacity value exists, create if missing
+          if (!opacities[app.packageName]) {
+            opacities[app.packageName] = new Animated.Value(1)
+          }
           const itemOpacity = opacities[app.packageName]
           return (
             <React.Fragment key={app.packageName}>
@@ -165,16 +169,22 @@ export default function AppsActiveList({
                 app={app}
                 isActive={true}
                 onTogglePress={() => {
-                  Animated.timing(itemOpacity, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                  }).start()
+                  if (itemOpacity) {
+                    Animated.timing(itemOpacity, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start()
 
-                  setTimeout(() => {
+                    setTimeout(() => {
+                      const pkg = app.packageName
+                      stopApp(pkg).then(() => {})
+                    }, 300)
+                  } else {
+                    // Fallback: stop app immediately if animation can't run
                     const pkg = app.packageName
                     stopApp(pkg).then(() => {})
-                  }, 300)
+                  }
                 }}
                 onSettingsPress={() => openAppSettings(app)}
                 opacity={itemOpacity}

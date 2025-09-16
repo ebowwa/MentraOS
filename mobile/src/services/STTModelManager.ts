@@ -2,7 +2,7 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import coreCommunicator from "@/bridge/MantleBridge"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 
@@ -36,6 +36,7 @@ export interface ModelConfig {
   size: number
   type: "transducer" | "ctc"
   requiredFiles: string[]
+  languageCode: string
 }
 
 class STTModelManager {
@@ -52,6 +53,7 @@ class STTModelManager {
       size: 349 * 1024 * 1024, // 349MB
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
+      languageCode: "en-US",
     },
     "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8": {
       id: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
@@ -60,6 +62,7 @@ class STTModelManager {
       size: 95 * 1024 * 1024, // 95MB
       type: "ctc",
       requiredFiles: ["model.int8.onnx", "tokens.txt"],
+      languageCode: "en-US",
     },
     "sherpa-onnx-streaming-zipformer-zh-2025-06-30": {
       id: "sherpa-onnx-streaming-zipformer-zh-2025-06-30",
@@ -68,6 +71,7 @@ class STTModelManager {
       size: 150 * 1024 * 1024, // Estimated
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
+      languageCode: "zh-CN",
     },
     "sherpa-onnx-streaming-zipformer-korean-2024-06-16": {
       id: "sherpa-onnx-streaming-zipformer-korean-2024-06-16",
@@ -76,15 +80,17 @@ class STTModelManager {
       size: 200 * 1024 * 1024, // Estimated
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
+      languageCode: "ko-KR",
     },
-    "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8": {
-      id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
-      displayName: "Multilingual (EN/DE/ES/FR/RU)",
-      fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
-      size: 102261698, // Actual size: 102MB
-      type: "ctc",
-      requiredFiles: ["model.int8.onnx", "tokens.txt"],
-    },
+    // NOTE (yash): commenting this one for now because sherpa doesn't provide the language for multilingual models. And our current cloud architecture depends on the language
+    // "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8": {
+    //   id: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+    //   displayName: "Multilingual (EN/DE/ES/FR/RU)",
+    //   fileName: "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8",
+    //   size: 102261698, // Actual size: 102MB
+    //   type: "ctc",
+    //   requiredFiles: ["model.int8.onnx", "tokens.txt"],
+    // },
     // "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17": {
     //   id: "sherpa-onnx-streaming-zipformer-ar-en-id-ja-ru-th-vi-zh-2025-10-17",
     //   displayName: "Multilingual",
@@ -102,6 +108,28 @@ class STTModelManager {
       STTModelManager.instance = new STTModelManager()
     }
     return STTModelManager.instance
+  }
+
+  async getCurrentModelIdFromPreferences(): Promise<string> {
+    try {
+      let path = null;
+      if (Platform.OS === "android") {
+        const module = FileProviderModule
+        if (module.getSTTModelPath) {
+          path = await module.getSTTModelPath()
+        }
+      }
+      if (Platform.OS === "ios") {
+        path = await coreCommunicator.getSttModelPath()
+      }
+      let modelId = path && path.length > 0 ? this.getModelIdFromPath(path) : ""
+
+      this.setCurrentModelId(modelId)
+      return modelId
+    } catch (error) {
+      console.error("Error getting current model id from preferences:", error)
+      return ""
+    }
   }
 
   getCurrentModelId(): string {
@@ -126,6 +154,10 @@ class STTModelManager {
   getModelPath(modelId?: string): string {
     const id = modelId || this.currentModelId
     return `${this.getModelDirectory()}/${id}`
+  }
+
+  getModelIdFromPath(path: string): string {
+    return path.split("/").pop() || ""
   }
 
   async isModelAvailable(modelId?: string): Promise<boolean> {
@@ -312,7 +344,8 @@ class STTModelManager {
 
       // Set the model path in native modules if this is the current model
       if (id === this.currentModelId) {
-        await this.setNativeModelPath(finalPath)
+        const currentModelLanguageCode = this.models[id].languageCode
+        await this.setNativeModelPath(finalPath, currentModelLanguageCode)
       }
 
       console.log("Model downloaded and extracted successfully")
@@ -356,18 +389,20 @@ class STTModelManager {
 
     this.currentModelId = modelId
     const modelPath = this.getModelPath(modelId)
-    await this.setNativeModelPath(modelPath)
+    await this.setNativeModelPath(modelPath, model.languageCode)
   }
 
-  private async setNativeModelPath(path: string): Promise<void> {
+  private async setNativeModelPath(path: string, languageCode: string): Promise<void> {
     if (Platform.OS === "ios") {
-      coreCommunicator.setSttModelPath(path)
+      coreCommunicator.setSttModelDetails(path, languageCode)
       return
     }
 
     const nativeModule = FileProviderModule
-    if (nativeModule.setSTTModelPath) {
-      await nativeModule.setSTTModelPath(path)
+    if (nativeModule.setSttModelDetails) {
+      console.log("Setting STT model path to: " + path)
+      console.log("Setting STT model language to: " + languageCode)
+      await nativeModule.setSttModelDetails(path, languageCode)
     }
   }
 

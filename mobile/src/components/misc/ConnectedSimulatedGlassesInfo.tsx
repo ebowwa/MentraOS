@@ -1,8 +1,5 @@
 import React, {useEffect, useRef} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, Animated, Linking} from "react-native"
-import coreCommunicator from "@/bridge/CoreCommunicator"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import GlassesDisplayMirror from "./GlassesDisplayMirror"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n/translate"
@@ -10,12 +7,12 @@ import {useCameraPermissions} from "expo-camera"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import showAlert from "@/utils/AlertUtils"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import {ViewStyle, TextStyle} from "react-native"
+import {ThemedStyle} from "@/theme"
 
 export default function ConnectedSimulatedGlassesInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const {status} = useCoreStatus()
-  const {lastEvent} = useGlassesMirror()
   const {themed, theme} = useAppTheme()
   const [permission, requestPermission] = useCameraPermissions()
   const {push} = useNavigationHistory()
@@ -100,7 +97,7 @@ export default function ConnectedSimulatedGlassesInfo() {
             transform: [{scale: scaleAnim}],
           },
         ]}>
-        <GlassesDisplayMirror layout={lastEvent?.layout} fallbackMessage="Glasses Mirror" />
+        <GlassesDisplayMirror fallbackMessage="Glasses Mirror" />
         <TouchableOpacity style={{position: "absolute", bottom: 10, right: 10}} onPress={navigateToFullScreen}>
           <Icon name="fullscreen" size={24} color={theme.colors.text} />
         </TouchableOpacity>
@@ -108,9 +105,6 @@ export default function ConnectedSimulatedGlassesInfo() {
     </View>
   )
 }
-
-import {ViewStyle, TextStyle} from "react-native"
-import {ThemedStyle} from "@/theme"
 
 export const $bottomBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   alignItems: "center",

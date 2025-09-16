@@ -7,7 +7,7 @@ import {ThemedStyle} from "@/theme"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
-import {CoreCommunicator} from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n/translate"
 import {TxKeyPath} from "@/i18n"
 
@@ -31,7 +31,7 @@ export default function PairingFailureScreen() {
   }, [])
 
   const handleRetry = () => {
-    CoreCommunicator.getInstance().sendForgetSmartGlasses()
+    bridge.sendForgetSmartGlasses()
     clearHistory()
     replace("/pairing/select-glasses-model")
   }

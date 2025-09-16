@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef} from "react"
 import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
-import {Screen, Header, Text} from "@/components/ignite"
+import {Screen, Header, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
@@ -17,6 +17,7 @@ import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
 import {ScrollView} from "react-native-gesture-handler"
+import livekitManager from "@/managers/LivekitManager"
 
 export default function SettingsPage() {
   const {logout, user} = useAuth()
@@ -149,7 +150,9 @@ export default function SettingsPage() {
             onPress={() => push("/settings/transcription")}
           />
 
-          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
+          <RouteButton label={translate("settings:themeSettings")} onPress={() => push("/settings/theme")} />
+
+          <RouteButton label={translate("settings:feedback")} onPress={() => push("/settings/feedback")} />
 
           {devMode && (
             <>
@@ -171,6 +174,9 @@ export default function SettingsPage() {
           style={{color: theme.colors.textDim}}
         />
       </View>
+
+      {/* <Button text="Disconnect Livekit" onPress={() => livekitManager.disconnect()} />
+      <Button text="Connect Livekit" onPress={() => livekitManager.connect()} /> */}
 
       {/* Loading overlay for sign out */}
       <Modal visible={isSigningOut} transparent={true} animationType="fade">

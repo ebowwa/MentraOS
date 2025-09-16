@@ -200,7 +200,7 @@ export class HardwareCompatibilityService {
   static filterCompatibleApps(
     apps: AppI[],
     capabilities: Capabilities | null,
-    includeOptional: boolean = true,
+    includeOptional = true,
   ): AppI[] {
     return apps.filter((app) => {
       const result = this.checkCompatibility(app, capabilities);

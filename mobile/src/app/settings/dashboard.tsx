@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   TouchableOpacity,
   Platform,
   Alert,
@@ -14,45 +13,50 @@ import {
 } from "react-native"
 
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
-import {router} from "expo-router"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
-import {stat} from "react-native-fs"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {loadSetting} from "@/utils/SettingsHelper"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
-    status.core_info.contextual_dashboard_enabled,
-  )
+  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(false)
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null)
-  const [showContentPicker, setShowContentPicker] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(status.core_info.metric_system_enabled)
+  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(false)
+
+  // load settings:
+  useEffect(() => {
+    loadSetting(SETTINGS_KEYS.contextual_dashboard_enabled).then(setIsContextualDashboardEnabled)
+    loadSetting(SETTINGS_KEYS.metric_system_enabled).then(setIsMetricSystemEnabled)
+    loadSetting(SETTINGS_KEYS.head_up_angle).then(setHeadUpAngle)
+  }, [])
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !isContextualDashboardEnabled
-    await coreCommunicator.sendToggleContextualDashboard(newVal)
+    await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
     setIsContextualDashboardEnabled(newVal)
   }
 
   const toggleMetricSystem = async () => {
     const newVal = !isMetricSystemEnabled
     try {
-      await coreCommunicator.sendSetMetricSystemEnabled(newVal)
+      await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
+      await saveSetting(SETTINGS_KEYS.metric_system_enabled, newVal)
       setIsMetricSystemEnabled(newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
@@ -69,101 +73,14 @@ export default function DashboardSettingsScreen() {
     }
 
     setHeadUpAngleComponentVisible(false)
-    await coreCommunicator.setGlassesHeadUpAngle(newHeadUpAngle)
+    await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
     setHeadUpAngle(newHeadUpAngle)
   }
 
   const onCancelHeadUpAngle = () => {
     setHeadUpAngleComponentVisible(false)
   }
-
-  // -- Effects --
-  // useEffect(() => {
-  //   fetchDashboardSettings();
-  // }, []);
-
-  // const fetchDashboardSettings = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     const data = await backendServerComms.getAppSettings('com.augmentos.dashboard');
-  //     setServerSettings(data);
-  //     const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
-  //     if (contentSetting) {
-  //       setDashboardContent(contentSetting.selected);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching dashboard settings:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  // const handleDashboardContentChange = async (value: string) => {
-  //   try {
-  //     setIsUpdating(true);
-  //     setDashboardContent(value);
-  //     await backendServerComms.updateAppSetting('com.augmentos.dashboard', {
-  //       key: 'dashboard_content',
-  //       value: value
-  //     });
-  //   } catch (error) {
-  //     console.error('Error updating dashboard content:', error);
-  //     Alert.alert('Error', 'Failed to update dashboard content');
-  //     setDashboardContent(dashboardContent);
-  //   } finally {
-  //     setIsUpdating(false);
-  //     setShowContentPicker(false);
-  //   }
-  // };
-
-  useEffect(() => {
-    if (status.glasses_settings.head_up_angle != null) {
-      setHeadUpAngle(status.glasses_settings.head_up_angle)
-    }
-  }, [status.glasses_settings.head_up_angle])
-
-  // Update isMetricSystemEnabled when status changes
-  useEffect(() => {
-    setIsMetricSystemEnabled(status.core_info.metric_system_enabled)
-  }, [status.core_info.metric_system_enabled])
-
-  // Update isContextualDashboardEnabled when status changes
-  useEffect(() => {
-    setIsContextualDashboardEnabled(status.core_info.contextual_dashboard_enabled)
-  }, [status.core_info.contextual_dashboard_enabled])
-
-  // Switch track colors
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
-  // ContentPicker Modal
-  const renderContentPicker = () => (
-    <Modal
-      visible={showContentPicker}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => !isUpdating && setShowContentPicker(false)}>
-      <View style={themed($modalOverlay)}>
-        <View style={themed($pickerContainer)}>
-          <View style={themed($pickerHeader)}>
-            <Text style={themed($pickerTitle)}>Select Dashboard Content</Text>
-            <TouchableOpacity
-              onPress={() => !isUpdating && setShowContentPicker(false)}
-              style={[styles.closeButton, isUpdating && styles.disabledButton]}
-              disabled={isUpdating}>
-              <Text style={[styles.closeButtonText, {color: theme.colors.text}]}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  )
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
@@ -253,7 +170,6 @@ export default function DashboardSettingsScreen() {
           />
         )}
 
-        {renderContentPicker()}
         {headUpAngle !== null && (
           <HeadUpAngleComponent
             visible={headUpAngleComponentVisible}

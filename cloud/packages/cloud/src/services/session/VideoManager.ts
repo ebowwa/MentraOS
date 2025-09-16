@@ -23,7 +23,7 @@ import {
 } from "@mentra/sdk";
 import { Logger } from "pino";
 import UserSession from "./UserSession";
-import { sessionService } from "./session.service";
+// session.service no longer needed; using UserSession instance methods
 
 // Constants from the original stream-tracker.service.ts
 const KEEP_ALIVE_INTERVAL_MS = 15000; // 15 seconds keep-alive interval
@@ -797,7 +797,7 @@ export class VideoManager {
     };
 
     // Relay to Apps who subscribed to this RTMP stream
-    sessionService.relayMessageToApps(this.userSession, broadcastPayload);
+    this.userSession.relayMessageToApps(broadcastPayload);
 
     this.logger.debug(
       { streamId, status },

@@ -10,6 +10,7 @@ import android.util.Log;
 import com.augmentos.asg_client.io.bluetooth.interfaces.IBluetoothManager;
 import com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager;
 import com.augmentos.asg_client.io.bluetooth.managers.StandardBluetoothManager;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 /**
  * Factory class to create the appropriate bluetooth manager implementation
@@ -32,11 +33,13 @@ public class BluetoothManagerFactory {
         //return new StandardBluetoothManager(appContext);
         
         Log.d(TAG, "[FORCING K900 IMPLEMENTATION OF BLUETOOTH MANAGER]");
-        if (true || isK900Device(appContext)) {
+        if (true || ServiceUtils.isK900Device(appContext)) {
             Log.i(TAG, "Creating K900BluetoothManager - K900 device detected");
+            Log.d(TAG, "Device type: " + ServiceUtils.getDeviceTypeString(appContext));
             return new K900BluetoothManager(appContext);
         } else {
             Log.i(TAG, "Creating StandardBluetoothManager - standard device detected");
+            Log.d(TAG, "Device type: " + ServiceUtils.getDeviceTypeString(appContext));
             return new StandardBluetoothManager(appContext);
         }
 
@@ -46,52 +49,11 @@ public class BluetoothManagerFactory {
      * Check if the device is a K900
      * @param context The application context
      * @return true if the device is a K900, false otherwise
+     * @deprecated Use ServiceUtils.isK900Device() instead - centralized implementation
      */
+    @Deprecated
     public static boolean isK900Device(Context context) {
-        // This method should be in sync with NetworkManagerFactory's implementation
-        // Check for K900-specific broadcast receivers
-        try {
-            // Verify the SystemUI package exists
-            PackageManager pm = context.getPackageManager();
-            pm.getPackageInfo("com.android.systemui", 0);
-            
-            // Check for K900-specific system action
-            try {
-                // Set up a result receiver to check if our probe was received
-                final boolean[] responseReceived = {false};
-                BroadcastReceiver testReceiver = new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        responseReceived[0] = true;
-                        try {
-                            context.unregisterReceiver(this);
-                        } catch (Exception e) {
-                            // Ignore unregister failures
-                        }
-                    }
-                };
-                
-                // Register for any response from our probe
-                context.registerReceiver(testReceiver, 
-                        new IntentFilter("com.xy.xsetting.response"));
-                
-                // Send a test probe
-                Intent testIntent = new Intent("com.xy.xsetting.action");
-                testIntent.setPackage("com.android.systemui");
-                testIntent.putExtra("cmd", "test_k900");
-                context.sendBroadcast(testIntent);
-                
-                // In a real implementation, we would wait for a response
-                // For now, we check device model as a fallback
-                String model = android.os.Build.MODEL.toLowerCase();
-                return model.contains("k900") || model.contains("xyglasses");
-            } catch (Exception e) {
-                Log.e(TAG, "Error checking for K900 specific broadcast", e);
-            }
-        } catch (Exception e) {
-            Log.d(TAG, "Not a K900 device: " + e.getMessage());
-        }
-        
-        return false;
+        Log.w(TAG, "⚠️ Using deprecated isK900Device() - switch to ServiceUtils.isK900Device()");
+        return ServiceUtils.isK900Device(context);
     }
 } 

@@ -1,13 +1,15 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect} from "react"
-import {Platform} from "react-native"
 import {CoreStatusParser, CoreStatus} from "@/utils/CoreStatusParser"
-import {INTENSE_LOGGING, MOCK_CONNECTION} from "@/consts"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {INTENSE_LOGGING} from "@/consts"
+import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
+import restComms from "@/managers/RestComms"
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {useConnectionStore} from "@/stores/connection"
+import {Platform} from "react-native"
+import {WebSocketStatus} from "@/managers/WebSocketManager"
 
 interface CoreStatusContextType {
   status: CoreStatus
@@ -18,55 +20,71 @@ interface CoreStatusContextType {
 
 const CoreStatusContext = createContext<CoreStatusContextType | undefined>(undefined)
 
-let lastStatus: CoreStatus = CoreStatusParser.defaultStatus
-
 export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
+  const connectionStatus = useConnectionStore(state => state.status)
+
   const [status, setStatus] = useState<CoreStatus>(() => {
     return CoreStatusParser.parseStatus({})
   })
 
-  const refreshStatus = (data: any) => {
+  const refreshStatus = useCallback((data: any) => {
     if (!(data && "status" in data)) {
       return
     }
 
     const parsedStatus = CoreStatusParser.parseStatus(data)
+    if (INTENSE_LOGGING) console.log("CoreStatus: status:", parsedStatus)
 
-    if (INTENSE_LOGGING) console.log("Parsed status:", parsedStatus)
-
-    const diff = deepCompare(lastStatus, parsedStatus)
-    if (diff.length === 0) {
-      console.log("CoreStatusProvider: Status did not change ###############################################")
-      return
+    // TODO: config: remove
+    if (Platform.OS === "android") {
+      if (parsedStatus.core_info.cloud_connection_status === "CONNECTED") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.CONNECTED)
+      } else if (parsedStatus.core_info.cloud_connection_status === "DISCONNECTED") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.DISCONNECTED)
+      } else if (parsedStatus.core_info.cloud_connection_status === "CONNECTING") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.CONNECTING)
+      } else if (parsedStatus.core_info.cloud_connection_status === "ERROR") {
+        const store = useConnectionStore.getState()
+        store.setStatus(WebSocketStatus.ERROR)
+      }
     }
 
-    console.log("CoreStatusProvider: Status changed:", diff)
+    // only update the status if diff > 0
+    setStatus(prevStatus => {
+      const diff = deepCompare(prevStatus, parsedStatus)
+      if (diff.length === 0) {
+        console.log("CoreStatus: Status did not change")
+        return prevStatus // don't re-render
+      }
 
-    lastStatus = parsedStatus
-    setStatus(parsedStatus)
-  }
+      console.log("CoreStatus: Status changed:", diff)
+      return parsedStatus
+    })
+  }, [])
 
   // Initialize the Core communication
   const initializeCoreConnection = useCallback(() => {
-    console.log("CoreStatusProvider: Initializing core connection @@@@@@@@@@@@@@@@@")
-    coreCommunicator.initialize()
+    console.log("CoreStatus: Initializing core connection")
+    bridge.initialize()
   }, [])
 
-  // Helper to get coreToken (directly returns from BackendServerComms)
+  // Helper to get coreToken (directly returns from RestComms)
   const getCoreToken = useCallback(() => {
-    return BackendServerComms.getInstance().getCoreToken()
+    return restComms.getCoreToken()
   }, [])
 
   useEffect(() => {
-    const handleStatusUpdateReceived = (data: any) => {
+    const handleCoreStatusUpdate = (data: any) => {
       if (INTENSE_LOGGING) console.log("Handling received data.. refreshing status..")
       refreshStatus(data)
     }
 
-    coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
-    coreCommunicator.on("statusUpdateReceived", handleStatusUpdateReceived)
+    GlobalEventEmitter.on("CORE_STATUS_UPDATE", handleCoreStatusUpdate)
     return () => {
-      coreCommunicator.removeListener("statusUpdateReceived", handleStatusUpdateReceived)
+      GlobalEventEmitter.removeListener("CORE_STATUS_UPDATE", handleCoreStatusUpdate)
     }
   }, [])
 

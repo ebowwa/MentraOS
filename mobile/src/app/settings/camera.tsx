@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react"
 import {View, Text, ScrollView, StyleSheet, TouchableOpacity} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
@@ -97,7 +97,7 @@ export default function CameraSettingsScreen() {
 
     try {
       setPhotoSize(size) // Optimistic update
-      await coreCommunicator.sendSetButtonPhotoSize(size)
+      await bridge.sendSetButtonPhotoSize(size)
     } catch (error) {
       console.error("Failed to update photo size:", error)
       // Revert on error if we have the original value
@@ -121,7 +121,7 @@ export default function CameraSettingsScreen() {
       const height = resolution === "4K" ? 2160 : resolution === "1440p" ? 1920 : resolution === "1080p" ? 1080 : 720
       const fps = resolution === "4K" ? 15 : 30
 
-      await coreCommunicator.sendSetButtonVideoSettings(width, height, fps)
+      await bridge.sendSetButtonVideoSettings(width, height, fps)
     } catch (error) {
       console.error("Failed to update video resolution:", error)
       // Revert on error
@@ -143,7 +143,7 @@ export default function CameraSettingsScreen() {
 
     try {
       setLedEnabled(enabled) // Optimistic update
-      await coreCommunicator.sendSetButtonCameraLed(enabled)
+      await bridge.sendSetButtonCameraLed(enabled)
     } catch (error) {
       console.error("Failed to update LED setting:", error)
       // Revert on error
