@@ -110,21 +110,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     return resultArray;
 }
 
-void copy_16bit_to_two_32bits(int32_t *dst_buf, int16_t *src_buf, int32_t src_len)
-{
-    for (int i = (int)(src_len - 1); i >= 0; i--)
-    {
-        dst_buf[i*2 + 0] = dst_buf[i*2 + 1] = (int32_t)(src_buf[i] << 15);
-    }
-}
-
-void copy_16bit_to_32bits(int16_t *dst_buf, int16_t *src_buf, int32_t src_len)
-{
-    for (int i = (int)(src_len - 1); i >= 0; i--)
-    {
-        dst_buf[i*2 + 0] = dst_buf[i*2 + 1] = src_buf[i];
-    }
-}
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass clazz, jlong decPtr, jbyteArray lc3Data) {
     jbyte *lc3Bytes = env->GetByteArrayElements(lc3Data, nullptr);
