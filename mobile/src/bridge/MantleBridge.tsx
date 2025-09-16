@@ -15,6 +15,7 @@ import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
 import livekitManager from "@/managers/LivekitManager"
+import mantle from "@/managers/MantleManager"
 
 const {BridgeModule, CoreCommsService} = NativeModules
 const coreBridge = new NativeEventEmitter(BridgeModule)
@@ -384,7 +385,7 @@ export class MantleBridge extends EventEmitter {
           GlobalEventEmitter.emit("HEAD_POSITION", data.position)
           break
         case "transcription_result":
-          mantle.handleTranscriptionResult(data.transcription)
+          mantle.handleTranscriptionResult(data)
           break
         case "ws_text":
           socketComms.sendText(data.text)
@@ -858,18 +859,6 @@ export class MantleBridge extends EventEmitter {
       params: {
         ...settings,
       },
-    })
-  }
-
-  async verifyAuthenticationSecretKey() {
-    return await this.sendData({
-      command: "verify_auth_secret_key",
-    })
-  }
-
-  async deleteAuthenticationSecretKey() {
-    return await this.sendData({
-      command: "delete_auth_secret_key",
     })
   }
 

@@ -172,15 +172,6 @@ export default function DeveloperSettingsScreen() {
     }
   }
 
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
   // Load saved URL on mount
   useEffect(() => {
     const loadSettings = async () => {
@@ -222,7 +213,7 @@ export default function DeveloperSettingsScreen() {
 
       <Spacer height={theme.spacing.md} />
 
-      <ScrollView>
+      <ScrollView style={{flex: 1, marginHorizontal: -theme.spacing.md, paddingHorizontal: theme.spacing.md}}>
         <RouteButton
           label="🎥 Buffer Recording Debug"
           subtitle="Control 30-second video buffer on glasses"
@@ -357,33 +348,6 @@ export default function DeveloperSettingsScreen() {
         </View>
 
         <Spacer height={theme.spacing.md} />
-
-        {/* Bypass Audio Encoding for Debugging Toggle
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText
-              ]}>
-              Bypass Audio Encoding for Debugging
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext
-              ]}>
-              Bypass audio encoding processing for debugging purposes.
-            </Text>
-          </View>
-          <Switch
-            value={isBypassAudioEncodingForDebuggingEnabled}
-            onValueChange={toggleBypassAudioEncodingForDebugging}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View> */}
         <Spacer height={theme.spacing.xxl} />
       </ScrollView>
     </Screen>

@@ -41,6 +41,7 @@ export const SETTINGS_KEYS = {
   server_url: "server_url",
   time_zone: "time_zone",
   time_zone_override: "time_zone_override",
+  offline_stt: "offline_stt",
 }
 
 const DEFAULT_SETTINGS = {
@@ -77,6 +78,8 @@ const DEFAULT_SETTINGS = {
   // user settings:
   [SETTINGS_KEYS.time_zone]: null,
   [SETTINGS_KEYS.time_zone_override]: null,
+  // stt:
+  [SETTINGS_KEYS.offline_stt]: false,
 }
 
 export const getSettingDefault = (key: string) => {

@@ -1,3 +1,7 @@
+import bridge from "@/bridge/MantleBridge"
+import socketComms from "@/managers/SocketComms"
+import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+
 class MantleManager {
   private static instance: MantleManager | null = null
 
@@ -9,7 +13,26 @@ class MantleManager {
   }
 
   private constructor() {}
+
+  public async handleTranscriptionResult(data: any) {
+    // if (socketComms.isConnected()) {
+    //   socketComms.sendTranscriptionResult(data)
+    //   return
+    // }
+
+    const offlineStt = await loadSetting(SETTINGS_KEYS.offline_stt)
+    if (offlineStt) {
+      socketComms.handle_display_event({
+        view: "main",
+        layoutType: "text_wall",
+        text: data.text,
+      })
+      return
+    }
+
+    console.log("MantleManager: Transcription result: ", data)
+  }
 }
 
-const mantleManager = MantleManager.getInstance()
-export default mantleManager
+const mantle = MantleManager.getInstance()
+export default mantle

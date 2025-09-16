@@ -124,14 +124,6 @@ export class LogoutUtils {
     console.log(`${this.TAG}: Stopping core services...`)
 
     try {
-      // Delete core authentication secret key
-      await bridge.deleteAuthenticationSecretKey()
-      console.log(`${this.TAG}: Deleted core authentication secret key`)
-    } catch (error) {
-      console.error(`${this.TAG}: Error deleting auth secret key:`, error)
-    }
-
-    try {
       // Stop the core communicator service
       bridge.stopService()
       console.log(`${this.TAG}: Stopped core communicator service`)

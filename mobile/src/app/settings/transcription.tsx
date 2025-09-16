@@ -29,11 +29,17 @@ export default function TranscriptionSettingsScreen() {
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
+  const [isOfflineSTTEnabled, setIsOfflineSTTEnabled] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   // load settings:
+  const loadSettings = async () => {
+    await loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
+    await loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+    await loadSetting(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
+  }
   useEffect(() => {
-    loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+    loadSettings().then(() => setLoading(false))
   }, [])
 
   // Cancel download function
@@ -223,9 +229,28 @@ export default function TranscriptionSettingsScreen() {
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
+  const toggleOfflineSTT = async () => {
+    const newSetting = !isOfflineSTTEnabled
+    await saveSetting(SETTINGS_KEYS.offline_stt, newSetting)
+    setIsOfflineSTTEnabled(newSetting)
+  }
+
   useEffect(() => {
     initSelectedModel()
   }, [])
+
+  if (loading) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+        <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={handleGoBack} />
+        <View style={{alignItems: "center", padding: theme.spacing.lg}}>
+          <ActivityIndicator size="large" color={theme.colors.text} />
+          <Spacer height={theme.spacing.sm} />
+          <Text>Loading...</Text>
+        </View>
+      </Screen>
+    )
+  }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
@@ -288,6 +313,15 @@ export default function TranscriptionSettingsScreen() {
                     Download a model to enable local transcription
                   </Text>
                 )}
+
+                <Spacer height={theme.spacing.md} />
+                <ToggleSetting
+                  label={translate("settings:offlineSTT")}
+                  subtitle={translate("settings:offlineSTTSubtitle")}
+                  value={isOfflineSTTEnabled}
+                  onValueChange={toggleOfflineSTT}
+                  disabled={!modelInfo?.downloaded || isDownloading}
+                />
               </>
             )}
           </>
