@@ -23,11 +23,17 @@ export class LiveKitClient {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private manualClose = false;
   private disposed = false;
+  // Endianness handling: 'auto' (detect), 'swap' (force swap), 'off' (no action)
+  private readonly endianMode: 'auto' | 'swap' | 'off';
+  private endianSwapDetermined = false;
+  private shouldSwapBytes = false;
 
   constructor(userSession: UserSession, opts?: BridgeOptions) {
     this.userSession = userSession;
     this.logger = userSession.logger.child({ service: 'LiveKitClientTS' });
     this.bridgeUrl = opts?.bridgeUrl || process.env.LIVEKIT_GO_BRIDGE_URL || 'ws://livekit-bridge:8080/ws';
+  const mode = (process.env.LIVEKIT_PCM_ENDIAN || 'auto').toLowerCase();
+  this.endianMode = (mode === 'swap' || mode === 'off') ? (mode as 'swap' | 'off') : 'auto';
   }
 
   async connect(params: { url: string; roomName: string; token: string; targetIdentity?: string }): Promise<void> {
@@ -42,14 +48,15 @@ export class LiveKitClient {
     const wsUrl = `${base}?userId=${encodeURIComponent(userId)}`;
     this.logger.info({ wsUrl, room: params.roomName, target: params.targetIdentity }, 'Connecting to livekit-bridge');
 
-    this.ws = new WebSocket(wsUrl);
+  // Disable permessage-deflate to avoid any proxy/compression shenanigans in prod
+  this.ws = new WebSocket(wsUrl, { perMessageDeflate: false });
     this.manualClose = false;
     this.lastParams = params;
     const wsRef = this.ws;
 
     await new Promise<void>((resolve, reject) => {
       const to = setTimeout(() => reject(new Error('bridge ws timeout')), 8000);
-      this.ws!.once('open', () => {
+      wsRef?.once('open', () => {
         clearTimeout(to);
         // If we were disposed/closed while connecting, abort immediately
         if (this.disposed || this.manualClose || this.ws !== wsRef) {
@@ -57,10 +64,12 @@ export class LiveKitClient {
           reject(new Error('bridge ws aborted'));
           return;
         }
-        this.logger.debug({ feature: 'livekit', wsUrl }, 'Bridge WS open (server)');
+        const g = globalThis as unknown as { Bun?: { version?: string } };
+        const bunVersion = g.Bun?.version;
+        this.logger.debug({ feature: 'livekit', wsUrl, bun: bunVersion, node: process.version }, 'Bridge WS open (server)');
         resolve();
       });
-      this.ws!.once('error', (err) => { clearTimeout(to); reject(err as any); });
+      wsRef?.once('error', (err: Error) => { clearTimeout(to); reject(err); });
     });
 
     if (this.disposed || this.manualClose || this.ws !== wsRef) {
@@ -73,29 +82,82 @@ export class LiveKitClient {
 
     // Wire message handler before sending commands
     this.ws.on('message', (data: WebSocket.RawData) => {
-      if (Buffer.isBuffer(data)) {
-        // PCM16 @ 16kHz, 10 ms (320 bytes) expected
-        try {
-          // const ab = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-          // print first 10 bytes.
-          if (frameCount % 500 === 0) {
-            this.logger.debug({ feature: 'livekit', data: data.slice(0, 10) }, 'Received PCM16 frame');
-          }
-          this.userSession.audioManager.processAudioData(data, /* isLC3 */ false);
-        } catch (err) {
-          if (frameCount % 500 === 0) {
-            this.logger.warn(err, 'Failed to forward PCM16 frame');
-          }
+      try {
+        // Normalize data to a Node Buffer regardless of how ws delivered it
+        let buf: Buffer;
+        if (Buffer.isBuffer(data)) {
+          buf = data as Buffer;
+        } else if (Array.isArray(data)) {
+          buf = Buffer.concat(data as Buffer[]);
+        } else if (data instanceof ArrayBuffer) {
+          buf = Buffer.from(data as ArrayBuffer);
+        } else if (ArrayBuffer.isView(data as unknown as ArrayBufferView)) {
+          const view = data as unknown as ArrayBufferView;
+          buf = Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+        } else {
+          // Fallback: attempt to coerce to string then to Buffer
+          buf = Buffer.from(String(data));
         }
-      } else {
-        try {
-          const evt = JSON.parse((data as any).toString());
-          if (evt?.type && evt?.type !== 'connected') {
-            if (frameCount % 500 === 0) {
-              this.logger.debug({ feature: 'livekit', evt }, '[LiveKitClient] Bridge event thats not RawData');
+
+        // Guard: if an odd-length payload slips through (e.g., stray 1-byte header), drop the first byte
+        if ((buf.length & 1) === 1) {
+          if (frameCount % 200 === 0) {
+            this.logger.warn({ feature: 'livekit', rawLen: buf.length }, 'Odd-length PCM payload detected; dropping first byte');
+          }
+          buf = buf.slice(1);
+        }
+
+        // Optional endianness handling
+        if (this.endianMode !== 'off') {
+          // Detect once in 'auto' mode using first few samples
+          if (!this.endianSwapDetermined && this.endianMode === 'auto' && buf.length >= 16) {
+            let oddAreMostlyFFor00 = 0; // count of LSB being 0xFF or 0x00 if we assume BE input
+            let evenAreMostlyFFor00 = 0; // same if we assume LE input
+            const pairs = Math.min(16, Math.floor(buf.length / 2));
+            for (let i = 0; i < pairs; i++) {
+              const b0 = buf[2 * i];
+              const b1 = buf[2 * i + 1];
+              if (b0 === 0x00 || b0 === 0xFF) evenAreMostlyFFor00++;
+              if (b1 === 0x00 || b1 === 0xFF) oddAreMostlyFFor00++;
+            }
+            // If upper byte (b1) looks like sign-extension much more often than lower byte, 
+            // it's likely BE and needs swapping to LE.
+            if (oddAreMostlyFFor00 >= evenAreMostlyFFor00 + 6) {
+              this.shouldSwapBytes = true;
+            } else {
+              this.shouldSwapBytes = false;
+            }
+            this.endianSwapDetermined = true;
+            this.logger.info({ feature: 'livekit', oddFF00: oddAreMostlyFFor00, evenFF00: evenAreMostlyFFor00, willSwap: this.shouldSwapBytes }, 'PCM endianness detection result');
+          }
+          if (this.endianMode === 'swap') {
+            this.shouldSwapBytes = true;
+            this.endianSwapDetermined = true;
+          }
+          if (this.shouldSwapBytes) {
+            // Swap bytes in place for LE format
+            for (let i = 0; i + 1 < buf.length; i += 2) {
+              const t = buf[i];
+              buf[i] = buf[i + 1];
+              buf[i + 1] = t;
             }
           }
-        } catch { ; }
+        }
+
+        // Periodic diagnostics: log first few Int16 samples to confirm endianness/content in prod
+        if (frameCount % 500 === 0 && buf.length >= 8) {
+          const sampleCount = Math.min(8, Math.floor(buf.length / 2));
+          const i16 = new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2));
+          const headSamples: number[] = Array.from(i16.slice(0, sampleCount));
+          this.logger.debug({ feature: 'livekit', bytes: buf.length, headBytes: buf.slice(0, 10), headI16: headSamples }, 'Received PCM16 frame');
+        }
+
+        // Forward to AudioManager (PCM16LE @ 16kHz, mono)
+        this.userSession.audioManager.processAudioData(buf, /* isLC3 */ false);
+      } catch (err) {
+        if (frameCount % 200 === 0) {
+          this.logger.warn(err, 'Failed to forward PCM16 frame');
+        }
       }
 
       frameCount++;
@@ -167,7 +229,8 @@ export class LiveKitClient {
     this.logger.info({ feature: 'livekit', delayMs: delay }, 'Scheduling bridge reconnect');
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.connect(this.lastParams!).catch((err) => {
+      if (!this.lastParams) return;
+      this.connect(this.lastParams).catch((err) => {
         const _logger = this.logger.child({ feature: 'livekit' });
         _logger.error(err, 'Bridge reconnect failed');
         this.scheduleReconnect();
