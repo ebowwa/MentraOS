@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react"
-import {View, ScrollView, Switch, Platform, TextInput, TouchableOpacity} from "react-native"
+import {View, ScrollView, Switch, Platform, TextInput, TouchableOpacity, NativeModules} from "react-native"
 import {useRouter} from "expo-router"
 import Toast from "react-native-toast-message"
 
@@ -7,6 +7,8 @@ import {Screen, Text, Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {NotificationPreferences} from "@/utils/NotificationPreferences"
 import showAlert from "@/utils/AlertUtils"
+
+const {SimpleBlacklist} = NativeModules
 
 interface BlacklistedApp {
   name: string
@@ -28,18 +30,10 @@ export default function NotificationSettingsScreen() {
   const loadBlacklistedApps = async () => {
     try {
       console.log("📋 Loading notification blacklist...")
-      const appPrefs = await NotificationPreferences.getAppPreferences()
+      const blacklistedApps = await SimpleBlacklist.getBlacklistedApps()
 
-      // Only load apps that are actually in the blacklist (manual apps)
-      const manualApps = Object.values(appPrefs)
-        .filter(pref => pref.packageName.startsWith("manual."))
-        .map(pref => ({
-          name: pref.appName,
-          blocked: !pref.enabled, // Inverted: enabled=false means blocked=true
-        }))
-
-      console.log("✅ Loaded blacklisted apps:", manualApps.length)
-      setBlacklistedApps(manualApps)
+      console.log("✅ Loaded blacklisted apps:", blacklistedApps.length)
+      setBlacklistedApps(blacklistedApps)
     } catch (error) {
       console.error("❌ Error loading blocked apps:", error)
     } finally {
@@ -70,12 +64,11 @@ export default function NotificationSettingsScreen() {
     try {
       console.log(`🚫 Adding app to blacklist: ${appName}`)
 
-      // Save to preferences (blocked = enabled false)
-      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
-      await NotificationPreferences.setAppPreference(packageName, appName, false) // false = blocked
+      // Add to simple blacklist
+      await SimpleBlacklist.addToBlacklist(appName)
 
       // Add to local state
-      const newApp = {name: appName, blocked: true} // Added to blacklist = blocked
+      const newApp = {name: appName, blocked: true}
       setBlacklistedApps(prev => [...prev, newApp].sort((a, b) => a.name.localeCompare(b.name)))
 
       setNewAppName("")
@@ -94,9 +87,8 @@ export default function NotificationSettingsScreen() {
     try {
       console.log(`🗑️ Completely removing app: ${appName}`)
 
-      // Completely remove from preferences storage
-      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
-      await NotificationPreferences.removeAppPreference(packageName)
+      // Remove from simple blacklist
+      await SimpleBlacklist.removeFromBlacklist(appName)
 
       // Remove from local state
       setBlacklistedApps(prev => prev.filter(app => app.name !== appName))
@@ -115,9 +107,8 @@ export default function NotificationSettingsScreen() {
     try {
       console.log(`🔄 ${blocked ? "BLOCKING" : "UNBLOCKING"} ${appName}`)
 
-      // Save to preferences (inverted logic: blocked=true means enabled=false)
-      const packageName = `manual.${appName.toLowerCase().replace(/\s+/g, ".")}`
-      await NotificationPreferences.setAppPreference(packageName, appName, !blocked) // Invert for storage
+      // Update simple blacklist
+      await SimpleBlacklist.setAppBlocked(appName, blocked)
 
       // Update local state
       setBlacklistedApps(prev => prev.map(app => (app.name === appName ? {...app, blocked} : app)))

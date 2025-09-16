@@ -50,6 +50,17 @@ export class NotificationPreferences {
       }
 
       await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(preferences))
+
+      // Also store a simple app name -> blocked mapping for Android to read easily
+      const simpleBlacklist: Record<string, boolean> = {}
+      Object.values(preferences).forEach(pref => {
+        if (pref.packageName.startsWith("manual.")) {
+          simpleBlacklist[pref.appName] = !pref.enabled // blocked = !enabled
+        }
+      })
+
+      await AsyncStorage.setItem("SIMPLE_NOTIFICATION_BLACKLIST", JSON.stringify(simpleBlacklist))
+      console.log("📋 Updated simple blacklist:", simpleBlacklist)
     } catch (error) {
       console.error("Error setting app preference:", error)
     }
