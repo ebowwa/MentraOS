@@ -314,6 +314,11 @@ class RestComms {
   public async sendCalendarData(data: any): Promise<any> {
     return this.authenticatedRequest("POST", "/api/client/calendar", data)
   }
+
+  // Location
+  public async sendLocationData(data: any): Promise<any> {
+    return this.authenticatedRequest("POST", "/api/client/location", data)
+  }
 }
 
 const restComms = RestComms.getInstance()

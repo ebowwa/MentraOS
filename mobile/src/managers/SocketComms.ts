@@ -7,6 +7,7 @@ import {useDisplayStore} from "@/stores/display"
 import livekitManager from "./LivekitManager"
 import * as Calendar from "expo-calendar"
 import restComms from "@/managers/RestComms"
+import {t} from "i18next"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -99,22 +100,6 @@ class SocketComms {
       this.reconnectionAttempts++
       this.attemptReconnect(true)
     }, 10000)
-  }
-
-  private handleStatusChange(status: WebSocketStatus) {
-    console.log(`SocketCommsTS: handleStatusChange: ${status}`)
-
-    if (status === WebSocketStatus.DISCONNECTED || status === WebSocketStatus.ERROR) {
-      this.attemptReconnect()
-    }
-
-    if (status === WebSocketStatus.CONNECTED) {
-      // Wait a bit before sending connection_init
-      setTimeout(() => {
-        this.send_calendar_events()
-        this.send_location_updates()
-      }, 3000)
-    }
   }
 
   isWebSocketConnected(): boolean {
