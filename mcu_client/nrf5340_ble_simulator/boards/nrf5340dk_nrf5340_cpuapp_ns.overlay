@@ -1,6 +1,6 @@
 / {
     chosen {
-        zephyr,display = &hls12vga;  // Switch to HLS12VGA display
+        zephyr,display = &ssd1306;  // Switch back to SSD1306 for compatibility testing
         nordic-nus-uart = &uart0;
     };
 };
@@ -73,7 +73,7 @@
     hls12vga: hls12vga@0 {
         compatible = "zephyr,custom-hls12vga";
         reg = <0>;
-        status = "okay";
+        status = "disabled";  // Disable HLS12VGA when testing SSD1306
         spi-max-frequency = <32000000>;
 
         /* CS pins moved to P1.04 and P1.05 to avoid Arduino connector conflicts */
@@ -130,6 +130,6 @@
         com-invdir;
         prechargep = <0x22>;
         segment-remap;
-        status = "disabled";  // Disable SSD1306 when using HLS12VGA
+        status = "okay";  // Enable SSD1306 for compatibility testing
     };
 };
