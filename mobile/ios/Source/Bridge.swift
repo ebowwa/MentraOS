@@ -506,36 +506,6 @@ class Bridge: RCTEventEmitter {
                     m.handleRequestStatus()
                 case .ping:
                     break
-                case .set_stt_model_details:
-                    guard let params = params,
-                          let path = params["path"] as? String,
-                          let languageCode = params["languageCode"] as? String
-                    else {
-                        Bridge.log("CommandBridge: set_stt_model_details invalid params")
-                        break
-                    }
-                    m.setSttModelDetails(path, languageCode)
-                case .get_stt_model_path:
-                    return m.getSttModelPath()
-                case .check_stt_model_available:
-                    return m.checkSTTModelAvailable()
-                case .validate_stt_model:
-                    guard let params = params,
-                          let path = params["path"] as? String
-                    else {
-                        Bridge.log("CommandBridge: validate_stt_model invalid params")
-                        break
-                    }
-                    return m.validateSTTModel(path)
-                case .extract_tar_bz2:
-                    guard let params = params,
-                          let sourcePath = params["source_path"] as? String,
-                          let destinationPath = params["destination_path"] as? String
-                    else {
-                        Bridge.log("CommandBridge: extract_tar_bz2 invalid params")
-                        break
-                    }
-                    return m.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
                 case .microphone_state_change:
                     guard let msg = params else {
                         Bridge.log("CommandBridge: microphone_state_change invalid params")
@@ -560,6 +530,37 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.handle_update_settings(params)
+                // STT:
+                case .set_stt_model_details:
+                    guard let params = params,
+                          let path = params["path"] as? String,
+                          let languageCode = params["languageCode"] as? String
+                    else {
+                        Bridge.log("CommandBridge: set_stt_model_details invalid params")
+                        break
+                    }
+                    STTTools.setSttModelDetails(path, languageCode)
+                case .get_stt_model_path:
+                    return STTTools.getSttModelPath()
+                case .check_stt_model_available:
+                    return STTTools.checkSTTModelAvailable()
+                case .validate_stt_model:
+                    guard let params = params,
+                          let path = params["path"] as? String
+                    else {
+                        Bridge.log("CommandBridge: validate_stt_model invalid params")
+                        break
+                    }
+                    return STTTools.validateSTTModel(path)
+                case .extract_tar_bz2:
+                    guard let params = params,
+                          let sourcePath = params["source_path"] as? String,
+                          let destinationPath = params["destination_path"] as? String
+                    else {
+                        Bridge.log("CommandBridge: extract_tar_bz2 invalid params")
+                        break
+                    }
+                    return STTTools.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
                 case .restart_transcriber:
                     m.restartTranscriber()
                 }
