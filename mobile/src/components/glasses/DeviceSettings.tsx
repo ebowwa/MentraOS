@@ -380,7 +380,8 @@ export default function DeviceSettings() {
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
-        hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
+        hasCustomMic(glassesFeatures[status.core_info.default_wearable]) &&
+        (status.glasses_info?.model_name !== "Mentra Live" || devMode) && (
           <View style={themed($settingsGroup)}>
             <TouchableOpacity
               style={{
