@@ -78,7 +78,6 @@ interface AppStatusContextType {
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
-  checkAppHealthStatus: (packageName: string) => Promise<boolean>
 }
 
 const AppStatusContext = createContext<AppStatusContextType | undefined>(undefined)
@@ -267,31 +266,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }
 
-  const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
-    // GET the app's /health endpoint
-    try {
-      const app = appStatus.find(app => app.packageName === packageName)
-      if (!app) {
-        return false
-      }
-      const baseUrl = await getRestUrl()
-      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
-      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
-      const healthResponse = await fetch(healthUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({packageName}),
-      })
-      const healthData = await healthResponse.json()
-      return healthData.success
-    } catch (error) {
-      console.error("AppStatusProvider: Error checking app health status:", error)
-      return false
-    }
-  }
-
   const onCoreTokenSet = () => {
     console.log("CORE_TOKEN_SET event received, forcing app refresh with 1.5 second delay")
     // Add a delay to let the token become valid on the server side
@@ -337,7 +311,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         optimisticallyStartApp,
         optimisticallyStopApp,
         clearPendingOperation,
-        checkAppHealthStatus,
       }}>
       {children}
     </AppStatusContext.Provider>

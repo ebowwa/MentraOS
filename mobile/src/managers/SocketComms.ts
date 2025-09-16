@@ -593,11 +593,7 @@ class SocketComms {
     }
   }
 
-  static get_current_iso_datetime(): string {
-    return new Date().toISOString()
-  }
-
-  send_transcription_result(transcription: any) {
+  sendTranscriptionResult(transcription: any) {
     if (!this.ws.isConnected()) {
       console.log("Cannot send transcription result: WebSocket not connected")
       return
@@ -614,7 +610,7 @@ class SocketComms {
       this.ws.sendText(jsonString)
 
       const isFinal = transcription.isFinal || false
-      console.log(`Sent ${isFinal ? "final" : "partial"} transcription: '${text}'`)
+      console.log(`SocketCommsTS: Sent ${isFinal ? "final" : "partial"} transcription: '${text}'`)
     } catch (error) {
       console.log(`Error sending transcription result: ${error}`)
     }

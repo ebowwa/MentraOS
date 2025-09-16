@@ -302,17 +302,19 @@ class Bridge: RCTEventEmitter {
             return
         }
 
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: transcription)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendWSText(jsonString)
+        Bridge.sendTypedMessage("transcription_result", body: transcription)
 
-                let isFinal = transcription["isFinal"] as? Bool ?? false
-                Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
-            }
-        } catch {
-            Bridge.log("Error sending transcription result: \(error)")
-        }
+        // do {
+        //     let jsonData = try JSONSerialization.data(withJSONObject: transcription)
+        //     if let jsonString = String(data: jsonData, encoding: .utf8) {
+        //         Bridge.sendWSText(jsonString)
+
+        //         let isFinal = transcription["isFinal"] as? Bool ?? false
+        //         Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
+        //     }
+        // } catch {
+        //     Bridge.log("Error sending transcription result: \(error)")
+        // }
     }
 
     // core bridge funcs:

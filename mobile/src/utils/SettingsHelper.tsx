@@ -63,7 +63,7 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.metric_system_enabled]: false,
   [SETTINGS_KEYS.enforce_local_transcription]: false,
   [SETTINGS_KEYS.button_press_mode]: "photo",
-  [SETTINGS_KEYS.default_wearable]: "glasses",
+  [SETTINGS_KEYS.default_wearable]: null,
   [SETTINGS_KEYS.device_name]: "",
   [SETTINGS_KEYS.preferred_mic]: "phone",
   [SETTINGS_KEYS.contextual_dashboard_enabled]: true,

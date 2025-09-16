@@ -170,6 +170,27 @@ class RestComms {
     return response.data
   }
 
+  public async checkAppHealthStatus(packageName: string): Promise<boolean> {
+    // GET the app's /health endpoint
+    try {
+      const baseUrl = await getRestUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
+      const healthData = await healthResponse.json()
+      return healthData.success
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return false
+    }
+  }
+
   // App Management
   public async getApps(): Promise<AppletInterface[]> {
     console.log(`${this.TAG}: getApps() called`)

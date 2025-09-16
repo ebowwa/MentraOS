@@ -211,15 +211,15 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
         }
       }
 
-      image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
-    } else {
-      // For other glasses, use the existing logic
-      if (!status.glasses_info?.case_removed) {
-        if (status.glasses_info?.case_open) {
-          image = getGlassesOpenImage(wearable)
-        } else {
-          image = getGlassesClosedImage(wearable)
-        }
+      return getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
+    }
+
+    // For other glasses, use the existing logic
+    if (!status.glasses_info?.case_removed) {
+      if (status.glasses_info?.case_open) {
+        image = getGlassesOpenImage(wearable)
+      } else {
+        image = getGlassesClosedImage(wearable)
       }
     }
 

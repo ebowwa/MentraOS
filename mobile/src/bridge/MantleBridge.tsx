@@ -383,6 +383,9 @@ export class MantleBridge extends EventEmitter {
         case "head_position":
           GlobalEventEmitter.emit("HEAD_POSITION", data.position)
           break
+        case "transcription_result":
+          mantle.handleTranscriptionResult(data.transcription)
+          break
         case "ws_text":
           socketComms.sendText(data.text)
           break

@@ -76,14 +76,8 @@ export default function AppSettings() {
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
 
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    checkAppHealthStatus,
-  } = useAppStatus()
+  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
+    useAppStatus()
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
@@ -168,7 +162,7 @@ export default function AppSettings() {
         if (!proceed) return
       }
 
-      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      if (!(await restComms.checkAppHealthStatus(appInfo.packageName))) {
         showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
           {text: translate("common:ok")},
         ])

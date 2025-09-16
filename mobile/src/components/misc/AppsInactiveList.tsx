@@ -18,6 +18,7 @@ import {ThemedStyle} from "@/theme"
 import AppsHeader from "@/components/misc/AppsHeader"
 import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import restComms from "@/managers/RestComms"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -30,7 +31,7 @@ export default function InactiveAppList({
   liveCaptionsRef?: React.RefObject<any>
   onClearSearch?: () => void
 }) {
-  const {appStatus, optimisticallyStartApp, checkAppHealthStatus} = useAppStatus()
+  const {appStatus, optimisticallyStartApp} = useAppStatus()
   const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
@@ -199,7 +200,7 @@ export default function InactiveAppList({
     }
 
     // Optional live health check (keep but after offline confirmation)
-    if (!(await checkAppHealthStatus(appInfo.packageName))) {
+    if (!(await restComms.checkAppHealthStatus(appInfo.packageName))) {
       showAlert(`${appInfo.name} can't be reached`, "Please try again later.", [{text: translate("common:ok")}])
       return
     }
