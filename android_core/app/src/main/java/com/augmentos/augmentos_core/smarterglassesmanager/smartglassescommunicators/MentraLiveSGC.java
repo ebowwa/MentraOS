@@ -179,6 +179,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private boolean isCharging = false;
     private boolean isConnected = false;
 
+    private boolean playAudio = false;
+
     // File transfer management
     private ConcurrentHashMap<String, FileTransferSession> activeFileTransfers = new ConcurrentHashMap<>();
     private static final String FILE_SAVE_DIR = "MentraLive_Images";
@@ -382,8 +384,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
         //setup LC3 player
         lc3AudioPlayer = new Lc3Player(context);
-        lc3AudioPlayer.init();
-        lc3AudioPlayer.startPlay();
+        if (playAudio) {
+            lc3AudioPlayer.init();
+            lc3AudioPlayer.startPlay();
+        }
 
         //setup LC3 decoder for PCM conversion
         if (lc3DecoderPtr == 0) {
