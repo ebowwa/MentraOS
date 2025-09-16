@@ -184,8 +184,8 @@ export default function InactiveAppList({
       const developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
       const shouldProceed = await new Promise<boolean>(resolve => {
         showAlert(
-          "App is down for maintenance",
-          `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+          `${appInfo.name} can't be reached`,
+          `This app is offline. The developer "${appInfo.developerName}" needs to bring it back online. Please contact them for details.`,
           [
             {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
             {text: "Try Anyway", onPress: () => resolve(true)},
@@ -200,7 +200,7 @@ export default function InactiveAppList({
 
     // Optional live health check (keep but after offline confirmation)
     if (!(await checkAppHealthStatus(appInfo.packageName))) {
-      showAlert("App not online", "Please try again later.", [{text: translate("common:ok")}])
+      showAlert(`${appInfo.name} can't be reached`, "Please try again later.", [{text: translate("common:ok")}])
       return
     }
 
