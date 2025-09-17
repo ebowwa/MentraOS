@@ -16,6 +16,9 @@ import java.util.List;
 public class ResponseBuilder implements IResponseBuilder {
     private static final String TAG = "ResponseBuilder";
 
+    public ResponseBuilder() {
+    }
+
     @Override
     public JSONObject buildAckResponse(long messageId) {
         try {
