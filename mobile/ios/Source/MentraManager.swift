@@ -1249,12 +1249,10 @@ struct ViewState {
 
         //        let cloudConnectionStatus =
         //            WebSocketManager.shared.isConnected() ? "CONNECTED" : "DISCONNECTED"
-        // TODO: config
-        let cloudConnectionStatus = "CONNECTED"
 
+        // TODO: config: remove
         let coreInfo: [String: Any] = [
             "augmentos_core_version": "Unknown",
-            "cloud_connection_status": cloudConnectionStatus,
             "default_wearable": defaultWearable as Any,
             "preferred_mic": preferredMic,
             // "is_searching": self.isSearching && !self.defaultWearable.isEmpty,

@@ -25,6 +25,7 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export const ConnectDeviceButton = () => {
   const {status} = useCoreStatus()
@@ -80,9 +81,11 @@ export const ConnectDeviceButton = () => {
       }
 
       // Connectivity check passed, proceed with connection
-      console.log("Connecting to glasses:", status.core_info.default_wearable)
-      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        await bridge.sendConnectWearable(status.core_info.default_wearable)
+      const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
+      const deviceName = await settings.get(SETTINGS_KEYS.device_name)
+      console.log("Connecting to glasses:", defaultWearable, deviceName)
+      if (defaultWearable && defaultWearable != "") {
+        await bridge.sendConnectWearable(defaultWearable, deviceName)
       }
     } catch (error) {
       console.error("connect to glasses error:", error)

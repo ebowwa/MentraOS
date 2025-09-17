@@ -200,7 +200,8 @@ export default function DeviceSettings() {
 
   const setButtonModeWithSave = async (mode: string) => {
     setButtonMode(mode)
-    await bridge.sendSetButtonMode(mode)
+    await bridge.sendSetButtonMode(mode) // TODO: config: remove
+    await settings.set(SETTINGS_KEYS.button_mode, mode)
   }
 
   const confirmForgetGlasses = () => {

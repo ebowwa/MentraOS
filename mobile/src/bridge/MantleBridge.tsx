@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import settings from "@/managers/Settings"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import socketComms from "@/managers/SocketComms"
 import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
@@ -167,12 +167,11 @@ export class MantleBridge extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
-    if (Platform.OS === "ios") {
-      setTimeout(async () => {
-        // will fail silently if we don't have bt permissions (which is the intended behavior)
-        BridgeModule.sendCommand(JSON.stringify({command: "connect_wearable"}))
-      }, 3000)
-    }
+    setTimeout(async () => {
+      const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
+      const deviceName = await settings.get(SETTINGS_KEYS.device_name)
+      this.sendConnectWearable(defaultWearable, deviceName)
+    }, 3000)
 
     // Start the external service
     startExternalService()

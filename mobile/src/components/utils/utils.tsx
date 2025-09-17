@@ -97,16 +97,14 @@ export function Reconnect() {
       console.log("App state changed to:", nextAppState)
       // If app comes back to foreground, hide the loading overlay
       if (nextAppState === "active") {
-        if (await settings.get(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)) {
-          console.log(
-            "Attempt reconnect to glasses",
-            status.core_info.default_wearable,
-            status.glasses_info?.model_name,
-          )
-          if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
-            await bridge.sendConnectWearable(status.core_info.default_wearable)
-          }
+        const reconnectOnAppForeground = await settings.get(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, false)
+        if (!reconnectOnAppForeground) {
+          return
         }
+        let defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
+        let deviceName = await settings.get(SETTINGS_KEYS.device_name)
+        console.log("Attempt reconnect to glasses", defaultWearable, deviceName)
+        await bridge.sendConnectWearable(defaultWearable, deviceName)
       }
     }
 
