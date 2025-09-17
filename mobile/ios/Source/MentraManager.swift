@@ -451,6 +451,9 @@ struct ViewState {
         shouldSendPcmData = false
         shouldSendTranscript = false
 
+        // this must be done before the requiredData is modified by offlineStt:
+        currentRequiredData = requiredData
+
         if offlineStt, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
             requiredData.append(.TRANSCRIPTION)
         }
@@ -474,8 +477,6 @@ struct ViewState {
                 shouldSendTranscript = false
             }
         }
-
-        currentRequiredData = requiredData
 
         // Core.log("Mentra: MIC: shouldSendPcmData=\(shouldSendPcmData), shouldSendTranscript=\(shouldSendTranscript)")
 
