@@ -45,6 +45,9 @@ public class SherpaOnnxTranscriber {
     private static String customModelPath = null;
     private static String customModelLanguage = "en-US";
 
+    private final Object restartLock = new Object();
+    private boolean restartRunning = false;
+
     /**
      * Interface to receive transcription results from Sherpa-ONNX.
      */
@@ -344,11 +347,24 @@ public class SherpaOnnxTranscriber {
      * It shuts down existing resources, reinitializes the model, and restarts processing.
      */
     public void restart() {
-        Log.i(TAG, "Restarting Sherpa-ONNX transcriber");
-        shutdown();
-        init();
+        synchronized (restartLock) {
+            if (restartRunning) {
+                Log.i(TAG, "Restart already in progress, skipping");
+                return;
+            }
+            restartRunning = true;
+        }
+    
+        try {
+            Log.i(TAG, "Restarting Sherpa-ONNX transcriber");
+            shutdown();
+            init();
+        } finally {
+            synchronized (restartLock) {
+                restartRunning = false;
+            }
+        }
     }
-
     /**
      * Register a listener to receive partial and final transcription updates.
      */
