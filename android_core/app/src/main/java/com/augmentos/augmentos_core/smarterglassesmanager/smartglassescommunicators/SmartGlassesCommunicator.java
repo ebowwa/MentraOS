@@ -178,10 +178,12 @@ public abstract class SmartGlassesCommunicator {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param authToken Auth token for webhook authentication
+     * @param size Requested photo size (small|medium|large)
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
         // Default implementation does nothing
-        Log.d("SmartGlassesCommunicator", "Photo request (with size) not implemented for this device");
+        Log.d("SmartGlassesCommunicator", "Photo request (with authToken and size) not implemented for this device");
     }
 
     /**

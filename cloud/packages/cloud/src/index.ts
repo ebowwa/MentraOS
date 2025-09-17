@@ -16,10 +16,10 @@ import pinoHttp from "pino-http";
 
 // Import services
 import { DebugService } from "./services/debug/debug-service";
-import { sessionService } from "./services/session/session.service";
+// sessionService consolidated into UserSession static APIs
 import { websocketService } from "./services/websocket/websocket.service";
 import * as AppUptimeService from "./services/core/app-uptime.service";
-import SessionStorage from "./services/session/SessionStorage";
+import UserSession from "./services/session/UserSession";
 // Register API routes from central index
 import { registerApi } from './api';
 
@@ -75,7 +75,7 @@ const server = new Server(app);
 const debugService = new DebugService(server);
 
 // Export services for use in other modules
-export { sessionService, debugService, websocketService };
+export { debugService, websocketService };
 
 // Middleware setup
 app.use(helmet());
@@ -195,8 +195,7 @@ registerApi(app);
 // Health check endpoint
 app.get("/health", (req, res) => {
   try {
-    const sessionStorage = SessionStorage.getInstance();
-    const activeSessions = sessionStorage.getAllSessions();
+  const activeSessions = UserSession.getAllSessions();
 
     res.json({
       status: "ok",

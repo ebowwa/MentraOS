@@ -39,7 +39,7 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
-const useNewWsManager = false
+const useNewWsManager = Platform.OS === "ios"
 
 export default function InitScreen() {
   // Hooks
@@ -137,7 +137,7 @@ export default function InitScreen() {
           console.error("Failed to load user settings:", error)
         }
 
-        bridge.updateSettings(getCoreSettings()) // send settings to core
+        bridge.updateSettings(await getCoreSettings()) // send settings to core
       } else {
         bridge.setAuthCreds(coreToken, uid)
       }
@@ -333,7 +333,9 @@ export default function InitScreen() {
                 preset="reversed"
                 disabled={isRetrying}
                 LeftAccessory={
-                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
+                  isRetrying
+                    ? () => <ActivityIndicator size="small" color={theme.colors.buttonPillIconText} />
+                    : undefined
                 }
               />
             )}
@@ -341,7 +343,7 @@ export default function InitScreen() {
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
                 preset="reversed"

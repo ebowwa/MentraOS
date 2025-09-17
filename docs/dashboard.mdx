@@ -1,6 +1,6 @@
 ---
 title: Dashboard
-description: "Use the MentraOS Dashboard—a persistent, glanceable surface—to show app status and content. Learn modes (main, expanded), write content via session.dashboard.content, and follow best practices."
+description: "Use the MentraOS Dashboard (a persistent, glanceable surface) to show app status and content. Write content via session.dashboard.content.writeToMain()."
 ---
 
 # Dashboard Tutorial
@@ -9,90 +9,44 @@ description: "Use the MentraOS Dashboard—a persistent, glanceable surface—to
 
 The **dashboard** is a persistent UI surface that MentraOS renders on the smart-glasses when the user looks up.  It can show system information (time, battery, status) and content contributed by apps.  Your app can treat the dashboard as an additional, lightweight display surface that remains visible even when other apps are in the foreground.
 
-MentraOS exposes a high-level *Dashboard API* through `AppSession`.  You do **not** need to manage WebSocket messages or layouts manually—the SDK takes care of that.  All you have to do is call a few convenience methods on `session.dashboard.content`.
+MentraOS exposes a high-level *Dashboard API* through `AppSession`.  You do not need to manage WebSocket messages or layouts manually—the SDK takes care of that.  All you have to do is call a few convenience methods on `session.dashboard.content`.
 
-## Dashboard Modes
-
-| Mode | Purpose | Typical Size |
-| :--- | :------ | :----------- |
-| `main` | Full dashboard experience | Medium |
-| `expanded` | Gives more space to your app's content when the user explicitly expands the dashboard | Large |
-| `always-on` <sup>coming soon</sup>| Minimal overlay that sits on top of other content | Very small |
-
-When you write to the dashboard you can choose which mode(s) the content targets.
 
 ## Prerequisites
 
-1. MentraOS SDK ≥ `0.13.0` installed in your project.
+1. MentraOS SDK installed in your project.
 2. A working app server with a standard `onSession` implementation (see the [Quickstart](/quickstart) guide).
 
-## Hello-Dashboard in 3 Steps
+## Write to the Dashboard
+
+```typescript
+session.dashboard.content.writeToMain('👋 Hello from my app!');
+```
+
+This will show the message in the main dashboard.  If your app had previous dashboard content, it will be replaced.
+
+## Full Example
 
 ```typescript title="packages/apps/hello-dashboard/src/index.ts"
-import { AppServer, AppSession, DashboardMode } from '@mentra/sdk';
+import { AppServer, AppSession } from '@mentra/sdk';
 
 class HelloDashboardServer extends AppServer {
   protected async onSession(session: AppSession, sessionId: string, userId: string) {
-    // 1️⃣  Write a welcome message to the *main* dashboard
+    // Write a welcome message to the dashboard
     session.dashboard.content.writeToMain('👋 Hello from my app!');
-
-    // 2️⃣  Listen for mode changes (optional)
-    const unsubscribe = session.dashboard.content.onModeChange((mode) => {
-      session.logger.info(`Dashboard mode is now: ${mode}`);
-    });
-
-    // 3️⃣  Clean up when the session ends
-    this.addCleanupHandler(unsubscribe);
   }
 }
 ```
 
-That's **all** you need—no subscriptions, no manual layout construction.  The SDK handles the heavy lifting.
+That's all you need, no subscriptions, no manual layout construction.  The SDK handles the heavy lifting.
 
-## Targeting Multiple Modes
 
-Use `write(content, targets)` when you want to send the same content to several modes at once:
-
-```typescript
-session.dashboard.content.write(
-  '📢  New version available',
-  [DashboardMode.MAIN, DashboardMode.EXPANDED]
-);
-```
-
-## Adapting Content for Expanded Mode
-
-The *expanded* mode gives your app more room to breathe.  A common pattern is to show a concise headline in *main* mode and a longer explanation in *expanded* mode:
-
-```typescript
-// Concise headline
-session.dashboard.content.writeToMain('💡 Did you know…');
-
-// Detailed explanation
-session.dashboard.content.writeToExpanded(
-  'The Eiffel Tower can be 15 cm taller during hot days due to thermal expansion.'
-);
-```
-
-## Listening for Mode Changes
-
-Your app can adapt to user actions by reacting to dashboard mode transitions:
-
-```typescript
-const unsubscribe = session.dashboard.content.onModeChange((mode) => {
-  if (mode === DashboardMode.MAIN) {
-    console.log('Dashboard collapsed – switch to compact content');
-  }
-});
-```
-
-Call the returned `unsubscribe()` function when you no longer need the handler.
 
 ## Best Practices
 
 1. **Be concise** – Users glance at the dashboard; keep messages short.
-3. **Use mode-appropriate length** – Short for *main*, longer for *expanded*.
-5. **Respect user settings** – Provide toggles or frequency controls so users can decide how often content appears.
+2. **Aim for ≤60 characters** – Longer messages may be truncated.
+3. **Respect user settings** – Provide toggles or frequency controls so users can decide how often content appears.
 
 ## Next Steps
 

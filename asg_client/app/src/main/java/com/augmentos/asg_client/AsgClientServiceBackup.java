@@ -1771,10 +1771,10 @@ public class AsgClientServiceBackup extends Service implements NetworkStateListe
                             Log.e(TAG, "Auto mode requires bleImgId for fallback");
                             return;
                         }
-                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size, false);
+                        mMediaCaptureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, "", bleImgId, save, size, false);
                     } else {
                         // Existing direct upload path (WiFi only, no fallback)
-                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, false);
+                        mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, "", save, size, false);
                     }
                     break;
 

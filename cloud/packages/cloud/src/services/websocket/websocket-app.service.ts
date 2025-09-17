@@ -34,7 +34,7 @@ import {
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import * as developerService from "../core/developer.service";
-import { sessionService } from "../session/session.service";
+// sessionService has been consolidated into UserSession methods
 // import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from "../logging/pino-logger";
 import photoRequestService from "../core/photo-request.service";
@@ -88,7 +88,7 @@ export class AppWebSocketService {
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
 
-  constructor() {}
+  constructor() { }
 
   /**
    * Get the singleton instance of AppWebSocketService
@@ -785,7 +785,7 @@ export class AppWebSocketService {
     // Check if language subscriptions have changed
     const languageSubscriptionsChanged =
       previousLanguageSubscriptions.length !==
-        newLanguageSubscriptions.length ||
+      newLanguageSubscriptions.length ||
       !previousLanguageSubscriptions.every((sub) =>
         newLanguageSubscriptions.includes(sub),
       );
@@ -936,8 +936,7 @@ export class AppWebSocketService {
     const clientResponse: AppStateChange = {
       type: CloudToGlassesMessageType.APP_STATE_CHANGE,
       sessionId: userSession.sessionId,
-      userSession:
-        await sessionService.transformUserSessionForClient(userSession),
+      userSession: await userSession.snapshotForClient(),
       timestamp: new Date(),
     };
 
