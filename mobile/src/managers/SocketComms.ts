@@ -5,6 +5,7 @@ import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
+import livekitManager from "./LivekitManager"
 
 // Type definitions
 interface ThirdPartyCloudApp {
@@ -415,15 +416,9 @@ class SocketComms {
 
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
-    console.log("SocketCommsTS: connection ack", msg)
-    // this.parse_app_list(msg)
-    // bridge.sendCommand("connection_ack")
-    if (msg.livekit) {
-      const {url, token} = msg.livekit
-      if (url && token) {
-        bridge.sendCommand("connect_livekit", {url, token})
-      }
-    }
+    console.log("SocketCommsTS: connection ack, connecting to livekit")
+    livekitManager.connect()
+    GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 
   private handle_app_state_change(msg: any) {

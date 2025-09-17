@@ -40,6 +40,12 @@ async requestPhoto(options?: PhotoRequestOptions): Promise<PhotoData>
 interface PhotoRequestOptions {
   /** Whether to save the photo to the device gallery */
   saveToGallery?: boolean;
+  /** Custom webhook URL to override the TPA's default webhookUrl */
+  customWebhookUrl?: string;
+  /** Authentication token for custom webhook authentication */
+  authToken?: string;
+  /** Desired photo size: "small" | "medium" | "large" */
+  size?: "small" | "medium" | "large";
 }
 ```
 
@@ -81,6 +87,13 @@ const base64Photo = photo.buffer.toString('base64');
 // Save to gallery
 const photoWithSave = await session.camera.requestPhoto({
   saveToGallery: true
+});
+
+// Custom webhook with authentication
+const photoWithWebhook = await session.camera.requestPhoto({
+  customWebhookUrl: 'https://my-api.example.com/photo-upload',
+  authToken: 'bearer-token-or-api-key',
+  size: 'large'
 });
 ```
 

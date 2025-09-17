@@ -14,9 +14,10 @@ import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
+import livekitManager from "@/managers/LivekitManager"
 
-const {Bridge, BridgeModule, CoreCommsService} = NativeModules
-const eventEmitter = new NativeEventEmitter(Bridge)
+const {BridgeModule, CoreCommsService} = NativeModules
+const coreBridge = new NativeEventEmitter(BridgeModule)
 
 export class MantleBridge extends EventEmitter {
   private static instance: MantleBridge | null = null
@@ -211,7 +212,7 @@ export class MantleBridge extends EventEmitter {
     }
 
     // Create a fresh subscription
-    this.messageEventSubscription = eventEmitter.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
+    this.messageEventSubscription = coreBridge.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
 
     console.log("Core message event listener initialized")
   }
@@ -234,7 +235,6 @@ export class MantleBridge extends EventEmitter {
       return
     }
 
-    // console.log("RECEIVED MESSAGE FROM CORE")
     try {
       const data = JSON.parse(jsonString)
 
@@ -245,19 +245,6 @@ export class MantleBridge extends EventEmitter {
           return
         }
         this.lastMessage = jsonString
-      }
-
-      // Log if this is a WiFi scan result
-      if ("wifi_scan_results" in data) {
-        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
-        console.log("📡 Raw JSON string:", jsonString)
-        console.log("📡 Parsed data:", data)
-        console.log("📡 ========= END RAW MESSAGE =========")
-      }
-
-      // Log if this is a gallery status result
-      if ("glasses_gallery_status" in data) {
-        console.log("📸 Gallery status received from Core:", data.glasses_gallery_status)
       }
 
       this.isConnected = true
@@ -281,6 +268,7 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      // TODO: config: remove all of these and just use the typed messages
       if ("glasses_wifi_status_change" in data) {
         // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
@@ -417,6 +405,15 @@ export class MantleBridge extends EventEmitter {
           }
           socketComms.sendBinary(bytes)
           break
+        case "mic_data":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          // socketComms.sendBinary(bytes)
+          livekitManager.addPcm(bytes)
+          break
         default:
           console.log("Unknown event type:", data.type)
           break
@@ -534,7 +531,7 @@ export class MantleBridge extends EventEmitter {
     this.isConnected = false
 
     // Reset the singleton instance
-    Bridge.instance = null
+    MantleBridge.instance = null
 
     console.log("Bridge cleaned up")
   }
