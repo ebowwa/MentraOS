@@ -237,7 +237,7 @@ class OnboardMicrophoneManager {
     func startRecording() -> Bool {
         // Ensure we're not already recording
         if isRecording {
-            // Bridge.log("MIC: Microphone is already ON!")
+            // Core.log("MIC: Microphone is already ON!")
             return true
         }
 
