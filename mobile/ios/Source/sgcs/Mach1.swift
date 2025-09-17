@@ -111,11 +111,13 @@ class Mach1: UltraliteBaseViewController, SGCManager {
     var onConnectionStateChanged: (() -> Void)?
     @Published var batteryLevel: Int = -1
     @Published var isConnected: Bool = false
-    @Published var ready: Bool = false {
-        didSet {
-            if oldValue != ready {
-                Bridge.log("MACH1: connection_state_changed: \(ready)")
-//                onConnectionStateChanged?()
+    var _ready = false
+    var ready: Bool {
+        get { return _ready }
+        set {
+            let oldValue = _ready
+            _ready = newValue
+            if oldValue != newValue {
                 MentraManager.shared.handleConnectionStateChange()
             }
         }
