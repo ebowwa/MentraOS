@@ -1,8 +1,7 @@
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useCallback} from "react"
 import {
   View,
   ScrollView,
-  Switch,
   Platform,
   TextInput,
   TouchableOpacity,
@@ -14,8 +13,9 @@ import {
 import {useRouter} from "expo-router"
 import Toast from "react-native-toast-message"
 
-import {Screen, Text, Header} from "@/components/ignite"
+import {Screen, Text, Header, Switch} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {ThemedStyle} from "@/theme"
 
 const {SimpleBlacklist} = NativeModules
 
@@ -27,7 +27,7 @@ interface InstalledApp {
 }
 
 export default function NotificationSettingsScreen() {
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const router = useRouter()
 
   const [apps, setApps] = useState<InstalledApp[]>([])
@@ -62,27 +62,30 @@ export default function NotificationSettingsScreen() {
     }
   }
 
-  const toggleApp = async (packageName: string, currentlyBlocked: boolean) => {
-    try {
-      const newBlockedState = !currentlyBlocked
-      await SimpleBlacklist.toggleAppNotification(packageName, newBlockedState)
+  const toggleApp = useCallback(
+    async (packageName: string, currentlyBlocked: boolean) => {
+      try {
+        const newBlockedState = !currentlyBlocked
+        await SimpleBlacklist.toggleAppNotification(packageName, newBlockedState)
 
-      // Update local state
-      setApps(prev => prev.map(app => (app.packageName === packageName ? {...app, isBlocked: newBlockedState} : app)))
+        // Update local state
+        setApps(prev => prev.map(app => (app.packageName === packageName ? {...app, isBlocked: newBlockedState} : app)))
 
-      Toast.show({
-        type: newBlockedState ? "error" : "success",
-        text1: newBlockedState ? "Notifications blocked" : "Notifications enabled",
-        text2: apps.find(a => a.packageName === packageName)?.appName || packageName,
-      })
-    } catch (error) {
-      console.error("Error toggling app:", error)
-      Toast.show({
-        type: "error",
-        text1: "Failed to update setting",
-      })
-    }
-  }
+        Toast.show({
+          type: newBlockedState ? "info" : "success",
+          text1: newBlockedState ? "Notifications blocked" : "Notifications enabled",
+          text2: apps.find(a => a.packageName === packageName)?.appName || packageName,
+        })
+      } catch (error) {
+        console.error("Error toggling app:", error)
+        Toast.show({
+          type: "error",
+          text1: "Failed to update setting",
+        })
+      }
+    },
+    [apps],
+  )
 
   const onRefresh = () => {
     setRefreshing(true)
@@ -133,80 +136,110 @@ export default function NotificationSettingsScreen() {
     )
   }
 
-  const renderAppItem = ({item}: {item: InstalledApp}) => (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: theme.spacing.sm,
-        paddingHorizontal: theme.spacing.md,
-        backgroundColor: theme.colors.card,
-        marginBottom: 1,
-      }}>
-      {/* App Icon */}
+  const renderAppItem = useCallback(
+    ({item}: {item: InstalledApp}) => (
       <View
         style={{
-          width: 40,
-          height: 40,
-          marginRight: theme.spacing.md,
-          borderRadius: 8,
-          backgroundColor: theme.colors.background,
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+          backgroundColor: theme.colors.card,
+          marginBottom: 1,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.border,
         }}>
-        {item.icon ? (
-          <Image
-            source={{uri: `data:image/png;base64,${item.icon}`}}
-            style={{width: 36, height: 36, borderRadius: 6}}
-          />
-        ) : (
-          <Text style={{fontSize: 20}}>{item.appName.charAt(0)}</Text>
-        )}
-      </View>
-
-      {/* App Info */}
-      <View style={{flex: 1}}>
-        <Text
+        {/* App Icon */}
+        <View
           style={{
-            fontSize: 15,
-            fontWeight: "500",
-            color: theme.colors.text,
-            marginBottom: 2,
+            width: 40,
+            height: 40,
+            marginRight: theme.spacing.md,
+            borderRadius: 8,
+            backgroundColor: theme.colors.cardBackground,
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: theme.colors.border,
           }}>
-          {item.appName}
-        </Text>
-        <Text
-          style={{
-            fontSize: 12,
-            color: theme.colors.textDim,
-          }}>
-          {item.packageName}
-        </Text>
-      </View>
+          {item.icon ? (
+            <Image
+              source={{uri: `data:image/png;base64,${item.icon}`}}
+              style={{width: 32, height: 32, borderRadius: 6}}
+              defaultSource={{
+                uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+              }}
+            />
+          ) : (
+            <Text style={{fontSize: 18, color: theme.colors.textDim}}>{item.appName.charAt(0).toUpperCase()}</Text>
+          )}
+        </View>
 
-      {/* Toggle Switch */}
-      <Switch
-        value={!item.isBlocked}
-        onValueChange={() => toggleApp(item.packageName, item.isBlocked)}
-        trackColor={{false: "#767577", true: theme.colors.primary}}
-        thumbColor={item.isBlocked ? "#f4f3f4" : "#f4f3f4"}
-        ios_backgroundColor="#3e3e3e"
-      />
-    </View>
+        {/* App Info */}
+        <View style={{flex: 1, marginRight: theme.spacing.sm}}>
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "500",
+              color: theme.colors.text,
+              marginBottom: 2,
+            }}>
+            {item.appName}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: theme.colors.textDim,
+            }}
+            numberOfLines={1}
+            ellipsizeMode="middle">
+            {item.packageName}
+          </Text>
+        </View>
+
+        {/* Toggle Switch using ignite Switch component */}
+        <Switch value={!item.isBlocked} onValueChange={() => toggleApp(item.packageName, item.isBlocked)} />
+      </View>
+    ),
+    [theme, toggleApp],
   )
 
+  // Add getItemLayout for better performance
+  const getItemLayout = (_: any, index: number) => ({
+    length: 73, // Height of each item
+    offset: 73 * index,
+    index,
+  })
+
   return (
-    <Screen preset="fixed" style={{flex: 1}}>
+    <Screen preset="fixed" style={{flex: 1, backgroundColor: theme.colors.background}}>
       <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
 
-      {/* Search Bar */}
+      {/* Explanatory Text */}
       <View
         style={{
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm,
           backgroundColor: theme.colors.background,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
+        }}>
+        <Text
+          style={{
+            fontSize: 13,
+            color: theme.colors.textDim,
+            lineHeight: 18,
+            marginBottom: theme.spacing.xs,
+          }}>
+          Control which apps can send notifications to MentraOS. When enabled, notifications from these apps will be
+          displayed on your smart glasses.
+        </Text>
+      </View>
+
+      {/* Search Bar */}
+      <View
+        style={{
+          paddingHorizontal: theme.spacing.md,
+          paddingBottom: theme.spacing.sm,
+          backgroundColor: theme.colors.background,
         }}>
         <TextInput
           placeholder="Search apps..."
@@ -215,11 +248,13 @@ export default function NotificationSettingsScreen() {
           onChangeText={setSearchQuery}
           style={{
             backgroundColor: theme.colors.card,
-            borderRadius: 8,
+            borderRadius: theme.borderRadius.sm,
             paddingHorizontal: theme.spacing.md,
             paddingVertical: theme.spacing.xs,
             fontSize: 15,
             color: theme.colors.text,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
           }}
         />
       </View>
@@ -233,8 +268,8 @@ export default function NotificationSettingsScreen() {
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         }}>
-        <Text style={{fontSize: 13, color: theme.colors.textDim}}>
-          {filteredApps.filter(app => app.isBlocked).length} of {filteredApps.length} apps blocked
+        <Text style={{fontSize: 12, color: theme.colors.textDim, fontWeight: "500"}}>
+          {filteredApps.filter(app => !app.isBlocked).length} of {filteredApps.length} apps enabled
         </Text>
       </View>
 
@@ -246,6 +281,11 @@ export default function NotificationSettingsScreen() {
         contentContainerStyle={{paddingBottom: theme.spacing.xl}}
         onRefresh={onRefresh}
         refreshing={refreshing}
+        getItemLayout={getItemLayout}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={15}
         ListEmptyComponent={
           <View style={{flex: 1, alignItems: "center", marginTop: theme.spacing.xxl}}>
             <Text style={{color: theme.colors.textDim}}>

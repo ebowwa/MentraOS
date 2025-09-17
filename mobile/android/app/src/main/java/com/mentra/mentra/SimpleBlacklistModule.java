@@ -80,12 +80,16 @@ public class SimpleBlacklistModule extends ReactContextBaseJavaModule {
                 app.putString("appName", pm.getApplicationLabel(packageInfo).toString());
                 app.putBoolean("isBlocked", prefs.getBoolean(packageInfo.packageName, false));
 
-                // Get app icon as base64
-                try {
-                    Drawable icon = pm.getApplicationIcon(packageInfo.packageName);
-                    String iconBase64 = drawableToBase64(icon);
-                    app.putString("icon", iconBase64);
-                } catch (Exception e) {
+                // Get app icon as base64 - skip for system apps to improve performance
+                if ((packageInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+                    try {
+                        Drawable icon = pm.getApplicationIcon(packageInfo.packageName);
+                        String iconBase64 = drawableToBase64(icon);
+                        app.putString("icon", iconBase64);
+                    } catch (Exception e) {
+                        app.putString("icon", null);
+                    }
+                } else {
                     app.putString("icon", null);
                 }
 
@@ -146,13 +150,12 @@ public class SimpleBlacklistModule extends ReactContextBaseJavaModule {
                 drawable.draw(canvas);
             }
 
-            // Scale down if too large
-            if (bitmap.getWidth() > 48 || bitmap.getHeight() > 48) {
-                bitmap = Bitmap.createScaledBitmap(bitmap, 48, 48, true);
-            }
+            // Scale down to 32x32 for faster loading
+            bitmap = Bitmap.createScaledBitmap(bitmap, 32, 32, true);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+            // Use JPEG with lower quality for smaller size and faster loading
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos);
             byte[] imageBytes = baos.toByteArray();
             return Base64.encodeToString(imageBytes, Base64.NO_WRAP);
         } catch (Exception e) {
