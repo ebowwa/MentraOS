@@ -2,6 +2,117 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [2.18.0] - 2025-09-17
+
+### 🔧 Git Branch Reorganization & Complete Display System Validation
+
+#### Major Git Workflow Restructuring
+- **🌳 nexfirmware Branch**: Established as primary firmware development branch
+- **🔄 Branch Migration**: Successfully merged `dev-loay-nexfirmware` → `nexfirmware`
+- **🏷️ Naming Integration**: Integrated Cole's updated naming conventions (mentraos_nrf5340/mos_*)
+- **📋 Legacy Cleanup**: Replaced old K901_NRF5340/xyzn_* OEM naming throughout codebase
+- **🔗 Feature Branch Targets**: Updated dev-nexfirmware-* branches to target nexfirmware
+
+#### Complete Display System Testing & Validation
+- **✅ HLS12VGA Verification**: Successfully tested 640×480 projector display functionality
+- **✅ SSD1306 Compatibility**: Maintained full 128×64 OLED display support
+- **🎨 LVGL Optimization**: Confirmed 1-bit color depth works optimally for both displays
+- **🔧 Configuration Validation**: Tested display switching between SSD1306 and HLS12VGA
+
+#### Display Switching Instructions
+
+##### Quick Switch: HLS12VGA ↔ SSD1306
+**Step 1: Device Tree Changes** (`boards/nrf5340dk_nrf5340_cpuapp_ns.overlay`)
+
+For **HLS12VGA Projector**:
+```dts
+/ {
+    chosen {
+        zephyr,display = &hls12vga;  // Point to HLS12VGA
+    };
+};
+
+&spi4 {
+    hls12vga: hls12vga@0 {
+        status = "okay";  // Enable HLS12VGA
+    };
+};
+
+&i2c2 {
+    ssd1306: ssd1306@3c {
+        status = "disabled";  // Disable SSD1306
+    };
+};
+```
+
+For **SSD1306 OLED**:
+```dts
+/ {
+    chosen {
+        zephyr,display = &ssd1306;  // Point to SSD1306
+    };
+};
+
+&spi4 {
+    hls12vga: hls12vga@0 {
+        status = "disabled";  // Disable HLS12VGA
+    };
+};
+
+&i2c2 {
+    ssd1306: ssd1306@3c {
+        status = "okay";  // Enable SSD1306
+    };
+};
+```
+
+**Step 2: Optional Configuration** (`prj.conf`)
+```properties
+# For HLS12VGA (current):
+CONFIG_CUSTOM_HLS12VGA=y    # Enable HLS12VGA driver
+CONFIG_SSD1306=y            # Keep SSD1306 available
+
+# For SSD1306 only (flash optimization):
+CONFIG_CUSTOM_HLS12VGA=n    # Disable HLS12VGA to save flash
+CONFIG_SSD1306=y            # Enable SSD1306 driver
+
+# Common (works for both):
+CONFIG_LV_COLOR_DEPTH_1=y   # 1-bit monochrome optimal for both
+```
+
+**Step 3: Build & Flash**
+```bash
+./build_firmware.sh
+./flash_firmware.sh
+```
+
+#### Technical Specifications
+
+##### Hardware Interfaces
+- **HLS12VGA**: SPI4 @ 32MHz, 640×480, multiple GPIO control lines
+- **SSD1306**: I2C2 @ 1MHz, 128×64, simple 2-wire interface
+
+##### Memory Usage
+- **HLS12VGA**: ~38KB framebuffer (640×480 @ 1-bit)
+- **SSD1306**: ~1KB framebuffer (128×64 @ 1-bit)
+
+##### Display Capabilities
+- **Both displays**: 1-bit monochrome, LVGL compatible
+- **HLS12VGA**: Projector output, hardware mirroring correction
+- **SSD1306**: OLED panel, direct pixel mapping
+
+#### Development Workflow Changes
+- **Primary Branch**: `nexfirmware` (replaces dev-loay-nexfirmware)
+- **Feature Branches**: `dev-nexfirmware-*` → target nexfirmware
+- **Integration**: All Cole's mentraos_nrf5340 work preserved and integrated
+- **Build System**: Full nRF Connect SDK v3.0.0 compatibility maintained
+
+#### Status: ✅ Production Ready
+- **Git Workflow**: Reorganized and documented for team collaboration
+- **Display System**: Both HLS12VGA and SSD1306 fully tested and working
+- **Build System**: Zero compilation errors, optimized configurations
+- **Hardware Validation**: Real-world testing completed successfully
+
 ## [2.17.0] - 2025-09-16
 
 ### 🖥️ HLS12VGA Projector Display Support & Modular Display System
