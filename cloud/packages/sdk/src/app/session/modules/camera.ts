@@ -39,6 +39,8 @@ export interface PhotoRequestOptions {
   saveToGallery?: boolean;
   /** Custom webhook URL to override the TPA's default webhookUrl */
   customWebhookUrl?: string;
+  /** Authentication token for custom webhook authentication */
+  authToken?: string;
   /**
    * Desired photo size.
    * - small: lowest resolution, faster capture/transfer
@@ -161,15 +163,18 @@ export class CameraModule {
    * // Request a photo
    * const photo = await session.camera.requestPhoto();
    *
-   * // Request a photo with custom webhook URL
+   * // Request a photo with custom webhook URL and authentication
    * const photo = await session.camera.requestPhoto({
-   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload'
+   *   customWebhookUrl: 'https://my-custom-endpoint.com/photo-upload',
+   *   authToken: 'your-auth-token-here'
    * });
    * ```
    */
   async requestPhoto(options?: PhotoRequestOptions): Promise<PhotoData> {
     return new Promise((resolve, reject) => {
       try {
+        console.log("DEBUG: requestPhoto options:", options);
+
         // Generate unique request ID
         const requestId = `photo_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -185,6 +190,7 @@ export class CameraModule {
           timestamp: new Date(),
           saveToGallery: options?.saveToGallery || false,
           customWebhookUrl: options?.customWebhookUrl,
+          authToken: options?.authToken,
           size: options?.size || "medium",
         };
 
@@ -196,6 +202,7 @@ export class CameraModule {
             requestId,
             saveToGallery: options?.saveToGallery,
             hasCustomWebhook: !!options?.customWebhookUrl,
+            hasAuthToken: !!options?.authToken,
           },
           `📸 Photo request sent`,
         );

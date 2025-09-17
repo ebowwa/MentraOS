@@ -142,6 +142,7 @@ export default function Homepage() {
         <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
         <Spacer height={spacing.md} />
         <AppsIncompatibleListOld />
+        <Spacer height={spacing.xl} />
       </ScrollView>
 
       <Reconnect />
