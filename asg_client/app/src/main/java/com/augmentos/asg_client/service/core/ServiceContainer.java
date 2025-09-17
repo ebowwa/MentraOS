@@ -64,7 +64,7 @@ public class ServiceContainer {
 
 
         // Initialize CommandProcessor with interface-based managers
-        this.responseBuilder = new ResponseBuilder(context);
+        this.responseBuilder = new ResponseBuilder();
         this.commandProcessor = new CommandProcessor(context,
                 communicationManager,
                 stateManager,

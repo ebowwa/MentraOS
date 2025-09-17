@@ -1,10 +1,8 @@
 package com.augmentos.asg_client.service.communication.managers;
 
-import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilder;
-import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,11 +15,8 @@ import java.util.List;
  */
 public class ResponseBuilder implements IResponseBuilder {
     private static final String TAG = "ResponseBuilder";
-    
-    private final Context context;
 
-    public ResponseBuilder(Context context) {
-        this.context = context;
+    public ResponseBuilder() {
     }
 
     @Override
@@ -148,12 +143,6 @@ public class ResponseBuilder implements IResponseBuilder {
             JSONObject response = new JSONObject();
             response.put("type", "glasses_ready");
             response.put("timestamp", System.currentTimeMillis());
-            
-            // Add device type information
-            String deviceType = ServiceUtils.getDeviceTypeString(context);
-            response.put("device_type", deviceType);
-            Log.d(TAG, "Added device type to glasses_ready response: " + deviceType);
-            
             return response;
         } catch (JSONException e) {
             Log.e(TAG, "Error creating glasses_ready response", e);
