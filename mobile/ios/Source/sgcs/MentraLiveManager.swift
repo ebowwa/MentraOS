@@ -2282,12 +2282,24 @@ typealias JSONObject = [String: Any]
 
     private func emitDiscoveredDevice(_ name: String) {
         // Use the standardized typed message function
-        Bridge.sendCompatibleGlassesSearchResult("Mentra Live", deviceName: name)
+        let body = [
+            "compatible_glasses_search_result": [
+                "model_name": "Mentra Live",
+                "device_name": name,
+                "device_address": "",
+            ],
+        ]
+        Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
     }
 
     private func emitStopScanEvent() {
         // Use the standardized typed message function
-        Bridge.sendCompatibleGlassesSearchStop("Mentra Live")
+        let body = [
+            "compatible_glasses_search_stop": [
+                "model_name": "Mentra Live",
+            ],
+        ]
+        Bridge.sendTypedMessage("compatible_glasses_search_stop", body: body)
     }
 
     // private func emitBatteryLevelEvent(level: Int, charging: Bool) {

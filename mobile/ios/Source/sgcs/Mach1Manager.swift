@@ -240,7 +240,14 @@ class Mach1Manager: UltraliteBaseViewController {
 
     func emitDiscoveredDevice(_ name: String) {
         // Use the standardized typed message function
-        Bridge.sendCompatibleGlassesSearchResult("Mentra Mach1", deviceName: "\(name)")
+        let body = [
+            "compatible_glasses_search_result": [
+                "model_name": "Mentra Mach1",
+                "device_name": "\(name)",
+                "device_address": "",
+            ],
+        ]
+        Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
     }
 
     func foundDevice(_ device: CBPeripheral) {
