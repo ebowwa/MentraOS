@@ -16,6 +16,7 @@ class WebSocketManager extends EventEmitter {
   private url: string | null = null
   private coreToken: string | null = null
   private reconnectInterval: any = null
+  private manuallyDisconnected: boolean = false
 
   private constructor() {
     super()
@@ -41,6 +42,7 @@ class WebSocketManager extends EventEmitter {
 
   connect(url: string, coreToken: string) {
     console.log(`WSM: connect: ${url}, ${coreToken}`)
+    this.manuallyDisconnected = false
     this.url = url
     this.coreToken = coreToken
 
@@ -85,7 +87,7 @@ class WebSocketManager extends EventEmitter {
     }
 
     this.webSocket.onclose = event => {
-      console.log("WSM: Connection closed with code:", event.code)
+      console.error("WSM: Connection closed with code:", event.code)
       this.updateStatus(WebSocketStatus.DISCONNECTED)
       store.setDisconnected()
       this.startReconnectInterval()
@@ -93,8 +95,16 @@ class WebSocketManager extends EventEmitter {
   }
 
   startReconnectInterval() {
-    clearInterval(this.reconnectInterval)
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval)
+      this.reconnectInterval = null
+    }
+
+    // Don't start reconnect if manually disconnected
+    if (this.manuallyDisconnected) return
+
     this.reconnectInterval = setInterval(() => {
+      console.error("WSM: Attempting reconnect")
       const store = useConnectionStore.getState()
       if (store.status === WebSocketStatus.DISCONNECTED) {
         this.handleReconnect()
@@ -111,6 +121,8 @@ class WebSocketManager extends EventEmitter {
   }
 
   disconnect() {
+    this.manuallyDisconnected = true
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout)
       this.reconnectTimeout = null
