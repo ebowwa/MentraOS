@@ -3,7 +3,7 @@ import {supabase} from "@/supabase/supabaseClient"
 import bridge from "@/bridge/MantleBridge"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/managers/Settings"
 import restComms from "@/managers/RestComms"
 
 export class LogoutUtils {

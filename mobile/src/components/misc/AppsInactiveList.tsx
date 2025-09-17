@@ -3,8 +3,7 @@ import React, {useEffect, useRef, useState} from "react"
 import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
@@ -64,7 +63,7 @@ export default function InactiveAppList({
   useFocusEffect(
     React.useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        const completed = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
         setOnboardingCompleted(completed)
 
         if (!completed) {
@@ -75,7 +74,7 @@ export default function InactiveAppList({
           setShowOnboardingTip(false)
 
           // If onboarding is completed, check how many times settings have been accessed
-          const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0)
+          const settingsAccessCount = await settings.get(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0)
           // Only show hint if they've accessed settings less than 1 times
           setShowSettingsHint(settingsAccessCount < 1)
         }
@@ -88,7 +87,7 @@ export default function InactiveAppList({
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      const completed = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
       setOnboardingCompleted(completed)
       setShowOnboardingTip(!completed)
     }
@@ -109,7 +108,7 @@ export default function InactiveAppList({
   }, [showOnboardingTip])
 
   const completeOnboarding = () => {
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
     setOnboardingCompleted(true)
     setShowOnboardingTip(false)
     setInLiveCaptionsPhase(false) // Reset any live captions phase state

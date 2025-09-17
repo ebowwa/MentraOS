@@ -9,22 +9,13 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {
-  getCoreSettings,
-  getSettingDefault,
-  initUserSettings,
-  loadSetting,
-  saveSetting,
-  SETTINGS_KEYS,
-  writeSettingsLocally,
-} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import restComms from "@/managers/RestComms"
 import socketComms from "@/managers/SocketComms"
-import MantleManager from "@/managers/MantleManager"
 import mantle from "@/managers/MantleManager"
 
 // Types
@@ -73,8 +64,8 @@ export default function InitScreen() {
   }
 
   const checkCustomUrl = async (): Promise<boolean> => {
-    const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    const defaultUrl = await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const customUrl = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    const defaultUrl = await settings.getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
     const isCustom = customUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
@@ -87,7 +78,7 @@ export default function InitScreen() {
     }
 
     // Check onboarding status
-    const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+    const onboardingCompleted = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
     if (!onboardingCompleted) {
       replace("/onboarding/welcome")
       return
@@ -135,14 +126,14 @@ export default function InitScreen() {
 
         try {
           const settings = await restComms.loadUserSettings() // get settings from server
-          await writeSettingsLocally(settings) // write settings to local storage
-          await initUserSettings() // initialize user settings
+          await settings.setManyLocally(settings) // write settings to local storage
+          await settings.initUserSettings() // initialize user settings
           await mantle.init()
         } catch (error) {
           console.error("Failed to load user settings from server:", error)
         }
 
-        bridge.updateSettings(await getCoreSettings()) // send settings to core
+        bridge.updateSettings(await settings.getCoreSettings()) // send settings to core
       } else {
         bridge.setAuthCreds(coreToken, uid)
       }
@@ -219,8 +210,8 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      const defaultUrl = (await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
-      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
+      const defaultUrl = (await settings.getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
       await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash

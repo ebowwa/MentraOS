@@ -12,7 +12,7 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
+import settings from "@/managers/Settings"
 import socketComms from "@/managers/SocketComms"
 import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
@@ -189,7 +189,7 @@ export class MantleBridge extends EventEmitter {
 
     // set the backend server url
     if (Platform.OS === "android") {
-      const backendServerUrl = await getRestUrl() // TODO: config: remove
+      const backendServerUrl = await settings.getRestUrl() // TODO: config: remove
       await this.setServerUrl(backendServerUrl) // TODO: config: remove
     }
 
@@ -379,7 +379,7 @@ export class MantleBridge extends EventEmitter {
           })
           break
         case "save_setting":
-          await saveSetting(data.key, data.value, false)
+          await settings.set(data.key, data.value, false)
           break
         case "head_up":
           socketComms.sendHeadPosition(data)
@@ -420,7 +420,7 @@ export class MantleBridge extends EventEmitter {
   private async sendSettings() {
     this.sendData({
       command: "update_settings",
-      params: {...(await getCoreSettings())},
+      params: {...(await settings.getCoreSettings())},
     })
   }
 

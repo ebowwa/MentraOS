@@ -1,5 +1,5 @@
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
 
 interface Callback {
@@ -131,7 +131,7 @@ class RestComms {
   ): Promise<T> {
     this.validateToken()
 
-    const baseUrl = await getRestUrl()
+    const baseUrl = await settings.getRestUrl()
     const url = `${baseUrl}${endpoint}`
 
     console.log(`${method} request to: ${url}`)
@@ -153,7 +153,7 @@ class RestComms {
     data?: any,
     params?: any,
   ): Promise<T> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await settings.getRestUrl()
     const url = `${baseUrl}${endpoint}`
     const config: RequestConfig = {
       method,
@@ -175,7 +175,7 @@ class RestComms {
   public async checkAppHealthStatus(packageName: string): Promise<boolean> {
     // GET the app's /health endpoint
     try {
-      const baseUrl = await getRestUrl()
+      const baseUrl = await settings.getRestUrl()
       // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
       const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
       const healthResponse = await fetch(healthUrl, {
@@ -242,7 +242,7 @@ class RestComms {
   }
 
   public async exchangeToken(supabaseToken: string): Promise<string> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await settings.getRestUrl()
     const url = `${baseUrl}/auth/exchange-token`
 
     const config: RequestConfig = {

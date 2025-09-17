@@ -19,8 +19,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
@@ -37,7 +36,7 @@ export default function Homepage() {
 
   useEffect(() => {
     const check = async () => {
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
       setShowNewUi(newUiSetting)
       setHasLoaded(true)
     }

@@ -1,6 +1,5 @@
-import bridge from "@/bridge/MantleBridge"
 import socketComms from "@/managers/SocketComms"
-import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import * as Calendar from "expo-calendar"
 import restComms from "@/managers/RestComms"
 import * as TaskManager from "expo-task-manager"
@@ -78,7 +77,7 @@ class MantleManager {
     // socketComms.sendLocationUpdate(location)
   }
 
-  getLocationAccuracy(accuracy: string) {
+  public getLocationAccuracy(accuracy: string) {
     switch (accuracy) {
       case "realtime":
         return Location.LocationAccuracy.BestForNavigation
@@ -93,6 +92,7 @@ class MantleManager {
       case "reduced":
         return Location.LocationAccuracy.Lowest
     }
+    throw new Error("Invalid accuracy: " + accuracy)
   }
 
   public async setLocationTier(tier: string) {
@@ -123,7 +123,7 @@ class MantleManager {
 
   public async handleTranscriptionResult(data: any) {
     // TODO: performance!
-    const offlineStt = await loadSetting(SETTINGS_KEYS.offline_stt)
+    const offlineStt = await settings.get(SETTINGS_KEYS.offline_stt)
     if (offlineStt) {
       socketComms.handle_display_event({
         type: "display_event",

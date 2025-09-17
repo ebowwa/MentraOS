@@ -12,8 +12,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function TranscriptionSettingsScreen() {
   const {status} = useCoreStatus()
@@ -36,9 +35,9 @@ export default function TranscriptionSettingsScreen() {
 
   // load settings:
   const loadSettings = async () => {
-    await loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    await loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
-    await loadSetting(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
+    await settings.get(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
+    await settings.get(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+    await settings.get(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
   }
   useEffect(() => {
     loadSettings().then(() => setLoading(false))
@@ -110,7 +109,7 @@ export default function TranscriptionSettingsScreen() {
 
     const newSetting = !isEnforceLocalTranscriptionEnabled
     await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
+    await settings.set(SETTINGS_KEYS.enforce_local_transcription, newSetting)
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
@@ -241,13 +240,13 @@ export default function TranscriptionSettingsScreen() {
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
+    await settings.set(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   const toggleOfflineSTT = async () => {
     const newSetting = !isOfflineSTTEnabled
-    await saveSetting(SETTINGS_KEYS.offline_stt, newSetting)
+    await settings.set(SETTINGS_KEYS.offline_stt, newSetting)
     setIsOfflineSTTEnabled(newSetting)
   }
 

@@ -2,8 +2,7 @@ import React, {createContext, useContext, useState, ReactNode, useCallback, useE
 import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl, loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
@@ -171,7 +170,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
 
     setAppStatus(currentStatus => {
       // Then update the target app to be running
@@ -186,7 +185,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await settings.set(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -231,7 +230,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
 
       if (!usingNewUI) {
         setAppStatus(currentStatus =>

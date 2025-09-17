@@ -85,97 +85,6 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.location_tier]: null,
 }
 
-export const getSettingDefault = (key: string) => {
-  if (key === SETTINGS_KEYS.time_zone) {
-    return getTimeZone()
-  }
-  return DEFAULT_SETTINGS[key]
-}
-
-const saveSetting = async (
-  key: string,
-  value: any,
-  updateCore: boolean = true,
-  updateServer: boolean = true,
-): Promise<void> => {
-  try {
-    const jsonValue = JSON.stringify(value)
-    await AsyncStorage.setItem(key, jsonValue)
-    if (CORE_SETTINGS_KEYS.includes(key)) {
-      if (updateCore) {
-        bridge.updateSettings({[key]: value})
-      }
-    }
-
-    if (!updateServer) {
-      return
-    }
-
-    await restComms.writeUserSettings({[key]: value})
-  } catch (error) {
-    console.error(`Failed to save setting (${key}):`, error)
-  }
-}
-
-const handleSpecialCases = async (key: string) => {
-  if (key === SETTINGS_KEYS.time_zone) {
-    const override = await loadSetting(SETTINGS_KEYS.time_zone_override)
-    if (override) {
-      return override
-    }
-    return getTimeZone()
-  }
-  return null
-}
-
-const loadSetting = async (key: string, overrideDefaultValue?: any): Promise<any> => {
-  const override = await handleSpecialCases(key)
-  if (override) {
-    return override
-  }
-
-  const defaultValue = overrideDefaultValue ?? getSettingDefault(key)
-  try {
-    const jsonValue = await AsyncStorage.getItem(key)
-
-    if (jsonValue !== null) {
-      return JSON.parse(jsonValue)
-    }
-
-    return defaultValue
-  } catch (error) {
-    console.error(`Failed to load setting (${key}):`, error)
-    return defaultValue
-  }
-}
-
-export const writeSettingsLocally = async (settings: any): Promise<any> => {
-  for (const key in settings) {
-    await saveSetting(key, settings[key], true, false)
-  }
-}
-
-export const initUserSettings = async (): Promise<any> => {
-  // tell the server our time zone on init:
-  const timeZone = await loadSetting(SETTINGS_KEYS.time_zone)
-  await saveSetting(SETTINGS_KEYS.time_zone, timeZone, true, true)
-}
-
-export const getRestUrl = async (): Promise<string> => {
-  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const url = new URL(serverUrl)
-  const secure = url.protocol === "https:"
-  return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
-}
-
-export const getWsUrl = async (): Promise<string> => {
-  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const url = new URL(serverUrl)
-  const secure = url.protocol === "https:"
-  const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
-  return wsUrl
-}
-
 const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.sensing_enabled,
   SETTINGS_KEYS.power_saving_mode,
@@ -199,15 +108,113 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.offline_stt,
 ]
 
-// return an object populated with settings that the core should have:
-export const getCoreSettings = async (): Promise<any> => {
-  const coreSettingsObj: any = {}
+class Settings {
+  private static instance: Settings
 
-  for (const setting of CORE_SETTINGS_KEYS) {
-    coreSettingsObj[setting] = await loadSetting(setting)
+  private constructor() {}
+
+  public static getInstance(): Settings {
+    if (!Settings.instance) {
+      Settings.instance = new Settings()
+    }
+    return Settings.instance
   }
 
-  return coreSettingsObj
+  public async get(key: string, overrideDefaultValue?: any): Promise<any> {
+    const override = await this.handleSpecialCases(key)
+    if (override) {
+      return override
+    }
+
+    const defaultValue = overrideDefaultValue ?? (await this.getDefaultValue(key))
+    try {
+      const jsonValue = await AsyncStorage.getItem(key)
+
+      if (jsonValue !== null) {
+        return JSON.parse(jsonValue)
+      }
+
+      return defaultValue
+    } catch (error) {
+      console.error(`Failed to load setting (${key}):`, error)
+      return defaultValue
+    }
+  }
+
+  public async set(key: string, value: any, updateCore: boolean = true, updateServer: boolean = true): Promise<void> {
+    try {
+      const jsonValue = JSON.stringify(value)
+      await AsyncStorage.setItem(key, jsonValue)
+      if (CORE_SETTINGS_KEYS.includes(key)) {
+        if (updateCore) {
+          bridge.updateSettings({[key]: value})
+        }
+      }
+
+      if (!updateServer) {
+        return
+      }
+
+      await restComms.writeUserSettings({[key]: value})
+    } catch (error) {
+      console.error(`Failed to save setting (${key}):`, error)
+    }
+  }
+
+  public async getDefaultValue(key: string): Promise<any> {
+    if (key === SETTINGS_KEYS.time_zone) {
+      return getTimeZone()
+    }
+    return DEFAULT_SETTINGS[key]
+  }
+
+  public async handleSpecialCases(key: string): Promise<any> {
+    if (key === SETTINGS_KEYS.time_zone) {
+      const override = await this.get(SETTINGS_KEYS.time_zone_override)
+      if (override) {
+        return override
+      }
+      return getTimeZone()
+    }
+    return null
+  }
+
+  public async initUserSettings(): Promise<void> {
+    const timeZone = await this.get(SETTINGS_KEYS.time_zone)
+    await this.set(SETTINGS_KEYS.time_zone, timeZone, true, true)
+  }
+
+  public async getRestUrl(): Promise<string> {
+    const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const url = new URL(serverUrl)
+    const secure = url.protocol === "https:"
+    return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
+  }
+
+  public async getWsUrl(): Promise<string> {
+    const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const url = new URL(serverUrl)
+    const secure = url.protocol === "https:"
+    const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
+    return wsUrl
+  }
+
+  public async setManyLocally(settings: any): Promise<any> {
+    for (const key in settings) {
+      await this.set(key, settings[key], true, false)
+    }
+  }
+
+  public async getCoreSettings(): Promise<any> {
+    const coreSettingsObj: any = {}
+
+    for (const setting of CORE_SETTINGS_KEYS) {
+      coreSettingsObj[setting] = await this.get(setting)
+    }
+
+    return coreSettingsObj
+  }
 }
 
-export {saveSetting, loadSetting}
+const settings = Settings.getInstance()
+export default settings

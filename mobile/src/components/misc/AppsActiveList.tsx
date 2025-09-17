@@ -9,10 +9,8 @@ import {AppListItem} from "./AppListItem"
 import Divider from "./Divider"
 import {Spacer} from "./Spacer"
 import AppsHeader from "./AppsHeader"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import RestComms from "@/managers/RestComms"
 import restComms from "@/managers/RestComms"
 
 export default function AppsActiveList({
@@ -56,7 +54,7 @@ export default function AppsActiveList({
   // Check if user has ever activated an app
   useEffect(() => {
     const checkHasActivatedApp = async () => {
-      const hasActivated = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
+      const hasActivated = await settings.get(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
       setHasEverActivatedApp(hasActivated)
     }
     checkHasActivatedApp()
@@ -65,7 +63,7 @@ export default function AppsActiveList({
   // Update hasEverActivatedApp when apps change
   useEffect(() => {
     const checkHasActivatedApp = async () => {
-      const hasActivated = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
+      const hasActivated = await settings.get(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
       setHasEverActivatedApp(hasActivated)
     }
     // Re-check when app status changes (e.g., after activating first app)
