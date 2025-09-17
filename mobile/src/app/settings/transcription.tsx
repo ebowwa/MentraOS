@@ -31,6 +31,8 @@ export default function TranscriptionSettingsScreen() {
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
   const [isOfflineSTTEnabled, setIsOfflineSTTEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
+  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
+  const [lastRestartTime, setLastRestartTime] = useState(0)
 
   // load settings:
   const loadSettings = async () => {
@@ -112,19 +114,41 @@ export default function TranscriptionSettingsScreen() {
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
+  const timeRemainingTillRestart = () => {
+    const now = Date.now()
+    const timeRemaining = RESTART_TRANSCRIPTION_DEBOUNCE_MS - (now - lastRestartTime)
+    return timeRemaining
+  }
+
+  const activateModelandRestartTranscription = async (modelId: string): Promise<void> => {
+    const now = Date.now()
+    setLastRestartTime(now)
+    await STTModelManager.activateModel(modelId)
+    await bridge.restartTranscription()
+  }
+
   const handleModelChange = async (modelId: string) => {
+    const timeRemaining = timeRemainingTillRestart()
+
+    if (timeRemaining > 0) {
+      showAlert(
+        "Restart already in progress",
+        "A model change is in progress. Please wait " +
+          Math.ceil(timeRemaining / 1000) +
+          " seconds before switching to another model",
+        [{text: "OK"}],
+      )
+      return
+    }
+    const info = await STTModelManager.getModelInfo(modelId)
     setSelectedModelId(modelId)
     STTModelManager.setCurrentModelId(modelId)
-
-    // Check if the new model is downloaded and activate it
-    const info = await STTModelManager.getModelInfo(modelId)
     setModelInfo(info)
 
     if (info.downloaded) {
       try {
-        await STTModelManager.activateModel(modelId)
-        showAlert("Restarting Transcription", "Switching to new model...", [{text: "OK"}])
-        await bridge.restartTranscription()
+        await activateModelandRestartTranscription(modelId)
+        showAlert("Restarted Transcription", "Switched to new model", [{text: "OK"}])
       } catch (error: any) {
         showAlert("Error", error.message || "Failed to activate model", [{text: "OK"}])
       }
@@ -150,6 +174,8 @@ export default function TranscriptionSettingsScreen() {
 
       // Re-check model status after download
       await checkModelStatus()
+
+      await activateModelandRestartTranscription(targetModelId)
 
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
@@ -188,16 +214,6 @@ export default function TranscriptionSettingsScreen() {
         },
       ],
     )
-  }
-
-  const getProgressText = () => {
-    if (downloadProgress > 0 && downloadProgress < 100) {
-      return `Downloading... ${downloadProgress}%`
-    }
-    if (extractionProgress > 0) {
-      return `Extracting... ${extractionProgress}%`
-    }
-    return "Preparing..."
   }
 
   const initSelectedModel = async () => {
