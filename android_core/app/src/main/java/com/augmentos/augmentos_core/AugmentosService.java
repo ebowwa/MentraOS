@@ -57,6 +57,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
@@ -372,6 +373,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public void onTriggerSendStatusToAugmentOsManagerEvent(TriggerSendStatusToAugmentOsManagerEvent event) {
         sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe
+    public void onLocalTranscriptionEvent(LocalTranscriptionEvent event) {
+        Log.d(TAG, "Local transcription event received: " + event.text);
+        if (smartGlassesManager != null)
+            smartGlassesManager.sendTextWall(event.text);
     }
 
     @Subscribe
@@ -2377,6 +2385,21 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
+    }
+
+    @Override
+    public void onEnableOfflineMode(boolean enabled) {
+        Log.d(TAG, "Enabling offline captions");
+        // save a string offline in the preferences
+        SmartGlassesManager.saveEnableOfflineMode(this, enabled);
+        List<SpeechRequiredDataType> requiredData = new ArrayList<>();
+        if (enabled) {
+            requiredData.add(SpeechRequiredDataType.TRANSCRIPTION);
+        }
+        if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
+            Log.d(TAG, "Changing microphone state yayieeee");
+            smartGlassesManager.changeMicrophoneState(requiredData, false);
+        }
     }
 
     @Override

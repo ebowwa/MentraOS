@@ -97,6 +97,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setEnforceLocalTranscription(enforceLocalTranscription);
                     break;
 
+                case "enable_offline_mode":
+                    boolean offlineModeEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.onEnableOfflineMode(offlineModeEnabled);
+                    break;
+
                 case "enable_always_on_status_bar":
                     boolean alwaysOnEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
                     callback.setAlwaysOnStatusBarEnabled(alwaysOnEnabled);

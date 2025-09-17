@@ -713,6 +713,19 @@ public class ServerComms {
                 break;
 
             case "microphone_state_change":
+                boolean offlineModeEnabled = false;
+
+                if (speechRecAugmentos != null) {
+                    offlineModeEnabled = speechRecAugmentos.getIsOfflineModeEnabled();
+                }
+
+                Log.d(TAG, "Offline mode enabled: " + offlineModeEnabled);
+
+                if (offlineModeEnabled) {
+                    Log.d(TAG, "Offline mode enabled, skipping microphone state change");
+                    break;
+                }
+
                 boolean bypassVad = msg.optBoolean("bypassVad", false);
 
                 JSONArray requiredDataJson = msg.optJSONArray("requiredData");

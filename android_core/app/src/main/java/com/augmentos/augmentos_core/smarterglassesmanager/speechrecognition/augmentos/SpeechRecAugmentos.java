@@ -14,6 +14,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.Spee
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.vad.VadGateSpeechPolicy;
 import com.augmentos.augmentoslib.events.SpeechRecOutputEvent;
 import com.augmentos.augmentoslib.events.TranslateOutputEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LocalTranscriptionEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
@@ -50,6 +51,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private boolean bypassVadForDebugging = false;
     private boolean bypassVadForPCM = false; // NEW: PCM subscription bypass
     private boolean enforceLocalTranscription = false;
+    private boolean isOfflineModeEnabled = false;
 
     // LC3 audio rolling buffer
     private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
@@ -69,6 +71,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
         enforceLocalTranscription = sharedPreferences.getBoolean("enforce_local_transcription", false);
+        isOfflineModeEnabled = sharedPreferences.getBoolean("is_offline_mode_enabled", false);
 
         // 1) Create or fetch your single ServerComms (the new consolidated manager).
         //    For example, we create a new instance here:
@@ -137,9 +140,10 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      * @param isFinal Whether this is a final result
      * @param sessionStartTime Session start time for relative timestamp calculation
      * @param language The language of the transcription
+     * @param isOffline Whether the offline mode is enabled or not
      */
     private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime, String language) {
-        try {            
+        try {
             JSONObject transcription = new JSONObject();
             transcription.put("type", "local_transcription");
             transcription.put("text", text);
@@ -162,9 +166,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             transcription.put("speakerId", 0);
             transcription.put("transcribeLanguage", language);
             transcription.put("provider", "sherpa-onnx");
-            
-            // Send the JSON to ServerComms
-            ServerComms.getInstance().sendTranscriptionResult(transcription);
+
+            if (isOfflineModeEnabled) {
+                Log.d(TAG, "Sending local transcription: " + text);
+                EventBus.getDefault().post(new LocalTranscriptionEvent("Local: " +text));
+            } else {
+                Log.d(TAG, "Sending transcription to backend: " + text);
+                ServerComms.getInstance().sendTranscriptionResult(transcription);
+            }
             
             Log.d(TAG, "Sent " + (isFinal ? "final" : "partial") + " transcription: " + text + " Language: " + language);
         } catch (org.json.JSONException e) {
@@ -560,9 +569,18 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         }
     }
 
+    public void changeEnableOfflineModeState(boolean isOfflineModeEnabled) {
+        Log.d(TAG, "setEnableOfflineMode: " + isOfflineModeEnabled);
+        this.isOfflineModeEnabled = isOfflineModeEnabled;
+    }
+
     public void changeBypassVadForPCMState(boolean bypassVadForPCM) {
         Log.d(TAG, "setBypassVadForPCM: " + bypassVadForPCM);
         vadPolicy.changeBypassVadForPCM(bypassVadForPCM);
         this.bypassVadForPCM = bypassVadForPCM;
+    }
+
+    public boolean getIsOfflineModeEnabled() {
+        return this.isOfflineModeEnabled;
     }
 }

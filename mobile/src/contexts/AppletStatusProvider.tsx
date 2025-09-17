@@ -77,6 +77,7 @@ interface AppStatusContextType {
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
+  stopAllApps: () => Promise<void>
   clearPendingOperation: (packageName: string) => void
   checkAppHealthStatus: (packageName: string) => Promise<boolean>
 }
@@ -218,6 +219,23 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 2000)
   }
 
+  // Stop all running apps
+  const stopAllApps = async () => {
+    try {
+      const runningApps = appStatus.filter(app => app.is_running)
+      for (const app of runningApps) {
+        await restComms.stopApp(app.packageName)
+      }
+      // Update local state to reflect all apps are stopped
+      setAppStatus(currentStatus =>
+        currentStatus.map(app => (app.is_running ? {...app, is_running: false} : app))
+      )
+    } catch (error) {
+      console.error("Error stopping all apps:", error)
+      throw error
+    }
+  }
+
   // Optimistically update app status when stopping an app
   const optimisticallyStopApp = async (packageName: string) => {
     // optimistically stop the app:
@@ -336,6 +354,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,
+        stopAllApps,
         clearPendingOperation,
         checkAppHealthStatus,
       }}>

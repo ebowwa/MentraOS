@@ -13,6 +13,7 @@ export const SETTINGS_KEYS = {
   THEME_PREFERENCE: "THEME_PREFERENCE",
   DEV_MODE: "DEV_MODE",
   NEW_UI: "NEW_UI",
+  OFFLINE_MODE: "OFFLINE_MODE",
   sensing_enabled: "sensing_enabled",
   power_saving_mode: "power_saving_mode",
   always_on_status_bar: "always_on_status_bar",
@@ -37,6 +38,7 @@ export const SETTINGS_KEYS = {
   button_video_settings_width: "button_video_settings_width",
   core_token: "core_token",
   server_url: "server_url",
+  offline_captions_app_running: "offline_captions_app_running",
 }
 
 const DEFAULT_SETTINGS = {
@@ -48,6 +50,7 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND]: true,
   [SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP]: false,
   [SETTINGS_KEYS.THEME_PREFERENCE]: "system",
+  [SETTINGS_KEYS.OFFLINE_MODE]: false,
   [SETTINGS_KEYS.DEV_MODE]: false,
   [SETTINGS_KEYS.NEW_UI]: false,
   // previously core settings:
@@ -70,6 +73,7 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.dashboard_depth]: 5,
   [SETTINGS_KEYS.button_mode]: "photo",
   [SETTINGS_KEYS.button_photo_size]: "medium",
+  [SETTINGS_KEYS.offline_captions_app_running]: false,
 }
 
 export const getSettingDefault = (key: string) => {
