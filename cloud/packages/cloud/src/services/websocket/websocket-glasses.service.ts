@@ -72,7 +72,7 @@ export enum GlassesErrorCode {
  */
 export class GlassesWebSocketService {
   private static instance: GlassesWebSocketService;
-  private constructor() { }
+  private constructor() {}
 
   /**
    * Get singleton instance
@@ -115,7 +115,10 @@ export class GlassesWebSocketService {
       }
 
       // Create or retrieve user session
-      const { userSession, reconnection } = await UserSession.createOrReconnect(ws, userId);
+      const { userSession, reconnection } = await UserSession.createOrReconnect(
+        ws,
+        userId,
+      );
       userSession.logger.info(
         `Glasses WebSocket connection from user: ${userId}`,
       );
@@ -259,7 +262,10 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCAL_TRANSCRIPTION:
-          await this.handleLocalTranscription(userSession, message as LocalTranscription);
+          await this.handleLocalTranscription(
+            userSession,
+            message as LocalTranscription,
+          );
           userSession.relayMessageToApps(message);
           break;
 
@@ -756,9 +762,31 @@ export class GlassesWebSocketService {
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === "CONNECTED";
 
+    // Update connection state tracking in UserSession
+    const wasConnected = userSession.glassesConnected;
+    userSession.glassesConnected = isConnected;
+    userSession.glassesModel = modelName;
+    userSession.lastGlassesStatusUpdate = new Date();
+
     // Update glasses model in session when connected and model name is available
     if (isConnected && modelName) {
       await userSession.updateGlassesModel(modelName);
+    }
+
+    // Log connection state change if state changed
+    if (wasConnected !== isConnected) {
+      userSession.logger.info(
+        {
+          previousState: wasConnected,
+          newState: isConnected,
+          model: modelName,
+          userId: userSession.userId,
+        },
+        `Glasses connection state changed from ${wasConnected} to ${isConnected} for user ${userSession.userId}`,
+      );
+
+      // The existing relayMessageToApps call below will notify subscribed apps
+      // No need for additional broadcasting
     }
 
     try {
