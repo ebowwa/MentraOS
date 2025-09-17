@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.ota.utils.OtaConstants;
 import com.augmentos.asg_client.service.legacy.interfaces.ICommandHandler;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 
 import org.json.JSONException;
@@ -99,9 +100,13 @@ public class VersionCommandHandler implements ICommandHandler {
             
             versionInfo.put("app_version", appVersion);
             versionInfo.put("build_number", buildNumber);
-            versionInfo.put("device_model", android.os.Build.MODEL);
+            versionInfo.put("device_model", ServiceUtils.getDeviceTypeString(context));
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
             versionInfo.put("ota_version_url", OtaConstants.VERSION_JSON_URL);
+
+            Log.d(TAG, "📋 Version info prepared - Device: " + ServiceUtils.getDeviceTypeString(context) + 
+                      ", Android: " + android.os.Build.VERSION.RELEASE + 
+                      ", OTA URL: " + OtaConstants.VERSION_JSON_URL);
 
             if (serviceManager.getBluetoothManager() != null && 
                 serviceManager.getBluetoothManager().isConnected()) {

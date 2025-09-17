@@ -4,6 +4,7 @@ import type { Application } from 'express';
 import userSettingsApi from './client/user-settings.api';
 import feedbackApi from './client/feedback.api';
 import minVersionApi from './client/min-version.api';
+import sdkVersionApi from './sdk';
 
 // Legacy route modules (to be migrated gradually)
 import appRoutes from "../routes/apps.routes";
@@ -39,6 +40,7 @@ export function registerApi(app: Application) {
   app.use('/api/client/user/settings', userSettingsApi);
   app.use('/api/client/feedback', feedbackApi);
   app.use('/api/client/min-version', minVersionApi);
+  app.use('/api/sdk', sdkVersionApi);
 
   // Legacy mounts (to be migrated)
   app.use("/api/apps", appRoutes);

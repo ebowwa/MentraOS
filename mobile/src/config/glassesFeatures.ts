@@ -65,7 +65,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: true,
     wifiSelfOtaUpdate: true,
     imu: false,
-    micTypes: ["sco"],
+    micTypes: ["custom"],
     powerSavingMode: false,
     gallery: true,
     configurableButton: true,
