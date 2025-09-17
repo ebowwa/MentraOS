@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Animated, ViewStyle, TextStyle} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Icon} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
