@@ -1,5 +1,5 @@
 import express from "express";
-import sessionService from "../services/session/session.service";
+import UserSession from "../services/session/UserSession";
 import { StreamType } from "@mentra/sdk";
 // import subscriptionService from '../services/session/subscription.service';
 import { CloudToAppMessageType } from "@mentra/sdk";
@@ -21,11 +21,9 @@ router.post("/set-datetime", (req, res) => {
   console.log("Setting datetime with core token", datetime);
 
   if (!coreToken || !datetime || isNaN(Date.parse(datetime))) {
-    return res
-      .status(400)
-      .json({
-        error: "Missing or invalid coreToken or datetime (must be ISO string)",
-      });
+    return res.status(400).json({
+      error: "Missing or invalid coreToken or datetime (must be ISO string)",
+    });
   }
 
   try {
@@ -41,7 +39,7 @@ router.post("/set-datetime", (req, res) => {
 
     console.log("Setting datetime for user", userId, datetime);
 
-    const userSession = sessionService.getSessionByUserId(userId);
+    const userSession = UserSession.getById(userId);
     if (!userSession) {
       return res.status(404).json({ error: "User session not found" });
     }

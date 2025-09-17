@@ -131,6 +131,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
           loading: false,
           // @ts-ignore include server-provided latest status if present
           isOnline: (app as any).isOnline,
+          // @ts-ignore include compatibility info from backend
+          compatibility: (app as any).compatibility,
         }
 
         return applet
@@ -267,7 +269,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
     // GET the app's /health endpoint
-    return true
     try {
       const app = appStatus.find(app => app.packageName === packageName)
       if (!app) {
@@ -300,13 +301,20 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 1500)
   }
 
+  const onAppStateChange = (msg: any) => {
+    // console.log("APP_STATE_CHANGE event received, forcing app refresh")
+    refreshAppStatus()
+  }
+
   // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
     GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
+    GlobalEventEmitter.on("APP_STATE_CHANGE", onAppStateChange)
     return () => {
       // @ts-ignore
       GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
+      GlobalEventEmitter.off("APP_STATE_CHANGE", onAppStateChange)
     }
   }, [])
 

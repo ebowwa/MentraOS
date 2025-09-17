@@ -39,7 +39,7 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
-const useNewWsManager = false
+const useNewWsManager = Platform.OS === "ios"
 
 export default function InitScreen() {
   // Hooks
@@ -137,7 +137,7 @@ export default function InitScreen() {
           console.error("Failed to load user settings:", error)
         }
 
-        bridge.updateSettings(getCoreSettings()) // send settings to core
+        bridge.updateSettings(await getCoreSettings()) // send settings to core
       } else {
         bridge.setAuthCreds(coreToken, uid)
       }

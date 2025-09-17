@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // cloud/src/models/user-feedback.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 
@@ -15,7 +14,7 @@ const FeedbackSchema = new Schema<FeedbackI>(
       required: true,
       index: true,
     },
-    
+
     feedback: {
       type: Schema.Types.String,
       required: true,
@@ -23,12 +22,12 @@ const FeedbackSchema = new Schema<FeedbackI>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Index for efficient queries
 FeedbackSchema.index({ email: 1 });
 
-
-export const Feedback = mongoose.models.Feedback ||
+export const Feedback =
+  mongoose.models.Feedback ||
   mongoose.model<FeedbackI>("Feedback", FeedbackSchema);

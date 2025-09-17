@@ -31,7 +31,7 @@ import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
 // import subscriptionService from "../session/subscription.service";
 import { PosthogService } from "../logging/posthog.service";
-import { sessionService } from "../session/session.service";
+// sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
 import { locationService } from "../core/location.service";
@@ -115,7 +115,7 @@ export class GlassesWebSocketService {
       }
 
       // Create or retrieve user session
-      const { userSession, reconnection } = await sessionService.createSession(
+      const { userSession, reconnection } = await UserSession.createOrReconnect(
         ws,
         userId,
       );
@@ -251,13 +251,13 @@ export class GlassesWebSocketService {
             userSession,
             message as GlassesConnectionState,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // Looks Good.
         case GlassesToCloudMessageType.VAD:
           await this.handleVad(userSession, message as Vad);
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           // TODO(isaiah): relay to Apps
           break;
 
@@ -266,7 +266,7 @@ export class GlassesWebSocketService {
             userSession,
             message as LocalTranscription,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
@@ -285,7 +285,7 @@ export class GlassesWebSocketService {
           userSession.subscriptionManager.cacheCalendarEvent(
             message as CalendarEvent,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): verify logic
@@ -493,13 +493,13 @@ export class GlassesWebSocketService {
             `Audio play response received from glasses/core`,
           );
           // Forward audio play response to Apps - we need to find the specific app that made the request
-          sessionService.relayAudioPlayResponseToApp(userSession, message);
+          userSession.relayAudioPlayResponseToApp(message);
           break;
 
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
           // Also relay to Apps in case they want to handle head position events
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): Add other message type handlers as needed
@@ -509,7 +509,7 @@ export class GlassesWebSocketService {
           userSession.logger.debug(
             `Relaying message type ${message.type} to Apps for user: ${userId}`,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           // TODO(isaiah): Verify Implemention message relaying to Apps
           break;
       }
@@ -558,8 +558,7 @@ export class GlassesWebSocketService {
     const ackMessage: ConnectionAck = {
       type: CloudToGlassesMessageType.CONNECTION_ACK,
       sessionId: userSession.sessionId,
-      userSession:
-        await sessionService.transformUserSessionForClient(userSession),
+      userSession: await userSession.snapshotForClient(),
       timestamp: new Date(),
     };
 
@@ -674,7 +673,7 @@ export class GlassesWebSocketService {
       // We still relay the message to any apps subscribed to the raw location stream.
       // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
       // response for a poll request.
-      sessionService.relayMessageToApps(userSession, message);
+      userSession.relayMessageToApps(message);
     } catch (error) {
       userSession.logger.error(
         { error, service: SERVICE_NAME },

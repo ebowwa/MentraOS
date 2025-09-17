@@ -9,11 +9,9 @@ import {GestureHandlerRootView} from "react-native-gesture-handler"
 import {AuthProvider} from "@/contexts/AuthContext"
 import {SearchResultsProvider} from "@/contexts/SearchResultsContext"
 import {AppStoreWebviewPrefetchProvider} from "@/contexts/AppStoreWebviewPrefetchProvider"
-import {ModalProvider} from "./AlertUtils"
-import {GlassesMirrorProvider} from "@/contexts/GlassesMirrorContext"
+import {ModalProvider} from "@/utils/AlertUtils"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
-import {NetworkConnectivityProvider} from "@/contexts/NetworkConnectivityProvider"
 import {PostHogProvider} from "posthog-react-native"
 import Constants from "expo-constants"
 
@@ -28,7 +26,6 @@ export const AllProviders = withWrappers(
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
   AppStatusProvider,
-  GlassesMirrorProvider,
   NavigationHistoryProvider,
   DeeplinkProvider,
   GestureHandlerRootView,

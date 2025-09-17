@@ -1,8 +1,8 @@
-import express, { Request, Response } from 'express';
-import { validateAppApiKey } from '../middleware/validateApiKey';
-import sessionService from '../services/session/session.service';
+import express, { Request, Response } from "express";
+import { validateAppApiKey } from "../middleware/validateApiKey";
+import UserSession from "../services/session/UserSession";
 // import multiUserAppService from '../services/core/multi-user-app.service';
-import appService from '../services/core/app.service';
+import appService from "../services/core/app.service";
 
 const router = express.Router();
 
@@ -12,27 +12,29 @@ const router = express.Router();
  * @access Private (requires core token)
  * @body { packageName: string, includeUserProfiles?: boolean }
  */
-router.post('/discover-users', async (req: Request, res: Response) => {
+router.post("/discover-users", async (req: Request, res: Response) => {
   try {
     // Parse API key from Authorization header (Bearer token)
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res
+        .status(401)
+        .json({ error: "Missing or invalid Authorization header" });
     }
-    const appApiKey = authHeader.replace('Bearer ', '').trim();
+    const appApiKey = authHeader.replace("Bearer ", "").trim();
     const { packageName, includeUserProfiles = false } = req.body;
     if (!packageName) {
-      return res.status(400).json({ error: 'packageName is required' });
+      return res.status(400).json({ error: "packageName is required" });
     }
     // Retrieve the app by packageName
     const app = await appService.getApp(packageName);
     if (!app) {
-      return res.status(401).json({ error: 'Invalid packageName' });
+      return res.status(401).json({ error: "Invalid packageName" });
     }
     // Validate the API key
     const isValid = await appService.validateApiKey(packageName, appApiKey);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid API key' });
+      return res.status(401).json({ error: "Invalid API key" });
     }
 
     const body = req.body as any;
@@ -42,9 +44,11 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     // console.log('4324 userId', userId);
 
     // Find the user's active session
-    const userSession = sessionService.getSessionByUserId(userId);
+    const userSession = UserSession.getById(userId);
     if (!userSession) {
-      return res.status(404).json({ error: 'No active session found for user' });
+      return res
+        .status(404)
+        .json({ error: "No active session found for user" });
     }
 
     // multiUserAppService.addAppUser(packageName, userId);
@@ -54,7 +58,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     /* const users = multiUserAppService.getActiveAppUsers(packageName)
       .filter((otherUserId: string) => otherUserId !== userId)
       .map((otherUserId: string) => {
-        const otherSession = sessionService.getSessionByUserId(otherUserId);
+  const otherSession = UserSession.getById(otherUserId);
         return {
           userId: otherUserId,
           sessionId: otherSession?.sessionId || 'unknown',
@@ -67,10 +71,12 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     return res.json({
       users,
       totalUsers: users.length,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
   } catch (error) {
-    return res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+    return res
+      .status(500)
+      .json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 

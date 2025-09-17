@@ -63,6 +63,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
 
             String requestId = data.optString("requestId", "");
             String webhookUrl = data.optString("webhookUrl", "");
+            String authToken = data.optString("authToken", "");
             String transferMethod = data.optString("transferMethod", "direct");
             String bleImgId = data.optString("bleImgId", "");
             boolean save = data.optBoolean("save", false);
@@ -84,7 +85,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             }
 
             // Process photo capture based on transfer method
-            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, 
+            boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, authToken,
                                                  bleImgId, save, size, transferMethod, enableLed);
             logCommandResult("take_photo", success, success ? null : "Photo capture failed");
             return success;
@@ -103,13 +104,14 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
      * @param photoFilePath Photo file path
      * @param requestId Request ID
      * @param webhookUrl Webhook URL
+     * @param authToken Auth token for webhook authentication
      * @param bleImgId BLE image ID
      * @param save Whether to save the photo
      * @param transferMethod Transfer method
      * @return true if successful, false otherwise
      */
     private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath,
-                                      String requestId, String webhookUrl, String bleImgId,
+                                      String requestId, String webhookUrl, String authToken, String bleImgId,
                                       boolean save, String size, String transferMethod, boolean enableLed) {
         switch (transferMethod) {
             case "ble":
@@ -120,10 +122,10 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
                     Log.e(TAG, "Auto mode requires bleImgId for fallback");
                     return false;
                 }
-                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, bleImgId, save, size, enableLed);
+                captureService.takePhotoAutoTransfer(photoFilePath, requestId, webhookUrl, authToken, bleImgId, save, size, enableLed);
                 return true;
             default:
-                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
+                captureService.takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
                 return true;
         }
     }

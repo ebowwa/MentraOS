@@ -12,11 +12,12 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import {getCoreSettings, getRestUrl, getWsUrl} from "@/utils/SettingsHelper"
+import {getCoreSettings, getRestUrl, getWsUrl, saveSetting} from "@/utils/SettingsHelper"
 import socketComms from "@/managers/SocketComms"
+import livekitManager from "@/managers/LivekitManager"
 
-const {Bridge, BridgeModule, CoreCommsService} = NativeModules
-const eventEmitter = new NativeEventEmitter(Bridge)
+const {BridgeModule, CoreCommsService} = NativeModules
+const coreBridge = new NativeEventEmitter(BridgeModule)
 
 export class MantleBridge extends EventEmitter {
   private static instance: MantleBridge | null = null
@@ -186,10 +187,12 @@ export class MantleBridge extends EventEmitter {
     }
 
     // set the backend server url
-    const backendServerUrl = await getRestUrl()
-    await this.setServerUrl(backendServerUrl) // todo: config: remove
+    if (Platform.OS === "android") {
+      const backendServerUrl = await getRestUrl() // TODO: config: remove
+      await this.setServerUrl(backendServerUrl) // TODO: config: remove
+    }
 
-    this.sendSettings() // TODO: config: finish this
+    this.sendSettings()
 
     // Start periodic status checks
     this.startStatusPolling()
@@ -209,7 +212,7 @@ export class MantleBridge extends EventEmitter {
     }
 
     // Create a fresh subscription
-    this.messageEventSubscription = eventEmitter.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
+    this.messageEventSubscription = coreBridge.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
 
     console.log("Core message event listener initialized")
   }
@@ -232,7 +235,6 @@ export class MantleBridge extends EventEmitter {
       return
     }
 
-    // console.log("RECEIVED MESSAGE FROM CORE")
     try {
       const data = JSON.parse(jsonString)
 
@@ -243,19 +245,6 @@ export class MantleBridge extends EventEmitter {
           return
         }
         this.lastMessage = jsonString
-      }
-
-      // Log if this is a WiFi scan result
-      if ("wifi_scan_results" in data) {
-        console.log("📡 ========= RAW MESSAGE FROM CORE =========")
-        console.log("📡 Raw JSON string:", jsonString)
-        console.log("📡 Parsed data:", data)
-        console.log("📡 ========= END RAW MESSAGE =========")
-      }
-
-      // Log if this is a gallery status result
-      if ("glasses_gallery_status" in data) {
-        console.log("📸 Gallery status received from Core:", data.glasses_gallery_status)
       }
 
       this.isConnected = true
@@ -275,10 +264,11 @@ export class MantleBridge extends EventEmitter {
 
     try {
       if ("status" in data) {
-        this.emit("statusUpdateReceived", data)
+        GlobalEventEmitter.emit("CORE_STATUS_UPDATE", data)
         return
       }
 
+      // TODO: config: remove all of these and just use the typed messages
       if ("glasses_wifi_status_change" in data) {
         // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
         GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
@@ -303,9 +293,6 @@ export class MantleBridge extends EventEmitter {
           has_content: data.glasses_gallery_status.has_content,
           camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
         })
-      } else if ("glasses_display_event" in data) {
-        // TODO: config: remove
-        GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", data.glasses_display_event)
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
       } else if ("notify_manager" in data) {
@@ -357,6 +344,9 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
+      let binaryString
+      let bytes
+
       switch (data.type) {
         case "app_started":
           console.log("APP_STARTED_EVENT", data.packageName)
@@ -387,16 +377,31 @@ export class MantleBridge extends EventEmitter {
             type: data.type,
           })
           break
+        case "save_setting":
+          await saveSetting(data.key, data.value, false)
+          break
+        case "head_position":
+          GlobalEventEmitter.emit("HEAD_POSITION", data.position)
+          break
         case "ws_text":
           socketComms.sendText(data.text)
           break
-        case "ws_binary":
-          const binaryString = atob(data.binary)
-          const bytes = new Uint8Array(binaryString.length)
+        case "ws_bin":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
           socketComms.sendBinary(bytes)
+          break
+        case "mic_data":
+          binaryString = atob(data.base64)
+          bytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          // socketComms.sendBinary(bytes)
+          livekitManager.addPcm(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -404,8 +409,15 @@ export class MantleBridge extends EventEmitter {
       }
     } catch (e) {
       console.error("Error parsing data from Core:", e)
-      this.emit("statusUpdateReceived", CoreStatusParser.defaultStatus)
+      GlobalEventEmitter.emit("CORE_STATUS_UPDATE", CoreStatusParser.defaultStatus)
     }
+  }
+
+  private async sendSettings() {
+    this.sendData({
+      command: "update_settings",
+      params: {...(await getCoreSettings())},
+    })
   }
 
   /**
@@ -508,7 +520,7 @@ export class MantleBridge extends EventEmitter {
     this.isConnected = false
 
     // Reset the singleton instance
-    Bridge.instance = null
+    MantleBridge.instance = null
 
     console.log("Bridge cleaned up")
   }

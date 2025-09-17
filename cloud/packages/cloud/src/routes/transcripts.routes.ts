@@ -1,7 +1,7 @@
 //backend/src/routes/apps.ts
-import express from 'express';
-import sessionService from '../services/session/session.service';
-import { TranscriptSegment } from '@mentra/sdk';
+import express from "express";
+import UserSession from "../services/session/UserSession";
+import { TranscriptSegment } from "@mentra/sdk";
 const router = express.Router();
 
 // GET /api/transcripts/:appSessionId
@@ -15,57 +15,63 @@ const router = express.Router();
 //   - language?: string (language code, e.g. 'en-US', 'fr-FR', defaults to 'en-US')
 
 // Get all available apps
-router.get('/api/transcripts/:appSessionId', async (req, res) => {
+router.get("/api/transcripts/:appSessionId", async (req, res) => {
   try {
     const appSessionId = req.params.appSessionId;
     const duration = req.query.duration;
     const startTime = req.query.startTime;
     const endTime = req.query.endTime;
-    const language = (req.query.language as string) || 'en-US';
+    const language = (req.query.language as string) || "en-US";
 
-    console.log(`🔍 Fetching transcripts for session ${appSessionId}, language: ${language}`);
+    console.log(
+      `🔍 Fetching transcripts for session ${appSessionId}, language: ${language}`,
+    );
 
     if (!duration && !startTime && !endTime) {
-      return res.status(400).json({ error: 'duration, startTime, or endTime is required' });
+      return res
+        .status(400)
+        .json({ error: "duration, startTime, or endTime is required" });
     }
 
-    const userSessionId = appSessionId.split('-')[0];
-    const userSession = sessionService.getSession(userSessionId);
+    const userSessionId = appSessionId.split("-")[0];
+    const userSession = UserSession.getById(userSessionId);
     if (!userSession) {
-      return res.status(404).json({ error: 'Session not found' });
+      return res.status(404).json({ error: "Session not found" });
     }
 
     // Use TranscriptionManager to get transcript history
     const timeRange: any = {};
-    
+
     if (duration) {
       timeRange.duration = parseInt(duration as string);
     }
-    
+
     // TODO: Add handling for startTime/endTime filters
     if (startTime) {
       timeRange.startTime = new Date(startTime as string);
     }
-    
+
     if (endTime) {
       timeRange.endTime = new Date(endTime as string);
     }
 
-    const transcriptSegments = userSession.transcriptionManager.getTranscriptHistory(
-      language,
-      Object.keys(timeRange).length > 0 ? timeRange : undefined
-    );
+    const transcriptSegments =
+      userSession.transcriptionManager.getTranscriptHistory(
+        language,
+        Object.keys(timeRange).length > 0 ? timeRange : undefined,
+      );
 
-    console.log(`💬 Returning ${transcriptSegments.length} transcript segments for language ${language}`);
+    console.log(
+      `💬 Returning ${transcriptSegments.length} transcript segments for language ${language}`,
+    );
 
     res.json({
       language: language,
-      segments: transcriptSegments
+      segments: transcriptSegments,
     });
-
   } catch (error) {
-    console.error('Error fetching transcripts:', error);
-    res.status(500).json({ error: 'Error fetching transcripts' });
+    console.error("Error fetching transcripts:", error);
+    res.status(500).json({ error: "Error fetching transcripts" });
   }
 });
 
