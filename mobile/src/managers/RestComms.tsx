@@ -81,8 +81,9 @@ class RestComms {
   }
 
   private async makeRequest<T = any>(config: RequestConfig): Promise<T> {
+    const {method, url, headers, data, params} = config
+    let status = 0
     try {
-      const {method, url, headers, data, params} = config
       const fullUrl = this.buildUrlWithParams(url, params)
 
       const fetchConfig: RequestInit = {
@@ -96,6 +97,7 @@ class RestComms {
       }
 
       const response = await fetch(fullUrl, fetchConfig)
+      status = response.status
 
       if (!response.ok) {
         // Try to parse error response
@@ -116,7 +118,7 @@ class RestComms {
       return responseData as T
     } catch (error: any) {
       const errorMessage = error.message || error
-      console.error(`${this.TAG}: Request failed -`, errorMessage)
+      console.error(`${this.TAG}: ${method} to ${url} failed with status ${status}`, errorMessage)
       throw error
     }
   }

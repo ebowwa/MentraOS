@@ -37,9 +37,8 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("show_banner", body: data)
     }
 
-    static func sendHeadPosition(_ isUp: Bool) {
-        let data = ["position": isUp ? "up" : "down"]
-        Bridge.sendTypedMessage("head_position", body: data)
+    static func sendHeadUp(_ isUp: Bool) {
+        Bridge.sendTypedMessage("head_up", body: isUp)
     }
 
     static func sendPairFailureEvent(_ error: String) {

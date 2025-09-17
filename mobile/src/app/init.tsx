@@ -24,6 +24,8 @@ import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import restComms from "@/managers/RestComms"
 import socketComms from "@/managers/SocketComms"
+import MantleManager from "@/managers/MantleManager"
+import mantle from "@/managers/MantleManager"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -135,6 +137,7 @@ export default function InitScreen() {
           const settings = await restComms.loadUserSettings() // get settings from server
           await writeSettingsLocally(settings) // write settings to local storage
           await initUserSettings() // initialize user settings
+          await mantle.init()
         } catch (error) {
           console.error("Failed to load user settings from server:", error)
         }
@@ -218,7 +221,7 @@ export default function InitScreen() {
     try {
       const defaultUrl = (await getSettingDefault(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
       await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
-      await bridge.setServerUrl(defaultUrl)
+      await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {

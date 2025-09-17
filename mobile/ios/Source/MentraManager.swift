@@ -244,7 +244,7 @@ struct ViewState {
     func updateHeadUp(_ isHeadUp: Bool) {
         self.isHeadUp = isHeadUp
         sendCurrentState(isHeadUp)
-        Bridge.sendHeadPosition(isHeadUp)
+        Bridge.sendHeadUp(isHeadUp)
     }
 
     func onAppStateChange(_: [ThirdPartyCloudApp]) {

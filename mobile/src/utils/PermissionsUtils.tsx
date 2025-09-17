@@ -184,6 +184,14 @@ export const markPermissionRequested = async (featureKey: string): Promise<void>
   }
 }
 
+export const markPermissionNotRequested = async (featureKey: string): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(`PERMISSION_REQUESTED_${featureKey}`)
+  } catch (e) {
+    console.error("Failed to remove permission requested status", e)
+  }
+}
+
 // Check if a permission has been requested before
 export const hasPermissionBeenRequested = async (featureKey: string): Promise<boolean> => {
   try {
@@ -347,7 +355,18 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
         const currentStatus = await check(permission)
         console.log(`Current status for ${permission}:`, currentStatus)
 
+        if (permission === PERMISSIONS.IOS.LOCATION_WHEN_IN_USE && currentStatus === RESULTS.DENIED) {
+          // reset the permission request status for background location
+          await markPermissionNotRequested(PERMISSIONS.IOS.LOCATION_ALWAYS)
+        }
+
         if (permission === PERMISSIONS.IOS.LOCATION_ALWAYS && currentStatus === RESULTS.BLOCKED) {
+          // if we've already requested this permission before, show the dialog to direct user to Settings
+          if (await hasPermissionBeenRequested(permission)) {
+            await handlePreviouslyDeniedPermission(config.name)
+            return false
+          }
+          await markPermissionRequested(permission)
           // ignore the fact that this reports as blocked, since that's just how the flow for this permission works
           continue
         }

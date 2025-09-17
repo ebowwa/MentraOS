@@ -4,20 +4,8 @@ import {getWsUrl} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
-import livekitManager from "./LivekitManager"
-import * as Calendar from "expo-calendar"
-import restComms from "@/managers/RestComms"
-import {t} from "i18next"
-
-// Type definitions
-interface ThirdPartyCloudApp {
-  packageName: string
-  name: string
-  description: string
-  webhookURL: string
-  logoURL: string
-  isRunning: boolean
-}
+import livekitManager from "@/managers/LivekitManager"
+import mantle from "@/managers/MantleManager"
 
 class SocketComms {
   private static instance: SocketComms | null = null
@@ -29,17 +17,11 @@ class SocketComms {
   private reconnecting = false
   private reconnectionAttempts = 0
 
-  // Timers
-  private calendarSyncTimer: NodeJS.Timeout | null = null
-  private datetimeTimer: NodeJS.Timeout | null = null
-
   private constructor() {
     // Subscribe to WebSocket messages
     this.ws.on("message", message => {
       this.handle_message(message)
     })
-
-    this.setupPeriodicTasks()
   }
 
   public static getInstance(): any {
@@ -48,28 +30,6 @@ class SocketComms {
     }
 
     return SocketComms.instance
-  }
-
-  private setupPeriodicTasks() {
-    this.sendCalendarEvents()
-    // Calendar sync every hour
-    this.calendarSyncTimer = setInterval(
-      () => {
-        this.sendCalendarEvents()
-      },
-      60 * 60 * 1000,
-    ) // 1 hour
-  }
-
-  private async sendCalendarEvents() {
-    console.log("SocketCommsTS: fetchCalendarEvents()")
-    const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)
-    const calendarIds = calendars.map((calendar: Calendar.Calendar) => calendar.id)
-    // from 2 hours ago to 1 week from now:
-    const startDate = new Date(Date.now() - 2 * 60 * 60 * 1000)
-    const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    const events = await Calendar.getEventsAsync(calendarIds, startDate, endDate)
-    restComms.sendCalendarData({events, calendars})
   }
 
   // Connection Management
@@ -297,7 +257,7 @@ class SocketComms {
     }
   }
 
-  send_head_position(isUp: boolean) {
+  sendHeadPosition(isUp: boolean) {
     try {
       const event = {
         type: "head_position",
@@ -344,7 +304,7 @@ class SocketComms {
   }
 
   private handle_display_event(msg: any) {
-    console.log(`SocketCommsTS: Handling display event: ${JSON.stringify(msg)}`)
+    // console.log(`SocketCommsTS: Handling display event: ${JSON.stringify(msg)}`)
     if (msg.view) {
       bridge.sendCommand("display_event", msg)
       // Update the Zustand store with the display content
@@ -386,16 +346,13 @@ class SocketComms {
       console.log("SocketCommsTS: No tier provided")
       return
     }
-    bridge.sendCommand("set_location_tier", {tier})
+    mantle.setLocationTier(tier)
   }
 
   private handle_request_single_location(msg: any) {
     console.log("SocketCommsTS: DEBUG request_single_location:", msg)
     if (msg.accuracy && msg.correlationId) {
-      bridge.sendCommand("request_single_location", {
-        accuracy: msg.accuracy,
-        correlationId: msg.correlationId,
-      })
+      mantle.requestSingleLocation(msg.accuracy, msg.correlationId)
     }
   }
 
@@ -618,17 +575,6 @@ class SocketComms {
   }
 
   cleanup() {
-    // Stop timers
-    if (this.calendarSyncTimer) {
-      clearInterval(this.calendarSyncTimer)
-      this.calendarSyncTimer = null
-    }
-
-    if (this.datetimeTimer) {
-      clearInterval(this.datetimeTimer)
-      this.datetimeTimer = null
-    }
-
     // Cleanup WebSocket
     this.ws.cleanup()
 
