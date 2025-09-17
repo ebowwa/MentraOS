@@ -111,66 +111,56 @@ public class NotificationService extends NotificationListenerService {
 
         Log.d(TAG, "Package Name: " + packageName);
 
-        // 🚨 Filter out blacklisted packages
+        // Filter out blacklisted packages
         if (packageBlacklist.contains(packageName)) {
             Log.d(TAG, "Ignoring blacklisted package: " + packageName);
             return;
         }
 
-        // 🚨 Filter out Google/Samsung system packages
+        // Filter out Google/Samsung system packages
         if (isSystemPackageToBlock(packageName)) {
-            Log.d(TAG, "🚫 Blocking system package: " + packageName);
+            Log.d(TAG, "Blocking system package: " + packageName);
             return;
         }
 
-        // 🚨 Check user preferences for this specific app
-        if (!isAppNotificationEnabled(packageName)) {
-            Log.d(TAG, "🔇 User disabled notifications for: " + packageName);
+        // Check if app is blacklisted by package name
+        if (SimpleBlacklistModule.isAppBlacklisted(this, packageName)) {
+            String appName = getAppName(packageName);
+            Log.d(TAG, "App blocked by user preference: " + appName + " (" + packageName + ")");
             return;
-        }
-
-        // 🚨 Check manual blacklist by app name
-        String appName = getAppName(packageName);
-        if (SimpleBlacklistModule.isAppBlacklisted(this, appName)) {
-            Log.d(TAG, "🚫 App in manual blacklist: " + appName + " (" + packageName + ")");
-            return;
-        } else {
-            Log.d(TAG, "App notification enabled: " + appName);
         }
         
         Notification notification = sbn.getNotification();
         Bundle extras = notification.extras;
         
-        // 🚨 Filter by notification category
+        // Filter by notification category
         String category = notification.category;
         if (category != null && categoryBlacklist.contains(category)) {
             Log.d(TAG, "Ignoring notification with category: " + category);
             return;
         }
 
-        // 🚨 Log full notification for debugging
-        Log.d(TAG, "---- New Notification Received ----");
-        Log.d(TAG, "Package: " + packageName);
-        Log.d(TAG, "Notification Dump: " + extras.toString());
+        // Log notification details
+        Log.d(TAG, "New notification from: " + packageName);
 
         // Extract title and text
         final String title = extras.getString(Notification.EXTRA_TITLE, "");
         CharSequence textCharSequence = extras.getCharSequence(Notification.EXTRA_TEXT, "");
         final String text = textCharSequence != null ? textCharSequence.toString() : "";
 
-        // 🚨 Ignore empty notifications
+        // Ignore empty notifications
         if (title.isEmpty() || text.isEmpty()) {
             Log.d(TAG, "Ignoring notification with no content.");
             return;
         }
 
-        // 🚨 Ignore WhatsApp summary notifications like "5 new messages"
+        // Ignore WhatsApp summary notifications like "5 new messages"
         if (text.matches("^\\d+ new messages$")) {
             Log.d(TAG, "Ignoring summary notification: " + text);
             return;
         }
 
-        // 🚨 Ignore WhatsApp notifications with a `null` ID if they look like summaries
+        // Ignore WhatsApp notifications with a null ID if they look like summaries
         if (sbn.getKey().contains("|null|") && text.matches("^\\d+ new messages$")) {
             Log.d(TAG, "Ignoring WhatsApp summary notification with null ID.");
             return;
@@ -213,7 +203,7 @@ public class NotificationService extends NotificationListenerService {
         // Check if this was a notification we were tracking
         NotificationInfo trackedNotification = activeNotifications.get(notificationKey);
         if (trackedNotification != null) {
-            Log.d(TAG, "🚨 Notification dismissed: " + trackedNotification.title + " - " + trackedNotification.text);
+            Log.d(TAG, "Notification dismissed: " + trackedNotification.title + " - " + trackedNotification.text);
             
             // Post dismissal event to EventBus
             NotificationDismissedEvent dismissalEvent = new NotificationDismissedEvent(
@@ -247,7 +237,7 @@ public class NotificationService extends NotificationListenerService {
             activeNotifications.remove(notificationKey);
             Log.d(TAG, "📝 Removed notification from tracking: " + notificationKey);
         } else {
-            Log.d(TAG, "⚠️ Notification removed but not tracked: " + notificationKey);
+            Log.d(TAG, "Notification removed but not tracked: " + notificationKey);
         }
     }
 
@@ -273,13 +263,13 @@ public class NotificationService extends NotificationListenerService {
 
                 // Track this notification for dismissal detection
                 activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, packageName));
-                Log.d(TAG, "✅ Sent notification: " + title + " - " + text);
-                Log.d(TAG, "📝 Tracking notification with key: " + notificationKey);
+                Log.d(TAG, "Sent notification: " + title + " - " + text);
+                Log.d(TAG, "Tracking notification with key: " + notificationKey);
             } else {
                 Log.d(TAG, "Could not send notification- reactContext is null");
             }
         } catch (JSONException e) {
-            Log.d(TAG, "❌ JSONException occurred: " + e.getMessage());
+            Log.d(TAG, "JSONException occurred: " + e.getMessage());
         }
     }
 
