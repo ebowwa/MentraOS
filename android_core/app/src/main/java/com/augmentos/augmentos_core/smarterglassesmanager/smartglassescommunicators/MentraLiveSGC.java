@@ -301,7 +301,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private byte lc3SequenceNumber = 0;
     private long lc3DecoderPtr = 0;
     private Lc3Player lc3AudioPlayer;
-    private boolean audioPlaybackEnabled = true; // Default to enabled
+    private boolean audioPlaybackEnabled = false; // Default to enabled
 
     // Periodic test message for ACK testing
     private static final int TEST_MESSAGE_INTERVAL_MS = 5000; // 5 seconds
