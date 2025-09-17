@@ -57,7 +57,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     if (isDownloading) {
       if (extractionProgress > 0) {
-        return `Extracting... ${extractionProgress}%`
+        return `Extracting...`
       } else if (downloadProgress > 0) {
         return `Downloading... ${downloadProgress}%`
       } else {
