@@ -15,22 +15,24 @@ class MantleManager {
   private constructor() {}
 
   public async handleTranscriptionResult(data: any) {
-    // if (socketComms.isConnected()) {
-    //   socketComms.sendTranscriptionResult(data)
-    //   return
-    // }
-
+    // TODO: performance!
     const offlineStt = await loadSetting(SETTINGS_KEYS.offline_stt)
     if (offlineStt) {
       socketComms.handle_display_event({
+        type: "display_event",
         view: "main",
-        layoutType: "text_wall",
-        text: data.text,
+        layout: {
+          layoutType: "text_wall",
+          text: data.text,
+        },
       })
       return
     }
 
-    console.log("MantleManager: Transcription result: ", data)
+    if (socketComms.isConnected()) {
+      socketComms.sendTranscriptionResult(data)
+      return
+    }
   }
 }
 

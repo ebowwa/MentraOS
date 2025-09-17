@@ -344,6 +344,7 @@ class SocketComms {
   }
 
   private handle_display_event(msg: any) {
+    console.log(`SocketCommsTS: Handling display event: ${JSON.stringify(msg)}`)
     if (msg.view) {
       bridge.sendCommand("display_event", msg)
       // Update the Zustand store with the display content
