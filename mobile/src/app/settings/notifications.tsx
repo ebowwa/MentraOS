@@ -87,55 +87,12 @@ export default function NotificationSettingsScreen() {
     [apps],
   )
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true)
     loadInstalledApps()
-  }
+  }, [])
 
-  // Filter apps based on search query
-  const filteredApps = apps.filter(
-    app =>
-      app.appName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  // Show iOS message if on iOS
-  if (Platform.OS === "ios") {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-        <View style={{flex: 1, justifyContent: "center", alignItems: "center", padding: theme.spacing.lg}}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: theme.colors.text,
-              textAlign: "center",
-              marginBottom: theme.spacing.md,
-            }}>
-            iOS Notification Settings
-          </Text>
-          <Text style={{color: theme.colors.textDim, textAlign: "center", lineHeight: 22}}>
-            Notification settings are managed through iOS System Settings. Go to Settings → Notifications → MentraOS to
-            control notification preferences.
-          </Text>
-        </View>
-      </Screen>
-    )
-  }
-
-  if (loading) {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{color: theme.colors.textDim, marginTop: theme.spacing.md}}>Loading apps...</Text>
-        </View>
-      </Screen>
-    )
-  }
-
+  // Define renderAppItem here, before any conditional returns
   const renderAppItem = useCallback(
     ({item}: {item: InstalledApp}) => (
       <View
@@ -205,11 +162,58 @@ export default function NotificationSettingsScreen() {
   )
 
   // Add getItemLayout for better performance
-  const getItemLayout = (_: any, index: number) => ({
-    length: 73, // Height of each item
-    offset: 73 * index,
-    index,
-  })
+  const getItemLayout = useCallback(
+    (_: any, index: number) => ({
+      length: 73, // Height of each item
+      offset: 73 * index,
+      index,
+    }),
+    [],
+  )
+
+  // Filter apps based on search query
+  const filteredApps = apps.filter(
+    app =>
+      app.appName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  // Show iOS message if on iOS
+  if (Platform.OS === "ios") {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+        <View style={{flex: 1, justifyContent: "center", alignItems: "center", padding: theme.spacing.lg}}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "600",
+              color: theme.colors.text,
+              textAlign: "center",
+              marginBottom: theme.spacing.md,
+            }}>
+            iOS Notification Settings
+          </Text>
+          <Text style={{color: theme.colors.textDim, textAlign: "center", lineHeight: 22}}>
+            Notification settings are managed through iOS System Settings. Go to Settings → Notifications → MentraOS to
+            control notification preferences.
+          </Text>
+        </View>
+      </Screen>
+    )
+  }
+
+  if (loading) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{color: theme.colors.textDim, marginTop: theme.spacing.md}}>Loading apps...</Text>
+        </View>
+      </Screen>
+    )
+  }
 
   return (
     <Screen preset="fixed" style={{flex: 1, backgroundColor: theme.colors.background}}>
