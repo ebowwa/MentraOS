@@ -19,6 +19,11 @@
 #include "bsp_log.h"
 #include "hls12vga.h"
 
+// Include display config for adaptive mirroring correction
+#ifdef CONFIG_CUSTOM_HLS12VGA
+#include "../../../../src/mos_components/mos_lvgl_display/include/display_config.h"
+#endif
+
 #define TAG "CUSTOM_HLS12VGA"
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
@@ -350,6 +355,17 @@ static int hls12vga_write(const struct device *dev,
 		// 缓冲区起始地址 + 偏移量 * 每行字节数（1B = 1 像素）
 		// Buffer starting address + offset * bytes per row (1B = 1 pixel)
 		uint8_t *dst_row = dst + row * dst_stride;
+		
+#ifdef CONFIG_CUSTOM_HLS12VGA
+		// Check if hardware mirroring correction is needed
+		const display_config_t *config = display_get_config();
+		bool apply_mirroring = (config && config->color_config.hardware_mirroring);
+		bool apply_color_inversion = (config && config->color_config.invert_colors);
+#else
+		bool apply_mirroring = false;
+		bool apply_color_inversion = false;
+#endif
+		
 		for (uint16_t col = 0; col < width; col++) // 处理一行数据像素点; Process pixel points in a row of data
 		{
 			// 读取LVGL源数据字节(1b = 1像素)展开为0x00/0xFF（1B = 1像素）
@@ -358,9 +374,18 @@ static int hls12vga_write(const struct device *dev,
 			// 读取1bit数据 按照MSB位序读取
 			// Read 1bit data, read according to MSB bit order
 			uint8_t bit = (byte >> (7 - (col % 8))) & 0x01;
-			// 亮：0xFF，暗：0x00 ; Bright: 0xFF, Dark: 0x00
-			dst_row[col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
-			// dst_row[col] = bit ? COLOR_BRIGHT : BACKGROUND_COLOR;
+			
+			// Apply hardware mirroring correction if needed
+			uint16_t dest_col = apply_mirroring ? (width - 1 - col) : col;
+			
+			// Apply color inversion correction if needed
+			if (apply_color_inversion) {
+				// For HLS12VGA with color inversion: bit=1(white) -> LED ON(0xFF), bit=0(black) -> LED OFF(0x00)
+				dst_row[dest_col] = bit ? COLOR_BRIGHT : BACKGROUND_COLOR;
+			} else {
+				// Original mapping: bit=1 -> LED OFF, bit=0 -> LED ON (inverted)
+				dst_row[dest_col] = bit ? BACKGROUND_COLOR : COLOR_BRIGHT;
+			}
 		}
 	}
 	hls12vga_write_multiple_rows_cmd(dev, y, y + height - 1);
@@ -488,7 +513,7 @@ void hls12vga_power_off(void)
 static void lvgl_tick_cb(struct k_timer *timer)
 {
 	// BSP_LOGI(TAG, "lvgl_tick_cb");
-	lv_tick_inc(K_MSEC(LVGL_TICK_MS)); // 每5毫秒调用一次; Call every 5ms
+	lv_tick_inc(LVGL_TICK_MS); // Fixed: use raw value instead of K_MSEC
 }
 int hls12vga_clear_screen(bool color_on)
 {

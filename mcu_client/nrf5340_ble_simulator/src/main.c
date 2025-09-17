@@ -29,7 +29,7 @@
 #include "pdm_audio_stream.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
-#include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
+// #include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
 
 #include <dk_buttons_and_leds.h>
 
@@ -891,14 +891,14 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
-        // Initialize LVGL display system with working driver implementation
-        printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
-        
-        // Start the LVGL display thread first!
-        printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
-        lvgl_display_thread();
-        printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-
+	// Initialize LVGL display system with working driver implementation
+	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	
+	// Start the LVGL display thread first!
+	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	lvgl_display_thread();
+	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+#if 0
         // Give the thread a moment to initialize
         k_msleep(100);
         
@@ -940,7 +940,7 @@ int main(void)
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here
         LOG_INF("LVGL demo thread will start automatically");
-
+#endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
 

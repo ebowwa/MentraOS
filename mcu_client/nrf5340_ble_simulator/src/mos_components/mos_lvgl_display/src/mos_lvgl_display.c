@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 14:00:54
+ * @LastEditTime : 2025-09-11 21:08:42
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -18,11 +18,12 @@
 #include "lvgl_display.h"
 // #include <lvgl.h>
 // #include <hls12vga.h>
-#include <display/lcd/hls12vga.h>
+// #include <display/lcd/hls12vga.h>
 
 #include "bal_os.h"
 #include "bsp_log.h"
 #include "display_manager.h"  // **NEW: For font mapping function**
+#include "display_config.h"   // **NEW: Modular display configuration system**
 #include "mos_lvgl_display.h"
 // #include "bspal_icm42688p.h"
 // #include "task_ble_receive.h"
@@ -55,18 +56,18 @@ static volatile bool display_onoff = false;
 static lv_obj_t *protobuf_container = NULL;
 static lv_obj_t *protobuf_label     = NULL;
 
-// **NEW: Pattern 5 - XY Text Positioning Area (Global references)**
-static lv_obj_t *xy_text_container     = NULL;  // 600x440 bordered viewing area
+// **NEW: Pattern 5 XY Text Positioning Area (Global references)**
+static lv_obj_t *xy_text_container     = NULL;  // 124x60 bordered viewing area for SSD1306 128x64
 static lv_obj_t *current_xy_text_label = NULL;  // Current positioned text label
 
 static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count  = 0;
-    BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
-    BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
-    BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
-    BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
+//     BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
+//     BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
+//     BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
+//     BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
 }
 
 void lv_example_scroll_text(void)
@@ -78,18 +79,18 @@ void lv_example_scroll_text(void)
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
 
-    // 设置标签区域宽度（可视区域）
-    lv_obj_set_width(label, 640);  // 根据你屏幕宽度设置，单位像素
+    // 设置标签区域宽度（可视区域）- SSD1306 128x64
+    lv_obj_set_width(label, 128);  // SSD1306 display width (was 640)
 
-    // 设置标签位置
-    lv_obj_set_pos(label, 0, 410);  // x/y 位置，根据屏幕设置
+    // 设置标签位置 - SSD1306 128x64
+    lv_obj_set_pos(label, 0, 50);  // x/y 位置 (was 0, 410 for larger display)
 
     // 设置长文本（会触发滚动）
     lv_label_set_text(label, "!!!!!nRF5340 + NCS 3.0.0 + LVGL!!!!");
 
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_text_color(label, display_get_text_color(), 0);  // Use adaptive text color
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);  // Smaller font for SSD1306 (was 48)
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
 }
 
 /**
@@ -111,7 +112,7 @@ void lvgl_display_sem_give(void)
 
 int lvgl_display_sem_take(int64_t time)
 {
-    mos_sem_take(&lvgl_display_sem, time);
+    return mos_sem_take(&lvgl_display_sem, time);
 }
 
 void display_open(void)
@@ -216,17 +217,17 @@ void display_send_frame(void *data_ptr)
     // display_cmd_t cmd = {.type = LCD_CMD_DATA, .param = data_ptr};
     // mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
-void lvgl_dispaly_text(void)
+void lvgl_display_text(void)
 {
     lv_obj_t *hello_world_label = lv_label_create(lv_screen_active());
     lv_label_set_text(hello_world_label, "Hello LVGL World");
     lv_obj_align(hello_world_label, LV_ALIGN_CENTER, 0, 0);  // 居中对齐
-    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐
+    // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_RIGHT, 0, 0); // 右对齐720
     // lv_obj_align(hello_world_label, LV_TEXT_ALIGN_LEFT, 0, 0);  // 左对齐
     // lv_obj_align(hello_world_label, LV_ALIGN_BOTTOM_MID, 0, 0); // 底部居中对齐
-    lv_obj_set_style_text_color(hello_world_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_text_color(hello_world_label, display_get_text_color(), 0);  // Use adaptive text color
+    lv_obj_set_style_text_font(hello_world_label, &lv_font_montserrat_14, 0);  // Was 48, using 14 for memory
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
 }
 static lv_obj_t   *counter_label;
 static lv_timer_t *counter_timer;  // 指针即可
@@ -260,11 +261,11 @@ void ui_create(void)
     lv_obj_align(gyr_label, LV_TEXT_ALIGN_LEFT, 0, 380);
 
     // lv_obj_align(counter_label, LV_TEXT_ALIGN_LEFT, 50, 320);       // 左对齐
-    lv_obj_set_style_text_color(acc_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_color(gyr_label, lv_color_white(), 0);  // 白色对应非零值
-    lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+    lv_obj_set_style_text_color(acc_label, display_get_text_color(), 0);  // Use adaptive text color
+    lv_obj_set_style_text_font(acc_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
+    lv_obj_set_style_text_color(gyr_label, display_get_text_color(), 0);  // Use adaptive text color
+    lv_obj_set_style_text_font(gyr_label, &lv_font_montserrat_14, 0);  // Was 30, using 14 for memory
+    lv_obj_set_style_bg_color(lv_screen_active(), display_get_background_color(), 0);
     // 创建一个 100ms 周期的定时器，把 count 指针经 user_data 传给它
     static int count = 0;
     counter_timer    = lv_timer_create(counter_timer_cb, 300, &count);
@@ -304,8 +305,8 @@ void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t
     lv_obj_set_pos(cont, x, y);
     lv_obj_set_scroll_dir(cont, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-    // 设置容器背景为黑色
-    lv_obj_set_style_bg_color(cont, lv_color_black(), LV_PART_MAIN);
+    // 设置容器背景为适应性背景色
+    lv_obj_set_style_bg_color(cont, display_get_background_color(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(cont, LV_OPA_COVER, LV_PART_MAIN);
 
     // 在容器中创建标签
@@ -314,8 +315,8 @@ void scroll_text_create(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t
     lv_obj_set_width(label, w);
     lv_label_set_text(label, txt);
 
-    // 设置文字为白色和指定字体
-    lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
+    // 设置文字为适应性颜色和指定字体
+    lv_obj_set_style_text_color(label, display_get_text_color(), LV_PART_MAIN);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
 
     // 强制标签布局更新，获取正确的内容高度
@@ -378,7 +379,7 @@ static void show_default_ui(void)
 {
     BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
-    show_test_pattern(3);
+    show_test_pattern(4);
 
     BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
 }
@@ -386,9 +387,16 @@ static void show_default_ui(void)
 // Test pattern functions
 static void create_chess_pattern(lv_obj_t *screen)
 {
-    const int chess_size = 40;                // 40x40 pixel squares
-    const int chess_cols = 640 / chess_size;  // 16 columns
-    const int chess_rows = 480 / chess_size;  // 12 rows
+    // **NEW: Get modular display configuration for adaptive chess pattern**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based chess square size**
+    const int chess_size = config->patterns.chess_square_size;
+    const int chess_cols = config->width / chess_size;
+    const int chess_rows = config->height / chess_size;
+
+    BSP_LOGI(TAG, "🏁 Creating adaptive chess pattern: %dx%d squares (%d cols x %d rows) for %s", 
+             chess_size, chess_size, chess_cols, chess_rows, config->name);
 
     for (int row = 0; row < chess_rows; row++)
     {
@@ -400,7 +408,8 @@ static void create_chess_pattern(lv_obj_t *screen)
             lv_obj_t *square = lv_obj_create(screen);
             lv_obj_set_size(square, chess_size, chess_size);
             lv_obj_set_pos(square, col * chess_size, row * chess_size);
-            lv_obj_set_style_bg_color(square, is_white ? lv_color_white() : lv_color_black(), 0);
+            lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+            lv_obj_set_style_bg_color(square, color, 0);
             lv_obj_set_style_bg_opa(square, LV_OPA_COVER, 0);
             lv_obj_set_style_border_width(square, 0, 0);
             lv_obj_set_style_pad_all(square, 0, 0);
@@ -410,17 +419,25 @@ static void create_chess_pattern(lv_obj_t *screen)
 
 static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 {
-    const int stripe_height = 20;                   // 20 pixel high stripes
-    const int num_stripes   = 480 / stripe_height;  // 24 stripes
+    // **NEW: Get modular display configuration for adaptive horizontal bars**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based bar thickness**
+    const int stripe_height = config->patterns.bar_thickness;
+    const int num_stripes   = config->height / stripe_height;
+
+    BSP_LOGI(TAG, "🦓 Creating adaptive horizontal zebra: %d stripes (%dpx height) for %s", 
+             num_stripes, stripe_height, config->name);
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, 640, stripe_height);  // Full width
+        lv_obj_set_size(stripe, config->width, stripe_height);
         lv_obj_set_pos(stripe, 0, i * stripe_height);
-        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+        lv_obj_set_style_bg_color(stripe, color, 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
@@ -429,17 +446,25 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
 
 static void create_vertical_zebra_pattern(lv_obj_t *screen)
 {
-    const int stripe_width = 20;                  // 20 pixel wide stripes
-    const int num_stripes  = 640 / stripe_width;  // 32 stripes
+    // **NEW: Get modular display configuration for adaptive vertical bars**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Use configuration-based bar thickness**
+    const int stripe_width = config->patterns.bar_thickness;
+    const int num_stripes  = config->width / stripe_width;
+
+    BSP_LOGI(TAG, "🦓 Creating adaptive vertical zebra: %d stripes (%dpx width) for %s", 
+             num_stripes, stripe_width, config->name);
 
     for (int i = 0; i < num_stripes; i++)
     {
         bool is_white = i % 2 == 0;
 
         lv_obj_t *stripe = lv_obj_create(screen);
-        lv_obj_set_size(stripe, stripe_width, 480);  // Full height
+        lv_obj_set_size(stripe, stripe_width, config->height);
         lv_obj_set_pos(stripe, i * stripe_width, 0);
-        lv_obj_set_style_bg_color(stripe, is_white ? lv_color_white() : lv_color_black(), 0);
+        lv_color_t color = is_white ? display_get_adjusted_color(lv_color_white()) : display_get_adjusted_color(lv_color_black());
+        lv_obj_set_style_bg_color(stripe, color, 0);
         lv_obj_set_style_bg_opa(stripe, LV_OPA_COVER, 0);
         lv_obj_set_style_border_width(stripe, 0, 0);
         lv_obj_set_style_pad_all(stripe, 0, 0);
@@ -484,8 +509,8 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_label_set_text(scrolling_welcome_label, "Welcome to MentraOS NExFirmware!");
 
     // Set text properties
-    lv_obj_set_style_text_color(scrolling_welcome_label, lv_color_white(), 0);  // White text
-    lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_48,
+    lv_obj_set_style_text_color(scrolling_welcome_label, display_get_text_color(), 0);  // Use adaptive text color
+    lv_obj_set_style_text_font(scrolling_welcome_label, &lv_font_montserrat_14,  // Was 48, using 14 for memory
                                0);  // **UPGRADED: Largest font (48pt)**
 
     // **NEW: Use normal mode, no built-in scrolling**
@@ -498,7 +523,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     lv_obj_set_y(scrolling_welcome_label, (480 - lv_obj_get_height(scrolling_welcome_label)) / 2);
 
     // Optional: Add background for better visibility
-    lv_obj_set_style_bg_color(scrolling_welcome_label, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(scrolling_welcome_label, display_get_background_color(), 0);
     lv_obj_set_style_bg_opa(scrolling_welcome_label, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(scrolling_welcome_label, 15, 0);  // Add padding
     lv_obj_set_style_radius(scrolling_welcome_label, 5, 0);    // Rounded corners
@@ -520,65 +545,132 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
     BSP_LOGI(TAG, "🔄 Started infinite smooth horizontal scrolling animation for welcome text");
 }
 
+static void anim_set_x_cb(void *obj, int32_t v) 
+{ 
+    lv_obj_set_x((lv_obj_t *)obj, v); 
+}
+
+static void create_center_rectangle_pattern_ssd1306(lv_obj_t *screen)
+{
+    const char *text = "Welcome to MentraOS NExFirmware!";
+    const lv_font_t *font = &lv_font_montserrat_12;   
+    const uint32_t ms_per_px = 25;   
+    const lv_coord_t sw = lv_obj_get_width(screen);
+    const lv_coord_t sh = lv_obj_get_height(screen);
+
+    lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+
+
+    lv_obj_t *label = lv_label_create(screen);
+    lv_obj_set_style_text_color(label, lv_color_black(), 0);
+    lv_obj_set_style_text_font(label, font, 0);
+    lv_label_set_text(label, text);
+
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
+
+    lv_obj_update_layout(label);
+    lv_coord_t label_w = lv_obj_get_width(label);
+    lv_coord_t label_h = lv_obj_get_height(label);
+
+    lv_obj_set_y(label, (sh - label_h) / 2);
+
+    const lv_coord_t x_start = sw;      
+    const lv_coord_t x_end   = -label_w;   
+
+    uint32_t total_px = (uint32_t)(x_start - x_end);  
+    uint32_t anim_time_ms = total_px * ms_per_px;
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, label);
+    lv_anim_set_exec_cb(&a, anim_set_x_cb);
+    lv_anim_set_values(&a, x_start, x_end);
+    lv_anim_set_time(&a, anim_time_ms);
+    lv_anim_set_path_cb(&a, lv_anim_path_linear);
+    lv_anim_set_repeat_delay(&a, 250);         
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&a);
+}
+
+
+
 static void create_scrolling_text_container(lv_obj_t *screen)
 {
-    // Create scrollable container with 20px margins on all sides
-    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    // **NEW: Get modular display configuration**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Create scrollable container using modular dimensions**
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
+    display_apply_container_config(container, screen, config);
 
     // **NEW: Store global reference for protobuf text updates**
     protobuf_container = container;
 
-    // Configure container scrolling - NO SCROLLBARS, NO BORDERS
+    // Configure container scrolling - NO SCROLLBARS, minimal borders
     lv_obj_set_scroll_dir(container, LV_DIR_VER);                 // Vertical scrolling only
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // NO SCROLLBARS
 
-    // Style the container - NO BORDERS, minimal styling for performance
-    lv_obj_set_style_bg_color(container, lv_color_black(), 0);
+    // Style the container using configuration values
+    lv_obj_set_style_bg_color(container, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(container, 0, 0);  // NO BORDERS
-    lv_obj_set_style_pad_all(container, 5, 0);       // Reduced padding for performance
+    lv_obj_set_style_border_color(container, lv_color_black(), 0);
+    lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);
 
     // Create label inside container with protobuf text
     lv_obj_t *label = lv_label_create(container);
-    lv_obj_set_width(label, 590);                       // Container width minus minimal padding (600-10=590)
+    lv_obj_set_width(label, config->layout.usable_width - (config->layout.padding * 2));
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Wrap text to fit width
 
     // **NEW: Store global reference for protobuf text updates**
     protobuf_label = label;
 
-    // **NEW: Set initial placeholder text - will be replaced by protobuf messages**
-    const char *initial_text =
-        "MentraOS AR Display Ready\n\n"
-        "Waiting for protobuf text messages...\n\n"
-        "This container will automatically update with incoming text content from the mobile app.\n\n"
-        "✅ System initialized and ready for messages!";
+    // **NEW: Set adaptive initial text based on display size**
+    const char *initial_text;
+    if (config->width >= 500) {
+        // Large display - detailed welcome message
+        initial_text = 
+            "MentraOS AR Display System Ready\n"
+            "Waiting for protobuf text messages from mobile app...\n"
+            "This container will automatically update with incoming content.\n"
+            "English/Chinese multilingual support enabled.\n"
+            "系统已完全初始化，准备接收消息！\n"
+            "Hello 你好 World 世界";
+    } else {
+        // Small display - compact welcome message
+        initial_text =
+            "MentraOS AR Ready\n"
+            "Waiting for messages...\n" 
+            "EN/CN Support Ready\n"
+            "系统已初始化!\n"
+            "Hello 你好 World 世界";
+    }
 
     lv_label_set_text(label, initial_text);
 
-    // Style the label text - optimized settings
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_30, 0);
-    lv_obj_set_style_text_line_space(label, 3, 0);  // Reduced line spacing for performance
+    // **NEW: Style the label using modular font configuration**
+    lv_obj_set_style_text_color(label, lv_color_black(), 0);
+    lv_obj_set_style_text_font(label, display_get_font("cjk"), 0);  // CJK font for Chinese support
+    lv_obj_set_style_text_line_space(label, config->fonts.line_spacing, 0);
 
     // Position label at top of container
     lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
 
     // AUTO-SCROLL TO BOTTOM to show latest content
     lv_obj_update_layout(container);  // Ensure layout is calculated
-    lv_obj_scroll_to_y(container, lv_obj_get_scroll_bottom(container), LV_ANIM_OFF);
+    BSP_LOGI(TAG, "📝 Created adaptive scrolling container: %dx%d with %s font", 
+             config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
-// **NEW: Pattern 5 - XY Text Positioning Area with 600x440 bordered view**
+// **NEW: Pattern 5 - XY Text Positioning Area with modular configuration**
 static void create_xy_text_positioning_area(lv_obj_t *screen)
 {
-    // Create 600x440 bordered viewing area centered on screen
-    // Screen size: 640x480, so container: 600x440 positioned at (20, 20)
+    // **NEW: Get modular display configuration**
+    const display_config_t *config = display_get_config();
+    
+    // **NEW: Create XY positioning container using modular dimensions**
     lv_obj_t *container = lv_obj_create(screen);
-    lv_obj_set_size(container, 600, 440);  // 640-40 = 600, 480-40 = 440
-    lv_obj_set_pos(container, 20, 20);     // 20px margins from all edges
+    display_apply_container_config(container, screen, config);
 
     // **NEW: Store global reference for XY text positioning**
     xy_text_container = container;
@@ -588,17 +680,16 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
     lv_obj_set_scrollbar_mode(container, LV_SCROLLBAR_MODE_OFF);  // No scrollbars
 
     // Style the container with visible border for positioning reference
-    lv_obj_set_style_bg_color(container, lv_color_black(), 0);  // Black background
+    lv_obj_set_style_bg_color(container, lv_color_white(), 0);  // White background
     lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(container, lv_color_white(), 0);  // White border
-    lv_obj_set_style_border_width(container, 2, 0);                 // 2px border width
+    lv_obj_set_style_border_color(container, lv_color_black(), 0);  // Black border
     lv_obj_set_style_border_opa(container, LV_OPA_COVER, 0);        // Visible border
-    lv_obj_set_style_pad_all(container, 10, 0);                     // 10px internal padding
-    lv_obj_set_style_radius(container, 5, 0);                       // Rounded corners
+    lv_obj_set_style_radius(container, config->layout.border_width, 0);  // Adaptive radius
 
     // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
 
-    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (600x440 with border)");
+    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (%dx%d) for %s", 
+             config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
 static int       current_pattern = 4;  // **NEW: Default to auto-scroll container (pattern 4)**
@@ -619,7 +710,7 @@ static void show_test_pattern(int pattern_id)
 
     // Get screen and set black background
     lv_obj_t *screen = lv_screen_active();
-    lv_obj_set_style_bg_color(screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(screen, display_get_background_color(), 0);
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
     switch (pattern_id)
@@ -634,7 +725,8 @@ static void show_test_pattern(int pattern_id)
             create_vertical_zebra_pattern(screen);
             break;
         case 3:
-            create_center_rectangle_pattern(screen);
+            // create_center_rectangle_pattern(screen);
+            create_center_rectangle_pattern_ssd1306(screen);
             break;
         case 4:
             create_scrolling_text_container(screen);
@@ -754,7 +846,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
 
     // Apply font and styling - **SAME AS PATTERN 4: Use white text**
     lv_obj_set_style_text_font(current_xy_text_label, font, 0);
-    lv_obj_set_style_text_color(current_xy_text_label, lv_color_white(), 0);  // White text like Pattern 4
+    lv_obj_set_style_text_color(current_xy_text_label, lv_color_black(), 0);  // White text like Pattern 4
     lv_obj_set_style_bg_opa(current_xy_text_label, LV_OPA_TRANSP, 0);         // Transparent background
 
     // Set text wrapping and width constraints
@@ -789,11 +881,22 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
         BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
         return;
     }
-    if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
-    {
-        BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+    
+    // **NEW: Initialize modular display configuration system**
+    int config_result = display_config_init();
+    if (config_result != 0) {
+        BSP_LOGE(TAG, "Failed to initialize display configuration: %d", config_result);
         return;
     }
+    
+    const display_config_t *config = display_get_config();
+    BSP_LOGI(TAG, "🖼️ Display configuration loaded: %s (%dx%d)", 
+             config->name, config->width, config->height);
+    // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
+    // {
+    //     BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+    //     return;
+    // }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
     mos_timer_create(&fps_timer, fps_timer_cb);
     mos_timer_start(&fps_timer, true, 1000);
@@ -822,16 +925,16 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     break;
                 case LCD_CMD_OPEN:
                     BSP_LOGI(TAG, "LCD_CMD_OPEN");
-                    hls12vga_power_on();
-                    set_display_onoff(true);
-                    hls12vga_set_brightness(9);  // 设置亮度
-                    hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
-                    // hls12vga_set_brightness(cmd.p.open.brightness);
-                    // hls12vga_set_mirror(cmd.p.open.mirror);
-                    mos_delay_ms(2);
-                    hls12vga_open_display();  // 开启显示
-                    // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                    hls12vga_clear_screen(false);  // 清屏
+                    // hls12vga_power_on();
+                    // set_display_onoff(true);
+                    // hls12vga_set_brightness(9);  // 设置亮度
+                    // hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
+                    // // hls12vga_set_brightness(cmd.p.open.brightness);
+                    // // hls12vga_set_mirror(cmd.p.open.mirror);
+                    // mos_delay_ms(2);
+                    // hls12vga_open_display();  // 开启显示
+                    // // hls12vga_set_shift(MOVE_DEFAULT, 0);
+                    // hls12vga_clear_screen(false);  // 清屏
                     state_type = LCD_STATE_ON;
 
                     BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
@@ -862,9 +965,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     {
                         // hls12vga_clear_screen(false); // 清屏
                         // lv_timer_handler();
-                        scroll_text_stop();
-                        set_display_onoff(false);
-                        hls12vga_power_off();
+                        // scroll_text_stop();
+                        // set_display_onoff(false);
+                        // hls12vga_power_off();
                     }
                     state_type = LCD_STATE_OFF;
                     break;
@@ -875,34 +978,34 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     lv_label_set_text(lbl, cmd.p.text.text);
                     // lv_label_set_text(lbl, "Hello, world lvgl!"); //test
                     lv_obj_set_style_text_color(lbl, lv_color_white(), LV_PART_MAIN);
-                    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_30, LV_PART_MAIN);
+                    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, LV_PART_MAIN);  // Was 30, using 14 for memory
                     lv_obj_set_pos(lbl, cmd.p.text.x, cmd.p.text.y);
                 }
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
                     /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+                    // if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+                    // }
+                    // break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
                     /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    if (hls12vga_draw_vertical_grayscale_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+                    // if (hls12vga_draw_vertical_grayscale_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+                    // }
+                    // break;
                 case LCD_CMD_CHESS_PATTERN:
                     /* **NEW: Handle direct HLS12VGA chess pattern** */
-                    BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    if (hls12vga_draw_chess_pattern() != 0)
-                    {
-                        BSP_LOGE(TAG, "Failed to draw chess pattern");
-                    }
-                    break;
+                    // BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+                    // if (hls12vga_draw_chess_pattern() != 0)
+                    // {
+                    //     BSP_LOGE(TAG, "Failed to draw chess pattern");
+                    // }
+                    // break;
                 default:
                     break;
             }

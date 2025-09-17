@@ -1,6 +1,6 @@
 / {
     chosen {
-        zephyr,display = &hls12vga;
+        zephyr,display = &ssd1306;  // Switch back to SSD1306 for compatibility testing
         nordic-nus-uart = &uart0;
     };
 };
@@ -41,6 +41,20 @@
                     <NRF_PSEL(PDM_DIN, 1, 11)>;
         };
     };
+    
+    i2c2_default: i2c2_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 1, 14)>,
+                    <NRF_PSEL(TWIM_SCL, 1, 15)>;
+        };
+    };
+    i2c2_sleep: i2c2_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 1, 14)>,
+                    <NRF_PSEL(TWIM_SCL, 1, 15)>;
+            low-power-enable;
+        };
+    };
 };
 
 /* Disable SPI3 (8MHz limited) */
@@ -59,7 +73,7 @@
     hls12vga: hls12vga@0 {
         compatible = "zephyr,custom-hls12vga";
         reg = <0>;
-        status = "okay";
+        status = "disabled";  // Disable HLS12VGA when testing SSD1306
         spi-max-frequency = <32000000>;
 
         /* CS pins moved to P1.04 and P1.05 to avoid Arduino connector conflicts */
@@ -92,4 +106,30 @@
     pinctrl-names = "default";
     clock-source = "PCLK32M_HFXO";
     queue-size = <4>;
+};
+
+/* Enable I2C2 for SSD1306 display */
+&i2c2 {
+    compatible = "nordic,nrf-twim";
+    status = "okay";
+    pinctrl-0 = <&i2c2_default>;
+    pinctrl-1 = <&i2c2_sleep>;
+    pinctrl-names = "default", "sleep";
+    clock-frequency = <I2C_BITRATE_FAST_PLUS>;
+    zephyr,concat-buf-size = <4096>;
+    
+    ssd1306: ssd1306@3c {
+        compatible = "solomon,ssd1306fb";  
+        reg = <0x3c>;    
+        width = <128>;
+        height = <64>;
+        segment-offset = <0>;
+        page-offset = <0>;
+        display-offset = <0>;
+        multiplex-ratio = <63>;
+        com-invdir;
+        prechargep = <0x22>;
+        segment-remap;
+        status = "okay";  // Enable SSD1306 for compatibility testing
+    };
 };
