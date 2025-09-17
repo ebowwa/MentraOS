@@ -441,6 +441,7 @@ struct ViewState {
     // MARK: - ServerCommsCallback Implementation
 
     func handle_microphone_state_change(_ requiredData: [SpeechRequiredDataType], _ bypassVad: Bool) {
+        var requiredData = requiredData // make mutable
         Bridge.log(
             "Mentra: MIC: @@@@@@@@ changing mic with requiredData: \(requiredData) bypassVad=\(bypassVad) enforceLocalTranscription=\(enforceLocalTranscription) @@@@@@@@@@@@@@@@"
         )
