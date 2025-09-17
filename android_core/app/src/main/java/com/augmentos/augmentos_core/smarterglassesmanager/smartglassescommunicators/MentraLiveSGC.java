@@ -101,6 +101,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int glassesBuildNumberInt = 0; // Build number as integer for version checks
     private String glassesDeviceModel = "";
     private String glassesAndroidVersion = "";
+    private String glassesDeviceType = "Unknown"; // Device type from glasses (K900, K900Plus, etc.)
+    private boolean supportsLC3Audio = false; // Whether device supports LC3 audio (false for base K900)
 
     // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
     // CRITICAL FIX: Swapped TX and RX UUIDs to match actual usage from central device perspective
@@ -763,12 +765,31 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 if (service != null) {
                     txCharacteristic = service.getCharacteristic(TX_CHAR_UUID);
                     rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID);
-                    lc3ReadCharacteristic = service.getCharacteristic(LC3_READ_UUID);
-                    lc3WriteCharacteristic = service.getCharacteristic(LC3_WRITE_UUID);
+                    
+                    // Only attempt to get LC3 characteristics if device supports LC3 audio
+                    if (supportsLC3Audio) {
+                        lc3ReadCharacteristic = service.getCharacteristic(LC3_READ_UUID);
+                        lc3WriteCharacteristic = service.getCharacteristic(LC3_WRITE_UUID);
+                    } else {
+                        lc3ReadCharacteristic = null;
+                        lc3WriteCharacteristic = null;
+                        Log.d(TAG, "⏭️ Skipping LC3 characteristics - device does not support LC3 audio");
+                    }
 
-                    if (rxCharacteristic != null && txCharacteristic != null && lc3ReadCharacteristic != null && lc3WriteCharacteristic != null) {
+                    // Check if we have required characteristics based on device capabilities
+                    boolean hasRequiredCharacteristics = (rxCharacteristic != null && txCharacteristic != null);
+                    if (supportsLC3Audio) {
+                        hasRequiredCharacteristics = hasRequiredCharacteristics && 
+                                                   (lc3ReadCharacteristic != null && lc3WriteCharacteristic != null);
+                    }
+
+                    if (hasRequiredCharacteristics) {
                         // BLE connection established, but we still need to wait for glasses SOC
-                        Log.d(TAG, "✅ Core TX/RX and LC3 TX/RX characteristics found - BLE connection ready");
+                        if (supportsLC3Audio) {
+                            Log.d(TAG, "✅ Core TX/RX and LC3 TX/RX characteristics found - BLE connection ready");
+                        } else {
+                            Log.d(TAG, "✅ Core TX/RX characteristics found - BLE connection ready (LC3 not supported)");
+                        }
                         Log.d(TAG, "🔄 Waiting for glasses SOC to become ready...");
 
                         // Keep the state as CONNECTING until the glasses SOC responds
@@ -800,11 +821,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         if (txCharacteristic == null) {
                             Log.e(TAG, "TX characteristic (peripheral's RX) not found");
                         }
-                        if (lc3ReadCharacteristic == null) {
-                            Log.e(TAG, "LC3_READ characteristic not found");
-                        }
-                        if (lc3WriteCharacteristic == null) {
-                            Log.e(TAG, "LC3_WRITE characteristic not found");
+                        // Log LC3 characteristic errors only if device should support LC3
+                        if (supportsLC3Audio) {
+                            if (lc3ReadCharacteristic == null) {
+                                Log.e(TAG, "LC3_READ characteristic not found on LC3-capable device");
+                            }
+                            if (lc3WriteCharacteristic == null) {
+                                Log.e(TAG, "LC3_WRITE characteristic not found on LC3-capable device");
+                            }
                         }
                         gatt.disconnect();
                     }
@@ -866,8 +890,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
-            boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID);
-            boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID);
+            boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID) && supportsLC3Audio;
+            boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID) && supportsLC3Audio;
 
             if (isRxCharacteristic) {
                 Log.d(TAG, "Received data on RX characteristic");
@@ -875,7 +899,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "Received data on TX characteristic");
             } else if (isLc3ReadCharacteristic) {
                 // Log.d(TAG, "Received data on LC3_READ characteristic");
-                processLc3AudioPacket(characteristic.getValue());
+                if (supportsLC3Audio) {
+                    processLc3AudioPacket(characteristic.getValue());
+                } else {
+                    Log.w(TAG, "Received LC3 data on device that doesn't support LC3 audio");
+                }
             } else if (isLc3WriteCharacteristic) {
                 Log.d(TAG, "Received data on LC3_WRITE characteristic");
             } else {
@@ -1739,6 +1767,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Glasses SOC has booted and is ready for communication
                 Log.d(TAG, "🎉 Received glasses_ready message - SOC is booted and ready!");
 
+                // Extract and store device type information if available
+                glassesDeviceType = json.optString("device_type", "Unknown");
+                Log.d(TAG, "📱 Glasses device type: " + glassesDeviceType);
+                
+                // Determine LC3 audio support: base K900 doesn't support LC3, variants do
+                supportsLC3Audio = !"K900".equals(glassesDeviceType);
+                Log.d(TAG, "📱 LC3 audio support: " + supportsLC3Audio + " (device: " + glassesDeviceType + ")");
+
                 // Set the ready flag to stop any future readiness checks
                 glassesReady = true;
 
@@ -1774,8 +1810,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Send user settings to glasses
                 sendUserSettings();
 
-                // Initialize LC3 audio logging now that glasses are ready
-                initializeLc3Logging();
+                // Initialize LC3 audio logging now that glasses are ready (only if supported)
+                if (supportsLC3Audio) {
+                    initializeLc3Logging();
+                    Log.d(TAG, "✅ LC3 audio logging initialized for device: " + glassesDeviceType);
+                } else {
+                    Log.d(TAG, "⏭️ Skipping LC3 audio logging - device does not support LC3 audio");
+                }
                 
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
@@ -4070,6 +4111,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * @param lc3Data The raw LC3 encoded audio data (e.g., 400 bytes - 10 frames × 40 bytes per frame).
      */
     public void sendLc3AudioPacket(byte[] lc3Data) {
+        if (!supportsLC3Audio) {
+            Log.w(TAG, "Cannot send LC3 audio packet - device does not support LC3 audio.");
+            return;
+        }
         if (lc3WriteCharacteristic == null) {
             Log.w(TAG, "Cannot send LC3 audio packet, characteristic not available.");
             return;
