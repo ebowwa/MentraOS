@@ -101,7 +101,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int glassesBuildNumberInt = 0; // Build number as integer for version checks
     private String glassesDeviceModel = "";
     private String glassesAndroidVersion = "";
-    private String glassesDeviceType = "Unknown"; // Device type from glasses (K900, K900Plus, etc.)
     private boolean supportsLC3Audio = false; // Whether device supports LC3 audio (false for base K900)
 
     // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
@@ -1765,14 +1764,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Glasses SOC has booted and is ready for communication
                 Log.d(TAG, "🎉 Received glasses_ready message - SOC is booted and ready!");
 
-                // Extract and store device type information if available
-                glassesDeviceType = json.optString("device_type", "Unknown");
-                Log.d(TAG, "📱 Glasses device type: " + glassesDeviceType);
-                
-                // Determine LC3 audio support: base K900 doesn't support LC3, variants do
-                supportsLC3Audio = !"K900".equals(glassesDeviceType);
-                Log.d(TAG, "📱 LC3 audio support: " + supportsLC3Audio + " (device: " + glassesDeviceType + ")");
-
                 // Set the ready flag to stop any future readiness checks
                 glassesReady = true;
 
@@ -1811,7 +1802,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Initialize LC3 audio logging now that glasses are ready (only if supported)
                 if (supportsLC3Audio) {
                     initializeLc3Logging();
-                    Log.d(TAG, "✅ LC3 audio logging initialized for device: " + glassesDeviceType);
+                    Log.d(TAG, "✅ LC3 audio logging initialized for device");
                 } else {
                     Log.d(TAG, "⏭️ Skipping LC3 audio logging - device does not support LC3 audio");
                 }
@@ -1848,6 +1839,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     glassesBuildNumberInt = 0;
                     Log.e(TAG, "Failed to parse build number as integer: " + buildNumber);
                 }
+
+                // Determine LC3 audio support: base K900 doesn't support LC3, variants do
+                supportsLC3Audio = !"K900".equals(deviceModel);
+                Log.d(TAG, "📱 LC3 audio support: " + supportsLC3Audio + " (device: " + deviceModel + ")");
 
                 Log.d(TAG, "Glasses Version - App: " + appVersion +
                       ", Build: " + buildNumber +

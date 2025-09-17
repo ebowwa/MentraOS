@@ -30,6 +30,7 @@ import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.system.managers.StateManager;
 import com.augmentos.augmentos_core.AugmentosService;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -600,11 +601,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             versionInfo.put("app_version", appVersion);
             versionInfo.put("build_number", buildNumber);
-            versionInfo.put("device_model", android.os.Build.MODEL);
+            versionInfo.put("device_model", ServiceUtils.getDeviceTypeString(this));
             versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
             versionInfo.put("ota_version_url", OtaConstants.VERSION_JSON_URL);
 
-            Log.d(TAG, "📋 Version info prepared - Device: " + android.os.Build.MODEL + 
+            Log.d(TAG, "📋 Version info prepared - Device: " + ServiceUtils.getDeviceTypeString(this) + 
                       ", Android: " + android.os.Build.VERSION.RELEASE + 
                       ", OTA URL: " + OtaConstants.VERSION_JSON_URL);
 
