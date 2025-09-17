@@ -104,7 +104,7 @@ class WebSocketManager extends EventEmitter {
     if (this.manuallyDisconnected) return
 
     this.reconnectInterval = setInterval(() => {
-      console.error("WSM: Attempting reconnect")
+      console.log("WSM: Attempting reconnect")
       const store = useConnectionStore.getState()
       if (store.status === WebSocketStatus.DISCONNECTED) {
         this.handleReconnect()
