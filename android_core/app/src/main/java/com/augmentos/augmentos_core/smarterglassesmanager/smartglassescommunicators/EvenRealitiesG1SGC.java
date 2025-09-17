@@ -79,6 +79,9 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 
 public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_EvenRealitiesG1SGC";
+    
+    // LC3 frame size for Even Realities G1
+    private static final int LC3_FRAME_SIZE = 20;
     public static final String SHARED_PREFS_NAME = "EvenRealitiesPrefs";
     private int heartbeatCount = 0;
     private int micBeatCount = 0;
@@ -503,9 +506,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 //                            }
 
                             if (deviceName.contains("R_")) {
-                                //decode the LC3 audio
+                                //decode the LC3 audio using Even G1 frame size
                                 if (lc3DecoderPtr != 0) {
-                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3, LC3_FRAME_SIZE);
                                     //send the PCM out
                                     if (shouldUseGlassesMic) {
                                         if (audioProcessingCallback != null) {

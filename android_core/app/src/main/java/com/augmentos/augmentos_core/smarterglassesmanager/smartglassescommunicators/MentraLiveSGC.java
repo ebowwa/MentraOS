@@ -91,6 +91,9 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
  */
 public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_MentraLiveSGC";
+    
+    // LC3 frame size for Mentra Live
+    private static final int LC3_FRAME_SIZE = 40;
 
     // Glasses version information
     private String glassesAppVersion = "";
@@ -4029,8 +4032,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             // Decode LC3 to PCM and forward to audio processing system
             if (audioProcessingCallback != null) {
                 if (lc3DecoderPtr != 0) {
-                    // Decode LC3 to PCM using the native decoder
-                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data);
+                    // Decode LC3 to PCM using the native decoder with Mentra Live frame size
+                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3Data, LC3_FRAME_SIZE);
                     
                     if (pcmData != null && pcmData.length > 0) {
                         // Forward PCM data to audio processing system (like Even Realities G1)
