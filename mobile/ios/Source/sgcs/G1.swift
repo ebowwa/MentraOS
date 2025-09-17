@@ -215,7 +215,7 @@ class G1: NSObject, SGCManager {
             let oldValue = _ready
             _ready = newValue
             if oldValue != newValue {
-                MentraManager.shared.handleConnectionStateChange(newValue)
+                MentraManager.shared.handleConnectionStateChange()
             }
             if !newValue {
                 // Reset battery levels when disconnected

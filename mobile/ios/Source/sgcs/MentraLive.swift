@@ -488,7 +488,7 @@ extension MentraLive: CBCentralManagerDelegate {
 
         isConnecting = false
         connectedPeripheral = nil
-        glassesReady = false
+        ready = false
         connectionState = .disconnected
 
         stopAllTimers()
@@ -812,9 +812,9 @@ class MentraLive: NSObject, SGCManager {
         set {
             let oldValue = _connectionState
             _connectionState = newValue
-            if oldValue != newValue {
-                onConnectionStateChanged?()
-            }
+//            if oldValue != newValue {
+//                MentraManager.shared.handleConnectionStateChange(newValue)
+//            }
         }
     }
 
@@ -831,7 +831,6 @@ class MentraLive: NSObject, SGCManager {
     private var isScanning = false
     private var isConnecting = false
     private var isKilled = false
-    var glassesReady = false
     private var reconnectAttempts = 0
     private var isNewVersion = false
     private var globalMessageId = 0
@@ -842,14 +841,17 @@ class MentraLive: NSObject, SGCManager {
     var glassesDeviceModel: String? = ""
     var glassesAndroidVersion: String? = ""
 
+    var _ready = false
     var ready: Bool {
-        get { return glassesReady }
+        get { return _ready }
         set {
-            let oldValue = glassesReady
-            glassesReady = newValue
+            let oldValue = _ready
+            _ready = newValue
             if oldValue != newValue {
                 // Call the callback when state changes
                 //        onConnectionStateChanged?()
+                Bridge.log("MentraLive: connection state changed to: \(newValue)")
+                MentraManager.shared.handleConnectionStateChange()
             }
             if !newValue {
                 // Reset battery levels when disconnected
@@ -1425,17 +1427,17 @@ class MentraLive: NSObject, SGCManager {
         switch command {
         case "sr_hrt":
             if let bodyObj = json["B"] as? [String: Any] {
-                let ready = bodyObj["ready"] as? Int ?? 0
+                let readyResponse = bodyObj["ready"] as? Int ?? 0
 
                 let percentage = bodyObj["pt"] as? Int ?? 0
                 if percentage > 0, percentage <= 20 {
-                    if !glassesReady {
+                    if !ready {
                         Bridge.sendPairFailureEvent("errors:pairingBatteryTooLow")
                         return
                     }
                 }
 
-                if ready == 1 {
+                if readyResponse == 1 {
                     Bridge.log("K900 SOC ready")
                     let readyMsg: [String: Any] = [
                         "type": "phone_ready",
@@ -1527,7 +1529,7 @@ class MentraLive: NSObject, SGCManager {
     private func handleGlassesReady() {
         Bridge.log("🎉 Received glasses_ready message - SOC is booted and ready!")
 
-        glassesReady = true
+        ready = true
         stopReadinessCheckLoop()
 
         // Perform SOC-dependent initialization
@@ -2209,7 +2211,7 @@ class MentraLive: NSObject, SGCManager {
     }
 
     private func sendHeartbeat() {
-        guard glassesReady, connectionState == .connected else {
+        guard ready, connectionState == .connected else {
             Bridge.log("Skipping heartbeat - glasses not ready or not connected")
             return
         }
@@ -2233,7 +2235,7 @@ class MentraLive: NSObject, SGCManager {
         stopReadinessCheckLoop()
 
         readinessCheckCounter = 0
-        glassesReady = false
+        ready = false
 
         Bridge.log("🔄 Starting glasses SOC readiness check loop")
 

@@ -115,7 +115,8 @@ class Mach1: UltraliteBaseViewController, SGCManager {
         didSet {
             if oldValue != ready {
                 Bridge.log("MACH1: connection_state_changed: \(ready)")
-                onConnectionStateChanged?()
+//                onConnectionStateChanged?()
+                MentraManager.shared.handleConnectionStateChange()
             }
         }
     }

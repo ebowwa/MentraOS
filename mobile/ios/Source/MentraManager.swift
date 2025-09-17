@@ -426,8 +426,8 @@ struct ViewState {
         }
     }
 
-    func handleConnectionStateChange(_ isConnected: Bool) {
-        Bridge.log("Mentra: Glasses: connection state: \(isConnected)")
+    func handleConnectionStateChange() {
+        Bridge.log("Mentra: Glasses: connection state changed!")
         if sgc == nil { return }
         if sgc!.ready {
             handleDeviceReady()
@@ -940,6 +940,8 @@ struct ViewState {
         deviceName = ""
         sgc?.forget()
         sgc = nil
+        Bridge.saveSetting("default_wearable", "")
+        Bridge.saveSetting("device_name", "")
         handleRequestStatus()
     }
 
@@ -1629,6 +1631,7 @@ struct ViewState {
            newDefaultWearable != defaultWearable
         {
             defaultWearable = newDefaultWearable
+            Bridge.saveSetting("default_wearable", newDefaultWearable)
         }
     }
 
