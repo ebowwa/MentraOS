@@ -51,6 +51,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.google.gson.Gson;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
+import com.augmentos.augmentos_core.audio.Lc3Player;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
@@ -217,6 +218,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
     private long lc3DecoderPtr = 0;
+    private Lc3Player lc3AudioPlayer;
+    private boolean audioPlaybackEnabled = false; // Default to enabled
 
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
@@ -229,6 +232,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.shouldUseGlassesMic = SmartGlassesManager.getSensingEnabled(context) && !"phone".equals(SmartGlassesManager.getPreferredMic(context));
+        
+        // Initialize LC3 audio player with G1 frame size
+        lc3AudioPlayer = new Lc3Player(context, LC3_FRAME_SIZE);
+        lc3AudioPlayer.init();
+        if (audioPlaybackEnabled) {
+            lc3AudioPlayer.startPlay();
+        }
         
         // Initialize bitmap executor for parallel operations
         if (USE_PARALLEL_BITMAP_WRITES) {
@@ -530,6 +540,14 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
                             //send through the LC3
                             audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+
+                            // Play LC3 audio directly through LC3 player if enabled
+                            if (audioPlaybackEnabled && lc3AudioPlayer != null) {
+                                // The data array contains the full packet with F1 header and sequence
+                                // Pass it directly to the LC3 player
+                                lc3AudioPlayer.write(data, 0, data.length);
+                                // Log.d(TAG, "Playing LC3 audio directly through LC3 player: " + data.length + " bytes");
+                            }
 
                         } else {
                             // Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);
@@ -1938,6 +1956,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         if (lc3DecoderPtr != 0) {
             L3cCpp.freeDecoder(lc3DecoderPtr);
             lc3DecoderPtr = 0;
+        }
+
+        // Clean up LC3 audio player
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
+            lc3AudioPlayer = null;
         }
 
         sendQueue.clear();
@@ -3662,6 +3686,91 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private void quickRestartG1(){
         Log.d(TAG, "Sending restart 0x23 0x72 Command");
         sendDataSequentially(new byte[]{(byte) 0x23, (byte) 0x72}); //quick restart comand
+    }
+
+    //---------------------------------------
+    // LC3 Audio Playback Control Methods
+    //---------------------------------------
+
+    /**
+     * Enable or disable audio playback through phone speakers when receiving LC3 audio from glasses.
+     * @param enable True to enable audio playback, false to disable.
+     */
+    public void enableAudioPlayback(boolean enable) {
+        audioPlaybackEnabled = enable;
+        if (lc3AudioPlayer != null) {
+            if (enable) {
+                lc3AudioPlayer.startPlay();
+                Log.d(TAG, "Audio playback enabled - LC3 audio will be played through phone speakers");
+            } else {
+                lc3AudioPlayer.stopPlay();
+                Log.d(TAG, "Audio playback disabled - LC3 audio will not be played through phone speakers");
+            }
+        }
+    }
+
+    /**
+     * Check if audio playback is currently enabled.
+     * @return True if audio playback is enabled, false otherwise.
+     */
+    public boolean isAudioPlaybackEnabled() {
+        return audioPlaybackEnabled;
+    }
+
+    /**
+     * Stop any currently playing audio immediately.
+     */
+    public void stopAudioPlayback() {
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
+            Log.d(TAG, "Audio playback stopped");
+        }
+    }
+
+    /**
+     * Check if audio is currently playing.
+     * @return True if audio is currently playing, false otherwise.
+     */
+    public boolean isAudioPlaying() {
+        return lc3AudioPlayer != null && audioPlaybackEnabled;
+    }
+
+    /**
+     * Pause audio playback.
+     */
+    public void pauseAudioPlayback() {
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.stopPlay();
+            Log.d(TAG, "Audio playback paused");
+        }
+    }
+
+    /**
+     * Resume audio playback.
+     */
+    public void resumeAudioPlayback() {
+        if (lc3AudioPlayer != null) {
+            lc3AudioPlayer.startPlay();
+            Log.d(TAG, "Audio playback resumed");
+        }
+    }
+
+    /**
+     * Get audio playback status information.
+     * @return JSONObject containing audio playback information.
+     */
+    public JSONObject getAudioPlaybackStatus() {
+        JSONObject status = new JSONObject();
+        try {
+            status.put("enabled", audioPlaybackEnabled);
+            status.put("playing", isAudioPlaying());
+            status.put("initialized", lc3AudioPlayer != null);
+            status.put("playerType", "LC3Player");
+            status.put("frameSize", LC3_FRAME_SIZE);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating audio playback status JSON", e);
+        }
+        return status;
     }
 
     @Override
