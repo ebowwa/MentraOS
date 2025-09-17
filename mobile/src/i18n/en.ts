@@ -336,6 +336,15 @@ const en = {
     settings: "Settings",
     openWebView: "Open Web View",
     version: "MentraOS v{{number}}",
+    reset: "Reset",
+  },
+  developer: {
+    dev: "Dev",
+    usCentral: "US Central",
+    france: "France",
+    asiaEast: "Asia East",
+    global: "Global",
+    debug: "Debug",
   },
   welcomeScreen: {
     postscript:

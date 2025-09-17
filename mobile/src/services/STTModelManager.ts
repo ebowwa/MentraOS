@@ -112,7 +112,7 @@ class STTModelManager {
 
   async getCurrentModelIdFromPreferences(): Promise<string> {
     try {
-      let path = null;
+      let path = null
       if (Platform.OS === "android") {
         const module = FileProviderModule
         if (module.getSTTModelPath) {
@@ -122,7 +122,7 @@ class STTModelManager {
       if (Platform.OS === "ios") {
         path = await coreCommunicator.getSttModelPath()
       }
-      let modelId = path && path.length > 0 ? this.getModelIdFromPath(path) : ""
+      const modelId = path && path.length > 0 ? this.getModelIdFromPath(path) : ""
 
       this.setCurrentModelId(modelId)
       return modelId

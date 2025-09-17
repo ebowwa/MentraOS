@@ -276,7 +276,7 @@ export default function InitScreen() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={themed($centerContainer)}>
-          <ActivityIndicator size="large" color={theme.colors.text} />
+          <ActivityIndicator size="large" color={theme.colors.tint} />
           <Text style={themed($loadingText)}>{loadingStatus}</Text>
         </View>
       </Screen>
@@ -317,20 +317,15 @@ export default function InitScreen() {
             )}
 
             {state === "outdated" && (
-              <Button
-                onPress={handleUpdate}
-                disabled={isUpdating}
-                style={themed($primaryButton)}
-                text={translate("versionCheck:update")}
-              />
+              <Button preset="primary" onPress={handleUpdate} disabled={isUpdating} tx="versionCheck:update" />
             )}
 
             {state === "error" && isUsingCustomUrl && (
               <Button
                 onPress={handleResetUrl}
                 style={themed($secondaryButton)}
-                text={isRetrying ? translate("versionCheck:resetting") : translate("versionCheck:resetUrl")}
-                preset="reversed"
+                tx={isRetrying ? "versionCheck:resetting" : "versionCheck:resetUrl"}
+                preset="secondary"
                 disabled={isRetrying}
                 LeftAccessory={
                   isRetrying
@@ -342,11 +337,11 @@ export default function InitScreen() {
 
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
+                preset="accent"
                 style={themed($secondaryButton)}
                 RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
-                preset="reversed"
               />
             )}
           </View>
@@ -413,7 +408,7 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
-  gap: spacing.md,
+  gap: spacing.xl,
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = () => ({

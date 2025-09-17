@@ -125,43 +125,6 @@ export default function DashboardSettingsScreen() {
 
         <Spacer height={theme.spacing.md} />
 
-        {/* Dashboard Content Selection */}
-        {/* <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Content Settings
-          </Text>
-          <TouchableOpacity
-            style={[styles.settingItem, styles.elevatedCard]}
-            onPress={() => !isLoading && setShowContentPicker(true)}
-            disabled={isLoading}
-          >
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.label}>
-                Dashboard Content
-              </Text>
-              <Text style={styles.value}>
-                Choose what additional content to display in your dashboard along with your notifications.
-              </Text>
-            </View>
-            <View style={styles.selectedValueContainer}>
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#007AFF" />
-              ) : (
-                <>
-                  <Text style={styles.selectedValue}>
-                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label}
-                  </Text>
-                  <Icon name="chevron-right" size={16} color="#000000" />
-                </>
-              )}
-            </View>
-            {isUpdating && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="small" color="#007AFF" />
-              </View>
-            )}
-          </TouchableOpacity>
-        </View> */}
         {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.imu && (
           <RouteButton
             label={translate("settings:adjustHeadAngleLabel")}
@@ -202,7 +165,6 @@ const $pickerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   maxHeight: "80%",
   borderRadius: 16,
   overflow: "hidden",
-  backgroundColor: colors.modalBackground,
 })
 
 const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -211,8 +173,6 @@ const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
   alignItems: "center",
   padding: 16,
   borderBottomWidth: 1,
-  borderBottomColor: colors.borderLight,
-  backgroundColor: colors.modalBackground,
 })
 
 const $pickerTitle: ThemedStyle<TextStyle> = ({colors}) => ({

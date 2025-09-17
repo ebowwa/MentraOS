@@ -396,7 +396,7 @@ export default function DeviceSettings() {
               <MaterialCommunityIcons
                 name="check"
                 size={24}
-                color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+                color={preferredMic === "phone" ? theme.colors.primary : "transparent"}
               />
             </TouchableOpacity>
             {/* divider */}
@@ -547,7 +547,7 @@ export default function DeviceSettings() {
       {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
-          variant="destructive"
+          variant="warning"
           onPress={() => {
             bridge.sendDisconnectWearable()
           }}
