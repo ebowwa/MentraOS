@@ -70,6 +70,7 @@ struct ViewState {
     // mic:
     private var useOnboardMic = false
     private var preferredMic = "glasses"
+    private var offlineStt = false
     private var micEnabled = false
     private var currentRequiredData: [SpeechRequiredDataType] = []
 
@@ -449,6 +450,10 @@ struct ViewState {
         shouldSendPcmData = false
         shouldSendTranscript = false
 
+        if offlineStt, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
+            requiredData.append(.TRANSCRIPTION)
+        }
+
         if requiredData.contains(.PCM), requiredData.contains(.TRANSCRIPTION) {
             shouldSendPcmData = true
             shouldSendTranscript = true
@@ -571,7 +576,8 @@ struct ViewState {
     }
 
     func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
-        Bridge.log("Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
+        Bridge.log(
+            "Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
         sgc?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
     }
 
@@ -989,6 +995,12 @@ struct ViewState {
         sgc?.sendButtonCameraLedSetting()
 
         handleRequestStatus() // to update the UI
+    }
+
+    func setOfflineStt(_ enabled: Bool) {
+        offlineStt = enabled
+        // trigger a microphone state change if needed:
+        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
     }
 
     func updateGlassesHeadUpAngle(_ value: Int) {
@@ -1601,8 +1613,14 @@ struct ViewState {
             setButtonVideoSettings(width: buttonVideoWidth, height: newHeight, fps: buttonVideoFps)
         }
 
-        if let newPhotoSize = settings["button_photo_size"] as? String, newPhotoSize != buttonPhotoSize {
+        if let newPhotoSize = settings["button_photo_size"] as? String,
+           newPhotoSize != buttonPhotoSize
+        {
             setButtonPhotoSize(newPhotoSize)
+        }
+
+        if let newOfflineStt = settings["offline_stt"] as? Bool, newOfflineStt != offlineStt {
+            setOfflineStt(newOfflineStt)
         }
 
         // get default wearable from core_info:

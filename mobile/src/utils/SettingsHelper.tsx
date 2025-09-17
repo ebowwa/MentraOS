@@ -193,6 +193,7 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.dashboard_depth,
   SETTINGS_KEYS.button_mode,
   SETTINGS_KEYS.button_photo_size,
+  SETTINGS_KEYS.offline_stt,
 ]
 
 // return an object populated with settings that the core should have:
