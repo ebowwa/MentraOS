@@ -384,6 +384,10 @@ export class MantleBridge extends EventEmitter {
         case "head_up":
           socketComms.sendHeadPosition(data)
           break
+        // TODO: config: remove (this is legacy/android only)
+        case "transcription_result":
+          mantle.handleLocalTranscription(data)
+          break
         case "local_transcription":
           mantle.handleLocalTranscription(data)
           break
