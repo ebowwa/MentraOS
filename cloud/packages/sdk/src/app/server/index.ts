@@ -486,16 +486,14 @@ export class AppServer {
 
           // Call onStop with session end reason
           // This allows apps to clean up resources when the user's session ends
-          this.onStop(
-            sessionId,
-            userId,
-            "User session ended",
-          ).catch((error) => {
-            this.logger.error(
-              error,
-              `❌ Error in onStop handler for session end:`,
-            );
-          });
+          this.onStop(sessionId, userId, "User session ended").catch(
+            (error) => {
+              this.logger.error(
+                error,
+                `❌ Error in onStop handler for session end:`,
+              );
+            },
+          );
         }
         // Check if this is a permanent disconnection after exhausted reconnection attempts
         else if (info.permanent === true) {

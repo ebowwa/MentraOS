@@ -14,7 +14,7 @@ public class MentraLive extends SmartGlassesDevice {
         hasDisplay = false; // No display capability
         hasSpeakers = false; // No speakers
         hasCamera = true; // Has camera
-        hasInMic = false; // sco mic only
+        hasInMic = true; // sco mic only
         hasOutMic = true;
         weight = 44;
     }
