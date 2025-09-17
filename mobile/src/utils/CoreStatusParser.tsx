@@ -39,7 +39,6 @@ export interface Glasses {
   glasses_app_version?: string
   glasses_build_number?: string
   glasses_device_model?: string
-  glasses_device_type?: string
   glasses_android_version?: string
   glasses_ota_version_url?: string
   glasses_serial_number?: string
@@ -287,7 +286,6 @@ export class CoreStatusParser {
               glasses_app_version: glassesInfo.glasses_app_version,
               glasses_build_number: glassesInfo.glasses_build_number,
               glasses_device_model: glassesInfo.glasses_device_model,
-              glasses_device_type: glassesInfo.glasses_device_type,
               glasses_android_version: glassesInfo.glasses_android_version,
               glasses_ota_version_url: glassesInfo.glasses_ota_version_url || "https://dev.augmentos.org/version.json",
               glasses_serial_number: glassesInfo.glasses_serial_number,

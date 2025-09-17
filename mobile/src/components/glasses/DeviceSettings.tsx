@@ -381,7 +381,8 @@ export default function DeviceSettings() {
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
         hasCustomMic(glassesFeatures[status.core_info.default_wearable]) &&
-        (status.glasses_info?.model_name !== "Mentra Live" || devMode) && (
+        (status.glasses_info?.model_name !== "Mentra Live" ||
+          (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900")) && (
           <View style={themed($settingsGroup)}>
             <TouchableOpacity
               style={{
