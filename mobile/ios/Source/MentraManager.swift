@@ -147,7 +147,6 @@ struct ViewState {
 
     func setup() {
         Bridge.log("Mentra: setup()")
-        LocationManager.shared.setup()
     }
 
     func initManager(_ wearable: String) {

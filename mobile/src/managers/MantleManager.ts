@@ -91,8 +91,10 @@ class MantleManager {
         return Location.LocationAccuracy.Lowest
       case "reduced":
         return Location.LocationAccuracy.Lowest
+      default:
+        // console.error("Mantle: unknown accuracy: " + accuracy)
+        return Location.LocationAccuracy.Lowest
     }
-    throw new Error("Invalid accuracy: " + accuracy)
   }
 
   public async setLocationTier(tier: string) {
@@ -115,7 +117,12 @@ class MantleManager {
     // restComms.sendLocationData({tier})
     try {
       const location = await Location.getCurrentPositionAsync({accuracy: this.getLocationAccuracy(accuracy)})
-      socketComms.sendLocationUpdate(location)
+      socketComms.sendLocationUpdate(
+        location.coords.latitude,
+        location.coords.longitude,
+        location.coords.accuracy ?? undefined,
+        correlationId,
+      )
     } catch (error) {
       console.error("Mantle: Error requesting single location", error)
     }
@@ -137,7 +144,7 @@ class MantleManager {
       return
     }
 
-    if (socketComms.isConnected()) {
+    if (socketComms.isWebSocketConnected()) {
       socketComms.sendLocalTranscription(data)
       return
     }

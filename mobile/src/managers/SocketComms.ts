@@ -23,7 +23,7 @@ class SocketComms {
     })
   }
 
-  public static getInstance(): any {
+  public static getInstance(): SocketComms {
     if (!SocketComms.instance) {
       SocketComms.instance = new SocketComms()
     }
@@ -123,7 +123,7 @@ class SocketComms {
     this.ws.sendText(jsonString)
   }
 
-  send_location_update(lat: number, lng: number, accuracy?: number, correlationId?: string) {
+  sendLocationUpdate(lat: number, lng: number, accuracy?: number, correlationId?: string) {
     try {
       const event: any = {
         type: "location_update",
@@ -302,7 +302,7 @@ class SocketComms {
     })
   }
 
-  private handle_display_event(msg: any) {
+  public handle_display_event(msg: any) {
     // console.log(`SocketCommsTS: Handling display event: ${JSON.stringify(msg)}`)
     if (msg.view) {
       bridge.sendCommand("display_event", msg)

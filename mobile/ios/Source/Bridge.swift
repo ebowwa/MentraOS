@@ -38,7 +38,8 @@ class Bridge: RCTEventEmitter {
     }
 
     static func sendHeadUp(_ isUp: Bool) {
-        Bridge.sendTypedMessage("head_up", body: isUp)
+        let data = ["position": isUp]
+        Bridge.sendTypedMessage("head_up", body: data)
     }
 
     static func sendPairFailureEvent(_ error: String) {

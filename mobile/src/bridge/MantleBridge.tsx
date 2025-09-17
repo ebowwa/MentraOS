@@ -296,6 +296,7 @@ export class MantleBridge extends EventEmitter {
         })
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
+        // TODO: config: remove (this is legacy/android only)
       } else if ("notify_manager" in data) {
         GlobalEventEmitter.emit("SHOW_BANNER", {
           message: translate(data.notify_manager.message),
@@ -309,13 +310,6 @@ export class MantleBridge extends EventEmitter {
       } else if ("compatible_glasses_search_stop" in data) {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
           modelName: data.compatible_glasses_search_stop.model_name,
-        })
-      } else if ("need_permissions" in data) {
-        GlobalEventEmitter.emit("NEED_PERMISSIONS")
-      } else if ("need_wifi_credentials" in data) {
-        console.log("Received need_wifi_credentials event from Core")
-        GlobalEventEmitter.emit("GLASSES_NEED_WIFI_CREDENTIALS", {
-          deviceModel: data.device_model,
         })
       } else if ("wifi_scan_results" in data) {
         console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
@@ -382,7 +376,7 @@ export class MantleBridge extends EventEmitter {
           await settings.set(data.key, data.value, false)
           break
         case "head_up":
-          socketComms.sendHeadPosition(data)
+          socketComms.sendHeadPosition(data.position)
           break
         // TODO: config: remove (this is legacy/android only)
         case "transcription_result":
