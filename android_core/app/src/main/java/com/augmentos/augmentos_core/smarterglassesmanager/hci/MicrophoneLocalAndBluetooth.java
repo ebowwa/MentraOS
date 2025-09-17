@@ -639,7 +639,7 @@ public class MicrophoneLocalAndBluetooth {
                         int offset = i * BYTES_PER_FRAME;
                         byte[] frameBytes = Arrays.copyOfRange(fullBuffer, offset, offset + BYTES_PER_FRAME);
 
-                        // Encode → Decode → Write result as PCM
+                        // Encode → Decode → Write result as PCM (using default 20-byte frames)
                         byte[] lc3Data = L3cCpp.encodeLC3(encoderPtr, frameBytes);
 
                         for (int j = 0; j < lc3Data.length; j += 20) {
