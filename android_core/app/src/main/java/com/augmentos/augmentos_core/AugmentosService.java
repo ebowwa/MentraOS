@@ -53,6 +53,7 @@ import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDeviceTypeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
@@ -312,6 +313,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private String glassesSerialNumber = null;
     private String glassesStyle = null;
     private String glassesColor = null;
+    
+    // Glasses device type for Mentra Live (K900, K900Plus, etc.)
+    private String glassesDeviceType = null;
 
     // OTA progress tracking
     private DownloadProgressEvent.DownloadStatus downloadStatus = null;
@@ -1636,6 +1640,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_device_model", glassesDeviceModel != null ? glassesDeviceModel : "");
                     connectedGlasses.put("glasses_android_version", glassesAndroidVersion != null ? glassesAndroidVersion : "");
                     connectedGlasses.put("glasses_ota_version_url", glassesOtaVersionUrl != null ? glassesOtaVersionUrl : "");
+                    
+                    // Add glasses device type (K900, K900Plus, etc.)
+                    connectedGlasses.put("glasses_device_type", glassesDeviceType != null ? glassesDeviceType : "Unknown");
                 }
 
                 // Add serial number information for Even Realities G1 glasses
@@ -2299,6 +2306,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesSerialNumber = null;
         glassesStyle = null;
         glassesColor = null;
+        
+        // CLEAR DEVICE TYPE DATA
+        glassesDeviceType = null;
 
         // Reset WiFi status
         glassesWifiConnected = false;
@@ -3277,6 +3287,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesStyle = event.style;
         this.glassesColor = event.color;
         Log.d(TAG, "Glasses serial number: " + glassesSerialNumber + ", Style: " + glassesStyle + ", Color: " + glassesColor);
+        sendStatusToAugmentOsManager();
+    }
+
+    // Event handler for glasses device type (Mentra Live specific)
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onGlassesDeviceTypeEvent(GlassesDeviceTypeEvent event) {
+        this.glassesDeviceType = event.deviceType;
+        Log.d(TAG, "📱 Glasses device type received: " + glassesDeviceType + " from device: " + event.deviceModel);
         sendStatusToAugmentOsManager();
     }
 

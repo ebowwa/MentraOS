@@ -29,6 +29,7 @@ import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDeviceTypeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesGalleryStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
@@ -1768,6 +1769,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Extract and store device type information if available
                 glassesDeviceType = json.optString("device_type", "Unknown");
                 Log.d(TAG, "📱 Glasses device type: " + glassesDeviceType);
+                
+                // Emit EventBus event for AugmentosService to capture device type
+                handler.post(() -> {
+                    Log.d(TAG, "📡 Posting glasses device type event: " + glassesDeviceType);
+                    EventBus.getDefault().post(new GlassesDeviceTypeEvent(
+                            smartGlassesDevice.deviceModelName,
+                            glassesDeviceType));
+                });
                 
                 // Determine LC3 audio support: base K900 doesn't support LC3, variants do
                 supportsLC3Audio = !"K900".equals(glassesDeviceType);
