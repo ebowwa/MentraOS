@@ -68,6 +68,22 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("save_setting", body: body)
     }
 
+    static func sendStatus(_ statusObj: [String: Any]) {
+        let body = ["status": statusObj]
+        Bridge.sendTypedMessage("status", body: body)
+    }
+
+    static func sendGlassesSerialNumber(_ serialNumber: String, style: String, color: String) {
+        let body = [
+            "glasses_serial_number": [
+                "serial_number": serialNumber,
+                "style": style,
+                "color": color,
+            ],
+        ]
+        Bridge.sendTypedMessage("glasses_serial_number", body: body)
+    }
+
     override func supportedEvents() -> [String] {
         // don't add to this list, use a typed message instead
         return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
