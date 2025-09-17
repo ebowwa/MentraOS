@@ -55,8 +55,8 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_freeDecoder(JNIEnv *env, jclas
 
 // persistent_encoder.cpp
 
-extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass clazz, jlong encPtr, jbyteArray pcmData) {
+// Generic LC3 encoding function with configurable frame size
+static jbyteArray encodeLC3WithFrameSize(JNIEnv *env, jlong encPtr, jbyteArray pcmData, uint16_t encodedFrameSize) {
     jbyte* pcmBytes = env->GetByteArrayElements(pcmData, nullptr);
     int pcmLength = env->GetArrayLength(pcmData);
 
@@ -64,7 +64,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     int srHz = 16000;
     uint16_t samplesPerFrame = lc3_frame_samples(dtUs, srHz);
     uint16_t bytesPerFrame = samplesPerFrame * 2;
-    uint16_t encodedFrameSize = 20;
 
     int frameCount = pcmLength / bytesPerFrame;
     int outputSize = frameCount * encodedFrameSize;
@@ -76,7 +75,7 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
 
     int16_t* alignedPcmBuffer = (int16_t*)malloc(bytesPerFrame);
     unsigned char* encodedData = (unsigned char*)malloc(outputSize);
-    lc3_encoder_t encoder = (lc3_encoder_t)reinterpret_cast<void*>(encPtr);  // ✅ use passed-in encoder directly
+    lc3_encoder_t encoder = (lc3_encoder_t)reinterpret_cast<void*>(encPtr);
 
     for (int i = 0, offset = 0; i < frameCount; i++, offset += encodedFrameSize) {
         for (int j = 0; j < samplesPerFrame; j++) {
@@ -84,7 +83,6 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
             if (srcIdx + 1 >= pcmLength) {
                 alignedPcmBuffer[j] = 0;
             } else {
-                // ✅ Fix endianness and signed/unsigned issue
                 alignedPcmBuffer[j] = (int16_t)(
                         ((int16_t)pcmBytes[srcIdx + 1] << 8) |
                         ((uint8_t)pcmBytes[srcIdx])
@@ -110,8 +108,14 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass 
     return resultArray;
 }
 
+// Parameterized encoding function with frame size
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass clazz, jlong decPtr, jbyteArray lc3Data) {
+Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_encodeLC3(JNIEnv *env, jclass clazz, jlong encPtr, jbyteArray pcmData, jint frameSize) {
+    return encodeLC3WithFrameSize(env, encPtr, pcmData, (uint16_t)frameSize);
+}
+
+// Generic LC3 decoding function with configurable frame size
+static jbyteArray decodeLC3WithFrameSize(JNIEnv *env, jlong decPtr, jbyteArray lc3Data, uint16_t encodedFrameSize) {
     jbyte *lc3Bytes = env->GetByteArrayElements(lc3Data, nullptr);
     int lc3Length = env->GetArrayLength(lc3Data);
 
@@ -120,14 +124,15 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass 
 
     uint16_t samplesPerFrame = lc3_frame_samples(dtUs, srHz);
     uint16_t bytesPerFrame = samplesPerFrame * 2;
-    uint16_t encodedFrameSize = 40;
 
     int outSize = (lc3Length / encodedFrameSize) * bytesPerFrame;
-    //LOGI("decode lc3Length=%d, bytesPerFrame=%d, outSize=%d", lc3Length, bytesPerFrame, outSize);
+    LOGI("decode lc3Length=%d, bytesPerFrame=%d, encodedFrameSize=%d, outSize=%d", 
+         lc3Length, bytesPerFrame, encodedFrameSize, outSize);
+    
     unsigned char* outArray = (unsigned char*)malloc(outSize);
-    int16_t* outBuf = (int16_t*)malloc(bytesPerFrame);  // ✅ correct type
+    int16_t* outBuf = (int16_t*)malloc(bytesPerFrame);
 
-    lc3_decoder_t decoder = (lc3_decoder_t)reinterpret_cast<void*>(decPtr);  // ✅ use passed-in decoder
+    lc3_decoder_t decoder = (lc3_decoder_t)reinterpret_cast<void*>(decPtr);
 
     jsize offset = 0;
     for (int i = 0; i <= lc3Length - encodedFrameSize; i += encodedFrameSize) {
@@ -145,5 +150,11 @@ Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass 
     free(outArray);
     free(outBuf);
     return resultArray;
+}
+
+// Parameterized decoding function with frame size
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_augmentos_smartglassesmanager_cpp_L3cCpp_decodeLC3(JNIEnv *env, jclass clazz, jlong decPtr, jbyteArray lc3Data, jint frameSize) {
+    return decodeLC3WithFrameSize(env, decPtr, lc3Data, (uint16_t)frameSize);
 }
 
