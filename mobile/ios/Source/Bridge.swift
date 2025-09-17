@@ -295,25 +295,13 @@ class Bridge: RCTEventEmitter {
      * Used by AOSManager to send pre-formatted transcription results
      * Matches the Java ServerComms structure exactly
      */
-    static func sendTranscriptionResult(transcription: [String: Any]) {
+    static func sendLocalTranscription(transcription: [String: Any]) {
         guard let text = transcription["text"] as? String, !text.isEmpty else {
             Bridge.log("Skipping empty transcription result")
             return
         }
 
-        Bridge.sendTypedMessage("transcription_result", body: transcription)
-
-        // do {
-        //     let jsonData = try JSONSerialization.data(withJSONObject: transcription)
-        //     if let jsonString = String(data: jsonData, encoding: .utf8) {
-        //         Bridge.sendWSText(jsonString)
-
-        //         let isFinal = transcription["isFinal"] as? Bool ?? false
-        //         Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
-        //     }
-        // } catch {
-        //     Bridge.log("Error sending transcription result: \(error)")
-        // }
+        Bridge.sendTypedMessage("local_transcription", body: transcription)
     }
 
     // core bridge funcs:

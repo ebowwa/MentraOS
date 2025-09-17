@@ -121,7 +121,8 @@ class MantleManager {
     }
   }
 
-  public async handleTranscriptionResult(data: any) {
+  public async handleLocalTranscription(data: any) {
+    console.log("Mantle: handleLocalTranscription()", data)
     // TODO: performance!
     const offlineStt = await settings.get(SETTINGS_KEYS.offline_stt)
     if (offlineStt) {
@@ -137,7 +138,7 @@ class MantleManager {
     }
 
     if (socketComms.isConnected()) {
-      socketComms.sendTranscriptionResult(data)
+      socketComms.sendLocalTranscription(data)
       return
     }
   }

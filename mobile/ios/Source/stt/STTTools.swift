@@ -19,7 +19,7 @@ class STTTools {
             "provider": "sherpa-onnx",
         ]
 
-        Bridge.sendTranscriptionResult(transcription: transcription)
+        Bridge.sendLocalTranscription(transcription: transcription)
     }
 
     static func didReceiveFinalTranscription(_ text: String) {
@@ -38,7 +38,7 @@ class STTTools {
                 "provider": "sherpa-onnx",
             ]
 
-            Bridge.sendTranscriptionResult(transcription: transcription)
+            Bridge.sendLocalTranscription(transcription: transcription)
         }
     }
 

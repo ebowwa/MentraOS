@@ -550,9 +550,9 @@ class SocketComms {
     }
   }
 
-  sendTranscriptionResult(transcription: any) {
+  sendLocalTranscription(transcription: any) {
     if (!this.ws.isConnected()) {
-      console.log("Cannot send transcription result: WebSocket not connected")
+      console.log("Cannot send local transcription: WebSocket not connected")
       return
     }
 
