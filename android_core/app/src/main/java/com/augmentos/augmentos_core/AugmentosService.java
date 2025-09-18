@@ -161,6 +161,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public SmartGlassesManager smartGlassesManager;
     private boolean smartGlassesManagerBound = false;
+    private final TranscriptProcessor transcriptProcessor = new TranscriptProcessor(30, 3); // 30 chars per line, 3 lines max
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
 
     private byte[] hexStringToByteArray(String hex) {
@@ -377,9 +378,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Subscribe
     public void onLocalTranscriptionEvent(LocalTranscriptionEvent event) {
-        Log.d(TAG, "Local transcription event received: " + event.text);
-        if (smartGlassesManager != null)
-            smartGlassesManager.sendTextWall(event.text);
+        if (smartGlassesManager != null) {
+            String processedText = transcriptProcessor.processString(event.text, event.isFinal);
+            if (processedText != null) {
+                smartGlassesManager.sendTextWall(processedText);
+            }
+        }
     }
 
     @Subscribe
