@@ -7,7 +7,7 @@ import {
 
 // Define permission types
 export enum PermissionType {
-  MICROPHONE = "MICROPHONE",
+  MICROPHONE = "MICROPHONE + TRANSCRIPTION",
   LOCATION = "LOCATION",
   BACKGROUND_LOCATION = "BACKGROUND_LOCATION",
   CALENDAR = "CALENDAR",
