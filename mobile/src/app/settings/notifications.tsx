@@ -216,8 +216,7 @@ export default function NotificationSettingsScreen() {
             iOS Notification Settings
           </Text>
           <Text style={{color: theme.colors.textDim, textAlign: "center", lineHeight: 22}}>
-            Notification settings are managed through iOS System Settings. Go to Settings → Notifications → MentraOS to
-            control notification preferences.
+            Notification settings are not implemented yet in iOS.
           </Text>
         </View>
       </Screen>
