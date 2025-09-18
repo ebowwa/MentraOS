@@ -85,7 +85,7 @@ export const ConnectDeviceButton = () => {
       const deviceName = await settings.get(SETTINGS_KEYS.device_name)
       console.log("Connecting to glasses:", defaultWearable, deviceName)
       if (defaultWearable && defaultWearable != "") {
-        await bridge.sendConnectWearable(defaultWearable, deviceName)
+        await bridge.sendConnectWearable(defaultWearable, deviceName, "")
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
@@ -394,6 +394,42 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingHorizontal: spacing.md,
   marginTop: spacing.md,
 })
+
+export function ConnectedDeviceInfo() {
+  const {status} = useCoreStatus()
+  const {theme, themed} = useAppTheme()
+  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
+
+  useEffect(() => {
+    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
+  }, [status.core_info.is_mic_enabled_for_frontend])
+
+  if (!status.glasses_info?.model_name) {
+    return null
+  }
+
+  // don't show if simulated glasses
+  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
+    return null
+  }
+
+  return (
+    <View style={themed($statusBar)}>
+      {/* Battery information moved to DeviceSettings */}
+
+      {/* disconnect button */}
+      {/* <TouchableOpacity
+        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
+        onPress={() => {
+          coreCommunicator.sendDisconnectWearable()
+        }}
+        disabled={status.core_info.is_searching}>
+        <Icon name="power-off" size={18} color="white" style={styles.icon} />
+        <Text style={styles.disconnectText}>Disconnect</Text>
+      </TouchableOpacity> */}
+    </View>
+  )
+}
 
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   // padding: 16,

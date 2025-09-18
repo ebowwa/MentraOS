@@ -25,13 +25,13 @@ extension Data {
     }
 
     func hexEncodedString() -> String {
-        return map { String(format: "%02x", $0) }.joined(separator: " ")
+        map { String(format: "%02x", $0) }.joined(separator: " ")
         //    return map { String(format: "%02x", $0) }.joined(separator: ", ")
     }
 
     // Extension for CRC32 calculation
     var crc32: UInt32 {
-        return withUnsafeBytes { bytes in
+        withUnsafeBytes { bytes in
             let buffer = bytes.bindMemory(to: UInt8.self)
             var crc: UInt32 = 0xFFFF_FFFF
 
@@ -76,7 +76,7 @@ public struct QuickNote: Equatable {
     let timestamp: Date
 
     public static func == (lhs: QuickNote, rhs: QuickNote) -> Bool {
-        return lhs.id == rhs.id
+        lhs.id == rhs.id
     }
 }
 
@@ -181,10 +181,9 @@ class G1: NSObject, SGCManager {
 
     let type = "g1"
     let hasMic = true
-    var onConnectionStateChanged: ((Bool) -> Void)?
 
     // TODO: we probably don't need this
-    @objc static func requiresMainQueueSetup() -> Bool { return true }
+    @objc static func requiresMainQueueSetup() -> Bool { true }
 
     // Duplicate BMP prevention with timeout
     private var isDisplayingBMP = false
@@ -208,6 +207,7 @@ class G1: NSObject, SGCManager {
     private let ackCompletionsQueue = DispatchQueue(label: "com.erg1.ackCompletions", attributes: .concurrent)
     private var writeCompletionCount = 0
 
+    var onConnectionStateChanged: (() -> Void)?
     private var _ready: Bool = false
     var ready: Bool {
         get { return _ready }
@@ -215,7 +215,7 @@ class G1: NSObject, SGCManager {
             let oldValue = _ready
             _ready = newValue
             if oldValue != newValue {
-                MentraManager.shared.handleConnectionStateChange()
+                onConnectionStateChanged?()
             }
             if !newValue {
                 // Reset battery levels when disconnected
@@ -304,7 +304,7 @@ class G1: NSObject, SGCManager {
             return nil
         }
         set {
-            if let newValue = newValue {
+            if let newValue {
                 UserDefaults.standard.set(newValue.uuidString, forKey: "leftGlassUUID")
             } else {
                 UserDefaults.standard.removeObject(forKey: "leftGlassUUID")
@@ -320,7 +320,7 @@ class G1: NSObject, SGCManager {
             return nil
         }
         set {
-            if let newValue = newValue {
+            if let newValue {
                 UserDefaults.standard.set(newValue.uuidString, forKey: "rightGlassUUID")
             } else {
                 UserDefaults.standard.removeObject(forKey: "rightGlassUUID")
@@ -449,26 +449,17 @@ class G1: NSObject, SGCManager {
     /// Emits serial number information to React Native
     private func emitSerialNumberInfo(serialNumber: String, style: String, color: String) {
         let eventBody: [String: Any] = [
-            "type": "glasses_serial_number",
             "serialNumber": serialNumber,
             "style": style,
             "color": color,
         ]
 
-        // Convert to JSON string for CoreMessageEvent
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                Bridge.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
+        Bridge.sendTypedMessage("glasses_serial_number", body: eventBody)
+        Bridge.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
 
-                // Trigger status update to include serial number in status JSON
-                DispatchQueue.main.async {
-                    MentraManager.shared.handleRequestStatus()
-                }
-            }
-        } catch {
-            Bridge.log("G1: Error creating serial number JSON: \(error)")
+        // Trigger status update to include serial number in status JSON
+        DispatchQueue.main.async {
+            MentraManager.shared.handleRequestStatus()
         }
     }
 
@@ -502,11 +493,11 @@ class G1: NSObject, SGCManager {
             for device in devices {
                 if let name = device.name {
                     Bridge.log("G1: Connected to device: \(name)")
-                    if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+                    if name.contains("_L_"), name.contains(DEVICE_SEARCH_ID) {
                         leftPeripheral = device
                         device.delegate = self
                         device.discoverServices([UART_SERVICE_UUID])
-                    } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+                    } else if name.contains("_R_"), name.contains(DEVICE_SEARCH_ID) {
                         rightPeripheral = device
                         device.delegate = self
                         device.discoverServices([UART_SERVICE_UUID])
@@ -557,7 +548,7 @@ class G1: NSObject, SGCManager {
         }
 
         // just return if we don't have both a left and right arm:
-        guard leftPeripheral != nil && rightPeripheral != nil else {
+        guard leftPeripheral != nil, rightPeripheral != nil else {
             return false
         }
 
@@ -756,7 +747,7 @@ class G1: NSObject, SGCManager {
             }
         }
 
-        //         CoreCommsService.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady) left: \(left), right: \(right)")
+        //         Bridge.log("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady) left: \(left), right: \(right)")
         ready = leftReady && rightReady
         if ready {
             stopReconnectionTimer()
@@ -769,7 +760,7 @@ class G1: NSObject, SGCManager {
     }
 
     @objc func RN_getSerialNumberInfo() -> [String: Any] {
-        return [
+        [
             "serialNumber": glassesSerialNumber ?? "",
             "style": glassesStyle ?? "",
             "color": glassesColor ?? "",
@@ -833,7 +824,7 @@ class G1: NSObject, SGCManager {
 
     private func setupCommandQueue() {
         Task.detached { [weak self] in
-            guard let self = self else { return }
+            guard let self else { return }
 
             while true {
                 let command = await self.commandQueue.dequeue()
@@ -1002,7 +993,7 @@ class G1: NSObject, SGCManager {
 
         heartbeatQueue!.async { [weak self] in
             self?.heartbeatTimer = Timer(timeInterval: 20, repeats: true) { [weak self] _ in
-                guard let self = self else { return }
+                guard let self else { return }
                 self.sendHeartbeat()
             }
 
@@ -1049,9 +1040,9 @@ class G1: NSObject, SGCManager {
             setReadiness(left: nil, right: true)
         }
 
-        if let continuation = continuation {
+        if let continuation {
             continuation.resume(returning: true)
-            // Core.log("✅ ACK received for \(side) side, resuming continuation")
+            // Bridge.log("✅ ACK received for \(side) side, resuming continuation")
         }
     }
 
@@ -1103,7 +1094,7 @@ class G1: NSObject, SGCManager {
         case .BLE_REQ_BATTERY:
             // TODO: ios handle semaphores correctly here
             // battery info
-            guard data.count >= 6 && data[1] == 0x66 else {
+            guard data.count >= 6, data[1] == 0x66 else {
                 break
             }
 
@@ -1219,7 +1210,7 @@ class G1: NSObject, SGCManager {
             //          clearState()
             //        }
             default:
-                //                 Core.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
+//                 Bridge.log("G1: Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
                 break
             }
         default:
@@ -1396,7 +1387,7 @@ extension G1 {
 
         if side == "L" {
             // send to left
-            if let leftPeripheral = leftPeripheral,
+            if let leftPeripheral,
                let characteristic = leftPeripheral.services?
                .first(where: { $0.uuid == UART_SERVICE_UUID })?
                .characteristics?
@@ -1406,7 +1397,7 @@ extension G1 {
             }
         } else {
             // send to right
-            if let rightPeripheral = rightPeripheral,
+            if let rightPeripheral,
                let characteristic = rightPeripheral.services?
                .first(where: { $0.uuid == UART_SERVICE_UUID })?
                .characteristics?
@@ -1469,7 +1460,7 @@ extension G1 {
                     pendingContinuation = self.pendingAckCompletions.removeValue(forKey: key)
                 }
 
-                if let pendingContinuation = pendingContinuation {
+                if let pendingContinuation {
                     let elapsed = Date().timeIntervalSince(startTime) * 1000
                     Bridge.log("G1: ⚠️ ACK timeout for \(key) after \(String(format: "%.0f", elapsed))ms")
                     pendingContinuation.resume(returning: false)
@@ -1485,7 +1476,7 @@ extension G1 {
 
         if side == "L" {
             // send to left
-            if let leftPeripheral = leftPeripheral,
+            if let leftPeripheral,
                let characteristic = leftPeripheral.services?
                .first(where: { $0.uuid == UART_SERVICE_UUID })?
                .characteristics?
@@ -1496,7 +1487,7 @@ extension G1 {
             }
         } else {
             // send to right
-            if let rightPeripheral = rightPeripheral,
+            if let rightPeripheral,
                let characteristic = rightPeripheral.services?
                .first(where: { $0.uuid == UART_SERVICE_UUID })?
                .characteristics?
@@ -1998,7 +1989,7 @@ extension G1 {
 
 extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
     func getWriteCharacteristic(for peripheral: CBPeripheral?) -> CBCharacteristic? {
-        guard let peripheral = peripheral else { return nil }
+        guard let peripheral else { return nil }
         for service in peripheral.services ?? [] {
             if service.uuid == UART_SERVICE_UUID {
                 for characteristic in service.characteristics ?? [] where characteristic.uuid == UART_TX_CHAR_UUID {
@@ -2037,23 +2028,16 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
         if name.contains("_L_") || name.contains("_R_") {
             // exampleName = "Even G1_74_L_57863C", "Even G1_3_L_57863C", "Even G1_100_L_57863C"
             guard let extractedNum = extractIdNumber(name) else { return }
-            let res: [String: Any] = [
-                "model_name": "Even Realities G1",
-                "device_name": "\(extractedNum)",
-            ]
-            let eventBody: [String: Any] = [
-                "compatible_glasses_search_result": res,
-            ]
 
-            // must convert to string before sending:
-            do {
-                let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-                if let jsonString = String(data: jsonData, encoding: .utf8) {
-                    Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-                }
-            } catch {
-                Bridge.log("Error converting to JSON: \(error)")
-            }
+            // Use the standardized typed message function
+            let body = [
+                "compatible_glasses_search_result": [
+                    "model_name": "Even Realities G1",
+                    "device_name": "\(extractedNum)",
+                    "device_address": "",
+                ],
+            ]
+            Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
         }
     }
 
@@ -2179,7 +2163,7 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
         // Create a new timer on a background queue
         let queue = DispatchQueue(label: "com.sample.reconnectionTimerQueue", qos: .background)
         queue.async { [weak self] in
-            guard let self = self else {
+            guard let self else {
                 return
             }
             self.reconnectionTimer = Timer.scheduledTimer(
@@ -2335,7 +2319,7 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     // called when we get data from the glasses:
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        if let error = error {
+        if let error {
             Bridge.log("G1: Error updating value for characteristic: \(error.localizedDescription)")
             return
         }
@@ -2351,7 +2335,7 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     // L/R Synchronization - Handle BLE write completions
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
-        if let error = error {
+        if let error {
             Bridge.log("G1: ❌ BLE write error for \(peripheral.name ?? "unknown"): \(error.localizedDescription)")
         } else {
             // Only log successful writes every 10th operation to avoid spam

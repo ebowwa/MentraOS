@@ -61,6 +61,7 @@ class MainApplication : Application(), ReactApplication {
             // packages.add(ReactSliderPackage());
             packages.add(NotificationAccessPackage());
             packages.add(AppHelpersPackage());
+            packages.add(SimpleBlacklistPackage());
             packages.add(FetchConfigHelperPackage());
             packages.add(RNCConfigPackage());
             // packages.add(RNCameraPackage());

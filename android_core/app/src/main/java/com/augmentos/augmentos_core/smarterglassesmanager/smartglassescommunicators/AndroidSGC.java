@@ -128,7 +128,7 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         SMALL_FONT = 0;
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         //open the UDP socket to broadcast our IP address
         openSocket();
 
@@ -806,6 +806,19 @@ public class AndroidSGC extends SmartGlassesCommunicator {
 
     public void displayCustomContent(String json) {
         displayReferenceCardSimple("CustomDisplayNotImplemented", json);
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO ANDROID GLASSES ===");
+        
+        // For Android glasses, we can send an empty text wall to clear the display
+        // This is a stub implementation since Android glasses have limited display capabilities
+        Log.d(TAG, "[STUB] Android glasses display cleared (no actual display)");
     }
 
 

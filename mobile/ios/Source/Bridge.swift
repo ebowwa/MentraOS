@@ -307,6 +307,22 @@ class Bridge: RCTEventEmitter {
 
     // core bridge funcs:
 
+    static func sendStatus(_ statusObj: [String: Any]) {
+        let body = ["status": statusObj]
+        Bridge.sendTypedMessage("status", body: body)
+    }
+
+    static func sendGlassesSerialNumber(_ serialNumber: String, style: String, color: String) {
+        let body = [
+            "glasses_serial_number": [
+                "serial_number": serialNumber,
+                "style": style,
+                "color": color,
+            ],
+        ]
+        Bridge.sendTypedMessage("glasses_serial_number", body: body)
+    }
+
     override func supportedEvents() -> [String] {
         // don't add to this list, use a typed message instead
         return ["CoreMessageEvent", "WIFI_SCAN_RESULTS"]
@@ -366,6 +382,7 @@ class Bridge: RCTEventEmitter {
             case extract_tar_bz2
             case setup
             case display_event
+            case display_text
             case update_settings
             case microphone_state_change
             case restart_transcriber
@@ -408,6 +425,12 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.handle_display_event(params)
+                case .display_text:
+                    guard let params else {
+                        Bridge.log("CommandBridge: display_text invalid params")
+                        break
+                    }
+                    m.handle_display_text(params)
                 case .request_status:
                     m.handleRequestStatus()
                 case .connect_wearable:

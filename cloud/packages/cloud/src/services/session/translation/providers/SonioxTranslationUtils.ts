@@ -52,7 +52,7 @@ export class SonioxTranslationUtils {
       // Add any Soniox-specific mappings here if discovered
 
       // Norwegian Bokmål uses 'nb' instead of 'no'
-      "nb": "no",
+      nb: "no",
       "nb-NO": "no",
     };
 

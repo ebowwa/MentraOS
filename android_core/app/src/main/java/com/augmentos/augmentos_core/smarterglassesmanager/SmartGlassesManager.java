@@ -36,6 +36,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.Spee
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.BrilliantLabsFrame;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraNexGlasses;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraLive;
@@ -362,7 +363,7 @@ public class SmartGlassesManager extends Service {
 
         // Connect directly instead of using a handler
         Log.d(TAG, "CONNECTING TO SMART GLASSES");
-        smartGlassesRepresentative.connectToSmartGlasses();
+        smartGlassesRepresentative.connectToSmartGlasses(device);
 
         // BATTERY OPTIMIZATION: Explicitly register callback with the communicator
         // This ensures it's immediately available when audio events start coming in
@@ -444,6 +445,7 @@ public class SmartGlassesManager extends Service {
             // Save preferred wearable if connected
             if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                 savePreferredWearable(this, smartGlassesRepresentative.smartGlassesDevice.deviceModelName);
+                savePreferredWearableAddress(this, smartGlassesRepresentative.smartGlassesDevice.deviceAddress);
 
                 setFontSize(SmartGlassesFontSize.MEDIUM);
             }
@@ -473,6 +475,18 @@ public class SmartGlassesManager extends Service {
     public static String getPreferredWearable(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE), "");
+    }
+
+    public static void savePreferredWearableAddress(Context context, String deviceAddress) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), deviceAddress)
+                .apply();
+    }
+
+    public static String getPreferredWearableAddress(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), "");
     }
 
     public static ASR_FRAMEWORKS getChosenAsrFramework(Context context) {
@@ -945,6 +959,15 @@ public class SmartGlassesManager extends Service {
         sendHomeScreen();
     }
 
+    public void clearDisplay() {
+        Log.d(TAG, "clearDisplay called");
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.clearDisplay();
+        } else {
+            Log.e(TAG, "Cannot clear display: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     /**
      * Getter for SmartGlassesRepresentative instance
      * Allows external access for immediate microphone switching
@@ -1082,6 +1105,7 @@ public class SmartGlassesManager extends Service {
                         new MentraMach1(),
                         new MentraLive(),
                         new EvenRealitiesG1(),
+                        new MentraNexGlasses(),
                         new VuzixShield(),
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),

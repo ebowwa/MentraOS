@@ -319,6 +319,7 @@ const en = {
     appNotOnlineMessage: "This app is not online. Please try again later.",
     pairingBatteryTooLow:
       "The battery on your {{glassesModel}} is too low to pair. Please charge your {{glassesModel}} to at least 25% and try again.",
+    invalidEmail: "Invalid email address.",
   },
   common: {
     ok: "OK",

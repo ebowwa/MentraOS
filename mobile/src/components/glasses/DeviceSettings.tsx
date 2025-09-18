@@ -1,5 +1,17 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Switch,
+  ViewStyle,
+  TextStyle,
+  Platform,
+  ScrollView,
+} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Icon} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
@@ -23,6 +35,7 @@ import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
+import {spacing} from "@/theme"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -362,6 +375,14 @@ export default function DeviceSettings() {
         </View>
       )}
 
+      {/* Nex Developer Settings - Only show when connected to Mentra Nex */}
+      {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("nex") && (
+        <RouteButton
+          label="Nex Developer Settings"
+          subtitle="Advanced developer tools and debugging features"
+          onPress={() => push("/glasses/nex-developer-settings")}
+        />
+      )}
       {/* Only show mic selector if glasses have both SCO and custom mic types */}
       {status.core_info.default_wearable &&
         glassesFeatures[status.core_info.default_wearable] &&
@@ -518,16 +539,6 @@ export default function DeviceSettings() {
         subtitle={translate("settings:dashboardDescription")}
         onPress={() => push("/settings/dashboard")}
       />
-
-      {devMode &&
-        status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable]?.binocular && (
-          <RouteButton
-            label={translate("settings:screenSettings")}
-            subtitle={translate("settings:screenDescription")}
-            onPress={() => push("/settings/screen")}
-          />
-        )}
 
       {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
         <ActionButton

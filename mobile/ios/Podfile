@@ -10,6 +10,8 @@ podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties
 ENV['RCT_NEW_ARCH_ENABLED'] = podfile_properties['newArchEnabled'] == 'true' ? '1' : '0'
 ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWORK_INSPECTOR']
 project 'AOS.xcodeproj'
+
+
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 install! 'cocoapods',
   :deterministic_uuids => false
@@ -49,6 +51,10 @@ target 'AOS' do
 
   config = use_native_modules!(config_command)
 
+  # Add SWCompression for TarBz2Extractor functionality
+  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
+  pod 'SWCompression', '~> 4.8.0'
+
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
 
@@ -59,9 +65,6 @@ target 'AOS' do
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
-
-  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
-  pod 'SWCompression', '~> 4.8'
 
   post_install do |installer|
     react_native_post_install(

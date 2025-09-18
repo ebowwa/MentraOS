@@ -143,6 +143,10 @@ export default function SettingsPage() {
 
           <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
+          {Platform.OS === "android" && (
+            <RouteButton label="Notification Settings" onPress={() => push("/settings/notifications")} />
+          )}
+
           <RouteButton
             label={translate("settings:transcriptionSettings")}
             onPress={() => push("/settings/transcription")}
