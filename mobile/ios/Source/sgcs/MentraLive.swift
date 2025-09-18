@@ -973,7 +973,7 @@ class MentraLive: NSObject, SGCManager {
         sendJson(json, wakeUp: true)
     }
 
-    func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?) {
+    func requestPhoto(_ requestId: String, appId: String, size: String?, webhookUrl: String?) {
         Bridge.log("Requesting photo: \(requestId) for app: \(appId)")
 
         var json: [String: Any] = [

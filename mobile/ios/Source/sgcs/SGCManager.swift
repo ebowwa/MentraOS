@@ -45,7 +45,7 @@ protocol SGCManager {
 
     // MARK: - Camera & Media
 
-    func requestPhoto(_ requestId: String, appId: String, webhookUrl: String?, size: String?)
+    func requestPhoto(_ requestId: String, appId: String, size: String?, webhookUrl: String?)
     func startRtmpStream(_ message: [String: Any])
     func stopRtmpStream()
     func sendRtmpKeepAlive(_ message: [String: Any])

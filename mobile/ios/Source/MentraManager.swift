@@ -543,11 +543,9 @@ struct ViewState {
         sgc?.sendJson(message, wakeUp: false)
     }
 
-    func handle_photo_request(_ requestId: String, _ appId: String, _ webhookUrl: String?, _ size: String) {
+    func handle_photo_request(_ requestId: String, _ appId: String, _ size: String, _ webhookUrl: String?) {
         Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
-        sgc?.requestPhoto(
-            requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size
-        )
+        sgc?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl, size: size)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {

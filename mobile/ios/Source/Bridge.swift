@@ -483,12 +483,13 @@ class Bridge: RCTEventEmitter {
                 case .photo_request:
                     guard let params = params,
                           let requestId = params["requestId"] as? String,
-                          let appId = params["appId"] as? String
+                          let appId = params["appId"] as? String,
+                          let size = params["size"] as? String
                     else {
                         Bridge.log("CommandBridge: photo_request invalid params")
                         break
                     }
-                    m.handle_photo_request(requestId, appId, params["webhookUrl"] as? String?, params["size"] as? String)
+                    m.handle_photo_request(requestId, appId, size, params["webhookUrl"] as? String)
                 case .start_buffer_recording:
                     Bridge.log("CommandBridge: Starting buffer recording")
                     m.startBufferRecording()
