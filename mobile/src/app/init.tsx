@@ -125,8 +125,8 @@ export default function InitScreen() {
         socketComms.setAuthCreds(coreToken, uid)
 
         try {
-          const settings = await restComms.loadUserSettings() // get settings from server
-          await settings.setManyLocally(settings) // write settings to local storage
+          const loadedSettings = await restComms.loadUserSettings() // get settings from server
+          await settings.setManyLocally(loadedSettings) // write settings to local storage
           await settings.initUserSettings() // initialize user settings
           await mantle.init()
         } catch (error) {
