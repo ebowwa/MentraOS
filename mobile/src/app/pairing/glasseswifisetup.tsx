@@ -8,6 +8,7 @@ import {ViewStyle, TextStyle, ScrollView} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import RouteButton from "@/components/ui/RouteButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import bridge from "@/bridge/MantleBridge"
 
 export default function GlassesWifiSetupScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
@@ -40,6 +41,16 @@ export default function GlassesWifiSetupScreen() {
     push("/pairing/glasseswifisetup/password", {deviceModel, ssid: ""})
   }
 
+  const handleDisconnectWifi = async () => {
+    try {
+      console.log("Disconnecting from WiFi...")
+      await bridge.disconnectFromWifi()
+      console.log("WiFi disconnect command sent successfully")
+    } catch (error) {
+      console.error("Failed to disconnect from WiFi:", error)
+    }
+  }
+
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)} safeAreaEdges={[]}>
       <Header title="Glasses WiFi Setup" leftIcon="caretLeft" onLeftPress={handleGoBack} />
@@ -53,6 +64,12 @@ export default function GlassesWifiSetupScreen() {
           {isWifiConnected && currentWifi && (
             <View style={themed($statusContainer)}>
               <Text style={themed($statusText)}>Currently connected to: {currentWifi}</Text>
+              <RouteButton
+                label="Disconnect from WiFi"
+                subtitle="Disconnect from current network"
+                onPress={handleDisconnectWifi}
+                style={{marginTop: theme.spacing.md}}
+              />
             </View>
           )}
 
