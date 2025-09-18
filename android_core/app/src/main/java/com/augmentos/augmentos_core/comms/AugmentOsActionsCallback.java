@@ -40,6 +40,7 @@ public interface AugmentOsActionsCallback {
     void setGlassesWifiCredentials(String ssid, String password);
     void setGlassesHotspotState(boolean enabled);
     void requestWifiScan();
+    void disconnectFromWifi();
     void queryGalleryStatus();
     void setPreferredMic(String mic);
     void setButtonMode(String mode);

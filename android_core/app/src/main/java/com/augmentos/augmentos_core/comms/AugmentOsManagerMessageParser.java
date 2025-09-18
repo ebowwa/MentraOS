@@ -213,6 +213,11 @@ public class AugmentOsManagerMessageParser {
                 callback.requestWifiScan();
                 break;
 
+            case "disconnect_wifi":
+                Log.d(TAG, "📶 GOT A COMMAND TO DISCONNECT FROM WIFI");
+                callback.disconnectFromWifi();
+                break;
+
             case "query_gallery_status":
                 Log.d(TAG, "📸 GOT A COMMAND TO QUERY GALLERY STATUS");
                 callback.queryGalleryStatus();
