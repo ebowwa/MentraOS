@@ -13,8 +13,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, ({data: {locations}, error}) => {
     console.error("Error handling location updates", error)
     return
   }
+  const locs = locations as Location.LocationObject[]
+  if (locs.length === 0) {
+    console.log("Mantle: LOCATION: No locations received")
+    return
+  }
+
   console.log("Received new locations", locations)
-  // socketComms.sendLocationUpdate(locations)
+  const first = locs[0]!
+  socketComms.sendLocationUpdate(first.coords.latitude, first.coords.longitude, first.coords.accuracy ?? undefined)
 })
 
 class MantleManager {
