@@ -157,8 +157,6 @@ class G1: NSObject, SGCManager {
 
     func setSilentMode(_: Bool) {}
 
-    func connectById(_: String) {}
-
     func sendJson(_: [String: Any], wakeUp _: Bool) {}
 
     func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
@@ -531,10 +529,9 @@ class G1: NSObject, SGCManager {
         }
     }
 
-    func connectById(_ id: String) -> Bool {
+    func connectById(_ id: String) {
         DEVICE_SEARCH_ID = "_" + id + "_"
         startScan()
-        return true
     }
 
     func findCompatibleDevices() {

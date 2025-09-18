@@ -1384,6 +1384,7 @@ struct ViewState {
         // save the default_wearable now that we're connected:
         Bridge.saveSetting("default_wearable", defaultWearable)
         Bridge.saveSetting("device_name", deviceName)
+//        Bridge.saveSetting("device_address", deviceAddress)
     }
 
     private func handleG1Ready() {
