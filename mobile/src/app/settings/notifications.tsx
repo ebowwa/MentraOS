@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from "react"
+import React, {useState, useEffect, useCallback, useMemo} from "react"
 import {
   View,
   ScrollView,
@@ -25,6 +25,9 @@ interface InstalledApp {
   isBlocked: boolean
   icon: string | null
 }
+
+// Fixed item height for consistent scrolling
+const ITEM_HEIGHT = 64
 
 export default function NotificationSettingsScreen() {
   const {theme, themed} = useAppTheme()
@@ -99,53 +102,52 @@ export default function NotificationSettingsScreen() {
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingVertical: theme.spacing.sm,
+          height: ITEM_HEIGHT,
           paddingHorizontal: theme.spacing.md,
           backgroundColor: theme.colors.card,
-          marginBottom: 1,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         }}>
-        {/* App Icon */}
+        {/* App Icon - Fixed dimensions */}
         <View
           style={{
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             marginRight: theme.spacing.md,
             borderRadius: 8,
             backgroundColor: theme.colors.cardBackground,
             alignItems: "center",
             justifyContent: "center",
-            borderWidth: 1,
-            borderColor: theme.colors.border,
+            overflow: "hidden",
           }}>
           {item.icon ? (
             <Image
               source={{uri: `data:image/png;base64,${item.icon}`}}
               style={{width: 32, height: 32, borderRadius: 6}}
-              defaultSource={{
-                uri: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
-              }}
+              resizeMode="contain"
             />
           ) : (
-            <Text style={{fontSize: 18, color: theme.colors.textDim}}>{item.appName.charAt(0).toUpperCase()}</Text>
+            <Text style={{fontSize: 16, color: theme.colors.textDim, fontWeight: "600"}}>
+              {item.appName.charAt(0).toUpperCase()}
+            </Text>
           )}
         </View>
 
-        {/* App Info */}
-        <View style={{flex: 1, marginRight: theme.spacing.sm}}>
+        {/* App Info - Flex to fill space */}
+        <View style={{flex: 1, marginRight: theme.spacing.sm, justifyContent: "center"}}>
           <Text
             style={{
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: "500",
               color: theme.colors.text,
               marginBottom: 2,
-            }}>
+            }}
+            numberOfLines={1}>
             {item.appName}
           </Text>
           <Text
             style={{
-              fontSize: 12,
+              fontSize: 11,
               color: theme.colors.textDim,
             }}
             numberOfLines={1}
@@ -154,29 +156,48 @@ export default function NotificationSettingsScreen() {
           </Text>
         </View>
 
-        {/* Toggle Switch using ignite Switch component */}
+        {/* Toggle Switch - Fixed position */}
         <Switch value={!item.isBlocked} onValueChange={() => toggleApp(item.packageName, item.isBlocked)} />
       </View>
     ),
     [theme, toggleApp],
   )
 
-  // Add getItemLayout for better performance
+  // Simplified getItemLayout with consistent height
   const getItemLayout = useCallback(
     (_: any, index: number) => ({
-      length: 73, // Height of each item
-      offset: 73 * index,
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
       index,
     }),
     [],
   )
 
-  // Filter apps based on search query
-  const filteredApps = apps.filter(
-    app =>
-      app.appName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
+  // Memoize filtered apps to prevent recalculation
+  const filteredApps = useMemo(
+    () =>
+      apps.filter(
+        app =>
+          app.appName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [apps, searchQuery],
   )
+
+  // Extract keyExtractor to prevent recreation
+  const keyExtractor = useCallback((item: InstalledApp) => item.packageName, [])
+
+  if (loading) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={{color: theme.colors.textDim, marginTop: theme.spacing.md}}>Loading apps...</Text>
+        </View>
+      </Screen>
+    )
+  }
 
   // Show iOS message if on iOS
   if (Platform.OS === "ios") {
@@ -203,18 +224,6 @@ export default function NotificationSettingsScreen() {
     )
   }
 
-  if (loading) {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{color: theme.colors.textDim, marginTop: theme.spacing.md}}>Loading apps...</Text>
-        </View>
-      </Screen>
-    )
-  }
-
   return (
     <Screen preset="fixed" style={{flex: 1, backgroundColor: theme.colors.background}}>
       <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
@@ -234,7 +243,7 @@ export default function NotificationSettingsScreen() {
             marginBottom: theme.spacing.xs,
           }}>
           Control which apps can send notifications to MentraOS. When enabled, notifications from these apps will be
-          displayed on your smart glasses.
+          available to MentraOS.
         </Text>
       </View>
 
@@ -277,19 +286,21 @@ export default function NotificationSettingsScreen() {
         </Text>
       </View>
 
-      {/* Apps List */}
+      {/* Apps List - Simplified settings */}
       <FlatList
         data={filteredApps}
-        keyExtractor={item => item.packageName}
+        keyExtractor={keyExtractor}
         renderItem={renderAppItem}
         contentContainerStyle={{paddingBottom: theme.spacing.xl}}
         onRefresh={onRefresh}
         refreshing={refreshing}
         getItemLayout={getItemLayout}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={15}
+        removeClippedSubviews={false}
+        maxToRenderPerBatch={20}
+        windowSize={21}
+        initialNumToRender={20}
+        updateCellsBatchingPeriod={50}
+        maintainVisibleContentPosition={{minIndexForVisible: 0}}
         ListEmptyComponent={
           <View style={{flex: 1, alignItems: "center", marginTop: theme.spacing.xxl}}>
             <Text style={{color: theme.colors.textDim}}>
