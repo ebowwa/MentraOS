@@ -749,6 +749,16 @@ struct ViewState {
         return result
     }
 
+    func handle_display_text(_ params: [String: Any]) {
+        guard let text = params["text"] as? String else {
+            Bridge.log("Mentra: display_text missing text parameter")
+            return
+        }
+
+        Bridge.log("Mentra: Displaying text: \(text)")
+        sendText(text)
+    }
+
     func handle_display_event(_ event: [String: Any]) {
         guard let view = event["view"] as? String else {
             Bridge.log("Mentra: invalid view")
@@ -1290,18 +1300,7 @@ struct ViewState {
 
         lastStatusObj = statusObj
 
-        let wrapperObj: [String: Any] = ["status": statusObj]
-
-        // Core.log("wrapperStatusObj \(wrapperObj)")
-        // must convert to string before sending:
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-            }
-        } catch {
-            Bridge.log("Mentra: Error converting to JSON: \(error)")
-        }
+        Bridge.sendStatus(statusObj)
     }
 
     func triggerStatusUpdate() {
