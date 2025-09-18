@@ -127,6 +127,7 @@ class Bridge: RCTEventEmitter {
             case bypass_vad_for_debugging
             case bypass_audio_encoding_for_debugging
             case enforce_local_transcription
+            case enable_offline_mode
             case set_server_url
             case set_metric_system_enabled
             case toggle_updating_screen
@@ -387,6 +388,13 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.enforceLocalTranscription(enabled)
+                case .enable_offline_mode:
+                    guard let params = params, let enabled = params["enabled"] as? Bool else {
+                        Bridge.log("CommandBridge: enable_offline_mode invalid params")
+                        break
+                    }
+                    m.enableOfflineMode(enabled)
+
                 case .start_buffer_recording:
                     Bridge.log("CommandBridge: Starting buffer recording")
                     m.startBufferRecording()

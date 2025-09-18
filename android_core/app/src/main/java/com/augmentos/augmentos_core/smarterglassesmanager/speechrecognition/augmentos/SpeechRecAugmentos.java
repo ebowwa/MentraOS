@@ -168,10 +168,8 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             transcription.put("provider", "sherpa-onnx");
 
             if (isOfflineModeEnabled) {
-                Log.d(TAG, "Sending local transcription: " + text);
-                EventBus.getDefault().post(new LocalTranscriptionEvent("Local: " +text));
+                EventBus.getDefault().post(new LocalTranscriptionEvent(text));
             } else {
-                Log.d(TAG, "Sending transcription to backend: " + text);
                 ServerComms.getInstance().sendTranscriptionResult(transcription);
             }
             

@@ -68,6 +68,7 @@ struct ViewState {
     private var bypassVad: Bool = true
     private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
+    var offlineModeEnabled: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
     private var metricSystemEnabled: Bool = false
@@ -1050,7 +1051,7 @@ struct ViewState {
         }
     }
 
-    private func sendText(_ text: String) {
+    func sendText(_ text: String) {
         // Core.log("Mentra: Sending text: \(text)")
         if defaultWearable.contains("Simulated") || defaultWearable.isEmpty {
             return
@@ -1268,6 +1269,18 @@ struct ViewState {
         }
 
         handleRequestStatus() // to update the UI
+    }
+
+    func enableOfflineMode(_ enabled: Bool) {
+        offlineModeEnabled = enabled
+
+        var requiredData: [SpeechRequiredDataType]  = []
+
+        if enabled {
+            requiredData.append(.TRANSCRIPTION)
+        }
+        
+        handle_microphone_state_change(requiredData, bypassVadForPCM)
     }
 
     func startBufferRecording() {
