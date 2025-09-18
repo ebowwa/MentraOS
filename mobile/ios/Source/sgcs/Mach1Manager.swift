@@ -41,7 +41,7 @@ class Mach1Manager: UltraliteBaseViewController {
     func setup() {
         if setupDone { return }
         isConnectedListener = BondListener(listener: { [weak self] value in
-            guard let self = self else { return }
+            guard let self else { return }
             Bridge.log("MACH1: isConnectedListener: \(value)")
 
             if value {
@@ -64,7 +64,7 @@ class Mach1Manager: UltraliteBaseViewController {
         })
 
         batteryLevelListener = BondListener(listener: { [weak self] value in
-            guard let self = self else { return }
+            guard let self else { return }
             Bridge.log("MACH1: batteryLevelListener: \(value)")
             batteryLevel = value
             ready = true
@@ -169,7 +169,7 @@ class Mach1Manager: UltraliteBaseViewController {
     }
 
     func getConnectedBluetoothName() -> String? {
-        return UltraliteManager.shared.currentDevice?.peripheral?.name
+        UltraliteManager.shared.currentDevice?.peripheral?.name
     }
 
     func disconnect() {
@@ -239,23 +239,15 @@ class Mach1Manager: UltraliteBaseViewController {
     }
 
     func emitDiscoveredDevice(_ name: String) {
-        let res: [String: Any] = [
-            "model_name": "Mentra Mach1",
-            "device_name": "\(name)",
+        // Use the standardized typed message function
+        let body = [
+            "compatible_glasses_search_result": [
+                "model_name": "Mentra Mach1",
+                "device_name": "\(name)",
+                "device_address": "",
+            ],
         ]
-        let eventBody: [String: Any] = [
-            "compatible_glasses_search_result": res,
-        ]
-
-        // must convert to string before sending:
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-            }
-        } catch {
-            Bridge.log("Error converting to JSON: \(error)")
-        }
+        Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
     }
 
     func foundDevice(_ device: CBPeripheral) {
@@ -267,7 +259,7 @@ class Mach1Manager: UltraliteBaseViewController {
         // just get the part inside the brackets
         let deviceName = name.split(separator: "[").last?.split(separator: "]").first
 
-        guard let deviceName = deviceName else { return }
+        guard let deviceName else { return }
 
         let id = String(deviceName)
 
@@ -282,7 +274,7 @@ class Mach1Manager: UltraliteBaseViewController {
         // just get the part inside the brackets
         let deviceName = name.split(separator: "[").last?.split(separator: "]").first
 
-        guard let deviceName = deviceName else { return }
+        guard let deviceName else { return }
 
         let id = String(deviceName)
 
@@ -328,7 +320,7 @@ class Mach1Manager: UltraliteBaseViewController {
         let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
 
-        guard let resizedImage = resizedImage,
+        guard let resizedImage,
               let cgImage = resizedImage.cgImage
         else {
             Bridge.log("MACH1: Failed to resize image or get CGImage")

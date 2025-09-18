@@ -2431,7 +2431,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
 
     @Override
-    public void connectToSmartGlasses() {
+    public void connectToSmartGlasses(SmartGlassesDevice smartDevice) {
         Log.d(TAG, "Connecting to Mentra Live glasses");
         connectionEvent(SmartGlassesConnectionState.CONNECTING);
 
@@ -2895,6 +2895,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void displayCustomContent(String json) {
         Log.d(TAG, "[STUB] Device has no display. Cannot display custom content");
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.w(TAG, "MentraLiveSGC does not support clearDisplay");
     }
 
     @Override

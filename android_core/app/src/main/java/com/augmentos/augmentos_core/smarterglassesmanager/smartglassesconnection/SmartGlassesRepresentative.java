@@ -27,9 +27,12 @@ import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.HomeScreenEvent;
 import com.augmentos.augmentoslib.events.SendBitmapViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SetFontSizeEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayTextEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AudioWearableSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraNexSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.FrameSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraLiveSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.UltraliteSGC;
@@ -128,7 +131,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Similar to findCompatibleDeviceNames, always create a fresh communicator
         // This ensures we don't reuse a communicator with null fields after destroy()
         if (smartGlassesCommunicator != null) {
@@ -141,7 +144,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
         if (smartGlassesCommunicator != null) {
             Log.d(TAG, "Connecting to smart glasses with fresh communicator");
-            smartGlassesCommunicator.connectToSmartGlasses();
+            smartGlassesCommunicator.connectToSmartGlasses(device);
         } else {
             Log.e(TAG, "Failed to create SmartGlassesCommunicator for connection");
         }
@@ -186,6 +189,10 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
                 communicator = new EvenRealitiesG1SGC(context, smartGlassesDevice);
                 break;
                 
+            case MENTRA_NEX_GLASSES:
+                communicator = new MentraNexSGC(context, smartGlassesDevice);
+                break;
+
             case SELF_OS_GLASSES:
                 communicator = new SelfSGC(context, smartGlassesDevice);
                 break;
@@ -529,6 +536,22 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         Log.d(TAG, "onPromptViewRequestEvent called");
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayPromptView(receivedEvent.prompt, receivedEvent.options);
+        }
+    }
+
+    @Subscribe
+    public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
+        Log.d(TAG, "onDisplayTextNotified called");
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.onDisplayTextNotified(displayTextEvent);
+        }
+    }
+
+    @Subscribe
+    public void onDisplayImageNotified(DisplayImageEvent displayImageEvent) {
+        Log.d(TAG, "onDisplayImageNotified called");
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.onDisplayImageNotified(displayImageEvent.imageType, displayImageEvent.imageSize);
         }
     }
 

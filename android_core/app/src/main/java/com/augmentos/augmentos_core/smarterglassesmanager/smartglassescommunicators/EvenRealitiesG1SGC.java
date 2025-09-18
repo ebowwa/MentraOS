@@ -1299,7 +1299,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void connectToSmartGlasses() {
+    public void connectToSmartGlasses(SmartGlassesDevice device) {
         // Register bonding receiver
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         context.registerReceiver(bondingReceiver, filter);
@@ -2931,6 +2931,18 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     @Override
     public void displayCustomContent(String content){
         Log.d(TAG, "DISPLAY CUSTOM CONTENT");
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO G1 GLASSES ===");
+        
+        // For G1 glasses, we can use the existing clearG1Screen method
+        clearG1Screen();
     }
 
     private void sendChunks(List<byte[]> chunks){

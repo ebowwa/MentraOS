@@ -22,6 +22,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 public class Lc3Player extends Thread{
     private Context mContext;
     private AudioTrack mTrack;
+    private volatile boolean isPlaying = false;
     private int bufferSize;
     private final int mSampleRate = 16000 ; // 44100;
 //    private int mChannelConfig  = AudioFormat.CHANNEL_CONFIGURATION_MONO;
@@ -62,6 +63,7 @@ public class Lc3Player extends Thread{
 
     public void startPlay()
     {
+        isPlaying = true;
         this.start();
         if(mTrack != null)
         {
@@ -110,26 +112,42 @@ public class Lc3Player extends Thread{
     }
     public void stopPlay()
     {
-        if(mTrack != null)
-        {
-            mTrack.stop();
-            mTrack.release();
-            mTrack = null;
-            L3cCpp.freeDecoder(mDecorderHandle);
+        isPlaying = false;
+        interrupt(); // Properly interrupt the thread
+        
+        // Wait for thread to finish before cleaning up resources
+        try {
+            join(1000); // Wait up to 1 second for thread to terminate
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        synchronized (this) {
+            if(mTrack != null)
+            {
+                try {
+                    mTrack.stop();
+                    mTrack.release();
+                } catch (Exception e) {
+                    Log.e("_test_", "Error stopping AudioTrack", e);
+                } finally {
+                    mTrack = null;
+                }
+                L3cCpp.freeDecoder(mDecorderHandle);
+            }
         }
         // stopRec(); // Recording disabled
-        Thread.interrupted();
     }
     private int mLastSeq = 0;
     @Override
     public void run() {
         try {
             setPriority(Thread.MAX_PRIORITY);
-            while (!Thread.currentThread().isInterrupted())
+            while (isPlaying && !Thread.currentThread().isInterrupted())
             {
                 //Log.e(AvConst.TAG, "DealThread mbStartPlay="+mbStartPlay);
                 byte[] data = mQueue.take();
-                if(data != null)
+                if(data != null && isPlaying)
                 {
                     if(false)
                     {
@@ -137,8 +155,18 @@ public class Lc3Player extends Thread{
                         {
                             System.arraycopy(data, i*40 + 2, mTestBuffer, 0, 40);
                             byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mTestBuffer, mFrameSize);
-                            if(decData != null)
-                                mTrack.write(decData, 0, decData.length);
+                            if(decData != null) {
+                                synchronized (this) {
+                                    if (mTrack != null && isPlaying) {
+                                        try {
+                                            mTrack.write(decData, 0, decData.length);
+                                        } catch (IllegalStateException e) {
+                                            Log.e("_test_", "AudioTrack write failed - track released", e);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     else
@@ -156,19 +184,30 @@ public class Lc3Player extends Thread{
                         mLastSeq = (mLastSeq + 1) % 256;
                         byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mBuffer, mFrameSize);
                         if(decData != null) {
-                            mTrack.write(decData, 0, decData.length);
-                            //Log.e("_test_", "dec="+ByteUtilAudioPlayer.outputHexString(decData, 1440, 160));
-                            //writeRecData(decData, 0, decData.length);
+                            synchronized (this) {
+                                if (mTrack != null && isPlaying) {
+                                    try {
+                                        mTrack.write(decData, 0, decData.length);
+                                        //Log.e("_test_", "dec="+ByteUtilAudioPlayer.outputHexString(decData, 1440, 160));
+                                        //writeRecData(decData, 0, decData.length);
+                                    } catch (IllegalStateException e) {
+                                        Log.e("_test_", "AudioTrack write failed - track released", e);
+                                        break;
+                                    }
+                                }
+                            }
                         }
                     }
 
                 }
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.d("_test_", "LC3Player thread interrupted - shutting down gracefully");
+            Thread.currentThread().interrupt(); // Preserve interrupt status
         }
         finally {
             mQueue.clear();
+            Log.d("_test_", "LC3Player thread finished");
         }
     }
 
@@ -220,4 +259,3 @@ public class Lc3Player extends Thread{
     }
     */
 }
-
