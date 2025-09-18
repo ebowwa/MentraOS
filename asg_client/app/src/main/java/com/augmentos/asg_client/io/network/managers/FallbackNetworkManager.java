@@ -227,6 +227,43 @@ public class FallbackNetworkManager extends BaseNetworkManager {
         }
     }
     
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "Disconnecting from current WiFi network");
+        
+        if (isK900Device) {
+            // Use K900-specific WiFi disconnection
+            try {
+                Intent intent = new Intent(K900_BROADCAST_ACTION);
+                intent.putExtra("command", "disconnect_wifi");
+                context.sendBroadcast(intent);
+                
+                notificationManager.showDebugNotification(
+                        "WiFi Disconnect", 
+                        "Disconnecting from current network");
+                
+                Log.i(TAG, "K900 WiFi disconnect command sent");
+            } catch (Exception e) {
+                Log.e(TAG, "Error disconnecting from WiFi via K900", e);
+                notificationManager.showDebugNotification(
+                        "WiFi Error", 
+                        "Failed to disconnect from WiFi: " + e.getMessage());
+            }
+        } else {
+            // Fallback to manual WiFi disconnect
+            promptDisconnectFromWifi();
+        }
+    }
+    
+    private void promptDisconnectFromWifi() {
+        // Show notification to guide user to manual WiFi disconnect
+        notificationManager.showDebugNotification(
+                "Manual WiFi Disconnect", 
+                "Please disconnect from WiFi via system settings");
+        
+        Log.d(TAG, "Manual WiFi disconnect prompt shown");
+    }
+    
     private void promptConnectToWifi(String ssid, String password) {
         // Show notification to guide user to manual WiFi setup
         notificationManager.showDebugNotification(
