@@ -177,7 +177,7 @@ struct ViewState {
         //          handleDeviceReady()
         //        } else {
         //          handleDeviceDisconnected()
-        //          handleRequestStatus()
+        //          handle_request_status()
         //        }
         //      }
         //
@@ -186,13 +186,13 @@ struct ViewState {
         //        guard level >= 0 else { return }
         //        self.batteryLevel = level
         //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-        //        handleRequestStatus()
+        //        handle_request_status()
         //      }.store(in: &cancellables)
         //
         //      live!.$wifiConnected.sink { [weak self] (isConnected: Bool) in
         //        guard let self = self else { return }
         //        self.glassesWifiConnected = isConnected
-        //        handleRequestStatus()
+        //        handle_request_status()
         //      }.store(in: &cancellables)
         //
         //      live!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
@@ -220,7 +220,7 @@ struct ViewState {
         //          handleDeviceReady()
         //        } else {
         //          handleDeviceDisconnected()
-        //          handleRequestStatus()
+        //          handle_request_status()
         //        }
         //      }
         //
@@ -229,7 +229,7 @@ struct ViewState {
         //        guard level >= 0 else { return }
         //        self.batteryLevel = level
         //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-        //        handleRequestStatus()
+        //        handle_request_status()
         //      }.store(in: &cancellables)
         //
         //      mach1!.$isHeadUp.sink { [weak self] (value: Bool) in
@@ -246,11 +246,11 @@ struct ViewState {
     }
 
     func onAppStateChange(_: [ThirdPartyCloudApp]) {
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func onConnectionError(_: String) {
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func onAuthError() {}
@@ -432,7 +432,7 @@ struct ViewState {
             handleDeviceReady()
         } else {
             handleDeviceDisconnected()
-            handleRequestStatus()
+            handle_request_status()
         }
     }
 
@@ -545,7 +545,7 @@ struct ViewState {
 
     func handle_photo_request(_ requestId: String, _ appId: String, _ size: String, _ webhookUrl: String?) {
         Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
-        sgc?.requestPhoto(requestId, appId: appId, webhookUrl: webhookUrl, size: size)
+        sgc?.requestPhoto(requestId, appId: appId, size: size, webhookUrl: webhookUrl)
     }
 
     func onRtmpStreamStartRequest(_ message: [String: Any]) {
@@ -563,28 +563,28 @@ struct ViewState {
         sgc?.sendRtmpKeepAlive(message)
     }
 
-    func onStartBufferRecording() {
+    func handle_start_buffer_recording() {
         Bridge.log("Mentra: onStartBufferRecording")
         sgc?.startBufferRecording()
     }
 
-    func onStopBufferRecording() {
+    func handle_stop_buffer_recording() {
         Bridge.log("Mentra: onStopBufferRecording")
         sgc?.stopBufferRecording()
     }
 
-    func onSaveBufferVideo(_ requestId: String, _ durationSeconds: Int) {
+    func handle_save_buffer_video(_ requestId: String, _ durationSeconds: Int) {
         Bridge.log(
             "Mentra: onSaveBufferVideo: requestId=\(requestId), duration=\(durationSeconds)s")
         sgc?.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
     }
 
-    func onStartVideoRecording(_ requestId: String, _ save: Bool) {
+    func handle_start_video_recording(_ requestId: String, _ save: Bool) {
         Bridge.log("Mentra: onStartVideoRecording: requestId=\(requestId), save=\(save)")
         sgc?.startVideoRecording(requestId: requestId, save: save)
     }
 
-    func onStopVideoRecording(_ requestId: String) {
+    func handle_stop_video_recording(_ requestId: String) {
         Bridge.log("Mentra: onStopVideoRecording: requestId=\(requestId)")
         sgc?.stopVideoRecording(requestId: requestId)
     }
@@ -839,7 +839,7 @@ struct ViewState {
             // Send battery status if needed
         }
         // TODO:
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func onRouteChange(
@@ -928,7 +928,7 @@ struct ViewState {
         setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func disconnectWearable() {
@@ -937,7 +937,7 @@ struct ViewState {
             connectTask?.cancel()
             sgc?.disconnect()
             self.isSearching = false
-            handleRequestStatus()
+            handle_request_status()
         }
     }
 
@@ -949,14 +949,14 @@ struct ViewState {
         sgc = nil
         Bridge.saveSetting("default_wearable", "")
         Bridge.saveSetting("device_name", "")
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func handleSearchForCompatibleDeviceNames(_ modelName: String) {
         Bridge.log("Mentra: Searching for compatible device names for: \(modelName)")
         if modelName.contains("Simulated") {
             defaultWearable = "Simulated Glasses" // there is no pairing process for simulated glasses
-            handleRequestStatus()
+            handle_request_status()
             return
         }
         if modelName.contains("G1") {
@@ -972,25 +972,25 @@ struct ViewState {
 
     func enableContextualDashboard(_ enabled: Bool) {
         contextualDashboard = enabled
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setPreferredMic(_ mic: String) {
         preferredMic = mic
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setButtonMode(_ mode: String) {
         buttonPressMode = mode
         sgc?.sendButtonModeSetting()
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setButtonPhotoSize(_ size: String) {
         buttonPhotoSize = size
         sgc?.sendButtonPhotoSettings()
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setButtonVideoSettings(width: Int, height: Int, fps: Int) {
@@ -998,13 +998,13 @@ struct ViewState {
         buttonVideoHeight = height
         buttonVideoFps = fps
         sgc?.sendButtonVideoRecordingSettings()
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setButtonCameraLed(_: Bool) {
         sgc?.sendButtonCameraLedSetting()
 
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func setOfflineStt(_ enabled: Bool) {
@@ -1016,7 +1016,7 @@ struct ViewState {
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         sgc?.setHeadUpAngle(value)
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func updateGlassesBrightness(_ value: Int, autoBrightness: Bool) {
@@ -1033,7 +1033,7 @@ struct ViewState {
             try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
             sendText(" ") // clear screen
         }
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func updateGlassesDepth(_ value: Int) {
@@ -1042,7 +1042,7 @@ struct ViewState {
             await sgc?.setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             Bridge.log("Mentra: Set dashboard depth to \(value)")
         }
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func updateGlassesHeight(_ value: Int) {
@@ -1051,29 +1051,29 @@ struct ViewState {
             await sgc?.setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             Bridge.log("Mentra: Set dashboard height to \(value)")
         }
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func enableSensing(_ enabled: Bool) {
         sensingEnabled = enabled
         // Update microphone state when sensing is toggled
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func enablePowerSavingMode(_ enabled: Bool) {
         powerSavingMode = enabled
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func enableAlwaysOnStatusBar(_ enabled: Bool) {
         alwaysOnStatusBar = enabled
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func bypassVad(_ enabled: Bool) {
         bypassVad = enabled
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func enforceLocalTranscription(_ enabled: Bool) {
@@ -1090,7 +1090,7 @@ struct ViewState {
             }
         }
 
-        handleRequestStatus() // to update the UI
+        handle_request_status() // to update the UI
     }
 
     func startBufferRecording() {
@@ -1107,7 +1107,7 @@ struct ViewState {
 
     func setMetricSystemEnabled(_ enabled: Bool) {
         metricSystemEnabled = enabled
-        handleRequestStatus()
+        handle_request_status()
     }
 
     func toggleUpdatingScreen(_ enabled: Bool) {
@@ -1178,7 +1178,7 @@ struct ViewState {
         await sgc?.setMicEnabled(true)
     }
 
-    func handleRequestStatus() {
+    func handle_request_status() {
         // construct the status object:
         let simulatedConnected = defaultWearable == "Simulated Glasses"
         let isGlassesConnected = sgc?.ready ?? false
@@ -1303,7 +1303,7 @@ struct ViewState {
 
     func triggerStatusUpdate() {
         Bridge.log("🔄 Triggering immediate status update")
-        handleRequestStatus()
+        handle_request_status()
     }
 
     private func playStartupSequence() {
@@ -1388,7 +1388,7 @@ struct ViewState {
     private func handleG1Ready() {
         isSearching = false
         defaultWearable = "Even Realities G1"
-        handleRequestStatus()
+        handle_request_status()
 
         let shouldSendBootingMessage = true
 
@@ -1418,7 +1418,7 @@ struct ViewState {
                 sendText(" ") // clear screen
             }
 
-            self.handleRequestStatus()
+            self.handle_request_status()
         }
     }
 
@@ -1426,14 +1426,14 @@ struct ViewState {
         Bridge.log("Mentra: Mentra Live device ready")
         isSearching = false
         defaultWearable = "Mentra Live"
-        handleRequestStatus()
+        handle_request_status()
     }
 
     private func handleMach1Ready() {
         Bridge.log("Mentra: Mach1 device ready")
         isSearching = false
         defaultWearable = "Mentra Mach1"
-        handleRequestStatus()
+        handle_request_status()
 
         Task {
             // Send startup message
@@ -1441,7 +1441,7 @@ struct ViewState {
             try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
             clearDisplay()
 
-            self.handleRequestStatus()
+            self.handle_request_status()
         }
     }
 
@@ -1449,10 +1449,10 @@ struct ViewState {
         Bridge.log("Mentra: Device disconnected")
         handle_microphone_state_change([], false)
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
-        handleRequestStatus()
+        handle_request_status()
     }
 
-    func handleConnectWearable(_ deviceName: String, modelName: String? = nil) {
+    func handle_connect_wearable(_ deviceName: String, modelName: String? = nil) {
         Bridge.log(
             "Mentra: Connecting to modelName: \(modelName ?? "nil") deviceName: \(deviceName) defaultWearable: \(defaultWearable) pendingWearable: \(pendingWearable) selfDeviceName: \(self.deviceName)"
         )
@@ -1466,7 +1466,7 @@ struct ViewState {
                 "Mentra: Pending wearable is simulated, setting default wearable to Simulated Glasses"
             )
             defaultWearable = "Simulated Glasses"
-            handleRequestStatus()
+            handle_request_status()
             return
         }
 
@@ -1485,7 +1485,7 @@ struct ViewState {
 
             try? await Task.sleep(nanoseconds: 100 * 1_000_000) // 100ms
             self.isSearching = true
-            handleRequestStatus() // update the UI
+            handle_request_status() // update the UI
 
             if deviceName != "" {
                 self.deviceName = deviceName
@@ -1504,7 +1504,7 @@ struct ViewState {
         //        if self.g1Manager?.g1Ready ?? false {
         //          // we actualy don't need this line:
         //          //          handleDeviceReady()
-        //          handleRequestStatus()
+        //          handle_request_status()
         //          break
         //        } else {
         //          // todo: ios not the cleanest solution here

@@ -433,16 +433,16 @@ class Bridge: RCTEventEmitter {
                     }
                     m.handle_display_text(params)
                 case .request_status:
-                    m.handleRequestStatus()
+                    m.handle_request_status()
                 case .connect_wearable:
                     guard let params = params, let modelName = params["model_name"] as? String,
                           let deviceName = params["device_name"] as? String
                     else {
                         Bridge.log("CommandBridge: connect_wearable invalid params")
-                        m.handleConnectWearable("")
+                        m.handle_connect_wearable("")
                         break
                     }
-                    m.handleConnectWearable(deviceName, modelName: modelName)
+                    m.handle_connect_wearable(deviceName, modelName: modelName)
                 case .disconnect_wearable:
                     m.disconnectWearable()
                 case .forget_smart_glasses:
@@ -492,10 +492,10 @@ class Bridge: RCTEventEmitter {
                     m.handle_photo_request(requestId, appId, size, params["webhookUrl"] as? String)
                 case .start_buffer_recording:
                     Bridge.log("CommandBridge: Starting buffer recording")
-                    m.startBufferRecording()
+                    m.handle_start_buffer_recording()
                 case .stop_buffer_recording:
                     Bridge.log("CommandBridge: Stopping buffer recording")
-                    m.stopBufferRecording()
+                    m.handle_stop_buffer_recording()
                 case .save_buffer_video:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
@@ -505,7 +505,7 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     Bridge.log("CommandBridge: Saving buffer video: requestId=\(requestId), duration=\(durationSeconds)s")
-                    m.saveBufferVideo(requestId: requestId, durationSeconds: durationSeconds)
+                    m.handle_save_buffer_video(requestId, durationSeconds)
                 case .start_video_recording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String,
@@ -515,7 +515,7 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     Bridge.log("CommandBridge: Starting video recording: requestId=\(requestId), save=\(save)")
-                    m.startVideoRecording(requestId: requestId, save: save)
+                    m.handle_start_video_recording(requestId, save)
                 case .stop_video_recording:
                     guard let params = params,
                           let requestId = params["request_id"] as? String
@@ -527,7 +527,7 @@ class Bridge: RCTEventEmitter {
                     m.stopVideoRecording(requestId: requestId)
                 case .unknown:
                     Bridge.log("CommandBridge: Unknown command type: \(commandString)")
-                    m.handleRequestStatus()
+                    m.handle_request_status()
                 case .ping:
                     break
                 case .microphone_state_change:
