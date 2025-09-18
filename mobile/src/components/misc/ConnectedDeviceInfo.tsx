@@ -395,69 +395,6 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginTop: spacing.md,
 })
 
-export function ConnectedDeviceInfo() {
-  const {status} = useCoreStatus()
-  const {theme, themed} = useAppTheme()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
-
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
-  }, [status.core_info.is_mic_enabled_for_frontend])
-
-  if (!status.glasses_info?.model_name) {
-    return null
-  }
-
-  // don't show if simulated glasses
-  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
-    return null
-  }
-
-  return (
-    <View style={themed($statusBar)}>
-      {/* Battery information moved to DeviceSettings */}
-
-      {/* disconnect button */}
-      {/* <TouchableOpacity
-        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
-        onPress={() => {
-          coreCommunicator.sendDisconnectWearable()
-        }}
-        disabled={status.core_info.is_searching}>
-        <Icon name="power-off" size={18} color="white" style={styles.icon} />
-        <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
-const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  // padding: 16,
-  // borderRadius: 12,
-  // width: "100%",
-  // minHeight: 240,
-  // justifyContent: "center",
-  marginTop: 16,
-  // paddingHorizontal: 24,
-  // backgroundColor: colors.palette.neutral200,
-})
-
-const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
-  lineHeight: 16,
-  fontWeight: "500",
-  letterSpacing: -0.08,
-  fontFamily: "SF Pro",
-})
-
-const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderRadius: 12,
-  padding: 10,
-})
-
 const styles = StyleSheet.create({
   batteryContainer: {
     alignItems: "center",

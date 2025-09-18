@@ -40,7 +40,6 @@ struct ViewState {
     private var defaultWearable: String = ""
     private var pendingWearable: String = ""
     private var deviceName: String = ""
-    private var batteryLevel: Int = -1
     private var contextualDashboard = true
     private var headUpAngle = 30
     private var brightness = 50
@@ -127,7 +126,7 @@ struct ViewState {
         }
 
         // Initialize the transcriber
-        if let transcriber {
+        if let transcriber = transcriber {
             transcriber.initialize()
             Bridge.log("SherpaOnnxTranscriber fully initialized")
         }
@@ -162,234 +161,82 @@ struct ViewState {
         {
             sgc = FrameManager()
         }
-
-        initManagerCallbacks()
     }
 
     func initManagerCallbacks() {
         // TODO: make sure this functionality is baked into the SGCs!
 
-        if sgc is G1 {
-            let g1 = sgc as? G1
-            g1!.onConnectionStateChanged = { [weak self] in
-                guard let self else { return }
-                Bridge.log(
-                    "G1 glasses connection changed to: \(g1!.ready ? "Connected" : "Disconnected")"
-                )
-                if g1!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            // listen to changes in battery level:
-            g1!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // listen to headUp events:
-            g1!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self else { return }
-                updateHeadUp(value)
-            }.store(in: &cancellables)
-
-            // listen to case events:
-            g1!.$caseOpen.sink { [weak self] (_: Bool) in
-                guard let self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1!.$caseRemoved.sink { [weak self] (_: Bool) in
-                guard let self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            g1!.$caseCharging.sink { [weak self] (_: Bool) in
-                guard let self else { return }
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            // decode the g1 audio data to PCM and feed to the VAD:
-            g1!.$compressedVoiceData.sink { [weak self] rawLC3Data in
-                guard let self else { return }
-
-                // Ensure we have enough data to process
-                guard rawLC3Data.count > 2 else {
-                    Bridge.log("Received invalid PCM data size: \(rawLC3Data.count)")
-                    return
-                }
-
-                // Skip the first 2 bytes which are command bytes
-                let lc3Data = rawLC3Data.subdata(in: 2 ..< rawLC3Data.count)
-
-                // Ensure we have valid PCM data
-                guard lc3Data.count > 0 else {
-                    Bridge.log("No LC3 data after removing command bytes")
-                    return
-                }
-
-                if self.bypassVad || self.bypassVadForPCM {
-                    Bridge.log(
-                        "Mentra: Glasses mic VAD bypassed - bypassVad=\(self.bypassVad), bypassVadForPCM=\(self.bypassVadForPCM)"
-                    )
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    let pcmConverter = PcmConverter()
-                    let pcmData = pcmConverter.decode(lc3Data) as Data
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    Bridge.sendMicData(pcmData)
-                    return
-                }
-
-                let pcmConverter = PcmConverter()
-                let pcmData = pcmConverter.decode(lc3Data) as Data
-
-                guard pcmData.count > 0 else {
-                    Bridge.log("PCM conversion resulted in empty data")
-                    return
-                }
-
-                // feed PCM to the VAD:
-                guard let vad = self.vad else {
-                    Bridge.log("VAD not initialized")
-                    return
-                }
-
-                // convert audioData to Int16 array:
-                let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
-                    Array(
-                        UnsafeBufferPointer(
-                            start: pointer.bindMemory(to: Int16.self).baseAddress,
-                            count: pointer.count / MemoryLayout<Int16>.stride
-                        ))
-                }
-
-                vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
-                    guard let self else { return }
-                    Bridge.log("VAD State: \(state)")
-                }
-
-                let vadState = vad.currentState()
-                if vadState == .speeching {
-                    checkSetVadStatus(speaking: true)
-                    // first send out whatever's in the vadBuffer (if there is anything):
-                    emptyVadBuffer()
-                    //        self.serverComms.sendAudioChunk(lc3Data)
-                    Bridge.sendMicData(pcmData)
-                } else {
-                    checkSetVadStatus(speaking: false)
-                    // add to the vadBuffer:
-                    //        addToVadBuffer(lc3Data)
-                    addToVadBuffer(pcmData)
-                }
-            }
-            .store(in: &cancellables)
-        }
-
-        if sgc is FrameManager {
-            let frameManager = sgc as? FrameManager
-            frameManager!.onConnectionStateChanged = { [weak self] in
-                guard let self else { return }
-                let isConnected = frameManager?.connectionState == "CONNECTED"
-                Bridge.log(
-                    "Frame glasses connection changed to: \(isConnected ? "Connected" : "Disconnected")"
-                )
-                if isConnected {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            // Listen to battery level changes if Frame supports it
-            frameManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-        }
-
-        if sgc is MentraLive {
-            let liveManager = sgc as? MentraLive
-            liveManager!.onConnectionStateChanged = { [weak self] in
-                guard let self else { return }
-                Bridge.log(
-                    "Live glasses connection changed to: \(liveManager!.ready ? "Connected" : "Disconnected")"
-                )
-                if liveManager!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            liveManager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.$wifiConnected.sink { [weak self] (isConnected: Bool?) in
-                guard let self else { return }
-                self.glassesWifiConnected = isConnected ?? false
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            liveManager!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
-                guard let self else { return }
-                Bridge.sendButtonPress(buttonId: buttonId, pressType: pressType)
-            }
-            liveManager!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
-                guard let self else { return }
-                Bridge.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
-            }
-            liveManager!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
-                guard let self else { return }
-                Bridge.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
-            }
-        }
-
-        if sgc is Mach1 {
-            let mach1Manager = sgc as? Mach1
-            mach1Manager!.onConnectionStateChanged = { [weak self] in
-                guard let self else { return }
-                Bridge.log(
-                    "Mach1 glasses connection changed to: \(mach1Manager!.ready ? "Connected" : "Disconnected")"
-                )
-                if mach1Manager!.ready {
-                    handleDeviceReady()
-                } else {
-                    handleDeviceDisconnected()
-                    handleRequestStatus()
-                }
-            }
-
-            mach1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
-                guard let self else { return }
-                guard level >= 0 else { return }
-                self.batteryLevel = level
-                Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
-                handleRequestStatus()
-            }.store(in: &cancellables)
-
-            mach1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
-                guard let self else { return }
-                updateHeadUp(value)
-            }.store(in: &cancellables)
-        }
+        //    if sgc is MentraLive {
+        //      let live = sgc as? MentraLive
+        //      live!.onConnectionStateChanged = { [weak self] in
+        //        guard let self = self else { return }
+        //        Bridge.log(
+        //          "Live glasses connection changed to: \(live!.ready ? "Connected" : "Disconnected")"
+        //        )
+        //        if live!.ready {
+        //          handleDeviceReady()
+        //        } else {
+        //          handleDeviceDisconnected()
+        //          handleRequestStatus()
+        //        }
+        //      }
+        //
+        //      live!.$batteryLevel.sink { [weak self] (level: Int) in
+        //        guard let self = self else { return }
+        //        guard level >= 0 else { return }
+        //        self.batteryLevel = level
+        //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      live!.$wifiConnected.sink { [weak self] (isConnected: Bool) in
+        //        guard let self = self else { return }
+        //        self.glassesWifiConnected = isConnected
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      live!.onButtonPress = { [weak self] (buttonId: String, pressType: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendButtonPress(buttonId: buttonId, pressType: pressType)
+        //      }
+        //      live!.onPhotoRequest = { [weak self] (requestId: String, photoUrl: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendPhotoResponse(requestId: requestId, photoUrl: photoUrl)
+        //      }
+        //      live!.onVideoStreamResponse = { [weak self] (appId: String, streamUrl: String) in
+        //        guard let self = self else { return }
+        //        Bridge.sendVideoStreamResponse(appId: appId, streamUrl: streamUrl)
+        //      }
+        //    }
+        //
+        //    if sgc is Mach1 {
+        //      let mach1 = sgc as? Mach1
+        //      mach1!.onConnectionStateChanged = { [weak self] in
+        //        guard let self = self else { return }
+        //        Bridge.log(
+        //          "Mach1 glasses connection changed to: \(mach1!.ready ? "Connected" : "Disconnected")"
+        //        )
+        //        if mach1!.ready {
+        //          handleDeviceReady()
+        //        } else {
+        //          handleDeviceDisconnected()
+        //          handleRequestStatus()
+        //        }
+        //      }
+        //
+        //      mach1!.$batteryLevel.sink { [weak self] (level: Int) in
+        //        guard let self = self else { return }
+        //        guard level >= 0 else { return }
+        //        self.batteryLevel = level
+        //        Bridge.sendBatteryStatus(level: self.batteryLevel, charging: false)
+        //        handleRequestStatus()
+        //      }.store(in: &cancellables)
+        //
+        //      mach1!.$isHeadUp.sink { [weak self] (value: Bool) in
+        //        guard let self = self else { return }
+        //        updateHeadUp(value)
+        //      }.store(in: &cancellables)
+        //    }
     }
 
     func updateHeadUp(_ isHeadUp: Bool) {
@@ -902,16 +749,6 @@ struct ViewState {
         return result
     }
 
-    func handle_display_text(_ params: [String: Any]) {
-        guard let text = params["text"] as? String else {
-            Bridge.log("Mentra: display_text missing text parameter")
-            return
-        }
-
-        Bridge.log("Mentra: Displaying text: \(text)")
-        sendText(text)
-    }
-
     func handle_display_event(_ event: [String: Any]) {
         guard let view = event["view"] as? String else {
             Bridge.log("Mentra: invalid view")
@@ -1051,7 +888,7 @@ struct ViewState {
                 Bridge.log("Mentra: Clearing display after 3 seconds")
                 // if we're clearing the display, after a delay, send a clear command if not cancelled with another
                 let workItem = DispatchWorkItem { [weak self] in
-                    guard let self else { return }
+                    guard let self = self else { return }
                     if self.isHeadUp {
                         return
                     }
@@ -1453,8 +1290,18 @@ struct ViewState {
 
         lastStatusObj = statusObj
 
-        // Use the standardized typed message function
-        Bridge.sendStatus(statusObj)
+        let wrapperObj: [String: Any] = ["status": statusObj]
+
+        // Core.log("wrapperStatusObj \(wrapperObj)")
+        // must convert to string before sending:
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                Bridge.sendEvent(withName: "CoreMessageEvent", body: jsonString)
+            }
+        } catch {
+            Bridge.log("Mentra: Error converting to JSON: \(error)")
+        }
     }
 
     func triggerStatusUpdate() {
@@ -1785,13 +1632,6 @@ struct ViewState {
         }
     }
 
-    // MARK: - Helper Functions
-
-    private func getConnectedGlassesBluetoothName() -> String? {
-        // Check each connected glasses type and return the Bluetooth name
-        return sgc?.getConnectedBluetoothName()
-    }
-
     // MARK: - Cleanup
 
     @objc func cleanup() {
@@ -1800,195 +1640,5 @@ struct ViewState {
         transcriber = nil
 
         cancellables.removeAll()
-    }
-
-    // MARK: - SherpaOnnxTranscriber / STT Model Management
-
-    func didReceivePartialTranscription(_ text: String) {
-        // Send partial result to server with proper formatting
-        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
-        Bridge.log("Mentra: Sending partial transcription: \(text), \(transcriptionLanguage)")
-        let transcription: [String: Any] = [
-            "type": "local_transcription",
-            "text": text,
-            "isFinal": false,
-            "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
-            "endTime": Int(Date().timeIntervalSince1970 * 1000),
-            "speakerId": 0,
-            "transcribeLanguage": transcriptionLanguage,
-            "provider": "sherpa-onnx",
-        ]
-
-        Bridge.sendLocalTranscription(transcription: transcription)
-    }
-
-    func didReceiveFinalTranscription(_ text: String) {
-        // Send final result to server with proper formatting
-        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
-        Bridge.log("Mentra: Sending final transcription: \(text), \(transcriptionLanguage)")
-        if !text.isEmpty {
-            let transcription: [String: Any] = [
-                "type": "local_transcription",
-                "text": text,
-                "isFinal": true,
-                "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
-                "endTime": Int(Date().timeIntervalSince1970 * 1000),
-                "speakerId": 0,
-                "transcribeLanguage": transcriptionLanguage,
-                "provider": "sherpa-onnx",
-            ]
-
-            Bridge.sendLocalTranscription(transcription: transcription)
-        }
-    }
-
-    func setSttModelDetails(_ path: String, _ languageCode: String) {
-        UserDefaults.standard.set(path, forKey: "STTModelPath")
-        UserDefaults.standard.set(languageCode, forKey: "STTModelLanguageCode")
-        UserDefaults.standard.synchronize()
-    }
-
-    func getSttModelPath() -> String {
-        UserDefaults.standard.string(forKey: "STTModelPath") ?? ""
-    }
-
-    func checkSTTModelAvailable() -> Bool {
-        guard let modelPath = UserDefaults.standard.string(forKey: "STTModelPath") else {
-            return false
-        }
-
-        let fileManager = FileManager.default
-
-        // Check for tokens.txt (required for all models)
-        let tokensPath = (modelPath as NSString).appendingPathComponent("tokens.txt")
-        if !fileManager.fileExists(atPath: tokensPath) {
-            return false
-        }
-
-        // Check for CTC model
-        let ctcModelPath = (modelPath as NSString).appendingPathComponent("model.int8.onnx")
-        if fileManager.fileExists(atPath: ctcModelPath) {
-            return true
-        }
-
-        // Check for transducer model
-        let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
-        for file in transducerFiles {
-            let filePath = (modelPath as NSString).appendingPathComponent(file)
-            if !fileManager.fileExists(atPath: filePath) {
-                return false
-            }
-        }
-
-        return true
-    }
-
-    func validateSTTModel(_ path: String) -> Bool {
-        do {
-            let fileManager = FileManager.default
-
-            // Check for tokens.txt (required for all models)
-            let tokensPath = (path as NSString).appendingPathComponent("tokens.txt")
-            if !fileManager.fileExists(atPath: tokensPath) {
-                return false
-            }
-
-            // Check for CTC model
-            let ctcModelPath = (path as NSString).appendingPathComponent("model.int8.onnx")
-            if fileManager.fileExists(atPath: ctcModelPath) {
-                return true
-            }
-
-            // Check for transducer model
-            let transducerFiles = ["encoder.onnx", "decoder.onnx", "joiner.onnx"]
-            var allTransducerFilesPresent = true
-
-            for file in transducerFiles {
-                let filePath = (path as NSString).appendingPathComponent(file)
-                if !fileManager.fileExists(atPath: filePath) {
-                    allTransducerFilesPresent = false
-                    break
-                }
-            }
-
-            return allTransducerFilesPresent
-        } catch {
-            Bridge.log("STT_ERROR: \(error.localizedDescription)")
-            return false
-        }
-    }
-
-    func extractTarBz2(sourcePath: String, destinationPath: String) -> Bool {
-        do {
-            let fileManager = FileManager.default
-
-            // Create destination directory if it doesn't exist
-            try fileManager.createDirectory(
-                atPath: destinationPath,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-
-            // Try to read compressed file
-            guard let compressedData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath))
-            else {
-                Bridge.log("EXTRACTION_ERROR: Failed to read compressed file")
-                return false
-            }
-
-            // Create a temporary directory for extraction
-            let tempExtractPath = NSTemporaryDirectory().appending("/\(UUID().uuidString)")
-            try fileManager.createDirectory(
-                atPath: tempExtractPath,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-
-            // Use the Swift TarBz2Extractor with SWCompression
-            var extractionError: NSError?
-            let success = TarBz2Extractor.extractTarBz2From(
-                sourcePath,
-                to: destinationPath,
-                error: &extractionError
-            )
-
-            if !success || extractionError != nil {
-                print(
-                    "EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")"
-                )
-                return false
-            }
-
-            // Rename encoder
-            let oldEncoderPath = (destinationPath as NSString).appendingPathComponent(
-                "encoder-epoch-99-avg-1.onnx")
-            let newEncoderPath = (destinationPath as NSString).appendingPathComponent(
-                "encoder.onnx")
-            if fileManager.fileExists(atPath: oldEncoderPath) {
-                try? fileManager.moveItem(atPath: oldEncoderPath, toPath: newEncoderPath)
-            }
-
-            // Rename decoder
-            let oldDecoderPath = (destinationPath as NSString).appendingPathComponent(
-                "decoder-epoch-99-avg-1.onnx")
-            let newDecoderPath = (destinationPath as NSString).appendingPathComponent(
-                "decoder.onnx")
-            if fileManager.fileExists(atPath: oldDecoderPath) {
-                try? fileManager.moveItem(atPath: oldDecoderPath, toPath: newDecoderPath)
-            }
-
-            // Rename joiner
-            let oldJoinerPath = (destinationPath as NSString).appendingPathComponent(
-                "joiner-epoch-99-avg-1.int8.onnx")
-            let newJoinerPath = (destinationPath as NSString).appendingPathComponent("joiner.onnx")
-            if fileManager.fileExists(atPath: oldJoinerPath) {
-                try? fileManager.moveItem(atPath: oldJoinerPath, toPath: newJoinerPath)
-            }
-
-            return true
-        } catch {
-            Bridge.log("EXTRACTION_ERROR: \(error.localizedDescription)")
-            return false
-        }
     }
 }
