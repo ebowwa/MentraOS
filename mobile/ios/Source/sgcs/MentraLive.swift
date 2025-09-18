@@ -2152,6 +2152,7 @@ class MentraLive: NSObject, SGCManager {
     private func updateBatteryStatus(level: Int, charging: Bool) {
         batteryLevel = level
         isCharging = charging
+        MentraManager.shared.handleRequestStatus()
         // emitBatteryLevelEvent(level: level, charging: charging)
     }
 

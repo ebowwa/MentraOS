@@ -43,7 +43,6 @@ struct ViewState {
     private var contextualDashboard = true
     private var headUpAngle = 30
     private var brightness = 50
-    private var batteryLevel = -1
     private var autoBrightness: Bool = true
     private var dashboardHeight: Int = 4
     private var dashboardDepth: Int = 5
@@ -731,10 +730,10 @@ struct ViewState {
         placeholders["$TIME12$"] = time12
         placeholders["$TIME24$"] = time24
 
-        if batteryLevel == -1 {
+        if sgc?.batteryLevel == -1 {
             placeholders["$GBATT$"] = ""
         } else {
-            placeholders["$GBATT$"] = "\(batteryLevel)%"
+            placeholders["$GBATT$"] = "\(sgc?.batteryLevel)%"
         }
 
         //        placeholders["$CONNECTION_STATUS$"] =
@@ -1186,7 +1185,7 @@ struct ViewState {
         if isGlassesConnected {
             connectedGlasses = [
                 "model_name": defaultWearable,
-                "battery_level": batteryLevel,
+                "battery_level": sgc?.batteryLevel ?? -1,
                 "glasses_app_version": sgc?.glassesAppVersion ?? "",
                 "glasses_build_number": sgc?.glassesBuildNumber ?? "",
                 "glasses_device_model": sgc?.glassesDeviceModel ?? "",
@@ -1374,7 +1373,7 @@ struct ViewState {
 
     private func handleDeviceReady() {
         // send to the server our battery status:
-        Bridge.sendBatteryStatus(level: batteryLevel, charging: false)
+        Bridge.sendBatteryStatus(level: sgc?.batteryLevel ?? -1, charging: false)
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
         if pendingWearable.contains("Live") {
