@@ -391,8 +391,13 @@ enum GlassesError: Error {
 
     /// Emits serial number information to React Native
     private func emitSerialNumberInfo(serialNumber: String, style: String, color: String) {
-        // Use the standardized typed message function
-        Bridge.sendGlassesSerialNumber(serialNumber, style: style, color: color)
+        let eventBody: [String: Any] = [
+            "serialNumber": serialNumber,
+            "style": style,
+            "color": color,
+        ]
+
+        Bridge.sendTypedMessage("glasses_serial_number", body: eventBody)
         Bridge.log("G1: 📱 Emitted serial number info: \(serialNumber), Style: \(style), Color: \(color)")
 
         // Trigger status update to include serial number in status JSON
@@ -1962,7 +1967,14 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
             guard let extractedNum = extractIdNumber(name) else { return }
 
             // Use the standardized typed message function
-            Bridge.sendCompatibleGlassesSearchResult("Even Realities G1", deviceName: "\(extractedNum)")
+            let body = [
+                "compatible_glasses_search_result": [
+                    "model_name": "Even Realities G1",
+                    "device_name": "\(extractedNum)",
+                    "device_address": "",
+                ],
+            ]
+            Bridge.sendTypedMessage("compatible_glasses_search_result", body: body)
         }
     }
 

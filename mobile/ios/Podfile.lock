@@ -2825,9 +2825,9 @@ SPEC CHECKSUMS:
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
   libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
-  livekit-react-native: 9f0c7e58d3b794cb3e21bfb85a07504e3d9805dd
-  livekit-react-native-webrtc: b433ea8c3845cbef1ca9b59c6155e322fcda3bdd
-  LiveKitExpoPlugin: 8e0f4bdffa921c27c13e1504ea0e668b6f859278
+  livekit-react-native: f27ce899b1587186d351c243902a27b271b3037c
+  livekit-react-native-webrtc: 0ffe5a13d196f65d717f958a111399f4f6383102
+  LiveKitExpoPlugin: 0e1742a5755355b2d2122358963d82ad07f85823
   onnxruntime-c: a909204639a1f035f575127ac406f781ac797c9c
   onnxruntime-objc: b6fab0f1787aa6f7190c2013f03037df4718bd8b
   PocketSVG: ca3bc53ea8d68336ba830c47b2e547790507b901
