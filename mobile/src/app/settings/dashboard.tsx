@@ -25,8 +25,7 @@ import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
@@ -39,16 +38,16 @@ export default function DashboardSettingsScreen() {
 
   // load settings:
   useEffect(() => {
-    loadSetting(SETTINGS_KEYS.contextual_dashboard_enabled).then(setIsContextualDashboardEnabled)
-    loadSetting(SETTINGS_KEYS.metric_system_enabled).then(setIsMetricSystemEnabled)
-    loadSetting(SETTINGS_KEYS.head_up_angle).then(setHeadUpAngle)
+    settings.get(SETTINGS_KEYS.contextual_dashboard_enabled).then(setIsContextualDashboardEnabled)
+    settings.get(SETTINGS_KEYS.metric_system_enabled).then(setIsMetricSystemEnabled)
+    settings.get(SETTINGS_KEYS.head_up_angle).then(setHeadUpAngle)
   }, [])
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !isContextualDashboardEnabled
     await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
+    await settings.set(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
     setIsContextualDashboardEnabled(newVal)
   }
 
@@ -56,7 +55,7 @@ export default function DashboardSettingsScreen() {
     const newVal = !isMetricSystemEnabled
     try {
       await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
-      await saveSetting(SETTINGS_KEYS.metric_system_enabled, newVal)
+      await settings.set(SETTINGS_KEYS.metric_system_enabled, newVal)
       setIsMetricSystemEnabled(newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
@@ -74,7 +73,7 @@ export default function DashboardSettingsScreen() {
 
     setHeadUpAngleComponentVisible(false)
     await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
+    await settings.set(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
     setHeadUpAngle(newHeadUpAngle)
   }
 

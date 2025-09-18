@@ -12,20 +12,15 @@ import {
   Platform,
   ScrollView,
 } from "react-native"
-
 import {useFocusEffect} from "@react-navigation/native"
-import {Button, Icon} from "@/components/ignite"
+import {Icon} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {getGlassesImage} from "@/utils/getGlassesImage"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {Slider} from "react-native-elements"
-import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import ToggleSetting from "../settings/ToggleSetting"
 import SliderSetting from "../settings/SliderSetting"
-import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
+import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
@@ -35,8 +30,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
@@ -113,7 +107,7 @@ export default function DeviceSettings() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
@@ -214,12 +208,13 @@ export default function DeviceSettings() {
 
     setPreferredMic(val)
     await bridge.sendSetPreferredMic(val) // TODO: config: remove
-    saveSetting(SETTINGS_KEYS.preferred_mic, val)
+    settings.set(SETTINGS_KEYS.preferred_mic, val)
   }
 
   const setButtonModeWithSave = async (mode: string) => {
     setButtonMode(mode)
-    await bridge.sendSetButtonMode(mode)
+    await bridge.sendSetButtonMode(mode) // TODO: config: remove
+    await settings.set(SETTINGS_KEYS.button_mode, mode)
   }
 
   const confirmForgetGlasses = () => {

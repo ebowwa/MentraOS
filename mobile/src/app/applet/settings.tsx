@@ -30,8 +30,7 @@ import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import NumberSetting from "@/components/settings/NumberSetting"
 import TimeSetting from "@/components/settings/TimeSetting"
-import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -76,14 +75,8 @@ export default function AppSettings() {
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
 
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-    checkAppHealthStatus,
-  } = useAppStatus()
+  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
+    useAppStatus()
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
@@ -102,7 +95,7 @@ export default function AppSettings() {
 
   useEffect(() => {
     const checkUIMode = async () => {
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
       setIsOldUI(!newUiSetting) // Old UI is when NEW_UI is false
     }
     checkUIMode()
@@ -168,7 +161,7 @@ export default function AppSettings() {
         if (!proceed) return
       }
 
-      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      if (!(await restComms.checkAppHealthStatus(appInfo.packageName))) {
         showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
           {text: translate("common:ok")},
         ])
@@ -284,7 +277,7 @@ export default function AppSettings() {
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         // Get cached settings to preserve user values for existing settings
-        const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+        const cached = await settings.get(SETTINGS_CACHE_KEY(packageName), null)
         const cachedState = cached?.settingsState || {}
 
         const initialState: {[key: string]: any} = {}
@@ -297,7 +290,7 @@ export default function AppSettings() {
         })
         setSettingsState(initialState)
         // Cache the settings
-        saveSetting(SETTINGS_CACHE_KEY(packageName), {
+        settings.set(SETTINGS_CACHE_KEY(packageName), {
           serverAppInfo: data,
           settingsState: initialState,
         })
@@ -512,7 +505,7 @@ export default function AppSettings() {
     let debounceTimeout: NodeJS.Timeout
 
     const loadCachedSettings = async () => {
-      const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null)
+      const cached = await settings.get(SETTINGS_CACHE_KEY(packageName), null)
       if (cached && isMounted) {
         setServerAppInfo(cached.serverAppInfo)
         setSettingsState(cached.settingsState)

@@ -25,6 +25,7 @@ import {glassesFeatures} from "@/config/glassesFeatures"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export const ConnectDeviceButton = () => {
   const {status} = useCoreStatus()
@@ -80,13 +81,11 @@ export const ConnectDeviceButton = () => {
       }
 
       // Connectivity check passed, proceed with connection
-      console.log("Connecting to glasses:", status.core_info.default_wearable)
-      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        await bridge.sendConnectWearable(
-          status.core_info.default_wearable,
-          status.core_info.default_wearable_name as string,
-          status.core_info.default_wearable_address as string,
-        )
+      const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
+      const deviceName = await settings.get(SETTINGS_KEYS.device_name)
+      console.log("Connecting to glasses:", defaultWearable, deviceName)
+      if (defaultWearable && defaultWearable != "") {
+        await bridge.sendConnectWearable(defaultWearable, deviceName, "")
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
@@ -215,15 +214,15 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
         }
       }
 
-      image = getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
-    } else {
-      // For other glasses, use the existing logic
-      if (!status.glasses_info?.case_removed) {
-        if (status.glasses_info?.case_open) {
-          image = getGlassesOpenImage(wearable)
-        } else {
-          image = getGlassesClosedImage(wearable)
-        }
+      return getEvenRealitiesG1Image(style, color, state, "l", theme.isDark, status.glasses_info?.case_battery_level)
+    }
+
+    // For other glasses, use the existing logic
+    if (!status.glasses_info?.case_removed) {
+      if (status.glasses_info?.case_open) {
+        image = getGlassesOpenImage(wearable)
+      } else {
+        image = getGlassesClosedImage(wearable)
       }
     }
 
@@ -396,69 +395,6 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.md,
   paddingHorizontal: spacing.md,
   marginTop: spacing.md,
-})
-
-export function ConnectedDeviceInfo() {
-  const {status, refreshStatus} = useStatus()
-  const {theme, themed} = useAppTheme()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
-
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
-  }, [status.core_info.is_mic_enabled_for_frontend])
-
-  if (!status.glasses_info?.model_name) {
-    return null
-  }
-
-  // don't show if simulated glasses
-  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
-    return null
-  }
-
-  return (
-    <View style={themed($statusBar)}>
-      {/* Battery information moved to DeviceSettings */}
-
-      {/* disconnect button */}
-      {/* <TouchableOpacity
-        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
-        onPress={() => {
-          coreCommunicator.sendDisconnectWearable()
-        }}
-        disabled={status.core_info.is_searching}>
-        <Icon name="power-off" size={18} color="white" style={styles.icon} />
-        <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
-const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  // padding: 16,
-  // borderRadius: 12,
-  // width: "100%",
-  // minHeight: 240,
-  // justifyContent: "center",
-  marginTop: 16,
-  // paddingHorizontal: 24,
-  // backgroundColor: colors.palette.neutral200,
-})
-
-const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
-  lineHeight: 16,
-  fontWeight: "500",
-  letterSpacing: -0.08,
-  fontFamily: "SF Pro",
-})
-
-const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderRadius: 12,
-  padding: 10,
 })
 
 const styles = StyleSheet.create({

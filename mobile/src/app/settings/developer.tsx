@@ -3,8 +3,7 @@ import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
-import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
@@ -35,13 +34,13 @@ export default function DeveloperSettingsScreen() {
 
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
-    await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
+    await settings.set(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
     setReconnectOnAppForeground(newSetting)
   }
 
   const toggleNewUi = async () => {
     const newSetting = !showNewUi
-    await saveSetting(SETTINGS_KEYS.NEW_UI, newSetting)
+    await settings.set(SETTINGS_KEYS.NEW_UI, newSetting)
     setShowNewUi(newSetting)
   }
 
@@ -85,7 +84,7 @@ export default function DeveloperSettingsScreen() {
           console.log("URL Test Successful:", data)
 
           // Save the URL if the test passes
-          await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
+          await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
           await bridge.setServerUrl(urlToTest) // TODO: config: remove
           setSavedCustomUrl(urlToTest)
 
@@ -136,7 +135,7 @@ export default function DeveloperSettingsScreen() {
   }
 
   const handleResetUrl = async () => {
-    await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
     await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
@@ -172,29 +171,20 @@ export default function DeveloperSettingsScreen() {
     }
   }
 
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
   // Load saved URL on mount
   useEffect(() => {
     const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+      const url = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
 
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
+      const reconnectOnAppForeground = await settings.get(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
       setReconnectOnAppForeground(reconnectOnAppForeground)
 
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI)
+      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI)
       setShowNewUi(newUiSetting)
 
-      const powerSavingMode = await loadSetting(SETTINGS_KEYS.power_saving_mode)
+      const powerSavingMode = await settings.get(SETTINGS_KEYS.power_saving_mode)
       setPowerSavingMode(powerSavingMode)
     }
     loadSettings()
@@ -222,7 +212,7 @@ export default function DeveloperSettingsScreen() {
 
       <Spacer height={theme.spacing.md} />
 
-      <ScrollView>
+      <ScrollView style={{flex: 1, marginHorizontal: -theme.spacing.md, paddingHorizontal: theme.spacing.md}}>
         <RouteButton
           label="🎥 Buffer Recording Debug"
           subtitle="Control 30-second video buffer on glasses"
@@ -362,33 +352,6 @@ export default function DeveloperSettingsScreen() {
         </View>
 
         <Spacer height={theme.spacing.md} />
-
-        {/* Bypass Audio Encoding for Debugging Toggle
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText
-              ]}>
-              Bypass Audio Encoding for Debugging
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext
-              ]}>
-              Bypass audio encoding processing for debugging purposes.
-            </Text>
-          </View>
-          <Switch
-            value={isBypassAudioEncodingForDebuggingEnabled}
-            onValueChange={toggleBypassAudioEncodingForDebugging}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View> */}
         <Spacer height={theme.spacing.xxl} />
       </ScrollView>
     </Screen>

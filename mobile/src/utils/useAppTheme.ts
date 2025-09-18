@@ -4,8 +4,7 @@ import {DarkTheme, DefaultTheme, useTheme as useNavTheme} from "@react-navigatio
 import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray, lightTheme, darkTheme} from "@/theme"
 import * as SystemUI from "expo-system-ui"
 import * as NavigationBar from "expo-navigation-bar"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts
@@ -47,7 +46,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
-        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as ThemeType
+        const savedTheme = (await settings.get(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as ThemeType
         if (savedTheme === "system") {
           setTheme(undefined)
         } else {

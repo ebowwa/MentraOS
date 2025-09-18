@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/managers/Settings"
 import {storage} from "@/utils/storage"
 
 export interface UserDataExport {
