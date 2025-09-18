@@ -379,6 +379,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Subscribe
     public void onLocalTranscriptionEvent(LocalTranscriptionEvent event) {
         if (smartGlassesManager != null) {
+            transcriptProcessor.modifyLanguage(event.language);
             String processedText = transcriptProcessor.processString(event.text, event.isFinal);
             if (processedText != null) {
                 smartGlassesManager.sendTextWall(processedText);

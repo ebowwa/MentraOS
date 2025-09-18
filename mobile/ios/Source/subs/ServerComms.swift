@@ -664,11 +664,18 @@ class ServerComms {
             Bridge.log("Skipping empty transcription result")
             return
         }
+
+        guard let textLanguage = transcription["transcribeLanguage"] as? String, !textLanguage.isEmpty else {
+            Bridge.log("Skipping empty transcription language")
+            return
+        }
+        
         let isFinal = transcription["isFinal"] as? Bool ?? false
         
         do {
             if MentraManager.shared.offlineModeEnabled {
                 // Process the text using TranscriptProcessor
+                transcriptProcessor.modifyLanguage(textLanguage)
                 if let processedText = transcriptProcessor.processString(text, isFinal: isFinal) {
                     MentraManager.shared.sendText(processedText)
                 }

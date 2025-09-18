@@ -4,11 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TranscriptProcessor {
-    private final int maxCharsPerLine;
+    private int maxCharsPerLine;
+    private boolean isChinese;
+    
     private final int maxLines;
     private final List<String> finalTranscriptHistory = new ArrayList<>();
     private final int maxFinalTranscripts;
-    private final boolean isChinese;
     private long lastPartialUpdateTime = 0;
     private static final long THROTTLE_INTERVAL_MS = 300; // 300ms throttle interval
     private final List<String> currentDisplayLines = new ArrayList<>();
@@ -110,28 +111,80 @@ public class TranscriptProcessor {
             return result;
         }
 
-        String[] words = text.split("\\s+");
-        StringBuilder currentLine = new StringBuilder();
+        if (isChinese) {
+            // For Chinese text, process character by character
+            StringBuilder currentLine = new StringBuilder();
+            
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                
+                // If adding this character would exceed maxLength, start a new line
+                if (currentLine.length() >= maxLength) {
+                    result.add(currentLine.toString());
+                    currentLine = new StringBuilder();
+                }
+                currentLine.append(c);
+            }
+            
+            // Add the last line if it's not empty
+            if (currentLine.length() > 0) {
+                result.add(currentLine.toString());
+            }
+        } else {
+            // For non-Chinese text, use word-based wrapping
+            String[] words = text.split("\\s+");
+            StringBuilder currentLine = new StringBuilder();
 
-        for (String word : words) {
-            if (currentLine.length() + word.length() + 1 <= maxLength) {
-                if (currentLine.length() > 0) {
+            for (String word : words) {
+                // If the word itself is longer than maxLength, split it
+                while (word.length() > maxLength) {
+                    // Take the first maxLength characters of the word
+                    String part = word.substring(0, maxLength);
+                    // If we already have content in the current line, add it to result first
+                    if (currentLine.length() > 0) {
+                        result.add(currentLine.toString());
+                        currentLine = new StringBuilder();
+                    }
+                    // Add this part as a new line
+                    result.add(part);
+                    // Keep the remaining part of the word
+                    word = word.substring(maxLength);
+                }
+                
+                // Now handle the remaining part of the word (or the whole word if it wasn't too long)
+                if (currentLine.length() + word.length() + (currentLine.length() > 0 ? 1 : 0) > maxLength) {
+                    // If adding this word would exceed maxLength, start a new line
+                    if (currentLine.length() > 0) {
+                        result.add(currentLine.toString());
+                        currentLine = new StringBuilder();
+                    }
+                } else if (currentLine.length() > 0) {
+                    // Otherwise, add a space if this isn't the first word in the line
                     currentLine.append(" ");
                 }
                 currentLine.append(word);
-            } else {
-                if (currentLine.length() > 0) {
-                    result.add(currentLine.toString());
-                }
-                currentLine = new StringBuilder(word);
+            }
+
+            // Add the last line if it's not empty
+            if (currentLine.length() > 0) {
+                result.add(currentLine.toString());
             }
         }
 
-        if (currentLine.length() > 0) {
-            result.add(currentLine.toString());
-        }
-
         return result;
+    }
+
+    public void modifyLanguage(String language) {
+        var languageIsChinese = language.equals("zh-CN");
+        if (languageIsChinese != this.isChinese) {
+            this.isChinese = languageIsChinese;
+            if (languageIsChinese) {
+                this.maxCharsPerLine = 10;
+            } else {
+                this.maxCharsPerLine = 30;
+            }
+            this.clear();
+        }
     }
 
     public void clear() {

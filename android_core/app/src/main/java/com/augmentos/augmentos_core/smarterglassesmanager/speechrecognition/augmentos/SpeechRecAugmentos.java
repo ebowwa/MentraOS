@@ -144,9 +144,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     private void sendFormattedTranscriptionToBackend(String text, boolean isFinal, long sessionStartTime, String language) {
         try {
+            // process text if language is en-US to lowercase
+            String processedText = text;
+            if (language.equals("en-US")) {
+                processedText = text.toLowerCase();
+            }
             JSONObject transcription = new JSONObject();
             transcription.put("type", "local_transcription");
-            transcription.put("text", text);
+            transcription.put("text", processedText);
             transcription.put("isFinal", isFinal);
             
             // Calculate relative timestamps
@@ -168,7 +173,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             transcription.put("provider", "sherpa-onnx");
 
             if (isOfflineModeEnabled) {
-                EventBus.getDefault().post(new LocalTranscriptionEvent(text, isFinal));
+                EventBus.getDefault().post(new LocalTranscriptionEvent(processedText, isFinal, language));
             } else {
                 ServerComms.getInstance().sendTranscriptionResult(transcription);
             }

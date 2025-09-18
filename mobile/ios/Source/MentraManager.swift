@@ -2239,9 +2239,10 @@ struct ViewState {
         // Send partial result to server with proper formatting
         let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
         Bridge.log("Mentra: Sending partial transcription: \(text), \(transcriptionLanguage)")
+        let processedText = transcriptionLanguage == "en-US" ? text.lowercased() : text
         let transcription: [String: Any] = [
             "type": "local_transcription",
-            "text": text,
+            "text": processedText,
             "isFinal": false,
             "startTime": Int(Date().timeIntervalSince1970 * 1000) - 1000, // 1 second ago
             "endTime": Int(Date().timeIntervalSince1970 * 1000),
@@ -2258,9 +2259,10 @@ struct ViewState {
         let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
         Bridge.log("Mentra: Sending final transcription: \(text), \(transcriptionLanguage)")
         if !text.isEmpty {
+            let processedText = transcriptionLanguage == "en-US" ? text.lowercased() : text
             let transcription: [String: Any] = [
                 "type": "local_transcription",
-                "text": text,
+                "text": processedText,
                 "isFinal": true,
                 "startTime": Int(Date().timeIntervalSince1970 * 1000) - 2000, // 2 seconds ago
                 "endTime": Int(Date().timeIntervalSince1970 * 1000),

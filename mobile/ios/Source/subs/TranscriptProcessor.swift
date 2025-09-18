@@ -162,6 +162,19 @@ class TranscriptProcessor {
     public func getLastUserTranscript() -> String {
         return self.lastUserTranscript
     }
+
+    public func modifyLanguage(_ language: String) {
+        let languageIsChinese = language == "zh-CN"
+        if languageIsChinese != self.isChinese {
+            self.isChinese = languageIsChinese
+            if languageIsChinese {
+                self.maxCharsPerLine = 10
+            } else {
+                self.maxCharsPerLine = 30
+            }
+            self.clear()
+        }
+    }
     
     public func clear() {
         self.lines = []
