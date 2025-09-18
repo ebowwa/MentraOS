@@ -51,7 +51,7 @@ class MantleManager {
     Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME)
   }
 
-  private setupPeriodicTasks() {
+  private async setupPeriodicTasks() {
     this.sendCalendarEvents()
     // Calendar sync every hour
     this.calendarSyncTimer = setInterval(
@@ -61,7 +61,11 @@ class MantleManager {
       60 * 60 * 1000,
     ) // 1 hour
     try {
-      Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {})
+      let locationAccuracy = await settings.get(SETTINGS_KEYS.location_tier)
+      let properAccuracy = this.getLocationAccuracy(locationAccuracy)
+      Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: properAccuracy,
+      })
     } catch (error) {
       console.error("Mantle: Error starting location updates", error)
     }
