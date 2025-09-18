@@ -650,6 +650,10 @@ class ServerComms {
         return dateFormatter.string(from: Date())
     }
 
+    // MARK: - Transcription Handling
+    
+    private let transcriptProcessor = TranscriptProcessor(maxCharsPerLine: 30, maxLines: 3)
+    
     /**
      * Send transcription result to server
      * Used by AOSManager to send pre-formatted transcription results
@@ -660,17 +664,18 @@ class ServerComms {
             Bridge.log("Skipping empty transcription result")
             return
         }
-
+        let isFinal = transcription["isFinal"] as? Bool ?? false
+        
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: transcription)
-            // check if offline mode is on send directly to the glasses
             if MentraManager.shared.offlineModeEnabled {
-                MentraManager.shared.sendText(text)
+                // Process the text using TranscriptProcessor
+                if let processedText = transcriptProcessor.processString(text, isFinal: isFinal) {
+                    MentraManager.shared.sendText(processedText)
+                }
             } else {
+                let jsonData = try JSONSerialization.data(withJSONObject: transcription)
                 if let jsonString = String(data: jsonData, encoding: .utf8) {
                     Bridge.sendWSText(jsonString)
-
-                    let isFinal = transcription["isFinal"] as? Bool ?? false
                     Bridge.log("Sent \(isFinal ? "final" : "partial") transcription: '\(text)'")
                 }
             }
