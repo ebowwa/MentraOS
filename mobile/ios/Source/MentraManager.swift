@@ -162,6 +162,8 @@ struct ViewState {
         {
             sgc = FrameManager()
         }
+
+        initManagerCallbacks()
     }
 
     func initManagerCallbacks() {
