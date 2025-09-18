@@ -32,11 +32,19 @@ public class Lc3Player extends Thread{
     private final int mEncoding = AudioFormat.ENCODING_PCM_16BIT;
     private long mDecorderHandle = -1;
     private ArrayBlockingQueue<byte[]> mQueue;
+    private int mFrameSize; // LC3 frame size for this player instance
 
-    public Lc3Player(Context context)
+    public Lc3Player(Context context, int frameSize)
     {
         mContext = context;
+        mFrameSize = frameSize;
         mQueue = new ArrayBlockingQueue(100);
+    }
+    
+    // Backward compatibility constructor (defaults to 40-byte frames for Mentra Live)
+    public Lc3Player(Context context)
+    {
+        this(context, 40);
     }
 
     public void init()
@@ -61,7 +69,7 @@ public class Lc3Player extends Thread{
         {
             mTrack.play();
         }
-        startRec();
+        // startRec(); // Recording disabled
     }
 
     private byte[] mRecvBuffer = new byte[200*10];
@@ -83,7 +91,7 @@ public class Lc3Player extends Thread{
         for(int i = 0;i < 5; i++)
         {
             System.arraycopy(data, i*40 + 2, mTestBuffer, 0, 40);
-            byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mTestBuffer);
+            byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mTestBuffer, mFrameSize);
             if(decData != null)
                 mTrack.write(decData, 0, decData.length);
         }
@@ -93,7 +101,7 @@ public class Lc3Player extends Thread{
         if(size != 202)
             return;
         System.arraycopy(data, 2, mBuffer, 0, 200);
-        byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mBuffer);
+        byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mBuffer, mFrameSize);
         if(decData == null)
         {
             Log.e("_test_", "lc3 decoder data null");
@@ -128,7 +136,7 @@ public class Lc3Player extends Thread{
                 L3cCpp.freeDecoder(mDecorderHandle);
             }
         }
-        stopRec();
+        // stopRec(); // Recording disabled
     }
     private int mLastSeq = 0;
     @Override
@@ -146,7 +154,7 @@ public class Lc3Player extends Thread{
                         for(int i = 0;i < 5; i++)
                         {
                             System.arraycopy(data, i*40 + 2, mTestBuffer, 0, 40);
-                            byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mTestBuffer);
+                            byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mTestBuffer, mFrameSize);
                             if(decData != null) {
                                 synchronized (this) {
                                     if (mTrack != null && isPlaying) {
@@ -174,7 +182,7 @@ public class Lc3Player extends Thread{
                         }
                         mLastSeq = ByteUtilAudioPlayer.byte2Int(data[1]);
                         mLastSeq = (mLastSeq + 1) % 256;
-                        byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mBuffer);
+                        byte []decData = L3cCpp.decodeLC3(mDecorderHandle, mBuffer, mFrameSize);
                         if(decData != null) {
                             synchronized (this) {
                                 if (mTrack != null && isPlaying) {
@@ -206,6 +214,8 @@ public class Lc3Player extends Thread{
 
 
 //////////////////////
+    // Recording functionality disabled - commented out
+    /*
     private float mWave = 0;
     private boolean mIsRecording = false;
     private static String FILE_PATH = Environment.getExternalStorageDirectory().toString()+"/1111.pcm";
@@ -247,4 +257,5 @@ public class Lc3Player extends Thread{
             mFos = null;
         }
     }
+    */
 }

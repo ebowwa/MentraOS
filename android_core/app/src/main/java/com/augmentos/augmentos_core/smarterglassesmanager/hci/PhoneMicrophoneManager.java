@@ -1769,6 +1769,8 @@ public class PhoneMicrophoneManager {
         // Determine what mic we should be using based on new preference
         boolean shouldUseGlassesMic = !userPrefersPhoneMic && glassesHaveMic && !isExternalAudioActive;
         boolean currentlyUsingGlassesMic = (currentStatus == MicStatus.GLASSES_MIC);
+
+        Log.d(TAG, "shouldUseGlassesMic: " + shouldUseGlassesMic + ", currentlyUsingGlassesMic: " + currentlyUsingGlassesMic);
         
         // If we need to change mic source
         if (shouldUseGlassesMic != currentlyUsingGlassesMic) {
