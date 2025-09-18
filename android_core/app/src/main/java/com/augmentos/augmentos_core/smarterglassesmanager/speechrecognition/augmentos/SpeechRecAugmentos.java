@@ -59,7 +59,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
     // Sherpa ONNX Transcriber
     private SherpaOnnxTranscriber sherpaTranscriber;
-    
+
     // Backend data sending control flags
     private volatile boolean sendPcmToBackend = true;
     private volatile boolean sendTranscriptionToBackend = false;
@@ -328,6 +328,9 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             vadBuffer.offer(sample);
         }
 
+        // Log.d(TAG, "Sending PCM audio chunk to backend");
+
+
         if (sendRawPCMToBackend) {
             //BUFFER STUFF
             // Add to rolling buffer regardless of VAD state
@@ -377,7 +380,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                     lc3RollingBuffer.remove(0); // Remove oldest chunks to maintain rolling window
                 }
             }
-
 
             //SENDING STUFF
             // If bypassing VAD for debugging, PCM subscription, or currently speaking, send data live
@@ -509,7 +511,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
     /**
      * Handles microphone state changes and propagates to all components
-     * 
+     *
      * @param state true if microphone is on, false otherwise
      * @param requiredData List of required data
      */
@@ -518,7 +520,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         if (vadPolicy != null){
             vadPolicy.microphoneStateChanged(state);
         }
-        
+
         // Pass to transcriber
         if (sherpaTranscriber != null && sherpaTranscriber.isInitialized()) {
             sherpaTranscriber.microphoneStateChanged(state);
@@ -547,7 +549,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 this.sendTranscriptionToBackend = false;
             }
         }
-        
+
         Log.d(TAG, "Microphone state changed to: " + (state ? "ON" : "OFF") + " with required data: " + requiredData);
     }
 

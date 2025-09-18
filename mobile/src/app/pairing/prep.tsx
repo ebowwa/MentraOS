@@ -280,7 +280,7 @@ export default function PairingPrepScreen() {
     if (glassesModelName.startsWith("Simulated")) {
       await saveSetting(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
       bridge.sendSearchForCompatibleDeviceNames("Simulated Glasses")
-      bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
+      bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses", "")
       clearHistoryAndGoHome()
       return
     }

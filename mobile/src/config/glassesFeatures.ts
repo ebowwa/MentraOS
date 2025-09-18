@@ -31,6 +31,19 @@ export interface GlassesFeatureSet {
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
+  "Mentra Nex": {
+    camera: false,
+    speakers: false,
+    display: true,
+    binocular: true,
+    wifi: false,
+    imu: true,
+    micTypes: ["custom"],
+    powerSavingMode: true,
+    gallery: false,
+    configurableButton: false,
+    wifiSelfOtaUpdate: false,
+  },
   "Even Realities G1": {
     camera: false,
     speakers: false,
@@ -65,7 +78,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: true,
     wifiSelfOtaUpdate: true,
     imu: false,
-    micTypes: ["sco"],
+    micTypes: ["custom"],
     powerSavingMode: false,
     gallery: true,
     configurableButton: true,
