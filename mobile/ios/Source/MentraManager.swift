@@ -148,7 +148,7 @@ struct ViewState {
         Bridge.log("Mentra: setup()")
     }
 
-    func initManager(_ wearable: String) {
+    func initSGC(_ wearable: String) {
         Bridge.log("Initializing manager for wearable: \(wearable)")
         if wearable.contains("G1") && sgc == nil {
             sgc = G1()
@@ -163,7 +163,7 @@ struct ViewState {
         }
     }
 
-    func initManagerCallbacks() {
+    func initSGCCallbacks() {
         // TODO: make sure this functionality is baked into the SGCs!
 
         //    if sgc is MentraLive {
@@ -543,7 +543,7 @@ struct ViewState {
         sgc?.sendJson(message, wakeUp: false)
     }
 
-    func onPhotoRequest(_ requestId: String, _ appId: String, _ webhookUrl: String, _ size: String) {
+    func handle_photo_request(_ requestId: String, _ appId: String, _ webhookUrl: String?, _ size: String) {
         Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
         sgc?.requestPhoto(
             requestId, appId: appId, webhookUrl: webhookUrl.isEmpty ? nil : webhookUrl, size: size
@@ -968,7 +968,7 @@ struct ViewState {
         } else if modelName.contains("Mach1") || modelName.contains("Z100") {
             pendingWearable = "Mach1"
         }
-        initManager(pendingWearable)
+        initSGC(pendingWearable)
         sgc?.findCompatibleDevices()
     }
 
@@ -1493,7 +1493,7 @@ struct ViewState {
                 self.deviceName = deviceName
             }
 
-            initManager(self.pendingWearable)
+            initSGC(self.pendingWearable)
             sgc?.connectById(self.deviceName)
         }
 

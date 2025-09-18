@@ -1091,7 +1091,8 @@ class G1: NSObject, SGCManager {
         case .SILENT_MODE:
             handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
         case .BLE_REQ_TRANSFER_MIC_DATA:
-            compressedVoiceData = data
+            // compressedVoiceData = data
+            MentraManager.shared.handleGlassesMicData(data)
         //                CoreCommsService.log("G1: Got voice data: " + String(data.count))
         case .UNK_1:
             handleAck(from: peripheral, success: true)

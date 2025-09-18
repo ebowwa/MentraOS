@@ -369,6 +369,7 @@ class Bridge: RCTEventEmitter {
             case send_wifi_credentials
             case set_hotspot_state
             case query_gallery_status
+            case photo_request
             case start_buffer_recording
             case stop_buffer_recording
             case save_buffer_video
@@ -479,6 +480,15 @@ class Bridge: RCTEventEmitter {
                 case .query_gallery_status:
                     Bridge.log("CommandBridge: Querying gallery status")
                     m.queryGalleryStatus()
+                case .photo_request:
+                    guard let params = params,
+                          let requestId = params["requestId"] as? String,
+                          let appId = params["appId"] as? String
+                    else {
+                        Bridge.log("CommandBridge: photo_request invalid params")
+                        break
+                    }
+                    m.handle_photo_request(requestId, appId, params["webhookUrl"] as? String?, params["size"] as? String)
                 case .start_buffer_recording:
                     Bridge.log("CommandBridge: Starting buffer recording")
                     m.startBufferRecording()
