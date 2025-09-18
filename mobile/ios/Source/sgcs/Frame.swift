@@ -105,7 +105,7 @@ struct FrameCommand {
 
     func sendJson(_: [String: Any], wakeUp _: Bool) {}
 
-    func requestPhoto(_: String, appId _: String, webhookUrl _: String?, size _: String?) {}
+    func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
 
     func forget() {}
 

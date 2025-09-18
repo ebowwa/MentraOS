@@ -464,7 +464,7 @@ class G1: NSObject, SGCManager {
 
                 // Trigger status update to include serial number in status JSON
                 DispatchQueue.main.async {
-                    MentraManager.shared.handleRequestStatus()
+                    MentraManager.shared.handle_request_status()
                 }
             }
         } catch {
@@ -1176,21 +1176,21 @@ class G1: NSObject, SGCManager {
             case .CASE_REMOVED:
                 Bridge.log("G1: REMOVED FROM CASE")
                 caseRemoved = true
-                MentraManager.shared.handleRequestStatus()
+                MentraManager.shared.handle_request_status()
             case .CASE_REMOVED2:
                 Bridge.log("G1: REMOVED FROM CASE2")
                 caseRemoved = true
-                MentraManager.shared.handleRequestStatus()
+                MentraManager.shared.handle_request_status()
             case .CASE_OPEN:
                 caseOpen = true
                 caseRemoved = false
                 Bridge.log("G1: CASE OPEN")
-                MentraManager.shared.handleRequestStatus()
+                MentraManager.shared.handle_request_status()
             case .CASE_CLOSED:
                 caseOpen = false
                 caseRemoved = false
                 Bridge.log("G1: CASE CLOSED")
-                MentraManager.shared.handleRequestStatus()
+                MentraManager.shared.handle_request_status()
             case .CASE_CHARGING_STATUS:
                 guard data.count >= 3 else { break }
                 let status = data[2]

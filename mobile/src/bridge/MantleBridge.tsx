@@ -978,7 +978,6 @@ export class MantleBridge extends EventEmitter {
   }
 
   async sendClearDisplay() {
-    console.log("sendClearDisplay")
     return await this.sendData({
       command: "clear_display",
     })

@@ -849,7 +849,7 @@ class MentraLive: NSObject, SGCManager {
             _ready = newValue
             if oldValue != newValue {
                 // Call the callback when state changes
-                onConnectionStateChanged?()
+                MentraManager.shared.handleConnectionStateChange()
                 Bridge.log("MentraLive: connection state changed to: \(newValue)")
             }
             if !newValue {
@@ -2151,7 +2151,7 @@ class MentraLive: NSObject, SGCManager {
     private func updateBatteryStatus(level: Int, charging: Bool) {
         batteryLevel = level
         isCharging = charging
-        MentraManager.shared.handleRequestStatus()
+        MentraManager.shared.handle_request_status()
         // emitBatteryLevelEvent(level: level, charging: charging)
     }
 
@@ -2172,7 +2172,7 @@ class MentraLive: NSObject, SGCManager {
         emitHotspotStatusChange()
 
         // Trigger a full status update so React Native gets the updated glasses_info
-        MentraManager.shared.handleRequestStatus()
+        MentraManager.shared.handle_request_status()
     }
 
     private func handleGalleryStatus(photoCount: Int, videoCount: Int, totalCount: Int,
