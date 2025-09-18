@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.service.notification.NotificationListenerService;
 
@@ -17,6 +18,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -107,45 +109,58 @@ public class NotificationService extends NotificationListenerService {
     public void onNotificationPosted(StatusBarNotification sbn) {
         String packageName = sbn.getPackageName();
 
-        // 🚨 Filter out blacklisted packages
+        Log.d(TAG, "Package Name: " + packageName);
+
+        // Filter out blacklisted packages
         if (packageBlacklist.contains(packageName)) {
             Log.d(TAG, "Ignoring blacklisted package: " + packageName);
+            return;
+        }
+
+        // Filter out Google/Samsung system packages
+        if (isSystemPackageToBlock(packageName)) {
+            Log.d(TAG, "Blocking system package: " + packageName);
+            return;
+        }
+
+        // Check if app is blacklisted by package name
+        if (SimpleBlacklistModule.isAppBlacklisted(this, packageName)) {
+            String appName = getAppName(packageName);
+            Log.d(TAG, "App blocked by user preference: " + appName + " (" + packageName + ")");
             return;
         }
         
         Notification notification = sbn.getNotification();
         Bundle extras = notification.extras;
         
-        // 🚨 Filter by notification category
+        // Filter by notification category
         String category = notification.category;
         if (category != null && categoryBlacklist.contains(category)) {
             Log.d(TAG, "Ignoring notification with category: " + category);
             return;
         }
 
-        // 🚨 Log full notification for debugging
-        Log.d(TAG, "---- New Notification Received ----");
-        Log.d(TAG, "Package: " + packageName);
-        Log.d(TAG, "Notification Dump: " + extras.toString());
+        // Log notification details
+        Log.d(TAG, "New notification from: " + packageName);
 
         // Extract title and text
         final String title = extras.getString(Notification.EXTRA_TITLE, "");
         CharSequence textCharSequence = extras.getCharSequence(Notification.EXTRA_TEXT, "");
         final String text = textCharSequence != null ? textCharSequence.toString() : "";
 
-        // 🚨 Ignore empty notifications
+        // Ignore empty notifications
         if (title.isEmpty() || text.isEmpty()) {
             Log.d(TAG, "Ignoring notification with no content.");
             return;
         }
 
-        // 🚨 Ignore WhatsApp summary notifications like "5 new messages"
+        // Ignore WhatsApp summary notifications like "5 new messages"
         if (text.matches("^\\d+ new messages$")) {
             Log.d(TAG, "Ignoring summary notification: " + text);
             return;
         }
 
-        // 🚨 Ignore WhatsApp notifications with a `null` ID if they look like summaries
+        // Ignore WhatsApp notifications with a null ID if they look like summaries
         if (sbn.getKey().contains("|null|") && text.matches("^\\d+ new messages$")) {
             Log.d(TAG, "Ignoring WhatsApp summary notification with null ID.");
             return;
@@ -188,7 +203,7 @@ public class NotificationService extends NotificationListenerService {
         // Check if this was a notification we were tracking
         NotificationInfo trackedNotification = activeNotifications.get(notificationKey);
         if (trackedNotification != null) {
-            Log.d(TAG, "🚨 Notification dismissed: " + trackedNotification.title + " - " + trackedNotification.text);
+            Log.d(TAG, "Notification dismissed: " + trackedNotification.title + " - " + trackedNotification.text);
             
             // Post dismissal event to EventBus
             NotificationDismissedEvent dismissalEvent = new NotificationDismissedEvent(
@@ -222,7 +237,7 @@ public class NotificationService extends NotificationListenerService {
             activeNotifications.remove(notificationKey);
             Log.d(TAG, "📝 Removed notification from tracking: " + notificationKey);
         } else {
-            Log.d(TAG, "⚠️ Notification removed but not tracked: " + notificationKey);
+            Log.d(TAG, "Notification removed but not tracked: " + notificationKey);
         }
     }
 
@@ -231,6 +246,9 @@ public class NotificationService extends NotificationListenerService {
         try {
             String appName = getAppName(sbn.getPackageName());
             String notificationKey = sbn.getKey();
+            String packageName = sbn.getPackageName();
+            
+            // Note: App tracking removed - using manual blacklist approach
             
             JSONObject obj = new JSONObject();
             obj.put("appName", appName);
@@ -244,14 +262,14 @@ public class NotificationService extends NotificationListenerService {
                 notificationUtils.onNotificationPosted(obj.toString());
 
                 // Track this notification for dismissal detection
-                activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, sbn.getPackageName()));
-                Log.d(TAG, "✅ Sent notification: " + title + " - " + text);
-                Log.d(TAG, "📝 Tracking notification with key: " + notificationKey);
+                activeNotifications.put(notificationKey, new NotificationInfo(appName, title, text, packageName));
+                Log.d(TAG, "Sent notification: " + title + " - " + text);
+                Log.d(TAG, "Tracking notification with key: " + notificationKey);
             } else {
                 Log.d(TAG, "Could not send notification- reactContext is null");
             }
         } catch (JSONException e) {
-            Log.d(TAG, "❌ JSONException occurred: " + e.getMessage());
+            Log.d(TAG, "JSONException occurred: " + e.getMessage());
         }
     }
 
@@ -275,6 +293,132 @@ public class NotificationService extends NotificationListenerService {
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
             return packageName;
+        }
+    }
+
+    /**
+     * Check if notifications are enabled for a specific app based on user preferences
+     * This method reads from the same storage that React Native writes to
+     */
+    private boolean isAppNotificationEnabled(String packageName) {
+        try {
+            // Get SharedPreferences using the same key as React Native AsyncStorage
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            
+            // AsyncStorage stores data with a key prefix
+            String prefsJson = prefs.getString("NOTIFICATION_APP_PREFERENCES", "{}");
+            
+            if (prefsJson.equals("{}")) {
+                // No preferences set, default to enabled
+                return true;
+            }
+            
+            JSONObject preferences = new JSONObject(prefsJson);
+            
+            if (preferences.has(packageName)) {
+                JSONObject appPref = preferences.getJSONObject(packageName);
+                return appPref.optBoolean("enabled", true);
+            }
+            
+            // App not in preferences, default to enabled
+            return true;
+            
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking app notification preference for " + packageName + ": " + e.getMessage());
+            // Default to enabled on error
+            return true;
+        }
+    }
+
+    /**
+     * Check global notification setting
+     */
+    private boolean isGlobalNotificationEnabled() {
+        try {
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            String globalSetting = prefs.getString("ENABLE_PHONE_NOTIFICATIONS", "true");
+            return Boolean.parseBoolean(globalSetting);
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking global notification setting: " + e.getMessage());
+            return true;
+        }
+    }
+
+    /**
+     * Check if this is a system package that should be blocked from sending notifications
+     */
+    private boolean isSystemPackageToBlock(String packageName) {
+        String pkg = packageName.toLowerCase();
+        
+        // Block any package containing "google", "samsung", or ".sec."
+        return pkg.contains("google") || pkg.contains("samsung") || pkg.contains(".sec.");
+    }
+
+    /**
+     * Check if app is in the manual blacklist by app name
+     */
+    private boolean isAppInManualBlacklist(String appName) {
+        Log.d(TAG, "Checking manual blacklist for: " + appName);
+        try {
+            SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
+            
+            // AsyncStorage keys are prefixed differently - let's check all keys
+            Log.d(TAG, "🔍 All SharedPreferences keys:");
+            for (String key : prefs.getAll().keySet()) {
+                if (key.contains("NOTIFICATION")) {
+                    Log.d(TAG, "   Found notification key: " + key);
+                    String value = prefs.getString(key, "");
+                    Log.d(TAG, "   Value: " + value);
+                }
+            }
+            
+            // Try different key formats
+            String[] possibleKeys = {
+                "NOTIFICATION_APP_PREFERENCES",
+                "@RCTAsyncLocalStorage_V1:NOTIFICATION_APP_PREFERENCES",
+                "RCTAsyncLocalStorage_V1:NOTIFICATION_APP_PREFERENCES"
+            };
+            
+            String prefsJson = "{}";
+            for (String key : possibleKeys) {
+                String value = prefs.getString(key, null);
+                if (value != null && !value.equals("{}")) {
+                    prefsJson = value;
+                    Log.d(TAG, "✅ Found preferences with key: " + key);
+                    Log.d(TAG, "   Value: " + prefsJson);
+                    break;
+                }
+            }
+
+            if (prefsJson.equals("{}")) {
+                Log.d(TAG, "❌ No blacklist preferences found");
+                return false; // No blacklist entries
+            }
+
+            JSONObject preferences = new JSONObject(prefsJson);
+            Log.d(TAG, "📋 Checking app: " + appName);
+
+            // Check all manual entries to see if this app name is blacklisted
+            for (Iterator<String> keys = preferences.keys(); keys.hasNext(); ) {
+                String key = keys.next();
+                if (key.startsWith("manual.")) {
+                    JSONObject appPref = preferences.getJSONObject(key);
+                    String blacklistedAppName = appPref.optString("appName", "");
+                    boolean enabled = appPref.optBoolean("enabled", true);
+                    
+                    // If app name matches and it's disabled (blocked), return true
+                    if (blacklistedAppName.toLowerCase().contains(appName.toLowerCase()) && !enabled) {
+                        Log.d(TAG, "📋 Found in manual blacklist: " + appName + " (blocked=" + !enabled + ")");
+                        return true;
+                    }
+                }
+            }
+            
+            return false; // Not found in blacklist
+            
+        } catch (Exception e) {
+            Log.w(TAG, "Error checking manual blacklist for " + appName + ": " + e.getMessage());
+            return false; // Default to not blocked on error
         }
     }
 }

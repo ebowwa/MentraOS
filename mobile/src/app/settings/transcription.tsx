@@ -29,9 +29,8 @@ export default function TranscriptionSettingsScreen() {
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000; // 8 seconds
+  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
-
 
   // load settings:
   useEffect(() => {
@@ -122,12 +121,17 @@ export default function TranscriptionSettingsScreen() {
     await bridge.restartTranscription()
   }
 
-
   const handleModelChange = async (modelId: string) => {
     const timeRemaining = timeRemainingTillRestart()
 
     if (timeRemaining > 0) {
-      showAlert("Restart already in progress", "A model change is in progress. Please wait " + Math.ceil(timeRemaining/1000) + " seconds before switching to another model", [{text: "OK"}])
+      showAlert(
+        "Restart already in progress",
+        "A model change is in progress. Please wait " +
+          Math.ceil(timeRemaining / 1000) +
+          " seconds before switching to another model",
+        [{text: "OK"}],
+      )
       return
     }
     const info = await STTModelManager.getModelInfo(modelId)

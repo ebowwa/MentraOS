@@ -295,6 +295,16 @@ export class MantleBridge extends EventEmitter {
         })
       } else if ("ping" in data) {
         // Heartbeat response - nothing to do
+      } else if ("heartbeat_sent" in data) {
+        console.log("💓 Received heartbeat_sent event from Core", data.heartbeat_sent)
+        GlobalEventEmitter.emit("heartbeat_sent", {
+          timestamp: data.heartbeat_sent.timestamp,
+        })
+      } else if ("heartbeat_received" in data) {
+        console.log("💓 Received heartbeat_received event from Core", data.heartbeat_received)
+        GlobalEventEmitter.emit("heartbeat_received", {
+          timestamp: data.heartbeat_received.timestamp,
+        })
       } else if ("notify_manager" in data) {
         GlobalEventEmitter.emit("SHOW_BANNER", {
           message: translate(data.notify_manager.message),
@@ -304,6 +314,7 @@ export class MantleBridge extends EventEmitter {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_RESULT", {
           modelName: data.compatible_glasses_search_result.model_name,
           deviceName: data.compatible_glasses_search_result.device_name,
+          deviceAddress: data.compatible_glasses_search_result.device_address,
         })
       } else if ("compatible_glasses_search_stop" in data) {
         GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
@@ -546,12 +557,20 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async sendConnectWearable(modelName: string, deviceName: string = "") {
+  async sendConnectWearable(modelName: string, deviceName: string = "", deviceAddress: string) {
+    console.log(
+      "sendConnectWearable modelName:",
+      modelName,
+      " deviceName",
+      deviceName,
+      " deviceAddress " + deviceAddress,
+    )
     return await this.sendData({
       command: "connect_wearable",
       params: {
         model_name: modelName,
         device_name: deviceName,
+        device_address: deviceAddress,
       },
     })
   }
@@ -946,6 +965,44 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  async sendDisplayText(text: string, x: number, y: number, size: number) {
+    console.log("sendDisplayText", text, x, y, size)
+
+    return await this.sendData({
+      command: "display_text",
+      params: {
+        text: text,
+        x: x,
+        y: y,
+        size: size,
+      },
+    })
+  }
+
+  async sendDisplayImage(imageType: string, imageSize: string) {
+    return await this.sendData({
+      command: "display_image",
+      params: {
+        imageType: imageType,
+        imageSize: imageSize,
+      },
+    })
+  }
+
+  async sendClearDisplay() {
+    console.log("sendClearDisplay")
+    return await this.sendData({
+      command: "clear_display",
+    })
+  }
+
+  async setLc3AudioEnabled(enabled: boolean) {
+    console.log("setLc3AudioEnabled", enabled)
+    return await this.sendData({
+      command: "set_lc3_audio_enabled",
+      enabled: enabled,
+    })
+  }
   // Buffer recording commands
   async sendStartBufferRecording() {
     return await this.sendData({
