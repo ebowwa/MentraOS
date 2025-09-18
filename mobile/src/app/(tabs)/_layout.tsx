@@ -137,7 +137,7 @@ export default function Layout() {
                 position: "absolute",
                 left: 0,
                 right: 0,
-                top: 14,
+                top: 0,
                 bottom: 0,
               }}
               start={{x: 0, y: 0}}
@@ -222,11 +222,11 @@ export default function Layout() {
 }
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  borderTopColor: colors.separator,
-  borderTopWidth: 1,
-  paddingTop: 8,
+  // backgroundColor: colors.background,
+  // borderTopColor: colors.separator,
+  // borderTopWidth: 10,
   height: 90,
+  paddingTop: spacing.sm,
 })
 
 const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
