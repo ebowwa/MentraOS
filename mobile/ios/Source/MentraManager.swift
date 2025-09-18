@@ -1361,7 +1361,7 @@ struct ViewState {
             handleLiveReady()
         } else if pendingWearable.contains("G1") {
             handleG1Ready()
-        } else if defaultWearable.contains("Mach1") {
+        } else if pendingWearable.contains("Mach1") {
             handleMach1Ready()
         }
         // save the default_wearable now that we're connected:
