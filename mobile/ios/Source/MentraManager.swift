@@ -1369,6 +1369,7 @@ struct ViewState {
     }
 
     private func handleDeviceReady() {
+        Bridge.log("Mentra: Device ready")
         // send to the server our battery status:
         Bridge.sendBatteryStatus(level: sgc?.batteryLevel ?? -1, charging: false)
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
@@ -1386,6 +1387,7 @@ struct ViewState {
     }
 
     private func handleG1Ready() {
+        Bridge.log("Mentra: G1 device ready")
         isSearching = false
         defaultWearable = "Even Realities G1"
         handle_request_status()
