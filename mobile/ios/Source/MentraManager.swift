@@ -627,27 +627,10 @@ struct ViewState {
     }
 
     func sendCurrentState(_ isDashboard: Bool) {
-        // Cancel any pending delayed execution
-        // sendStateWorkItem?.cancel()
-
-        // don't send the screen state if we're updating the screen:
         if isUpdatingScreen {
             return
         }
 
-        // Execute immediately
-        executeSendCurrentState(isDashboard)
-
-        // // Schedule a delayed execution that will fire in 1 second if not cancelled
-        // let workItem = DispatchWorkItem { [weak self] in
-        //     self?.executeSendCurrentState(isDashboard)
-        // }
-
-        // sendStateWorkItem = workItem
-        // sendStateQueue.asyncAfter(deadline: .now() + 0.5, execute: workItem)
-    }
-
-    func executeSendCurrentState(_ isDashboard: Bool) {
         Task {
             var currentViewState: ViewState!
             if isDashboard {
@@ -884,8 +867,6 @@ struct ViewState {
     }
 
     private func clearDisplay() {
-        sgc!.clearDisplay()
-
         if sgc is G1 {
             let g1 = sgc as? G1
             g1?.sendTextWall(" ")
@@ -905,6 +886,8 @@ struct ViewState {
                 sendStateWorkItem = workItem
                 sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
             }
+        } else {
+            sgc!.clearDisplay()
         }
     }
 
