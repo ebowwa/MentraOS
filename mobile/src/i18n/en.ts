@@ -224,6 +224,8 @@ const en = {
     loggingOutMessage: "We're logging you out...",
     themeSettings: "Theme Settings",
     feedback: "Give Feedback",
+    offlineSTT: "Offline Transcriptions",
+    offlineSTTSubtitle: "Transcribe audio and display on connected glasses completely offline.",
   },
   profileSettings: {
     title: "Profile Settings",

@@ -39,12 +39,24 @@ const AppPopover: React.FC<{
   visible: boolean
   anchorRef: React.Component | null
   onClose: () => void
+  onCloseComplete: () => void
   onStartStop: () => void
   onOpenSettings: () => void
   onOpenWebView: () => void
   themed: (style: any) => any
   theme: any
-}> = ({app, visible, anchorRef, onClose, onStartStop, onOpenSettings, onOpenWebView, themed, theme}) => {
+}> = ({
+  app,
+  visible,
+  anchorRef,
+  onClose,
+  onCloseComplete,
+  onStartStop,
+  onOpenSettings,
+  onOpenWebView,
+  themed,
+  theme,
+}) => {
   if (!app || !anchorRef || !visible) return null
 
   return (
@@ -52,6 +64,7 @@ const AppPopover: React.FC<{
       from={anchorRef}
       isVisible={visible}
       onRequestClose={onClose}
+      onCloseComplete={onCloseComplete}
       popoverStyle={themed($popoverStyle)}
       backgroundStyle={{backgroundColor: "rgba(0, 0, 0, 0.5)"}}
       animationConfig={{duration: 200}}
@@ -191,6 +204,11 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
 
   const handleAppPress = useCallback(
     (app: AppletInterface) => {
+      // Prevent opening if another popover is already visible
+      if (popoverVisible) {
+        return
+      }
+
       const ref = touchableRefs.current.get(app.packageName)
       if (ref) {
         // If app is offline, show maintenance dialog instead of popover
@@ -202,13 +220,15 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         setPopoverVisible(true)
       }
     },
-    [showMaintenanceDialog],
+    [showMaintenanceDialog, popoverVisible],
   )
 
   const handlePopoverClose = useCallback(() => {
     setPopoverVisible(false)
-    // Delay clearing selectedApp to prevent flicker
-    setTimeout(() => setSelectedApp(null), 200)
+  }, [])
+
+  const handlePopoverCloseComplete = useCallback(() => {
+    setSelectedApp(null)
   }, [])
 
   const handleStartStop = useCallback(() => {
@@ -313,6 +333,7 @@ export const AppsGridViewRoot: React.FC<AppsGridViewProps> = ({
         visible={popoverVisible}
         anchorRef={currentAnchorRef || null}
         onClose={handlePopoverClose}
+        onCloseComplete={handlePopoverCloseComplete}
         onStartStop={handleStartStop}
         onOpenSettings={handleOpenSettings}
         onOpenWebView={handleOpenWebView}

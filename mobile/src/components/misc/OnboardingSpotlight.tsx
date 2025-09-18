@@ -13,11 +13,9 @@ import {
 } from "react-native"
 import {FontAwesome} from "@expo/vector-icons"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle, spacing} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
-import {Spacer} from "./Spacer"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -57,7 +55,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   // Check onboarding status
   useEffect(() => {
     const checkOnboarding = async () => {
-      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      const onboardingCompleted = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
       if (!onboardingCompleted) {
         // Check if glasses are connected
         const glassesConnected = status.glasses_info?.model_name != null
@@ -81,7 +79,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
           // }
           // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
           setVisible(false)
-          await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+          await settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
         }
       }
     }
@@ -95,7 +93,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   const handleDismiss = () => {
     setVisible(false)
     // Mark onboarding as completed if user skips
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
   }
 
   // Handle spotlight target press
@@ -111,7 +109,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
         await restComms.startApp(liveCaptionsPackageName)
 
         // Mark onboarding as completed
-        await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        await settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
 
         // Show the success message after a short delay
         setTimeout(() => {

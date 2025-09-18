@@ -4,10 +4,7 @@ import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
-import {translate} from "@/i18n"
-import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {router} from "expo-router"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -19,14 +16,14 @@ export default function ThemeSettingsPage() {
 
   useEffect(() => {
     // Load saved theme preference
-    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
+    settings.get(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
       setSelectedTheme(savedTheme as ThemeType)
     })
   }, [])
 
   const handleThemeChange = async (newTheme: ThemeType) => {
     setSelectedTheme(newTheme)
-    await saveSetting(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
+    await settings.set(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
 
     // Apply theme immediately
     if (newTheme === "system") {

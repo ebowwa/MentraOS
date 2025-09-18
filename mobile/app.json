@@ -155,7 +155,13 @@
         }
       ],
       "@livekit/react-native-expo-plugin",
-      "@config-plugins/react-native-webrtc"
+      "@config-plugins/react-native-webrtc",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow MentraOS to use your location."
+        }
+      ]
     ],
     "experiments": {
       "tsconfigPaths": true,

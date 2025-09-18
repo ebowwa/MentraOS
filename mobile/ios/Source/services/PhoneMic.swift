@@ -1,5 +1,5 @@
 //
-//  MicrophoneManager.swift
+//  PhoneMic.swift
 //  MentraOS_Manager
 //
 //  Created on 3/8/25.
@@ -9,18 +9,8 @@ import AVFoundation
 import Combine
 import Foundation
 
-class OnboardMicrophoneManager {
-    static let shared = OnboardMicrophoneManager()
-
-    // MARK: - Properties
-
-    /// Publisher for voice data
-    private let voiceDataSubject = PassthroughSubject<Data, Never>()
-
-    /// Public access to voice data stream
-    var voiceData: AnyPublisher<Data, Never> {
-        return voiceDataSubject.eraseToAnyPublisher()
-    }
+class PhoneMic {
+    static let shared = PhoneMic()
 
     /// Audio recording components
     private var audioEngine: AVAudioEngine?
@@ -360,9 +350,7 @@ class OnboardMicrophoneManager {
             }
 
             let pcmData = self.extractInt16Data(from: convertedBuffer)
-
-            // just publish the PCM data, we'll encode it in the AOSManager:
-            self.voiceDataSubject.send(pcmData)
+            MentraManager.shared.handlePcm(pcmData)
         }
 
         // Start the audio engine

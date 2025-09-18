@@ -5,7 +5,6 @@ import bridge from "@/bridge/MantleBridge"
 
 import {deepCompare} from "@/utils/debugging"
 import restComms from "@/managers/RestComms"
-import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useConnectionStore} from "@/stores/connection"
 import {Platform} from "react-native"

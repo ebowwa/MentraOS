@@ -138,11 +138,11 @@
 			path = sgcs;
 			sourceTree = "<group>";
 		};
-		C5033C242E56657F006A0718 /* subs */ = {
+		C5033C242E56657F006A0718 /* services */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 			);
-			path = subs;
+			path = services;
 			sourceTree = "<group>";
 		};
 		C5033C332E5665D4006A0718 /* utils */ = {
@@ -267,7 +267,7 @@
 			children = (
 				C5033C3A2E56664B006A0718 /* stt */,
 				C5033C332E5665D4006A0718 /* utils */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C232E56654E006A0718 /* sgcs */,
 				C5DE98952DE267CD0032FC99 /* Bridge.m */,
 				C5DE98962DE267CD0032FC99 /* Bridge.swift */,
@@ -432,7 +432,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C5033C232E56654E006A0718 /* sgcs */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C332E5665D4006A0718 /* utils */,
 				C5033C3A2E56664B006A0718 /* stt */,
 			);
