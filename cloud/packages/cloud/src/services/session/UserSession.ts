@@ -522,12 +522,13 @@ export class UserSession {
           this.subscriptionManager.getAppSubscriptions(packageName);
       }
 
-      const hasPCMTranscriptionSubscriptions =
-        this.subscriptionManager.hasPCMTranscriptionSubscriptions();
-      const requiresAudio = hasPCMTranscriptionSubscriptions.hasMedia;
+      const mediaSubscriptionDetails =
+        this.subscriptionManager.getMediaSubscriptionDetails();
+      const requiresAudio = mediaSubscriptionDetails.needsMedia;
       const requiredData = this.microphoneManager.calculateRequiredData(
-        hasPCMTranscriptionSubscriptions.hasPCM,
-        hasPCMTranscriptionSubscriptions.hasTranscription,
+        mediaSubscriptionDetails.needsPcm,
+        mediaSubscriptionDetails.needsTranslation,
+        mediaSubscriptionDetails.transcriptionLanguages,
       );
       // Side-effect: update mic state to reflect current needs
       this.microphoneManager.updateState(requiresAudio, requiredData);

@@ -54,13 +54,15 @@ export class MicrophoneManager {
 
   // Cached subscription state to avoid expensive repeated lookups
   private cachedSubscriptionState: {
-    hasPCM: boolean;
-    hasTranscription: boolean;
-    hasMedia: boolean;
+    needsPcm: boolean;
+    needsTranslation: boolean;
+    transcriptionLanguages: string[];
+    needsMedia: boolean;
   } = {
-    hasPCM: false,
-    hasTranscription: false,
-    hasMedia: false,
+    needsPcm: false,
+    needsTranslation: false,
+    transcriptionLanguages: [],
+    needsMedia: false,
   };
 
   constructor(session: UserSession) {
@@ -221,11 +223,12 @@ export class MicrophoneManager {
    */
   private updateCachedSubscriptionState(): void {
     const state =
-      this.session.subscriptionManager.hasPCMTranscriptionSubscriptions();
+      this.session.subscriptionManager.getMediaSubscriptionDetails();
     this.cachedSubscriptionState = {
-      hasPCM: state.hasPCM,
-      hasTranscription: state.hasTranscription,
-      hasMedia: state.hasMedia,
+      needsPcm: state.needsPcm,
+      needsTranslation: state.needsTranslation,
+      transcriptionLanguages: state.transcriptionLanguages,
+      needsMedia: state.needsMedia,
     };
     this.logger.debug(
       "Updated cached subscription state",
@@ -239,28 +242,40 @@ export class MicrophoneManager {
    */
   private shouldBypassVadForPCM(): boolean {
     // Use cached state instead of calling service
-    return this.cachedSubscriptionState.hasPCM;
+    return this.cachedSubscriptionState.needsPcm;
   }
 
   calculateRequiredData(
-    hasPCM: boolean,
-    hasTranscription: boolean,
+    needsPcm: boolean,
+    needsTranslation: boolean,
+    transcriptionLanguages: string[]
   ): Array<"pcm" | "transcription" | "pcm_or_transcription"> {
     const requiredData: Array<
       "pcm" | "transcription" | "pcm_or_transcription"
     > = [];
+    const localTranscriptionLanguage = "en-US";
     const isCloudSttDown = this.session.transcriptionManager.isCloudSTTDown();
-    if (hasPCM) {
+    const transcriptionLanguageSubscriptions = transcriptionLanguages.length;
+    let isLocalTranscriptionLangugeSame = false;
+    if (transcriptionLanguageSubscriptions == 1) {
+      isLocalTranscriptionLangugeSame = transcriptionLanguages[0] == localTranscriptionLanguage;
+    }
+
+    if (
+      needsPcm ||
+      transcriptionLanguageSubscriptions > 1 ||
+      needsTranslation ||
+      (transcriptionLanguageSubscriptions == 1 && !isLocalTranscriptionLangugeSame)
+    ) {
       requiredData.push("pcm");
-      if (hasTranscription && isCloudSttDown) {
-        requiredData.push("transcription");
-      }
-    } else {
-      if (hasTranscription && isCloudSttDown) {
-        requiredData.push("transcription");
-      } else {
-        requiredData.push("pcm_or_transcription");
-      }
+    }
+
+    if (transcriptionLanguageSubscriptions == 1 && isLocalTranscriptionLangugeSame && isCloudSttDown) {
+      requiredData.push("transcription");
+    }
+
+    if (!needsPcm && (transcriptionLanguageSubscriptions == 1 && isLocalTranscriptionLangugeSame && !isCloudSttDown)) {
+      requiredData.push("pcm_or_transcription");
     }
 
     return requiredData;
@@ -302,12 +317,13 @@ export class MicrophoneManager {
       // Update cache before using it
       this.updateCachedSubscriptionState();
 
-      const hasMediaSubscriptions = this.cachedSubscriptionState.hasMedia;
+      const needsMediaSubscriptions = this.cachedSubscriptionState.needsMedia;
       const requiredData = this.calculateRequiredData(
-        this.cachedSubscriptionState.hasPCM,
-        this.cachedSubscriptionState.hasTranscription,
+        this.cachedSubscriptionState.needsPcm,
+        this.cachedSubscriptionState.needsTranslation,
+        this.cachedSubscriptionState.transcriptionLanguages,
       );
-      this.updateState(hasMediaSubscriptions, requiredData);
+      this.updateState(needsMediaSubscriptions, requiredData);
     }
   }
 
@@ -326,16 +342,17 @@ export class MicrophoneManager {
       // Update cache when subscriptions change
       this.updateCachedSubscriptionState();
 
-      const hasMediaSubscriptions = this.cachedSubscriptionState.hasMedia;
+      const needsMediaSubscriptions = this.cachedSubscriptionState.needsMedia;
       const requiredData = this.calculateRequiredData(
-        this.cachedSubscriptionState.hasPCM,
-        this.cachedSubscriptionState.hasTranscription,
+        this.cachedSubscriptionState.needsPcm,
+        this.cachedSubscriptionState.needsTranslation,
+        this.cachedSubscriptionState.transcriptionLanguages,
       );
       this.logger.info(
-        `Subscription changed, media subscriptions: ${hasMediaSubscriptions}`,
+        `Subscription changed, media subscriptions: ${needsMediaSubscriptions}`,
       );
       // Apply holddown when turning mic off to avoid flapping
-      if (hasMediaSubscriptions) {
+      if (needsMediaSubscriptions) {
         // Cancel any pending mic-off holddown
         if (this.micOffHolddownTimer) {
           clearTimeout(this.micOffHolddownTimer);
@@ -349,10 +366,11 @@ export class MicrophoneManager {
         this.micOffHolddownTimer = setTimeout(() => {
           // Re-evaluate before actually turning off
           this.updateCachedSubscriptionState();
-          const stillNoMedia = !this.cachedSubscriptionState.hasMedia;
+          const stillNoMedia = !this.cachedSubscriptionState.needsMedia;
           const finalRequiredData = this.calculateRequiredData(
-            this.cachedSubscriptionState.hasPCM,
-            this.cachedSubscriptionState.hasTranscription,
+            this.cachedSubscriptionState.needsPcm,
+            this.cachedSubscriptionState.needsTranslation,
+            this.cachedSubscriptionState.transcriptionLanguages,
           );
           if (stillNoMedia) {
             this.updateState(false, finalRequiredData);
@@ -382,7 +400,7 @@ export class MicrophoneManager {
   private updateKeepAliveTimer(): void {
     // Check if we should have a keep-alive timer running using cached state
     const shouldHaveKeepAlive =
-      this.enabled && this.cachedSubscriptionState.hasMedia;
+      this.enabled && this.cachedSubscriptionState.needsMedia;
 
     if (shouldHaveKeepAlive && !this.keepAliveTimer) {
       // Start keep-alive timer
@@ -394,7 +412,7 @@ export class MicrophoneManager {
           this.session.websocket.readyState === WebSocket.OPEN
         ) {
           // Use cached state for the check
-          if (this.cachedSubscriptionState.hasMedia && this.enabled) {
+          if (this.cachedSubscriptionState.needsMedia && this.enabled) {
             this.logger.debug("Sending microphone keep-alive");
             this.sendStateChangeToGlasses(
               this.lastSentState,
@@ -436,7 +454,7 @@ export class MicrophoneManager {
 
     // Check if we should NOT be receiving audio using cached state
     const shouldMicBeOff =
-      !this.enabled || !this.cachedSubscriptionState.hasMedia;
+      !this.enabled || !this.cachedSubscriptionState.needsMedia;
 
     if (shouldMicBeOff) {
       // We're receiving audio when we shouldn't be
@@ -446,8 +464,9 @@ export class MicrophoneManager {
 
       // Send mic off immediately
       const requiredData = this.calculateRequiredData(
-        this.cachedSubscriptionState.hasPCM,
-        this.cachedSubscriptionState.hasTranscription,
+        this.cachedSubscriptionState.needsPcm,
+        this.cachedSubscriptionState.needsTranslation,
+        this.cachedSubscriptionState.transcriptionLanguages,
       );
       this.sendStateChangeToGlasses(false, requiredData);
 

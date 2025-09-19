@@ -42,7 +42,8 @@ export class SubscriptionManager {
 
   // Cached aggregates for O(1) reads
   private pcmSubscriptionCount: number = 0;
-  private transcriptionLikeSubscriptionCount: number = 0; // transcription/translation incl. language streams
+  private translationSubscriptionCount: number = 0;
+  private transcriptionLanguagesSet: Set<string> = new Set();
   private languageStreamCounts: Map<ExtendedStreamType, number> = new Map();
 
   constructor(userSession: UserSession) {
@@ -136,15 +137,17 @@ export class SubscriptionManager {
     return result;
   }
 
-  hasPCMTranscriptionSubscriptions(): {
-    hasMedia: boolean;
-    hasPCM: boolean;
-    hasTranscription: boolean;
+  getMediaSubscriptionDetails(): {
+    needsMedia: boolean,
+    needsPcm: boolean,
+    needsTranslation: boolean,
+    transcriptionLanguages: string[],
   } {
-    const hasPCM = this.pcmSubscriptionCount > 0;
-    const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
-    const hasMedia = hasPCM || hasTranscription;
-    return { hasMedia, hasPCM, hasTranscription };
+    const needsPcm = this.pcmSubscriptionCount > 0;
+    const needsTranslation = this.translationSubscriptionCount > 0;
+    const transcriptionLanguages: string[] = Array.from(this.transcriptionLanguagesSet);
+    const needsMedia = needsPcm || needsTranslation || transcriptionLanguages.length > 0;
+    return { needsMedia, needsPcm, needsTranslation, transcriptionLanguages };
   }
 
   cacheCalendarEvent(event: any): void {
@@ -452,26 +455,26 @@ export class SubscriptionManager {
       return;
     }
 
-    // Direct transcription/translation
-    if (sub === StreamType.TRANSCRIPTION || sub === StreamType.TRANSLATION) {
-      this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-      if (this.transcriptionLikeSubscriptionCount < 0)
-        this.transcriptionLikeSubscriptionCount = 0;
-      return;
+    const languageStreamInfo = parseLanguageStream(sub as string);
+    const isLangStream = languageStreamInfo !== null;
+
+    if (sub === StreamType.TRANSLATION || (isLangStream && languageStreamInfo.baseType === StreamType.TRANSLATION)) {
+      this.translationSubscriptionCount += isAdd ? 1 : -1;
+      if (this.translationSubscriptionCount < 0) this.translationSubscriptionCount = 0;
     }
 
-    // Language-specific streams
-    if (isLanguageStream(sub)) {
-      const langInfo = parseLanguageStream(sub as string);
-      if (
-        langInfo &&
-        (langInfo.type === StreamType.TRANSCRIPTION ||
-          langInfo.type === StreamType.TRANSLATION)
-      ) {
-        this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-        if (this.transcriptionLikeSubscriptionCount < 0)
-          this.transcriptionLikeSubscriptionCount = 0;
+    if (sub === StreamType.TRANSCRIPTION || (isLangStream && languageStreamInfo.baseType === StreamType.TRANSCRIPTION)) {
+      // in transcriptionLanguagesArray push languageStreamInfo.language
+      const transcriptionLanguage = languageStreamInfo?.transcribeLanguage || "en-US";
+      if (isAdd) {
+        this.transcriptionLanguagesSet.add(transcriptionLanguage);
+      } else {
+        this.transcriptionLanguagesSet.delete(transcriptionLanguage);
       }
+    }
+    
+    // Language-specific streams
+    if (isLangStream) {
       const prev = this.languageStreamCounts.get(sub) || 0;
       const next = prev + (isAdd ? 1 : -1);
       if (next <= 0) this.languageStreamCounts.delete(sub);
