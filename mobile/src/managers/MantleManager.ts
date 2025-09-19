@@ -30,6 +30,7 @@ class MantleManager {
 
   private calendarSyncTimer: NodeJS.Timeout | null = null
   private transcriptProcessor: TranscriptProcessor
+  private clearTextTimeout: NodeJS.Timeout | null = null
   private readonly MAX_CHARS_PER_LINE = 30
   private readonly MAX_LINES = 3
 
@@ -147,7 +148,6 @@ class MantleManager {
   }
 
   public async handleLocalTranscription(data: any) {
-    console.log("Mantle: handleLocalTranscription()", data)
     // TODO: performance!
     const offlineStt = await settings.get(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
@@ -156,6 +156,26 @@ class MantleManager {
         data.text,
         data.isFinal ?? false
       )
+
+      // Scheduling timeout to clear text from wall. In case of online STT online dashboard manager will handle it.
+      if (data.isFinal) {
+        console.log("Mantle: isFinal, scheduling timeout to clear text from wall")
+        if (this.clearTextTimeout) {
+          console.log("Mantle: canceling pending timeout")
+          clearTimeout(this.clearTextTimeout)
+        }
+        this.clearTextTimeout = setTimeout(() => {
+          console.log("Mantle: clearing text from wall")
+          socketComms.handle_display_event({
+            type: "display_event",
+            view: "main",
+            layout: {
+              layoutType: "text_wall",
+              text: "",
+            },
+          })
+        }, 10000) // 10 seconds
+      }
 
       if (processedText) {
         socketComms.handle_display_event({
