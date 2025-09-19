@@ -3425,6 +3425,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void updateSettings(JSONObject newSettings) {
+        Log.d(TAG, "Updating settings: " + newSettings.toString());
+        // if there is a default_wearable setting, update our wearable:
+        if (newSettings.has("default_wearable")) {
+            String defaultWearable = newSettings.getString("default_wearable");
+            SmartGlassesManager.savePreferredWearable(this, defaultWearable);
+            sendStatusToAugmentOsManager();
+        }
+    }
+
+    @Override
     public void startBufferRecording() {
         Log.d(TAG, "Starting buffer recording on smart glasses");
         if (smartGlassesManager != null) {
