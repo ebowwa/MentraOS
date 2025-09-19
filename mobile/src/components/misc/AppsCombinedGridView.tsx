@@ -13,12 +13,13 @@ import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
+import restComms from "@/managers/RestComms"
 
 interface AppsCombinedGridViewProps {}
 
 const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
   const {themed, theme} = useAppTheme()
-  const {appStatus, checkAppHealthStatus, optimisticallyStartApp, optimisticallyStopApp} = useAppStatus()
+  const {appStatus, optimisticallyStartApp, optimisticallyStopApp} = useAppStatus()
   const {push} = useNavigationHistory()
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false)
   const [index, setIndex] = useState(0)
@@ -43,7 +44,7 @@ const AppsCombinedGridViewRoot: React.FC<AppsCombinedGridViewProps> = () => {
         return
       }
 
-      if (!(await checkAppHealthStatus(appInfo.packageName))) {
+      if (!(await restComms.checkAppHealthStatus(appInfo.packageName))) {
         showAlert(translate("errors:appNotOnlineTitle"), translate("errors:appNotOnlineMessage"), [
           {text: translate("common:ok")},
         ])

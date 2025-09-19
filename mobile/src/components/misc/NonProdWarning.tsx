@@ -1,15 +1,10 @@
 // SensingDisabledWarning.tsx
 import React, {useCallback, useState} from "react"
-import {View, StyleSheet, TouchableOpacity, TextStyle} from "react-native"
-import {Text} from "@/components/ignite"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useNavigation} from "@react-navigation/native"
-import {NavigationProps} from "./types"
-import {router, useFocusEffect} from "expo-router"
+import {StyleSheet, TouchableOpacity, TextStyle} from "react-native"
+import {useFocusEffect} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
@@ -21,7 +16,7 @@ export default function NonProdWarning() {
   const {push} = useNavigationHistory()
 
   const checkNonProdBackend = async () => {
-    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, "prod.augmentos.cloud")
+    const url = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL, "prod.augmentos.cloud")
 
     let isProd = false
     if (

@@ -19,9 +19,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import bridge from "@/bridge/MantleBridge"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
 import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
@@ -44,19 +42,17 @@ export default function Homepage() {
       // If enabling offline mode, stop all running apps
       await stopAllApps()
     } else {
-      // If disabling offline mode, turn off offline captions
-      await bridge.toggleOfflineApps(false)
-      await saveSetting(SETTINGS_KEYS.offline_captions_app_running, false)
+      await settings.set(SETTINGS_KEYS.offline_captions_app_running, false)
     }
-    await saveSetting(SETTINGS_KEYS.OFFLINE_MODE, newIsOfflineMode)
+    await settings.set(SETTINGS_KEYS.OFFLINE_MODE, newIsOfflineMode)
     setIsOfflineMode(newIsOfflineMode)
   }, [stopAllApps])
 
   useEffect(() => {
     const check = async () => {
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
       setShowNewUi(newUiSetting)
-      const offlineModeSetting = await loadSetting(SETTINGS_KEYS.OFFLINE_MODE, false)
+      const offlineModeSetting = await settings.get(SETTINGS_KEYS.OFFLINE_MODE, false)
       setIsOfflineMode(offlineModeSetting)
       setHasLoaded(true)
     }

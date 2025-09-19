@@ -1,5 +1,7 @@
 import bridge from "@/bridge/MantleBridge"
+import restComms from "@/managers/RestComms"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import {getTimeZone} from "react-native-localize"
 
 export const SETTINGS_KEYS = {
   PREVIOUSLY_BONDED_PUCK: "PREVIOUSLY_BONDED_PUCK",
@@ -41,6 +43,10 @@ export const SETTINGS_KEYS = {
   core_token: "core_token",
   server_url: "server_url",
   offline_captions_app_running: "offline_captions_app_running",
+  time_zone: "time_zone",
+  time_zone_override: "time_zone_override",
+  offline_stt: "offline_stt",
+  location_tier: "location_tier",
 }
 
 const DEFAULT_SETTINGS = {
@@ -72,9 +78,8 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.bypass_vad_for_debugging]: true,
   [SETTINGS_KEYS.bypass_audio_encoding_for_debugging]: false,
   [SETTINGS_KEYS.metric_system_enabled]: false,
-  [SETTINGS_KEYS.enforce_local_transcription]: false,
   [SETTINGS_KEYS.button_press_mode]: "photo",
-  [SETTINGS_KEYS.default_wearable]: "glasses",
+  [SETTINGS_KEYS.default_wearable]: null,
   [SETTINGS_KEYS.device_name]: "",
   [SETTINGS_KEYS.preferred_mic]: "phone",
   [SETTINGS_KEYS.contextual_dashboard_enabled]: true,
@@ -86,61 +91,15 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.button_mode]: "photo",
   [SETTINGS_KEYS.button_photo_size]: "medium",
   [SETTINGS_KEYS.offline_captions_app_running]: false,
-}
-
-export const getSettingDefault = (key: string) => {
-  return DEFAULT_SETTINGS[key]
-}
-
-const saveSetting = async (key: string, value: any, updateCore: boolean = true): Promise<void> => {
-  try {
-    const jsonValue = JSON.stringify(value)
-    await AsyncStorage.setItem(key, jsonValue)
-    if (CORE_SETTINGS_KEYS.includes(key)) {
-      if (updateCore) {
-        bridge.updateSettings({[key]: value})
-      }
-    }
-  } catch (error) {
-    console.error(`Failed to save setting (${key}):`, error)
-  }
-}
-
-const loadSetting = async (key: string, overrideDefaultValue?: any) => {
-  const defaultValue = overrideDefaultValue ?? DEFAULT_SETTINGS[key]
-  try {
-    const jsonValue = await AsyncStorage.getItem(key)
-
-    if (jsonValue !== null) {
-      return JSON.parse(jsonValue)
-    }
-
-    return defaultValue
-  } catch (error) {
-    console.error(`Failed to load setting (${key}):`, error)
-    return defaultValue
-  }
-}
-
-export const writeSettings = async (settings: any): Promise<any> => {
-  for (const key in settings) {
-    await saveSetting(key, settings[key])
-  }
-}
-
-export const getRestUrl = async (): Promise<string> => {
-  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const url = new URL(serverUrl)
-  const secure = url.protocol === "https:"
-  return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
-}
-
-export const getWsUrl = async (): Promise<string> => {
-  const serverUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const url = new URL(serverUrl)
-  const secure = url.protocol === "https:"
-  const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
-  return wsUrl
+  // user settings:
+  [SETTINGS_KEYS.time_zone]: null,
+  [SETTINGS_KEYS.time_zone_override]: null,
+  // stt:
+  [SETTINGS_KEYS.offline_stt]: false,
+  [SETTINGS_KEYS.enforce_local_transcription]: false,
+  
+  // location:
+  [SETTINGS_KEYS.location_tier]: null,
 }
 
 const CORE_SETTINGS_KEYS = [
@@ -163,17 +122,117 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.dashboard_depth,
   SETTINGS_KEYS.button_mode,
   SETTINGS_KEYS.button_photo_size,
+  SETTINGS_KEYS.offline_stt,
+  SETTINGS_KEYS.offline_captions_app_running,
 ]
 
-// return an object populated with settings that the core should have:
-export const getCoreSettings = async (): Promise<any> => {
-  const coreSettingsObj: any = {}
+class Settings {
+  private static instance: Settings
 
-  for (const setting of CORE_SETTINGS_KEYS) {
-    coreSettingsObj[setting] = await loadSetting(setting)
+  private constructor() {}
+
+  public static getInstance(): Settings {
+    if (!Settings.instance) {
+      Settings.instance = new Settings()
+    }
+    return Settings.instance
   }
 
-  return coreSettingsObj
+  public async get(key: string, overrideDefaultValue?: any): Promise<any> {
+    const override = await this.handleSpecialCases(key)
+    if (override) {
+      return override
+    }
+
+    const defaultValue = overrideDefaultValue ?? (await this.getDefaultValue(key))
+    try {
+      const jsonValue = await AsyncStorage.getItem(key)
+
+      if (jsonValue !== null) {
+        return JSON.parse(jsonValue)
+      }
+
+      return defaultValue
+    } catch (error) {
+      console.error(`Failed to load setting (${key}):`, error)
+      return defaultValue
+    }
+  }
+
+  public async set(key: string, value: any, updateCore: boolean = true, updateServer: boolean = true): Promise<void> {
+    try {
+      const jsonValue = JSON.stringify(value)
+      await AsyncStorage.setItem(key, jsonValue)
+      if (CORE_SETTINGS_KEYS.includes(key)) {
+        if (updateCore) {
+          bridge.updateSettings({[key]: value})
+        }
+      }
+
+      if (!updateServer) {
+        return
+      }
+
+      await restComms.writeUserSettings({[key]: value})
+    } catch (error) {
+      console.error(`Failed to save setting (${key}):`, error)
+    }
+  }
+
+  public async getDefaultValue(key: string): Promise<any> {
+    if (key === SETTINGS_KEYS.time_zone) {
+      return getTimeZone()
+    }
+    return DEFAULT_SETTINGS[key]
+  }
+
+  public async handleSpecialCases(key: string): Promise<any> {
+    if (key === SETTINGS_KEYS.time_zone) {
+      const override = await this.get(SETTINGS_KEYS.time_zone_override)
+      if (override) {
+        return override
+      }
+      return getTimeZone()
+    }
+    return null
+  }
+
+  public async initUserSettings(): Promise<void> {
+    const timeZone = await this.get(SETTINGS_KEYS.time_zone)
+    await this.set(SETTINGS_KEYS.time_zone, timeZone, true, true)
+  }
+
+  public async getRestUrl(): Promise<string> {
+    const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const url = new URL(serverUrl)
+    const secure = url.protocol === "https:"
+    return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
+  }
+
+  public async getWsUrl(): Promise<string> {
+    const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const url = new URL(serverUrl)
+    const secure = url.protocol === "https:"
+    const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
+    return wsUrl
+  }
+
+  public async setManyLocally(settings: any): Promise<any> {
+    for (const key in settings) {
+      await this.set(key, settings[key], true, false)
+    }
+  }
+
+  public async getCoreSettings(): Promise<any> {
+    const coreSettingsObj: any = {}
+
+    for (const setting of CORE_SETTINGS_KEYS) {
+      coreSettingsObj[setting] = await this.get(setting)
+    }
+
+    return coreSettingsObj
+  }
 }
 
-export {saveSetting, loadSetting}
+const settings = Settings.getInstance()
+export default settings

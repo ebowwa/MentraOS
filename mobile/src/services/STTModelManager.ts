@@ -2,7 +2,7 @@ import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
-import coreCommunicator from "@/bridge/MantleBridge"
+import bridge from "@/bridge/MantleBridge"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 
@@ -120,7 +120,7 @@ class STTModelManager {
         }
       }
       if (Platform.OS === "ios") {
-        path = await coreCommunicator.getSttModelPath()
+        path = await bridge.getSttModelPath()
       }
       const modelId = path && path.length > 0 ? this.getModelIdFromPath(path) : ""
 
@@ -195,7 +195,7 @@ class STTModelManager {
 
       // Validate model with native module
       if (Platform.OS === "ios") {
-        const isValid = await coreCommunicator.validateSTTModel(modelPath)
+        const isValid = await bridge.validateSTTModel(modelPath)
         return isValid
       } else {
         const nativeModule = FileProviderModule
@@ -307,7 +307,7 @@ class STTModelManager {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
           onExtractionProgress?.({percentage: 25})
-          await coreCommunicator.extractTarBz2(tempPath, finalPath)
+          await bridge.extractTarBz2(tempPath, finalPath)
           onExtractionProgress?.({percentage: 90})
           console.log("Native extraction completed")
         } catch (extractError) {
@@ -394,7 +394,7 @@ class STTModelManager {
 
   private async setNativeModelPath(path: string, languageCode: string): Promise<void> {
     if (Platform.OS === "ios") {
-      coreCommunicator.setSttModelDetails(path, languageCode)
+      bridge.setSttModelDetails(path, languageCode)
       return
     }
 

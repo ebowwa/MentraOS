@@ -2,11 +2,10 @@ import React, {useState, useCallback, useEffect} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {AppletInterface} from "@/contexts/AppletStatusProvider"
 import {AppListItem} from "./AppListItem"
 import {Text} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
-import {saveSetting, loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {router} from "expo-router"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {useFocusEffect} from "@react-navigation/native";
@@ -37,8 +36,8 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
   // Load saved states on mount and when screen comes into focus
   const loadState = useCallback(async () => {
     const [savedState, isEnforced] = await Promise.all([
-      loadSetting(SETTINGS_KEYS.offline_captions_app_running, false),
-      loadSetting(SETTINGS_KEYS.enforce_local_transcription, false)
+      settings.get(SETTINGS_KEYS.offline_captions_app_running, false),
+      settings.get(SETTINGS_KEYS.enforce_local_transcription, false)
     ])
     setIsOfflineCaptionsEnabled(savedState)
     setIsLocalTranscriptionEnforced(isEnforced)
@@ -82,7 +81,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     bridge.toggleOfflineApps(newOfflineMode)
     
     // Save the preference to storage
-    await saveSetting(SETTINGS_KEYS.offline_captions_app_running, newOfflineMode)
+    await settings.set(SETTINGS_KEYS.offline_captions_app_running, newOfflineMode)
     
     // Update the local state
     setIsOfflineCaptionsEnabled(newOfflineMode)

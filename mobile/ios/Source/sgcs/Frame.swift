@@ -1,5 +1,5 @@
 //
-//  FrameManager.swift
+//  Frame.swift
 //  AOS
 //
 //  Created by Matthew Fosse on 8/20/25.
@@ -32,8 +32,116 @@ struct FrameCommand {
 
 // MARK: - FrameManager
 
-@objc(FrameManager) class FrameManager: NSObject {
-    // MARK: - Constants
+@objc(FrameManager) class FrameManager: NSObject, SGCManager {
+    var wifiSsid: String?
+
+    var wifiConnected: Bool?
+
+    var wifiLocalIp: String?
+
+    var isHotspotEnabled: Bool?
+
+    var hotspotSsid: String?
+
+    var hotspotPassword: String?
+
+    var hotspotGatewayIp: String?
+
+    var caseBatteryLevel: Int?
+
+    var glassesAppVersion: String?
+
+    var glassesBuildNumber: String?
+
+    var glassesDeviceModel: String?
+
+    var glassesAndroidVersion: String?
+
+    var glassesOtaVersionUrl: String?
+
+    var glassesSerialNumber: String?
+
+    var glassesStyle: String?
+
+    var glassesColor: String?
+
+    func sendButtonPhotoSettings() {}
+
+    func sendButtonModeSetting() {}
+
+    func sendButtonVideoRecordingSettings() {}
+
+    func sendButtonCameraLedSetting() {}
+
+    func exit() {}
+
+    func requestWifiScan() {}
+
+    func sendWifiCredentials(_: String, _: String) {}
+
+    func sendHotspotState(_: Bool) {}
+
+    func queryGalleryStatus() {}
+
+    func showDashboard() {}
+
+    func getConnectedBluetoothName() -> String? {
+        return nil
+    }
+
+    func setDashboardPosition(_: Int, _: Int) {}
+
+    func setSilentMode(_: Bool) {}
+
+    func findCompatibleDevices() {}
+
+    func connectById(_: String) {}
+
+    func displayBitmap(base64ImageData _: String) async -> Bool {
+        return true
+    }
+
+    func sendDoubleTextWall(_: String, _: String) {}
+
+    func sendJson(_: [String: Any], wakeUp _: Bool) {}
+
+    func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
+
+    func forget() {}
+
+    func setBrightness(_: Int, autoMode _: Bool) {}
+
+    let type = "frame"
+    let hasMic = false
+    var ready = false
+    var isHeadUp = false
+    var caseOpen = false
+    var caseRemoved = true
+    var caseCharging = false
+
+    func setMicEnabled(_: Bool) {}
+
+    func sendJson(_: [String: Any]) {}
+
+    func startRtmpStream(_: [String: Any]) {}
+
+    func stopRtmpStream() {}
+
+    func sendRtmpKeepAlive(_: [String: Any]) {}
+
+    func startBufferRecording() {}
+
+    func stopBufferRecording() {}
+
+    func saveBufferVideo(requestId _: String, durationSeconds _: Int) {}
+
+    func startVideoRecording(requestId _: String, save _: Bool) {}
+
+    func stopVideoRecording(requestId _: String) {}
+
+    func setHeadUpAngle(_: Int) {}
+
+    func getBatteryStatus() {}
 
     // Frame BLE Service and Characteristic UUIDs
     private let FRAME_SERVICE_UUID = CBUUID(string: "7A230001-5475-A6A4-654C-8431F6AD49C4")
@@ -73,10 +181,6 @@ struct FrameCommand {
     // Published properties for SwiftUI/Combine
     @Published var connectionState = "DISCONNECTED"
     @Published var batteryLevel: Int = -1
-
-    // MARK: - Singleton
-
-    static let shared = FrameManager()
 
     override init() {
         super.init()
@@ -155,7 +259,7 @@ struct FrameCommand {
 
     // MARK: - Display Methods
 
-    func displayTextWall(_ text: String) {
+    func sendTextWall(_ text: String) {
         guard isConnected else {
             Bridge.log("\(FrameManager.TAG): Cannot display text - not connected")
             return
@@ -226,13 +330,8 @@ struct FrameCommand {
         queueCommand(command)
     }
 
-    func blankScreen() {
+    func clearDisplay() {
         queueCommand("frame.display.text(' ', 1, 1);frame.display.show();print(nil)")
-    }
-
-    func showHomeScreen() {
-        // Legacy naming - this actually just clears the display
-        blankScreen()
     }
 
     // MARK: - Private Methods
@@ -548,34 +647,5 @@ extension FrameManager: CBPeripheralDelegate {
             currentWriteCompletion?(true)
         }
         currentWriteCompletion = nil
-    }
-}
-
-// MARK: - React Native Bridge Methods
-
-extension FrameManager {
-    @objc func RN_startScan() {
-        startScanning()
-    }
-
-    @objc func RN_stopScan() {
-        stopScanning()
-    }
-
-    @objc func RN_connect() -> Bool {
-        connect()
-        return true
-    }
-
-    @objc func RN_disconnect() {
-        disconnect()
-    }
-
-    @objc func RN_sendText(_ text: String) {
-        displayTextWall(text)
-    }
-
-    @objc func RN_isConnected() -> Bool {
-        return isConnected
     }
 }

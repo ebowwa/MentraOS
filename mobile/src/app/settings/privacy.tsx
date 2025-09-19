@@ -29,7 +29,7 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function PrivacySettingsScreen() {
   const [isSensingEnabled, setIsSensingEnabled] = useState(false)
@@ -44,7 +44,7 @@ export default function PrivacySettingsScreen() {
 
   // load settings:
   useEffect(() => {
-    loadSetting(SETTINGS_KEYS.sensing_enabled).then(setIsSensingEnabled)
+    settings.get(SETTINGS_KEYS.sensing_enabled).then(setIsSensingEnabled)
   }, [])
 
   // Check permissions when screen loads
@@ -147,7 +147,7 @@ export default function PrivacySettingsScreen() {
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled
     await bridge.sendToggleSensing(newSensing) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.sensing_enabled, newSensing)
+    await settings.set(SETTINGS_KEYS.sensing_enabled, newSensing)
     setIsSensingEnabled(newSensing)
   }
 
