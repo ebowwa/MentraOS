@@ -224,6 +224,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         ConcurrentHashMap<Integer, byte[]> receivedPackets;
         long startTime;
         boolean isComplete;
+        boolean isAnnounced;
 
         FileTransferSession(String fileName, int fileSize) {
             this.fileName = fileName;
@@ -233,6 +234,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             this.receivedPackets = new ConcurrentHashMap<>();
             this.startTime = System.currentTimeMillis();
             this.isComplete = false;
+            this.isAnnounced = false;
         }
 
         boolean addPacket(int index, byte[] data) {
@@ -249,6 +251,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 return true;
             }
             return false;
+        }
+        
+        // Get list of missing packet indices
+        List<Integer> getMissingPackets() {
+            List<Integer> missing = new ArrayList<>();
+            for (int i = 0; i < totalPackets; i++) {
+                if (!receivedPackets.containsKey(i)) {
+                    missing.add(i);
+                }
+            }
+            return missing;
         }
 
         byte[] assembleFile() {
@@ -1535,6 +1548,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         switch (type) {
+            case "file_announce":
+                handleFileTransferAnnouncement(json);
+                break;
+            case "transfer_timeout":
+                handleTransferTimeout(json);
+                break;
             case "ble_photo_ready":
                 processBlePhotoReady(json);
                 break;
@@ -1998,6 +2017,70 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error processing ble_photo_ready", e);
+        }
+    }
+
+    /**
+     * Handle transfer timeout notification from glasses
+     */
+    private void handleTransferTimeout(JSONObject json) {
+        try {
+            String fileName = json.optString("fileName", "");
+            
+            Log.e(TAG, "⏰ Transfer timeout notification received for: " + fileName);
+            
+            if (!fileName.isEmpty()) {
+                // Clean up any active transfer for this file
+                FileTransferSession session = activeFileTransfers.remove(fileName);
+                if (session != null) {
+                    Log.d(TAG, "🧹 Cleaned up timed out transfer session for: " + fileName);
+                    Log.d(TAG, "📊 Transfer stats - Received: " + session.receivedPackets.size() + "/" + session.totalPackets + " packets");
+                }
+                
+                // Clean up any BLE photo transfer
+                String bleImgId = fileName;
+                int dotIndex = bleImgId.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    bleImgId = bleImgId.substring(0, dotIndex);
+                }
+                BlePhotoTransfer photoTransfer = blePhotoTransfers.remove(bleImgId);
+                if (photoTransfer != null) {
+                    Log.d(TAG, "🧹 Cleaned up timed out BLE photo transfer for: " + bleImgId);
+                }
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "⏰ Error processing transfer timeout notification", e);
+        }
+    }
+    
+    /**
+     * Handle file transfer announcement from glasses
+     */
+    private void handleFileTransferAnnouncement(JSONObject json) {
+        try {
+            // Extract data directly from JSON (same format as version_info)
+            String fileName = json.optString("fileName", "");
+            int totalPackets = json.optInt("totalPackets", 0);
+            int fileSize = json.optInt("fileSize", 0);
+            
+            Log.d(TAG, "📢 File transfer announcement: " + fileName + ", " + totalPackets + " packets, " + fileSize + " bytes");
+            
+            if (fileName.isEmpty() || totalPackets <= 0) {
+                Log.w(TAG, "📢 Invalid file transfer announcement");
+                return;
+            }
+            
+            // Create announced file transfer session
+            FileTransferSession session = new FileTransferSession(fileName, fileSize);
+            // Override calculated packet count with announced count for accuracy
+            session.totalPackets = totalPackets;
+            activeFileTransfers.put(fileName, session);
+            
+            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "📢 Error processing file transfer announcement", e);
         }
     }
 
@@ -3560,6 +3643,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     processAndUploadBlePhoto(photoTransfer, imageData);
                 }
 
+                // Send completion confirmation to glasses
+                sendTransferCompleteConfirmation(packetInfo.fileName, true);
+
                 // Clean up - use the bleImgId without extension
                 blePhotoTransfers.remove(bleImgId);
             }
@@ -3578,33 +3664,54 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                   " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
         }
 
-        // Add packet to session
-        boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
+            // Add packet to session
+            boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
 
-        if (added) {
-            // BES chip handles ACKs automatically
-            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
+            if (added) {
+                // BES chip handles ACKs automatically
+                Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
 
-            // Check if transfer is complete
-            if (session.isComplete) {
-                Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
+                // Check if transfer is complete
+                if (session.isComplete) {
+                    Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
 
-                // Assemble and save the file
-                byte[] fileData = session.assembleFile();
-                if (fileData != null) {
-                    saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                    // Assemble and save the file
+                    byte[] fileData = session.assembleFile();
+                    if (fileData != null) {
+                        saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                    }
+
+                    // Send completion confirmation to glasses
+                    sendTransferCompleteConfirmation(packetInfo.fileName, true);
+
+                    // Remove from active transfers
+                    activeFileTransfers.remove(packetInfo.fileName);
                 }
-
-                // Remove from active transfers
-                activeFileTransfers.remove(packetInfo.fileName);
+            } else {
+                // Packet already received or invalid index
+                Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
+                // BES chip handles ACKs automatically
             }
-        } else {
-            // Packet already received or invalid index
-            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
-            // BES chip handles ACKs automatically
-        }
     }
 
+    /**
+     * Send transfer completion confirmation to glasses
+     */
+    private void sendTransferCompleteConfirmation(String fileName, boolean success) {
+        try {
+            JSONObject confirmation = new JSONObject();
+            confirmation.put("type", "transfer_complete");
+            confirmation.put("fileName", fileName);
+            confirmation.put("success", success);
+            confirmation.put("timestamp", System.currentTimeMillis());
+            
+            Log.d(TAG, (success ? "✅" : "❌") + " Sending transfer completion confirmation for: " + fileName + " (success: " + success + ")");
+            sendJson(confirmation, true);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating transfer completion confirmation", e);
+        }
+    }
 
     /**
      * Save received file to storage
