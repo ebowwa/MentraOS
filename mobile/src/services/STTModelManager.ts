@@ -3,6 +3,7 @@ import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import {TarBz2Extractor} from "./TarBz2Extractor"
 import bridge from "@/bridge/MantleBridge"
+import settings, { SETTINGS_KEYS } from "@/managers/Settings"
 
 const {BridgeModule, FileProviderModule} = NativeModules
 
@@ -389,6 +390,7 @@ class STTModelManager {
 
     this.currentModelId = modelId
     const modelPath = this.getModelPath(modelId)
+    await settings.set(SETTINGS_KEYS.local_stt_language, model.languageCode)
     await this.setNativeModelPath(modelPath, model.languageCode)
   }
 

@@ -353,6 +353,7 @@ export class GlassesWebSocketService {
               bypassVad: coreInfo.bypass_vad_for_debugging,
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
               enforceLocalTranscription: coreInfo.enforce_local_transcription,
+              localSttLanguage: coreInfo.local_stt_language,
             };
 
             logger.debug({ newSettings }, "🔥🔥🔥: newSettings:");

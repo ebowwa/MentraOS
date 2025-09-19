@@ -24,6 +24,7 @@ export const SETTINGS_KEYS = {
   bypass_audio_encoding_for_debugging: "bypass_audio_encoding_for_debugging",
   metric_system_enabled: "metric_system_enabled",
   enforce_local_transcription: "enforce_local_transcription",
+  local_stt_language: "local_stt_language",
   button_press_mode: "button_press_mode",
   default_wearable: "default_wearable",
   device_name: "device_name",
@@ -76,6 +77,8 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.bypass_audio_encoding_for_debugging]: false,
   [SETTINGS_KEYS.metric_system_enabled]: false,
   [SETTINGS_KEYS.enforce_local_transcription]: false,
+  [SETTINGS_KEYS.local_stt_language]: null,
+
   [SETTINGS_KEYS.button_press_mode]: "photo",
   [SETTINGS_KEYS.default_wearable]: null,
   [SETTINGS_KEYS.device_name]: "",

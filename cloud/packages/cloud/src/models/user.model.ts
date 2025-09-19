@@ -36,6 +36,7 @@ export interface UserI extends Document {
     bypassAudioEncoding: boolean;
     metricSystemEnabled: boolean;
     enforceLocalTranscription: boolean;
+    localSttLanguage: string;
   };
   location?: Location;
   locationSubscriptions?: Map<string, { rate: string }>;
@@ -181,6 +182,7 @@ const UserSchema = new Schema<UserI>(
         bypassVad: { type: Boolean, default: false },
         bypassAudioEncoding: { type: Boolean, default: false },
         enforceLocalTranscription: { type: Boolean, default: false },
+        localSttLanguage: { type: String, default: null },
       },
       default: function () {
         return {
@@ -197,6 +199,7 @@ const UserSchema = new Schema<UserI>(
           bypassVad: false,
           bypassAudioEncoding: false,
           enforceLocalTranscription: false,
+          localSttLanguage: null,
         };
       },
     },
