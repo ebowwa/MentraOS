@@ -28,7 +28,6 @@ export default function TranscriptionSettingsScreen() {
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const [isOfflineSTTEnabled, setIsOfflineSTTEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
@@ -37,7 +36,6 @@ export default function TranscriptionSettingsScreen() {
   const loadSettings = async () => {
     await settings.get(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
     await settings.get(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
-    await settings.get(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
   }
   useEffect(() => {
     loadSettings().then(() => setLoading(false))
@@ -244,12 +242,6 @@ export default function TranscriptionSettingsScreen() {
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
-  const toggleOfflineSTT = async () => {
-    const newSetting = !isOfflineSTTEnabled
-    await settings.set(SETTINGS_KEYS.offline_stt, newSetting)
-    setIsOfflineSTTEnabled(newSetting)
-  }
-
   useEffect(() => {
     initSelectedModel()
   }, [])
@@ -330,13 +322,6 @@ export default function TranscriptionSettingsScreen() {
                 )}
 
                 <Spacer height={theme.spacing.md} />
-                <ToggleSetting
-                  label={translate("settings:offlineSTT")}
-                  subtitle={translate("settings:offlineSTTSubtitle")}
-                  value={isOfflineSTTEnabled}
-                  onValueChange={toggleOfflineSTT}
-                  disabled={!modelInfo?.downloaded || isDownloading}
-                />
               </>
             )}
           </>

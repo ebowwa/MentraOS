@@ -45,7 +45,6 @@ export const SETTINGS_KEYS = {
   offline_captions_app_running: "offline_captions_app_running",
   time_zone: "time_zone",
   time_zone_override: "time_zone_override",
-  offline_stt: "offline_stt",
   location_tier: "location_tier",
 }
 
@@ -95,7 +94,6 @@ const DEFAULT_SETTINGS = {
   [SETTINGS_KEYS.time_zone]: null,
   [SETTINGS_KEYS.time_zone_override]: null,
   // stt:
-  [SETTINGS_KEYS.offline_stt]: false,
   [SETTINGS_KEYS.enforce_local_transcription]: false,
   
   // location:
@@ -122,7 +120,6 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.dashboard_depth,
   SETTINGS_KEYS.button_mode,
   SETTINGS_KEYS.button_photo_size,
-  SETTINGS_KEYS.offline_stt,
   SETTINGS_KEYS.offline_captions_app_running,
 ]
 

@@ -723,13 +723,6 @@ public class ServerComms {
                     offlineModeEnabled = speechRecAugmentos.getIsOfflineModeEnabled();
                 }
 
-                Log.d(TAG, "Offline mode enabled: " + offlineModeEnabled);
-
-                if (offlineModeEnabled) {
-                    Log.d(TAG, "Offline mode enabled, skipping microphone state change");
-                    break;
-                }
-
                 boolean bypassVad = msg.optBoolean("bypassVad", false);
 
                 JSONArray requiredDataJson = msg.optJSONArray("requiredData");
@@ -745,6 +738,13 @@ public class ServerComms {
                             }
                         }
                     }
+                }
+
+                Log.d(TAG, "Offline mode enabled: " + offlineModeEnabled);
+                if (offlineModeEnabled) {
+                    Log.d(TAG, "Offline mode enabled, modifying required data to have just transcription");
+                    requiredData = new ArrayList<>();
+                    requiredData.add(SpeechRequiredDataType.TRANSCRIPTION);
                 }
 
                 // Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +

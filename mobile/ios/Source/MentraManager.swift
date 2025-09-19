@@ -54,7 +54,7 @@ struct ViewState {
     private var bypassVad: Bool = true
     private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
-    var offlineModeEnabled: Bool = false
+    private var offlineModeEnabled: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
     private var metricSystemEnabled: Bool = false
@@ -70,7 +70,6 @@ struct ViewState {
     // mic:
     private var useOnboardMic = false
     private var preferredMic = "glasses"
-    private var offlineStt = false
     private var micEnabled = false
     private var currentRequiredData: [SpeechRequiredDataType] = []
 
@@ -453,7 +452,7 @@ struct ViewState {
         // this must be done before the requiredData is modified by offlineStt:
         currentRequiredData = requiredData
 
-        if offlineStt, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
+        if offlineModeEnabled, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
             requiredData.append(.TRANSCRIPTION)
         }
 
@@ -990,13 +989,7 @@ struct ViewState {
 
         handle_request_status() // to update the UI
     }
-
-    func setOfflineStt(_ enabled: Bool) {
-        offlineStt = enabled
-        // trigger a microphone state change if needed:
-        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
-    }
-
+    
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         sgc?.setHeadUpAngle(value)
@@ -1619,10 +1612,6 @@ struct ViewState {
            newPhotoSize != buttonPhotoSize
         {
             setButtonPhotoSize(newPhotoSize)
-        }
-
-        if let newOfflineStt = settings["offline_stt"] as? Bool, newOfflineStt != offlineStt {
-            setOfflineStt(newOfflineStt)
         }
 
         // get default wearable from core_info:
