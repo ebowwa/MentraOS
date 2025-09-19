@@ -30,8 +30,8 @@ class MantleManager {
 
   private calendarSyncTimer: NodeJS.Timeout | null = null
   private transcriptProcessor: TranscriptProcessor
-  private readonly MAX_CHARS_PER_LINE = 40
-  private readonly MAX_LINES = 5
+  private readonly MAX_CHARS_PER_LINE = 30
+  private readonly MAX_LINES = 3
 
   public static getInstance(): MantleManager {
     if (!MantleManager.instance) {
@@ -151,19 +151,23 @@ class MantleManager {
     // TODO: performance!
     const offlineStt = await settings.get(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
+      this.transcriptProcessor.changeLanguage(data.transcribeLanguage)
       const processedText = this.transcriptProcessor.processString(
         data.text,
         data.isFinal ?? false
       )
-  
-      socketComms.handle_display_event({
-        type: "display_event",
-        view: "main",
-        layout: {
-          layoutType: "text_wall",
-          text: processedText,
-        },
-      })
+
+      if (processedText) {
+        socketComms.handle_display_event({
+          type: "display_event",
+          view: "main",
+          layout: {
+            layoutType: "text_wall",
+            text: processedText,
+          },
+        })
+      }
+
       return
     }
 
