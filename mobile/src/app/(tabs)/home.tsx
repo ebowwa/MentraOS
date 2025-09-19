@@ -25,6 +25,7 @@ import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
 import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
+import bridge from "@/bridge/MantleBridge"
 
 export default function Homepage() {
   const {refreshAppStatus, stopAllApps} = useAppStatus()
@@ -43,6 +44,7 @@ export default function Homepage() {
       await stopAllApps()
     } else {
       await settings.set(SETTINGS_KEYS.offline_captions_app_running, false)
+      bridge.toggleOfflineApps(false)
     }
     await settings.set(SETTINGS_KEYS.OFFLINE_MODE, newIsOfflineMode)
     setIsOfflineMode(newIsOfflineMode)
