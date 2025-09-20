@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -13,88 +14,48 @@ import (
 	"sync"
 	"time"
 
-	"math"
-
 	"github.com/gorilla/websocket"
-	media "github.com/livekit/media-sdk"
 	lkpacer "github.com/livekit/mediatransportutil/pkg/pacer"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
-	webrtc "github.com/pion/webrtc/v4"
 )
 
-var publishGain float64 = 1.0
+// Configuration from environment
+type Config struct {
+	Port        string
+	LiveKitURL  string
+	PublishGain float64
+}
 
-func init() {
-	if v := os.Getenv("PUBLISH_GAIN"); v != "" {
-		if g, err := strconv.ParseFloat(v, 64); err == nil && g > 0 {
-			publishGain = g
+func loadConfig() *Config {
+	config := &Config{
+		Port:        getEnv("PORT", "8080"),
+		LiveKitURL:  getEnv("LIVEKIT_URL", "wss://livekit.example.com"),
+		PublishGain: 1.0,
+	}
+
+	if gainStr := os.Getenv("PUBLISH_GAIN"); gainStr != "" {
+		if gain, err := strconv.ParseFloat(gainStr, 64); err == nil && gain > 0 {
+			config.PublishGain = gain
 		}
 	}
+
+	return config
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development
-	},
-}
-
-var lastFrameTime time.Time
-
-type LiveKitService struct {
-	clients map[string]*LiveKitClient
-	mu      sync.RWMutex
-}
-
-type LiveKitClient struct {
-	userId             string
-	ws                 *websocket.Conn
-	room               *lksdk.Room
-	publishTrack       *lkmedia.PCMLocalTrack
-	ctx                context.Context
-	cancel             context.CancelFunc
-	mu                 sync.Mutex
-	connected          bool
-	receivedFrameCount int
-	sampleRate         int
-	// subscribe state
-	subscribeEnabled bool
-	targetIdentity   string
-	subQuit          chan struct{}
-	// track registry
-	tracksMu      sync.Mutex
-	subTracks     map[string]*webrtc.TrackRemote     // by publication SID
-	subTrackOwner map[string]string                  // SID -> participant identity
-	subActive     map[string]bool                    // SID -> forwarding active
-	pcmBySID      map[string]*lkmedia.PCMRemoteTrack // SID -> PCM remote track
-	// subscriber outgoing 16kHz frame buffer (bytes)
-	subBuf16k     []byte
-	subFrameCount int
-
-	// diagnostics
-	subPktCount int   // number of data packets received
-	wsSendCount int   // number of WS sends
-	wsSendBytes int64 // cumulative WS bytes sent
-
-	// lifecycle
-	closedCh  chan struct{}
-	closeOnce sync.Once
-}
-
-// Message types
+// Command represents incoming control messages
 type Command struct {
-	Action   string          `json:"action"`
-	RoomName string          `json:"roomName,omitempty"`
-	Token    string          `json:"token,omitempty"`
-	Config   json.RawMessage `json:"config,omitempty"`
-	// Optional fields for tone publishing
-	FreqHz     int    `json:"freq,omitempty"`
-	DurationMs int    `json:"ms,omitempty"`
-	Url        string `json:"url,omitempty"`
-	// Subscribe controls
-	TargetIdentity string `json:"targetIdentity,omitempty"`
+	Action         string          `json:"action"`
+	RoomName       string          `json:"roomName,omitempty"`
+	Token          string          `json:"token,omitempty"`
+	Config         json.RawMessage `json:"config,omitempty"`
+	FreqHz         int             `json:"freq,omitempty"`
+	DurationMs     int             `json:"ms,omitempty"`
+	Url            string          `json:"url,omitempty"`
+	TargetIdentity string          `json:"targetIdentity,omitempty"`
 }
 
+// Event represents outgoing status messages
 type Event struct {
 	Type             string `json:"type"`
 	RoomName         string `json:"roomName,omitempty"`
@@ -104,125 +65,239 @@ type Event struct {
 	State            string `json:"state,omitempty"`
 }
 
-func NewLiveKitService() *LiveKitService {
-	return &LiveKitService{
-		clients: make(map[string]*LiveKitClient),
+// PacingBuffer smooths out bursty packet delivery
+type PacingBuffer struct {
+	queue    [][]byte
+	mu       sync.Mutex
+	ticker   *time.Ticker
+	quit     chan struct{}
+	sendFunc func([]byte)
+	interval time.Duration
+	maxSize  int
+}
+
+func NewPacingBuffer(interval time.Duration, maxSize int, sendFunc func([]byte)) *PacingBuffer {
+	return &PacingBuffer{
+		queue:    make([][]byte, 0),
+		interval: interval,
+		maxSize:  maxSize,
+		sendFunc: sendFunc,
+		quit:     make(chan struct{}),
 	}
 }
 
-func (s *LiveKitService) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	userId := r.URL.Query().Get("userId")
-	if userId == "" {
+func (pb *PacingBuffer) Start() {
+	pb.ticker = time.NewTicker(pb.interval)
+	go func() {
+		for {
+			select {
+			case <-pb.ticker.C:
+				pb.sendNext()
+			case <-pb.quit:
+				pb.ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (pb *PacingBuffer) Stop() {
+	close(pb.quit)
+}
+
+func (pb *PacingBuffer) Add(data []byte) {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	// Make a copy to avoid data races
+	dataCopy := make([]byte, len(data))
+	copy(dataCopy, data)
+
+	// If queue is full, drop oldest
+	if len(pb.queue) >= pb.maxSize {
+		pb.queue = pb.queue[1:]
+	}
+	pb.queue = append(pb.queue, dataCopy)
+}
+
+func (pb *PacingBuffer) sendNext() {
+	pb.mu.Lock()
+	defer pb.mu.Unlock()
+
+	if len(pb.queue) > 0 {
+		data := pb.queue[0]
+		pb.queue = pb.queue[1:]
+		// Send outside of lock to avoid blocking
+		go pb.sendFunc(data)
+	}
+}
+
+// BridgeClient manages a single WebSocket connection and its LiveKit room
+type BridgeClient struct {
+	userID      string
+	websocket   *websocket.Conn
+	websocketMu sync.Mutex // Mutex for WebSocket writes
+	room        *lksdk.Room
+	context     context.Context
+	cancel      context.CancelFunc
+	config      *Config
+
+	// Audio publishing
+	publishTrack   *lkmedia.PCMLocalTrack
+	receivedFrames int
+
+	// Audio subscribing with pacing
+	subscribeEnabled bool
+	targetIdentity   string
+	pacingBuffer     *PacingBuffer
+
+	// Statistics
+	stats ClientStats
+
+	// Lifecycle
+	mu        sync.Mutex
+	connected bool
+	closed    chan struct{}
+}
+
+type ClientStats struct {
+	mu               sync.Mutex
+	audioFramesIn    int
+	dataPktsReceived int
+	wsSendCount      int
+	wsSendBytes      int64
+	lastPacketTime   time.Time
+}
+
+// BridgeService manages all bridge clients
+type BridgeService struct {
+	clients map[string]*BridgeClient
+	mu      sync.RWMutex
+	config  *Config
+}
+
+func NewBridgeService(config *Config) *BridgeService {
+	return &BridgeService{
+		clients: make(map[string]*BridgeClient),
+		config:  config,
+	}
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for development
+	},
+}
+
+func (s *BridgeService) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("userId")
+	if userID == "" {
 		http.Error(w, "userId required", http.StatusBadRequest)
 		return
 	}
 
-	ws, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("Failed to upgrade connection for user %s: %v", userId, err)
+		log.Printf("Failed to upgrade WebSocket for user %s: %v", userID, err)
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	client := &LiveKitClient{
-		userId:        userId,
-		ws:            ws,
-		ctx:           ctx,
-		cancel:        cancel,
-		subTracks:     make(map[string]*webrtc.TrackRemote),
-		subTrackOwner: make(map[string]string),
-		subActive:     make(map[string]bool),
-		pcmBySID:      make(map[string]*lkmedia.PCMRemoteTrack),
-		closedCh:      make(chan struct{}),
+	// Disable Nagle's algorithm for lower latency
+	if tcpConn := conn.UnderlyingConn().(*net.TCPConn); tcpConn != nil {
+		tcpConn.SetNoDelay(true)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	client := &BridgeClient{
+		userID:    userID,
+		websocket: conn,
+		context:   ctx,
+		cancel:    cancel,
+		config:    s.config,
+		closed:    make(chan struct{}),
+	}
+
+	// Initialize pacing buffer for smooth audio delivery
+	// 100ms interval to match expected audio chunk rate
+	client.pacingBuffer = NewPacingBuffer(100*time.Millisecond, 10, func(data []byte) {
+		client.sendBinaryData(data)
+	})
+	client.pacingBuffer.Start()
+
+	// Register client (clean up any existing)
 	s.mu.Lock()
-	// Clean up existing client if present
-	if existing, ok := s.clients[userId]; ok {
+	if existing, ok := s.clients[userID]; ok {
 		existing.Close()
-		// Wait for previous client to fully close to avoid ghosts
 		s.mu.Unlock()
+		// Wait for cleanup
 		select {
-		case <-existing.closedCh:
-			// closed
+		case <-existing.closed:
 		case <-time.After(2 * time.Second):
-			// timeout; proceed anyway
 		}
 		s.mu.Lock()
 	}
-	s.clients[userId] = client
+	s.clients[userID] = client
 	s.mu.Unlock()
 
 	defer func() {
 		s.mu.Lock()
-		delete(s.clients, userId)
+		delete(s.clients, userID)
 		s.mu.Unlock()
 		client.Close()
 	}()
 
-	log.Printf("WebSocket connected for user: %s", userId)
-	client.Start()
+	log.Printf("WebSocket connected: user=%s", userID)
+	client.Run()
 }
 
-func (c *LiveKitClient) Start() {
-	// Send connection established event
-	c.sendEvent(Event{
-		Type:  "connected",
-		State: "ready",
-	})
+func (c *BridgeClient) Run() {
+	// Send initial connection event
+	c.sendEvent(Event{Type: "connected", State: "ready"})
 
-	// Start ping/pong for connection health
+	// Start background tasks
 	go c.pingLoop()
 
-	// Handle incoming messages
+	// Main message loop
 	for {
-		messageType, message, err := c.ws.ReadMessage()
+		msgType, message, err := c.websocket.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error for user %s: %v", c.userId, err)
+				log.Printf("WebSocket error for user %s: %v", c.userID, err)
 			}
 			break
 		}
 
-		if messageType == websocket.BinaryMessage {
-			log.Printf("WS binary message received for user %s, bytes=%d", c.userId, len(message))
-			// Handle binary audio data
-			c.handleAudioData(message)
-		} else if messageType == websocket.TextMessage {
-			log.Printf("WS text message received for user %s, bytes=%d", c.userId, len(message))
-			// Handle JSON control messages
+		switch msgType {
+		case websocket.BinaryMessage:
+			c.handleIncomingAudio(message)
+		case websocket.TextMessage:
 			var cmd Command
 			if err := json.Unmarshal(message, &cmd); err != nil {
-				log.Printf("Failed to parse command from user %s: %v", c.userId, err)
+				log.Printf("Failed to parse command from user %s: %v", c.userID, err)
 				c.sendError("Invalid command format")
 				continue
 			}
 			c.handleCommand(cmd)
-		} else {
-			log.Printf("WS other opcode=%d for user %s, bytes=%d", messageType, c.userId, len(message))
 		}
 	}
 }
 
-func (c *LiveKitClient) handleCommand(cmd Command) {
+func (c *BridgeClient) handleCommand(cmd Command) {
 	switch cmd.Action {
 	case "join_room":
-		c.joinRoomWithURL(cmd.RoomName, cmd.Token, cmd.Url)
+		c.joinRoom(cmd.RoomName, cmd.Token, cmd.Url)
 	case "leave_room":
 		c.leaveRoom()
-	case "publish_audio":
-		// Handle publish control if needed
 	case "publish_tone":
-		// Generate and publish a 440Hz (default) tone for duration
 		freq := cmd.FreqHz
 		if freq == 0 {
 			freq = 440
 		}
-		durMs := cmd.DurationMs
-		if durMs == 0 {
-			durMs = 3000
+		duration := cmd.DurationMs
+		if duration == 0 {
+			duration = 3000
 		}
-		go c.publishTone(freq, durMs)
+		go c.publishTone(freq, duration)
 	case "subscribe_enable":
 		c.enableSubscribe(cmd.TargetIdentity)
 	case "subscribe_disable":
@@ -232,45 +307,59 @@ func (c *LiveKitClient) handleCommand(cmd Command) {
 	}
 }
 
-func (c *LiveKitClient) joinRoom(roomName, token string) {
+func (c *BridgeClient) joinRoom(roomName, token, customURL string) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if c.room != nil {
+		c.mu.Unlock()
 		c.sendError("Already in a room")
 		return
 	}
+	c.mu.Unlock()
 
-	log.Printf("User %s joining room %s", c.userId, roomName)
+	url := customURL
+	if url == "" {
+		url = c.config.LiveKitURL
+	}
 
-	// Create room callback handlers
+	log.Printf("User %s joining room %s", c.userID, roomName)
+
+	// Configure room callbacks
 	roomCallback := &lksdk.RoomCallback{
 		OnDisconnected: func() {
 			log.Printf("Disconnected from room")
-			c.sendEvent(Event{
-				Type:  "disconnected",
-				State: "disconnected",
-			})
+			c.sendEvent(Event{Type: "disconnected", State: "disconnected"})
+		},
+		ParticipantCallback: lksdk.ParticipantCallback{
+			OnDataPacket: func(packet lksdk.DataPacket, params lksdk.DataReceiveParams) {
+				c.handleDataPacket(packet, params)
+			},
 		},
 	}
 
-	// Connect to room with v2 API
-	// Allow client to override URL via command token if needed
-	url := getLiveKitURL()
-	room, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback)
+	// Configure pacer for smooth audio
+	pacerFactory := lkpacer.NewPacerFactory(
+		lkpacer.LeakyBucketPacer,
+		lkpacer.WithBitrate(512_000),
+		lkpacer.WithMaxLatency(100*time.Millisecond),
+	)
+
+	// Connect to room (removed unused context timeout)
+	room, err := lksdk.ConnectToRoomWithToken(
+		url, token, roomCallback,
+		lksdk.WithPacer(pacerFactory),
+		lksdk.WithAutoSubscribe(false),
+	)
 	if err != nil {
 		log.Printf("Failed to connect to room: %v", err)
 		c.sendError(fmt.Sprintf("Failed to connect: %v", err))
 		return
 	}
 
+	c.mu.Lock()
 	c.room = room
 	c.connected = true
+	c.mu.Unlock()
 
-	// NOTE: Do not auto-publish a local track here; this connection may be subscribe-only.
-
-	// Send success event
-	log.Printf("Sending room_joined event for user %s in room %s", c.userId, roomName)
 	c.sendEvent(Event{
 		Type:             "room_joined",
 		RoomName:         roomName,
@@ -279,515 +368,7 @@ func (c *LiveKitClient) joinRoom(roomName, token string) {
 	})
 }
 
-// joinRoomWithURL allows specifying LiveKit URL instead of env LIVEKIT_URL
-func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
-	// Quick check under lock to avoid races, but do not hold for long operations
-	c.mu.Lock()
-	if c.room != nil {
-		c.mu.Unlock()
-		c.sendError("Already in a room")
-		return
-	}
-	c.mu.Unlock()
-
-	log.Printf("User %s joining room %s (customURL=%v)", c.userId, roomName, customURL != "")
-
-	roomCallback := &lksdk.RoomCallback{
-		OnDisconnected: func() {
-			log.Printf("Disconnected from room")
-			c.sendEvent(Event{Type: "disconnected", State: "disconnected"})
-		},
-		ParticipantCallback: lksdk.ParticipantCallback{
-			// Data-only bridge: ignore all track subscriptions (no audio track playout/forwarding)
-			OnTrackSubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
-				// Intentionally do nothing; we only consume DataPackets from publishData
-				if track.Kind() == webrtc.RTPCodecTypeAudio {
-					log.Printf("Data-only: ignoring audio track from %s (sid=%s)", rp.Identity(), publication.SID())
-				}
-			},
-			OnTrackUnsubscribed: func(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
-				log.Printf("Remote track unsubscribed: %s from %s", publication.Name(), rp.Identity())
-				// Nothing else to clean up in data-only mode
-			},
-			// Minimal data receive path: accept arbitrary-size PCM16 payloads over DataPacket (RELIABLE)
-			OnDataPacket: func(pkt lksdk.DataPacket, params lksdk.DataReceiveParams) {
-				// calculate and log the gap between packets.
-				now := time.Now()
-				if !lastFrameTime.IsZero() {
-					gap := now.Sub(lastFrameTime)
-					log.Printf("[bridge] DataPacket gap: %v", gap)
-				}
-				lastFrameTime = now
-
-				// Only forward when subscribe is enabled
-				if !c.subscribeEnabled {
-					return
-				}
-				// Optional identity filter when target is set
-				if c.targetIdentity != "" && params.SenderIdentity != c.targetIdentity {
-					return
-				}
-				var data []byte
-				if udp, ok := pkt.(*lksdk.UserDataPacket); ok {
-					data = udp.Payload
-				} else {
-					return
-				}
-				if len(data) == 0 {
-					return
-				}
-				c.subPktCount++
-				if c.subPktCount <= 5 || c.subPktCount%100 == 0 {
-					log.Printf("[bridge] DataPacket rx #%d from=%s bytes=%d", c.subPktCount, params.SenderIdentity, len(data))
-				}
-				// Data packets from the mobile sender include an optional 1-byte sequence header.
-				// The cloud can accept full PCM16 chunks, so we forward the complete blob (no 10ms re-framing).
-				// Strip the header if present, ensure even length, then write over WS as a single binary message.
-				pcm := data
-				if len(pcm)%2 == 1 {
-					// Treat first byte as sequence header, remainder should be even PCM bytes
-					seq := pcm[0]
-					// if c.subPktCount <= 5 || c.subPktCount%100 == 0 {
-					log.Printf("[bridge] seq header=%d payloadBytes(before)=%d", seq, len(pcm))
-					// }
-					pcm = pcm[1:]
-				}
-				// Ensure even number of bytes (pairs of 16-bit samples)
-				if len(pcm)%2 == 1 {
-					pcm = pcm[:len(pcm)-1]
-				}
-				if len(pcm) == 0 {
-					return
-				}
-				// Light PCM diagnostics on first N packets
-				if c.subPktCount <= 5 {
-					minV := int16(32767)
-					maxV := int16(-32768)
-					var sumAbs int64
-					var sumSq int64
-					for i := 0; i+1 < len(pcm); i += 2 {
-						v := int16(binary.LittleEndian.Uint16(pcm[i : i+2]))
-						if v < minV {
-							minV = v
-						}
-						if v > maxV {
-							maxV = v
-						}
-						if v < 0 {
-							sumAbs += int64(-v)
-						} else {
-							sumAbs += int64(v)
-						}
-						sumSq += int64(v) * int64(v)
-					}
-					cnt := len(pcm) / 2
-					if cnt > 0 {
-						meanAbs := float64(sumAbs) / float64(cnt)
-						rms := math.Sqrt(float64(sumSq) / float64(cnt))
-						log.Printf("[bridge] pcm stats: samples=%d bytes=%d meanAbs=%.1f rms=%.1f min=%d max=%d", cnt, len(pcm), meanAbs, rms, minV, maxV)
-					}
-				}
-				c.writeWSBinary(pcm)
-
-			},
-		},
-	}
-
-	url := customURL
-	if url == "" {
-		url = getLiveKitURL()
-	}
-	log.Printf("Connecting to LiveKit: url=%s tokenLen=%d room=%s", url, len(token), roomName)
-	// Attempt connection with timeout guard so we can surface failures
-	resCh := make(chan *lksdk.Room, 1)
-	errCh := make(chan error, 1)
-	// Configure LiveKit pacer for smoother output pacing with low latency
-	pf := lkpacer.NewPacerFactory(
-		lkpacer.LeakyBucketPacer,
-		lkpacer.WithBitrate(512_000), // 512 kbps ceiling (ample for Opus mono)
-		lkpacer.WithMaxLatency(100*time.Millisecond),
-	)
-	go func() {
-		// AutoSubscribe=false ensures the server doesn't auto-subscribe us to A/V tracks
-		r, err := lksdk.ConnectToRoomWithToken(url, token, roomCallback, lksdk.WithPacer(pf), lksdk.WithAutoSubscribe(false))
-		if err != nil {
-			errCh <- err
-			return
-		}
-		resCh <- r
-	}()
-
-	select {
-	case r := <-resCh:
-		c.mu.Lock()
-		c.room = r
-		c.connected = true
-		c.mu.Unlock()
-	case err := <-errCh:
-		log.Printf("Failed to connect to room: %v", err)
-		c.sendError(fmt.Sprintf("Failed to connect: %v", err))
-		return
-	case <-time.After(10 * time.Second):
-		log.Printf("Failed to connect to room within timeout")
-		c.sendError("connect_timeout")
-		return
-	}
-
-	// Signal room joined immediately
-	c.sendEvent(Event{
-		Type:             "room_joined",
-		RoomName:         roomName,
-		ParticipantID:    string(c.room.LocalParticipant.Identity()),
-		ParticipantCount: len(c.room.GetRemoteParticipants()),
-	})
-}
-
-// ensurePublishTrack lazily creates & publishes a local PCM track if not present.
-func (c *LiveKitClient) ensurePublishTrack() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if !c.connected || c.room == nil {
-		return fmt.Errorf("not connected to room")
-	}
-	if c.publishTrack != nil {
-		return nil
-	}
-	track, err := lkmedia.NewPCMLocalTrack(16000, 1, nil)
-	if err != nil {
-		return fmt.Errorf("create PCM track: %w", err)
-	}
-	if _, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{Name: "microphone"}); err != nil {
-		return fmt.Errorf("publish track: %w", err)
-	}
-	c.publishTrack = track
-	c.sampleRate = 16000
-	log.Printf("PCM audio track published for user %s (16kHz mono)", c.userId)
-	return nil
-}
-
-// publishTone generates a sine wave at the given frequency and publishes via WriteSample at ~10ms cadence
-func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
-	if err := c.ensurePublishTrack(); err != nil {
-		log.Printf("Cannot publish tone - ensurePublishTrack failed: %v", err)
-		return
-	}
-	c.mu.Lock()
-	track := c.publishTrack
-	sr := c.sampleRate
-	c.mu.Unlock()
-
-	// Match track's configured source sample rate
-	sampleRate := sr
-	if sampleRate == 0 {
-		sampleRate = 16000
-	}
-	samplesPer10ms := sampleRate / 100
-	totalFrames := durationMs / 10
-	log.Printf("Publishing tone: freq=%dHz duration=%dms frames=%d", freqHz, durationMs, totalFrames)
-	var t int
-	for i := 0; i < totalFrames; i++ {
-		samples := make([]int16, samplesPer10ms)
-		var sumAbs int64
-		var sumSq int64
-		var minV int16 = 32767
-		var maxV int16 = -32768
-		for s := 0; s < samplesPer10ms; s++ {
-			val := int16(math.Round(math.Sin(2*math.Pi*float64(freqHz)*float64(t)/float64(sampleRate)) * 0.5 * 32767.0))
-			samples[s] = val
-			t++
-			if val < minV {
-				minV = val
-			}
-			if val > maxV {
-				maxV = val
-			}
-			if val < 0 {
-				sumAbs += int64(-val)
-			} else {
-				sumAbs += int64(val)
-			}
-			sumSq += int64(val) * int64(val)
-		}
-		meanAbs := float64(sumAbs) / float64(samplesPer10ms)
-		rms := math.Sqrt(float64(sumSq) / float64(samplesPer10ms))
-		if i%10 == 0 {
-			log.Printf("Tone frame %d energy: meanAbs=%.1f rms=%.1f min=%d max=%d", i, meanAbs, rms, minV, maxV)
-		}
-		// Apply optional gain with clipping
-		if publishGain != 1.0 {
-			for i := range samples {
-				scaled := float64(samples[i]) * publishGain
-				if scaled > 32767 {
-					scaled = 32767
-				} else if scaled < -32768 {
-					scaled = -32768
-				}
-				samples[i] = int16(scaled)
-			}
-		}
-		if err := track.WriteSample(samples); err != nil {
-			log.Printf("Failed to write tone PCM sample: %v", err)
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	log.Printf("Completed tone publishing")
-}
-
-func (c *LiveKitClient) handleAudioData(data []byte) {
-	if err := c.ensurePublishTrack(); err != nil {
-		log.Printf("Cannot send audio - ensurePublishTrack failed: %v", err)
-		return
-	}
-
-	// Log audio data reception (every 10th chunk to avoid spam)
-	c.mu.Lock()
-	audioChunkCount := c.receivedFrameCount
-	c.receivedFrameCount++
-	c.mu.Unlock()
-
-	// Only log 1 in every 500
-	if audioChunkCount%500 == 0 {
-		log.Printf("Received audio chunk %d for user %s, size: %d bytes", audioChunkCount, c.userId, len(data))
-	}
-
-	// Convert byte slice to int16 samples (16kHz mono expected)
-	samples := make([]int16, len(data)/2)
-	var sumAbs int64 = 0
-	var sumSq int64 = 0
-	var minVal int16 = 32767
-	var maxVal int16 = -32768
-	for i := 0; i < len(samples); i++ {
-		v := int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
-		samples[i] = v
-		if v < minVal {
-			minVal = v
-		}
-		if v > maxVal {
-			maxVal = v
-		}
-		if v < 0 {
-			sumAbs += int64(-v)
-		} else {
-			sumAbs += int64(v)
-		}
-		sumSq += int64(v) * int64(v)
-	}
-	if len(samples) > 0 {
-		meanAbs := float64(sumAbs) / float64(len(samples))
-		rms := math.Sqrt(float64(sumSq) / float64(len(samples)))
-		if audioChunkCount%500 == 0 {
-			log.Printf("Audio chunk %d stats: meanAbs=%.1f rms=%.1f min=%d max=%d", audioChunkCount, meanAbs, rms, minVal, maxVal)
-		}
-	}
-
-	// Pace large chunks into ~10ms frames to match expected cadence for the active track sample rate
-	sr := c.sampleRate
-	if sr == 0 {
-		sr = 16000
-	}
-	frameSamples := sr / 100 // 10ms frame size
-	// Write all frames without app-level sleeps; rely on SDK pacer/queue
-	for offset := 0; offset < len(samples); offset += frameSamples {
-		end := offset + frameSamples
-		if end > len(samples) {
-			end = len(samples)
-		}
-		frame := samples[offset:end]
-		if publishGain != 1.0 {
-			for i := range frame {
-				scaled := float64(frame[i]) * publishGain
-				if scaled > 32767 {
-					scaled = 32767
-				} else if scaled < -32768 {
-					scaled = -32768
-				}
-				frame[i] = int16(scaled)
-			}
-		}
-		if err := c.publishTrack.WriteSample(frame); err != nil {
-			log.Printf("Failed to write PCM sample: %v", err)
-			break
-		}
-	}
-}
-
-// writeWSBinary writes a binary WebSocket message with a short deadline; closes on error.
-func (c *LiveKitClient) writeWSBinary(payload []byte) {
-	c.mu.Lock()
-	ws := c.ws
-	c.mu.Unlock()
-	if ws == nil {
-		return
-	}
-
-	// THIS IS THE KEY FIX - disable buffering at TCP level
-	if conn := ws.UnderlyingConn(); conn != nil {
-		if tcpConn, ok := conn.(*net.TCPConn); ok {
-			tcpConn.SetNoDelay(true) // Disable Nagle's algorithm
-		}
-	}
-
-	// _ = ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	_ = ws.SetWriteDeadline(time.Now().Add(time.Millisecond))
-	ws.EnableWriteCompression(false)
-	if err := ws.WriteMessage(websocket.BinaryMessage, payload); err != nil {
-		log.Printf("[bridge] WS binary write failed for user %s: %v", c.userId, err)
-		go c.Close()
-	}
-	c.wsSendCount++
-	c.wsSendBytes += int64(len(payload))
-	if c.wsSendCount <= 5 || c.wsSendCount%200 == 0 {
-		log.Printf("[bridge] WS sent #%d bytes=%d totalBytes=%d", c.wsSendCount, len(payload), c.wsSendBytes)
-	}
-}
-
-// handleIncomingPCM16_16k appends 16 kHz PCM16 bytes and emits fixed 10 ms frames over WS.
-func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.ws == nil {
-		return
-	}
-	c.subBuf16k = append(c.subBuf16k, pcm16...)
-	const frameBytes = 160 * 2
-	for len(c.subBuf16k) >= frameBytes {
-		chunk := make([]byte, frameBytes)
-		copy(chunk, c.subBuf16k[:frameBytes])
-		c.subBuf16k = c.subBuf16k[frameBytes:]
-		if c.ws != nil {
-			_ = c.ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			if err := c.ws.WriteMessage(websocket.BinaryMessage, chunk); err != nil {
-				log.Printf("WS binary write failed for user %s: %v", c.userId, err)
-				go c.Close()
-				return
-			}
-			c.subFrameCount++
-			if c.subFrameCount%100 == 0 {
-				log.Printf("Forwarded %d subscribed frames (16kHz)", c.subFrameCount)
-			}
-		} else {
-			return
-		}
-	}
-}
-
-// enableSubscribe marks subscription forwarding enabled and optionally sets a target identity filter.
-func (c *LiveKitClient) enableSubscribe(target string) {
-	c.mu.Lock()
-	c.subscribeEnabled = true
-	c.targetIdentity = target
-	if c.subQuit == nil {
-		c.subQuit = make(chan struct{}, 1)
-	}
-	c.mu.Unlock()
-	log.Printf("Subscribe enabled (target=%s)", target)
-
-	// Attach to any already-present tracks immediately
-	c.tracksMu.Lock()
-	for sid, tr := range c.subTracks {
-		owner := c.subTrackOwner[sid]
-		if target != "" && owner != target {
-			continue
-		}
-		if c.subActive[sid] {
-			continue
-		}
-		c.subActive[sid] = true
-		go c.forwardTrack(tr, sid)
-	}
-	c.tracksMu.Unlock()
-}
-
-// disableSubscribe stops forwarding subscribed audio.
-func (c *LiveKitClient) disableSubscribe() {
-	c.mu.Lock()
-	c.subscribeEnabled = false
-	if c.subQuit != nil {
-		close(c.subQuit)
-		c.subQuit = nil
-	}
-	c.mu.Unlock()
-	log.Printf("Subscribe disabled")
-}
-
-// onTrackSubscribed is invoked by RoomCallback when a remote audio track is available.
-func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
-	if track.Kind() != webrtc.RTPCodecTypeAudio {
-		return
-	}
-	c.mu.Lock()
-	enabled := c.subscribeEnabled
-	target := c.targetIdentity
-	ws := c.ws
-	c.mu.Unlock()
-	if !enabled || ws == nil {
-		log.Printf("Track subscribed but forwarding disabled or ws nil (id=%s)", rp.Identity())
-		return
-	}
-	if target != "" && string(rp.Identity()) != target {
-		log.Printf("Skipping track from %s (target=%s)", rp.Identity(), target)
-		return
-	}
-
-	owner := string(rp.Identity())
-	sid := string(publication.SID())
-	log.Printf("Subscribed to remote audio: participant=%s trackSid=%s", owner, sid)
-	c.sendEvent(Event{Type: "sub_track_added", RoomName: "", ParticipantID: owner, ParticipantCount: 0})
-	c.tracksMu.Lock()
-	c.subActive[sid] = true
-	c.tracksMu.Unlock()
-	go c.forwardTrack(track, sid)
-}
-
-// forwardTrack uses SDK's PCM remote track at 16 kHz mono and streams fixed 10 ms frames over WS.
-func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, sid string) {
-	writer := &pcm16WSWriter{client: c}
-	pcmTrack, err := lkmedia.NewPCMRemoteTrack(track, writer,
-		lkmedia.WithTargetSampleRate(16000),
-		lkmedia.WithTargetChannels(1),
-		lkmedia.WithHandleJitter(true),
-	)
-	if err != nil {
-		log.Printf("Failed to create PCMRemoteTrack: %v", err)
-		return
-	}
-	c.tracksMu.Lock()
-	c.pcmBySID[sid] = pcmTrack
-	c.tracksMu.Unlock()
-	// Run until context or disable
-	go func(localSID string) {
-		<-c.ctx.Done()
-		pcmTrack.Close()
-		c.tracksMu.Lock()
-		delete(c.pcmBySID, localSID)
-		c.tracksMu.Unlock()
-	}(sid)
-}
-
-// pcm16WSWriter implements media.PCM16Writer to receive 16 kHz mono samples from SDK.
-type pcm16WSWriter struct {
-	client *LiveKitClient
-}
-
-func (w *pcm16WSWriter) WriteSample(sample media.PCM16Sample) error {
-	// Treat PCM16Sample as a slice of int16 (API may alias []int16)
-	data := []int16(sample)
-	n := len(data)
-	if n == 0 {
-		return nil
-	}
-	bytes := make([]byte, n*2)
-	for i := 0; i < n; i++ {
-		binary.LittleEndian.PutUint16(bytes[i*2:i*2+2], uint16(data[i]))
-	}
-	w.client.handleIncomingPCM16_16k(bytes)
-	return nil
-}
-
-func (w *pcm16WSWriter) Close() error { return nil }
-
-func (c *LiveKitClient) leaveRoom() {
+func (c *BridgeClient) leaveRoom() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -796,131 +377,394 @@ func (c *LiveKitClient) leaveRoom() {
 		return
 	}
 
-	// Close PCM track if it exists
 	if c.publishTrack != nil {
 		c.publishTrack.Close()
 		c.publishTrack = nil
 	}
 
-	// Stop all PCM remote tracks
-	c.tracksMu.Lock()
-	for sid, pcm := range c.pcmBySID {
-		pcm.Close()
-		delete(c.pcmBySID, sid)
-	}
-	c.tracksMu.Unlock()
-
 	c.room.Disconnect()
 	c.room = nil
 	c.connected = false
 
-	c.sendEvent(Event{
-		Type: "room_left",
-	})
+	c.sendEvent(Event{Type: "room_left"})
 }
 
-func (c *LiveKitClient) sendEvent(event Event) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.ws == nil {
+func (c *BridgeClient) handleIncomingAudio(data []byte) {
+	if err := c.ensurePublishTrack(); err != nil {
+		log.Printf("Cannot send audio: %v", err)
 		return
 	}
 
-	if err := c.ws.WriteJSON(event); err != nil {
-		log.Printf("Failed to send event to user %s: %v", c.userId, err)
+	c.stats.mu.Lock()
+	c.stats.audioFramesIn++
+	frameCount := c.stats.audioFramesIn
+	c.stats.mu.Unlock()
+
+	// Convert to int16 samples
+	samples := make([]int16, len(data)/2)
+	for i := 0; i < len(samples); i++ {
+		samples[i] = int16(binary.LittleEndian.Uint16(data[i*2:]))
+	}
+
+	// Apply gain if configured
+	if c.config.PublishGain != 1.0 {
+		for i := range samples {
+			scaled := float64(samples[i]) * c.config.PublishGain
+			if scaled > 32767 {
+				scaled = 32767
+			} else if scaled < -32768 {
+				scaled = -32768
+			}
+			samples[i] = int16(scaled)
+		}
+	}
+
+	// Log periodically
+	if frameCount%500 == 0 {
+		log.Printf("Received audio chunk %d for user %s: %d bytes", frameCount, c.userID, len(data))
+	}
+
+	// Write to LiveKit track in 10ms chunks
+	sampleRate := 16000
+	frameSamples := sampleRate / 100 // 10ms
+
+	for offset := 0; offset < len(samples); offset += frameSamples {
+		end := offset + frameSamples
+		if end > len(samples) {
+			end = len(samples)
+		}
+		frame := samples[offset:end]
+
+		if err := c.publishTrack.WriteSample(frame); err != nil {
+			log.Printf("Failed to write PCM sample: %v", err)
+			break
+		}
 	}
 }
 
-func (c *LiveKitClient) sendError(message string) {
-	c.sendEvent(Event{
-		Type:  "error",
-		Error: message,
-	})
+func (c *BridgeClient) handleDataPacket(packet lksdk.DataPacket, params lksdk.DataReceiveParams) {
+	// Log timing for diagnostics
+	c.stats.mu.Lock()
+	now := time.Now()
+	if !c.stats.lastPacketTime.IsZero() {
+		gap := now.Sub(c.stats.lastPacketTime)
+		log.Printf("[bridge] DataPacket gap: %v", gap)
+	}
+	c.stats.lastPacketTime = now
+	c.stats.dataPktsReceived++
+	pktCount := c.stats.dataPktsReceived
+	c.stats.mu.Unlock()
+
+	// Check if subscribing is enabled
+	if !c.subscribeEnabled {
+		return
+	}
+
+	// Filter by target identity if specified
+	if c.targetIdentity != "" && params.SenderIdentity != c.targetIdentity {
+		return
+	}
+
+	// Extract payload
+	userPacket, ok := packet.(*lksdk.UserDataPacket)
+	if !ok || len(userPacket.Payload) == 0 {
+		return
+	}
+
+	// Handle sequence header if present
+	pcmData := userPacket.Payload
+	if len(pcmData)%2 == 1 {
+		seq := pcmData[0]
+		log.Printf("[bridge] seq header=%d payloadBytes(before)=%d", seq, len(pcmData))
+		pcmData = pcmData[1:]
+	}
+
+	// Ensure even length
+	if len(pcmData)%2 == 1 {
+		pcmData = pcmData[:len(pcmData)-1]
+	}
+
+	if len(pcmData) == 0 {
+		return
+	}
+
+	// Log first few packets for diagnostics
+	if pktCount <= 5 {
+		c.logPCMStats(pcmData, pktCount)
+	}
+
+	// Add to pacing buffer for smooth delivery
+	c.pacingBuffer.Add(pcmData)
+
+	if pktCount <= 5 || pktCount%100 == 0 {
+		log.Printf("[bridge] DataPacket rx #%d from=%s bytes=%d (buffered for pacing)",
+			pktCount, params.SenderIdentity, len(pcmData))
+	}
 }
 
-func (c *LiveKitClient) pingLoop() {
+func (c *BridgeClient) logPCMStats(pcmData []byte, pktNum int) {
+	minV := int16(32767)
+	maxV := int16(-32768)
+	var sumAbs int64
+	var sumSq int64
+
+	for i := 0; i+1 < len(pcmData); i += 2 {
+		v := int16(binary.LittleEndian.Uint16(pcmData[i : i+2]))
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+		if v < 0 {
+			sumAbs += int64(-v)
+		} else {
+			sumAbs += int64(v)
+		}
+		sumSq += int64(v) * int64(v)
+	}
+
+	cnt := len(pcmData) / 2
+	if cnt > 0 {
+		meanAbs := float64(sumAbs) / float64(cnt)
+		rms := math.Sqrt(float64(sumSq) / float64(cnt))
+		log.Printf("[bridge] packet #%d PCM stats: samples=%d bytes=%d meanAbs=%.1f rms=%.1f min=%d max=%d",
+			pktNum, cnt, len(pcmData), meanAbs, rms, minV, maxV)
+	}
+}
+
+func (c *BridgeClient) ensurePublishTrack() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.connected || c.room == nil {
+		return fmt.Errorf("not connected to room")
+	}
+
+	if c.publishTrack != nil {
+		return nil
+	}
+
+	track, err := lkmedia.NewPCMLocalTrack(16000, 1, nil)
+	if err != nil {
+		return fmt.Errorf("create PCM track: %w", err)
+	}
+
+	if _, err := c.room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{
+		Name: "microphone",
+	}); err != nil {
+		return fmt.Errorf("publish track: %w", err)
+	}
+
+	c.publishTrack = track
+	log.Printf("PCM audio track published for user %s", c.userID)
+	return nil
+}
+
+func (c *BridgeClient) publishTone(freqHz, durationMs int) {
+	if err := c.ensurePublishTrack(); err != nil {
+		log.Printf("Cannot publish tone: %v", err)
+		return
+	}
+
+	sampleRate := 16000
+	samplesPerFrame := sampleRate / 100 // 10ms frames
+	totalFrames := durationMs / 10
+
+	log.Printf("Publishing tone: freq=%dHz duration=%dms", freqHz, durationMs)
+
+	timeIndex := 0
+	for frame := 0; frame < totalFrames; frame++ {
+		samples := make([]int16, samplesPerFrame)
+		for i := 0; i < samplesPerFrame; i++ {
+			angle := 2 * math.Pi * float64(freqHz) * float64(timeIndex) / float64(sampleRate)
+			samples[i] = int16(math.Sin(angle) * 0.5 * 32767)
+			timeIndex++
+		}
+
+		if c.config.PublishGain != 1.0 {
+			for i := range samples {
+				scaled := float64(samples[i]) * c.config.PublishGain
+				if scaled > 32767 {
+					scaled = 32767
+				} else if scaled < -32768 {
+					scaled = -32768
+				}
+				samples[i] = int16(scaled)
+			}
+		}
+
+		if c.publishTrack == nil {
+			break
+		}
+
+		if err := c.publishTrack.WriteSample(samples); err != nil {
+			log.Printf("Failed to write tone sample: %v", err)
+			break
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	log.Printf("Tone publishing completed")
+}
+
+func (c *BridgeClient) enableSubscribe(targetIdentity string) {
+	c.mu.Lock()
+	c.subscribeEnabled = true
+	c.targetIdentity = targetIdentity
+	c.mu.Unlock()
+
+	log.Printf("Subscribe enabled for user %s (target=%s)", c.userID, targetIdentity)
+}
+
+func (c *BridgeClient) disableSubscribe() {
+	c.mu.Lock()
+	c.subscribeEnabled = false
+	c.targetIdentity = ""
+	c.mu.Unlock()
+
+	log.Printf("Subscribe disabled for user %s", c.userID)
+}
+
+func (c *BridgeClient) sendBinaryData(data []byte) {
+	c.websocketMu.Lock()
+	defer c.websocketMu.Unlock()
+
+	c.mu.Lock()
+	ws := c.websocket
+	c.mu.Unlock()
+
+	if ws == nil {
+		return
+	}
+
+	// Set reasonable deadline
+	ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
+		log.Printf("Failed to send binary data to user %s: %v", c.userID, err)
+		go c.Close()
+		return
+	}
+
+	c.stats.mu.Lock()
+	c.stats.wsSendCount++
+	c.stats.wsSendBytes += int64(len(data))
+	if c.stats.wsSendCount <= 5 || c.stats.wsSendCount%200 == 0 {
+		log.Printf("[bridge] WS sent #%d bytes=%d totalBytes=%d (paced delivery)",
+			c.stats.wsSendCount, len(data), c.stats.wsSendBytes)
+	}
+	c.stats.mu.Unlock()
+}
+
+func (c *BridgeClient) sendEvent(event Event) {
+	c.websocketMu.Lock()
+	defer c.websocketMu.Unlock()
+
+	c.mu.Lock()
+	ws := c.websocket
+	c.mu.Unlock()
+
+	if ws == nil {
+		return
+	}
+
+	if err := ws.WriteJSON(event); err != nil {
+		log.Printf("Failed to send event to user %s: %v", c.userID, err)
+	}
+}
+
+func (c *BridgeClient) sendError(message string) {
+	c.sendEvent(Event{Type: "error", Error: message})
+}
+
+func (c *BridgeClient) pingLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
+			c.websocketMu.Lock()
 			c.mu.Lock()
-			if c.ws != nil {
-				c.ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := c.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-					c.mu.Unlock()
+			ws := c.websocket
+			c.mu.Unlock()
+
+			if ws != nil {
+				ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				err := ws.WriteMessage(websocket.PingMessage, nil)
+				c.websocketMu.Unlock()
+
+				if err != nil {
 					return
 				}
+			} else {
+				c.websocketMu.Unlock()
 			}
-			c.mu.Unlock()
-		case <-c.ctx.Done():
+		case <-c.context.Done():
 			return
 		}
 	}
 }
 
-func (c *LiveKitClient) Close() {
+func (c *BridgeClient) Close() {
 	c.cancel()
-	c.mu.Lock()
-	// mark forwarding disabled
-	c.subscribeEnabled = false
-	if c.subQuit != nil {
-		close(c.subQuit)
-		c.subQuit = nil
+
+	// Stop pacing buffer
+	if c.pacingBuffer != nil {
+		c.pacingBuffer.Stop()
 	}
-	// disconnect room and ws
+
+	c.mu.Lock()
+	if c.publishTrack != nil {
+		c.publishTrack.Close()
+		c.publishTrack = nil
+	}
 	if c.room != nil {
 		c.room.Disconnect()
 		c.room = nil
 	}
-	// Close remote PCM tracks
-	c.tracksMu.Lock()
-	for sid, pcm := range c.pcmBySID {
-		pcm.Close()
-		delete(c.pcmBySID, sid)
-	}
-	c.tracksMu.Unlock()
-	if c.ws != nil {
-		_ = c.ws.Close()
-		c.ws = nil
+	if c.websocket != nil {
+		c.websocket.Close()
+		c.websocket = nil
 	}
 	c.mu.Unlock()
-	c.closeOnce.Do(func() { close(c.closedCh) })
+
+	close(c.closed)
 }
 
-func getLiveKitURL() string {
-	url := os.Getenv("LIVEKIT_URL")
-	if url == "" {
-		// Default to a generic URL - should be configured via environment
-		url = "wss://livekit.example.com"
+// Helper functions
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	return url
+	return defaultValue
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	service := NewLiveKitService()
+	config := loadConfig()
+	service := NewBridgeService(config)
 
 	// WebSocket endpoint
 	http.HandleFunc("/ws", service.HandleWebSocket)
 
-	// Health check
+	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		service.mu.RLock()
+		clientCount := len(service.clients)
+		service.mu.RUnlock()
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":      "healthy",
-			"connections": len(service.clients),
+			"connections": clientCount,
 		})
 	})
 
-	log.Printf("LiveKit bridge starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	log.Printf("LiveKit Bridge starting on port %s", config.Port)
+	log.Printf("Configuration: LiveKitURL=%s", config.LiveKitURL)
+
+	if err := http.ListenAndServe(":"+config.Port, nil); err != nil {
 		log.Fatal(err)
 	}
 }
