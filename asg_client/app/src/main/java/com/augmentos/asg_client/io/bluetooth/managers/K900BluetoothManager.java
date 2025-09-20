@@ -42,6 +42,14 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     private FileTransferSession currentFileTransfer = null;
     private ScheduledExecutorService fileTransferExecutor;
     private static final int TRANSFER_TIMEOUT_MS = 3000; // 3 seconds total transfer timeout
+    
+    // Packet transmission timing configuration
+    private static final int PACKET_SEND_DELAY_MS = 10; // Delay between packets to prevent UART overflow
+    private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
+    
+    // Testing: Packet drop simulation
+    private static final boolean ENABLE_PACKET_DROP_TEST = false; // Set to false to disable
+    private static final int PACKET_TO_DROP = 5; // Drop packet #5 for testing
 
     // Inner class to track file transfer state
     private static class FileTransferSession {
@@ -184,6 +192,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         if (currentFileTransfer != null && currentFileTransfer.isActive) {
             Log.d(TAG, "Cancelling active file transfer");
             currentFileTransfer.isActive = false;
+            Log.d(TAG, "5 Disabling fast mode");
             comManager.setFastMode(false);
         }
         
@@ -428,9 +437,9 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         // Send file transfer announcement first
         sendFileTransferAnnouncement();
         
-        // Schedule transfer timeout check
-        fileTransferExecutor.schedule(() -> checkTransferTimeout(), 
-                                     TRANSFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        // // Schedule transfer timeout check
+        // fileTransferExecutor.schedule(() -> checkTransferTimeout(), 
+        //                              TRANSFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         
         // Send the first packet
         sendNextFilePacket();
@@ -442,8 +451,10 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
      * Retransmit specific packets based on missing packet request
      */
     public void retransmitSpecificPackets(String fileName, List<Integer> missingPackets) {
+        Log.d(TAG, "🔍 retransmitSpecificPackets() called - fileName: " + fileName + ", missingPackets: " + missingPackets);
+        
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
-            Log.w(TAG, "🔍 Cannot retransmit - no active transfer");
+            Log.w(TAG, "🔍 Cannot retransmit - no active transfer (currentFileTransfer: " + (currentFileTransfer != null ? "exists but inactive" : "null") + ")");
             return;
         }
         
@@ -461,7 +472,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 // Schedule retransmission with delay to prevent UART overflow
                 final int finalPacketIndex = packetIndex;
                 fileTransferExecutor.schedule(() -> retransmitSinglePacket(finalPacketIndex), 
-                                            i * 10, TimeUnit.MILLISECONDS); // 10ms delay between retransmissions
+                                            i * RETRANSMISSION_DELAY_MS, TimeUnit.MILLISECONDS);
             } else {
                 Log.w(TAG, "🔍 Invalid packet index for retransmission: " + packetIndex);
             }
@@ -469,11 +480,12 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     
     /**
-     * Retransmit a single packet by index
+     * Unified packet transmission function - handles both normal and retransmitted packets
      */
-    private void retransmitSinglePacket(int packetIndex) {
+    private boolean transmitPacket(int packetIndex, boolean isRetransmission) {
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
-            return;
+            Log.w(TAG, (isRetransmission ? "🔍" : "📦") + " Cannot transmit packet " + packetIndex + " - no active transfer");
+            return false;
         }
         
         // Calculate packet data
@@ -493,16 +505,37 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         );
         
         if (packet == null) {
-            Log.e(TAG, "🔍 Failed to pack retransmission packet " + packetIndex);
-            return;
+            Log.e(TAG, (isRetransmission ? "🔍" : "📦") + " Failed to pack packet " + packetIndex);
+            return false;
         }
         
+        // Commander, mission objective: Log the full contents of the outgoing UART packet before transmission for maximum battlefield visibility.
+        // Plan of attack: We'll log the packet in hex format, up to the first 64 bytes for recon, and if it's longer, indicate the total size.
+        StringBuilder hexDump = new StringBuilder();
+        int dumpLen = Math.min(packet.length, 64);
+        for (int i = 0; i < dumpLen; i++) {
+            hexDump.append(String.format("%02X ", packet[i]));
+        }
+        Log.d(TAG, (isRetransmission ? "🔍" : "📦") + " UART packet dump (" + packet.length + " bytes): " + hexDump.toString() + (packet.length > 64 ? "... [truncated]" : ""));
+
         // Send the packet
         long sendStartTime = System.currentTimeMillis();
         comManager.sendFile(packet);
         long sendEndTime = System.currentTimeMillis();
         
-        Log.d(TAG, "🔍 Retransmitted packet " + packetIndex + " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + "ms");
+        // Log transmission details
+        String prefix = isRetransmission ? "🔍 Retransmitted" : "📊 Sent";
+        Log.d(TAG, prefix + " file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
+                   " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + "ms");
+
+        return true;
+    }
+    
+    /**
+     * Retransmit a single packet by index
+     */
+    private void retransmitSinglePacket(int packetIndex) {
+        transmitPacket(packetIndex, true); // Use unified transmission function
     }
     
     /**
@@ -527,6 +560,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             // Send timeout notification to phone
             sendTransferTimeoutNotification(currentFileTransfer.fileName);
             
+            Log.d(TAG, "3 Disabling fast mode");
             // Clean up and disable fast mode
             comManager.setFastMode(false);
             currentFileTransfer = null;
@@ -577,7 +611,8 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         
         // Clean up transfer session
         currentFileTransfer = null;
-        
+    
+        Log.d(TAG, "4 Disabling fast mode");
         // Disable fast mode
         comManager.setFastMode(false);
         
@@ -632,74 +667,53 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         }
         
         if (currentFileTransfer.currentPacketIndex >= currentFileTransfer.totalPackets) {
-            // Transfer complete
+            // All packets sent - wait for phone confirmation before cleanup
             long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
-            Log.d(TAG, "✅ File transfer complete: " + currentFileTransfer.fileName);
-            Log.d(TAG, "⏱️ Transfer took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
-            Log.d(TAG, "📊 Transfer rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+            Log.d(TAG, "📦 All packets sent: " + currentFileTransfer.fileName);
+            Log.d(TAG, "⏱️ Transmission took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
+            Log.d(TAG, "📊 Transmission rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+            Log.d(TAG, "⏳ Waiting for phone confirmation or timeout before cleanup...");
             
-            notificationManager.showDebugNotification("File Transfer Complete", 
-                currentFileTransfer.fileName + " in " + transferDuration + "ms");
-            
-            // Delete the file after successful transfer
-            try {
-                File file = new File(currentFileTransfer.filePath);
-                if (file.exists() && file.delete()) {
-                    Log.d(TAG, "🗑️ Deleted file after successful BLE transfer: " + currentFileTransfer.filePath);
-                } else {
-                    Log.w(TAG, "Failed to delete file: " + currentFileTransfer.filePath);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error deleting file after BLE transfer", e);
-            }
-            
-            // Disable fast mode
-            comManager.setFastMode(false);
-            
-            currentFileTransfer = null;
+            // Keep transfer session alive for potential retransmission
+            // Keep fast mode enabled for potential retransmission
+            // Cleanup will happen in handleTransferCompletion() or checkTransferTimeout()
             return;
         }
         
-        // Calculate packet data
+        // Get current packet index
         int packetIndex = currentFileTransfer.currentPacketIndex;
-        int offset = packetIndex * K900ProtocolUtils.FILE_PACK_SIZE;
-        int packSize = Math.min(K900ProtocolUtils.FILE_PACK_SIZE, 
-                                currentFileTransfer.fileSize - offset);
         
-        // Extract packet data
-        byte[] packetData = new byte[packSize];
-        System.arraycopy(currentFileTransfer.fileData, offset, packetData, 0, packSize);
-        
-        // Pack the file packet
-        byte[] packet = K900ProtocolUtils.packFilePacket(
-            packetData, packetIndex, packSize, currentFileTransfer.fileSize,
-            currentFileTransfer.fileName, 0, // flags = 0
-            K900ProtocolUtils.CMD_TYPE_PHOTO
-        );
-        
-        if (packet == null) {
-            Log.e(TAG, "Failed to pack file packet " + packetIndex);
-            currentFileTransfer = null;
+        // TESTING: Simulate packet drop for testing missing packet detection
+        if (ENABLE_PACKET_DROP_TEST && packetIndex == PACKET_TO_DROP) {
+            Log.w(TAG, "🧪 TESTING: Deliberately dropping packet " + packetIndex + " to test timeout behavior");
+            
+            // Skip this packet but continue with next one
+            currentFileTransfer.currentPacketIndex++;
+            
+            // Send next packet with rate limiting
+            if (currentFileTransfer.currentPacketIndex < currentFileTransfer.totalPackets) {
+                fileTransferExecutor.schedule(() -> sendNextFilePacket(), PACKET_SEND_DELAY_MS, TimeUnit.MILLISECONDS);
+            }
             return;
         }
         
-        // Send the packet using sendFile (no logging)
-        long sendStartTime = System.currentTimeMillis();
-        comManager.sendFile(packet);
-        long sendEndTime = System.currentTimeMillis();
-        
-        long totalMethodTime = System.currentTimeMillis() - methodStartTime;
-        Log.d(TAG, "📊 Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
-                   " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + 
-                   "ms, total method time: " + totalMethodTime + "ms");
+        // Use unified transmission function
+        boolean sent = transmitPacket(packetIndex, false);
+        if (!sent) {
+            Log.e(TAG, "📦 Failed to transmit packet " + packetIndex + " - aborting transfer");
+            currentFileTransfer = null;
+            Log.d(TAG, "2 Disabling fast mode");
+            comManager.setFastMode(false);
+            return;
+        }
         
         // Move to next packet immediately (no ACK waiting)
         currentFileTransfer.currentPacketIndex++;
         
         // Send next packet with rate limiting to prevent UART overflow
         if (currentFileTransfer.currentPacketIndex < currentFileTransfer.totalPackets) {
-            // Add small delay to prevent UART buffer overflow (EAGAIN errors)
-            fileTransferExecutor.schedule(() -> sendNextFilePacket(), 10, TimeUnit.MILLISECONDS);
+            // Add configurable delay to prevent UART buffer overflow (EAGAIN errors)
+            fileTransferExecutor.schedule(() -> sendNextFilePacket(), PACKET_SEND_DELAY_MS, TimeUnit.MILLISECONDS);
         }
     }
 } 

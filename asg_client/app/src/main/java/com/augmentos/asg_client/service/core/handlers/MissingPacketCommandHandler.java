@@ -33,11 +33,16 @@ public class MissingPacketCommandHandler implements ICommandHandler {
 
     @Override
     public boolean handleCommand(String commandType, JSONObject data) {
+        Log.d(TAG, "🔍 MissingPacketCommandHandler.handleCommand() called - Type: " + commandType);
+        Log.d(TAG, "🔍 Data: " + (data != null ? data.toString() : "null"));
+        
         try {
             switch (commandType) {
                 case "request_missing_packets":
+                    Log.d(TAG, "🔍 Processing request_missing_packets command");
                     return handleMissingPacketsRequest(data);
                 case "transfer_complete":
+                    Log.d(TAG, "🔍 Processing transfer_complete command");
                     return handleTransferComplete(data);
                 default:
                     Log.e(TAG, "Unsupported missing packet command: " + commandType);
