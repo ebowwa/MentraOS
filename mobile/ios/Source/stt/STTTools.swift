@@ -129,21 +129,6 @@ class STTTools {
                 attributes: nil
             )
 
-            // Try to read compressed file
-            guard let compressedData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath))
-            else {
-                Bridge.log("EXTRACTION_ERROR: Failed to read compressed file")
-                return false
-            }
-
-            // Create a temporary directory for extraction
-            let tempExtractPath = NSTemporaryDirectory().appending("/\(UUID().uuidString)")
-            try fileManager.createDirectory(
-                atPath: tempExtractPath,
-                withIntermediateDirectories: true,
-                attributes: nil
-            )
-
             // Use the Swift TarBz2Extractor with SWCompression
             var extractionError: NSError?
             let success = TarBz2Extractor.extractTarBz2From(
@@ -158,33 +143,7 @@ class STTTools {
                 )
                 return false
             }
-
-            // Rename encoder
-            let oldEncoderPath = (destinationPath as NSString).appendingPathComponent(
-                "encoder-epoch-99-avg-1.onnx")
-            let newEncoderPath = (destinationPath as NSString).appendingPathComponent(
-                "encoder.onnx")
-            if fileManager.fileExists(atPath: oldEncoderPath) {
-                try? fileManager.moveItem(atPath: oldEncoderPath, toPath: newEncoderPath)
-            }
-
-            // Rename decoder
-            let oldDecoderPath = (destinationPath as NSString).appendingPathComponent(
-                "decoder-epoch-99-avg-1.onnx")
-            let newDecoderPath = (destinationPath as NSString).appendingPathComponent(
-                "decoder.onnx")
-            if fileManager.fileExists(atPath: oldDecoderPath) {
-                try? fileManager.moveItem(atPath: oldDecoderPath, toPath: newDecoderPath)
-            }
-
-            // Rename joiner
-            let oldJoinerPath = (destinationPath as NSString).appendingPathComponent(
-                "joiner-epoch-99-avg-1.int8.onnx")
-            let newJoinerPath = (destinationPath as NSString).appendingPathComponent("joiner.onnx")
-            if fileManager.fileExists(atPath: oldJoinerPath) {
-                try? fileManager.moveItem(atPath: oldJoinerPath, toPath: newJoinerPath)
-            }
-
+            
             return true
         } catch {
             Bridge.log("EXTRACTION_ERROR: \(error.localizedDescription)")
