@@ -166,6 +166,17 @@ class RingBuffer {
     // Ensure even drop size (complete samples)
     bytes = (bytes >> 1) << 1;
     const toDrop = Math.min(bytes, this.fillLevel);
+
+    // Apply fade-out to the last few samples before drop to avoid pop
+    const fadeLength = Math.min(32, toDrop / 2); // Fade last 16 samples
+    for (let i = 0; i < fadeLength; i++) {
+      const pos = (this.readPos + toDrop - fadeLength * 2 + i * 2) % this.size;
+      const sample = this.buffer[pos] | (this.buffer[pos + 1] << 8);
+      const faded = Math.round(sample * (i / fadeLength));
+      this.buffer[pos] = faded & 0xff;
+      this.buffer[pos + 1] = (faded >> 8) & 0xff;
+    }
+
     this.readPos = (this.readPos + toDrop) % this.size;
     this.fillLevel -= toDrop;
     return toDrop;
@@ -271,7 +282,10 @@ async function main() {
     lastRxTime: 0,
   };
 
-  // Apply gain function
+  // Smoothing: Keep track of last sample for cross-fade
+  let lastSample = 0;
+
+  // Apply gain function with smooth clipping
   const applyGain = (data: Uint8Array): Uint8Array => {
     if (opt.gain === 1.0 || !data || data.length === 0) return data;
 
@@ -282,12 +296,47 @@ async function main() {
 
     for (let i = 0; i < numSamples; i++) {
       const sample = view.getInt16(i * 2, true);
-      const amplified = Math.max(
-        -32768,
-        Math.min(32767, Math.round(sample * opt.gain)),
-      );
-      outView.setInt16(i * 2, amplified, true);
+      let amplified = sample * opt.gain;
+
+      // Soft clipping instead of hard clipping to reduce distortion
+      if (amplified > 32767) {
+        amplified = 32767 - (amplified - 32767) * 0.2; // Soft clip
+      } else if (amplified < -32768) {
+        amplified = -32768 - (amplified + 32768) * 0.2; // Soft clip
+      }
+
+      outView.setInt16(i * 2, Math.round(amplified), true);
     }
+
+    return output;
+  };
+
+  // Apply smoothing to reduce pops between chunks
+  const smoothChunk = (data: Uint8Array): Uint8Array => {
+    if (!data || data.length < 4) return data;
+
+    const output = new Uint8Array(data.length);
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    const outView = new DataView(output.buffer);
+    const numSamples = data.length / 2;
+
+    // Apply cross-fade at beginning
+    const fadeLength = Math.min(8, numSamples / 4);
+
+    for (let i = 0; i < numSamples; i++) {
+      let sample = view.getInt16(i * 2, true);
+
+      // Fade in at start
+      if (i < fadeLength) {
+        const fadeIn = i / fadeLength;
+        sample = Math.round(lastSample * (1 - fadeIn) + sample * fadeIn);
+      }
+
+      outView.setInt16(i * 2, sample, true);
+    }
+
+    // Remember last sample for next chunk
+    lastSample = view.getInt16((numSamples - 1) * 2, true);
 
     return output;
   };
@@ -324,7 +373,8 @@ async function main() {
     // Read and play audio
     const chunk = audioBuffer.read(alignedBytesPerTick);
     if (chunk) {
-      const output = applyGain(chunk);
+      let output = applyGain(chunk);
+      output = smoothChunk(output); // Apply smoothing to reduce pops
       try {
         sink.write(output);
         stats.bytesWritten += output.length;
@@ -332,9 +382,20 @@ async function main() {
         console.error("audio write error:", e);
       }
     } else {
-      // Buffer underrun - write silence to maintain timing
+      // Buffer underrun - fade to silence smoothly
       stats.underruns++;
       const silence = new Uint8Array(alignedBytesPerTick);
+
+      // Fade from last sample to silence
+      const view = new DataView(silence.buffer);
+      const fadeSamples = Math.min(16, alignedBytesPerTick / 2);
+      for (let i = 0; i < fadeSamples; i++) {
+        const fade = 1 - i / fadeSamples;
+        const sample = Math.round(lastSample * fade);
+        view.setInt16(i * 2, sample, true);
+      }
+      lastSample = 0; // Reset after fade
+
       try {
         sink.write(silence);
         stats.bytesWritten += alignedBytesPerTick;

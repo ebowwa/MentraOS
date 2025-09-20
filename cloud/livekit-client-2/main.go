@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -37,6 +38,8 @@ var upgrader = websocket.Upgrader{
 		return true // Allow all origins in development
 	},
 }
+
+var lastFrameTime time.Time
 
 type LiveKitService struct {
 	clients map[string]*LiveKitClient
@@ -308,6 +311,14 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 			},
 			// Minimal data receive path: accept arbitrary-size PCM16 payloads over DataPacket (RELIABLE)
 			OnDataPacket: func(pkt lksdk.DataPacket, params lksdk.DataReceiveParams) {
+				// calculate and log the gap between packets.
+				now := time.Now()
+				if !lastFrameTime.IsZero() {
+					gap := now.Sub(lastFrameTime)
+					log.Printf("[bridge] DataPacket gap: %v", gap)
+				}
+				lastFrameTime = now
+
 				// Only forward when subscribe is enabled
 				if !c.subscribeEnabled {
 					return
@@ -609,7 +620,17 @@ func (c *LiveKitClient) writeWSBinary(payload []byte) {
 	if ws == nil {
 		return
 	}
-	_ = ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+
+	// THIS IS THE KEY FIX - disable buffering at TCP level
+	if conn := ws.UnderlyingConn(); conn != nil {
+		if tcpConn, ok := conn.(*net.TCPConn); ok {
+			tcpConn.SetNoDelay(true) // Disable Nagle's algorithm
+		}
+	}
+
+	// _ = ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = ws.SetWriteDeadline(time.Now().Add(time.Millisecond))
+	ws.EnableWriteCompression(false)
 	if err := ws.WriteMessage(websocket.BinaryMessage, payload); err != nil {
 		log.Printf("[bridge] WS binary write failed for user %s: %v", c.userId, err)
 		go c.Close()
