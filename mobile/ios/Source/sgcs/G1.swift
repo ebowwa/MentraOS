@@ -1039,12 +1039,12 @@ class G1: NSObject, SGCManager {
             continuation = pendingAckCompletions.removeValue(forKey: key)
         }
 
-        if peripheral == leftPeripheral {
-            setReadiness(left: true, right: nil)
-        }
-        if peripheral == rightPeripheral {
-            setReadiness(left: nil, right: true)
-        }
+        // if peripheral == leftPeripheral {
+        //     setReadiness(left: true, right: nil)
+        // }
+        // if peripheral == rightPeripheral {
+        //     setReadiness(left: nil, right: true)
+        // }
 
         if let continuation = continuation {
             continuation.resume(returning: true)
