@@ -9,6 +9,7 @@ import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {router} from "expo-router"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {useFocusEffect} from "@react-navigation/native";
+import showAlert from "@/utils/AlertUtils"
 
 interface AppModel {
   packageName: string
@@ -71,7 +72,9 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
 
   const handleToggleOfflineCaptions = useCallback(async () => {
     if (!isLocalTranscriptionEnforced) {
-      // Don't allow toggling if local transcription is not enforced
+      showAlert("Download and enable local transcription", "Please download and enable local transcription to use offline apps", [
+        {text: "Go to settings", onPress: () => router.push('/settings/transcription')}
+      ])
       return
     }
 

@@ -127,6 +127,15 @@ export default function TranscriptionSettingsScreen() {
   const handleModelChange = async (modelId: string) => {
     const timeRemaining = timeRemainingTillRestart()
 
+    if (isDownloading) {
+      // Also add cancel download button
+      showAlert("Download in Progress", "A model is currently downloading. Please wait before switching to another model", [
+        {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
+        {text: "OK", style: "cancel"},
+      ])
+      return
+    }
+
     if (timeRemaining > 0) {
       showAlert(
         "Restart already in progress",
@@ -173,6 +182,9 @@ export default function TranscriptionSettingsScreen() {
       await checkModelStatus()
 
       await activateModelandRestartTranscription(targetModelId)
+
+      setIsEnforceLocalTranscriptionEnabled(true)
+      toggleEnforceLocalTranscription()
 
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
