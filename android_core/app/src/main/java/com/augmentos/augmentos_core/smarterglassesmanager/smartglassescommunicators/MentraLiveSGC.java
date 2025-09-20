@@ -2083,13 +2083,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 return;
             }
             
-            // Create announced file transfer session
+            // Check if we already have a session for this file (restart scenario)
+            FileTransferSession existingSession = activeFileTransfers.get(fileName);
+            if (existingSession != null) {
+                Log.d(TAG, "📢 RESTART detected - clearing existing session for " + fileName);
+                Log.d(TAG, "📊 Previous session had " + existingSession.receivedPackets.size() + "/" + existingSession.totalPackets + " packets");
+                // Clear existing session for fresh start
+                activeFileTransfers.remove(fileName);
+            }
+            
+            // Create new announced file transfer session
             FileTransferSession session = new FileTransferSession(fileName, fileSize);
             // Override calculated packet count with announced count for accuracy
             session.totalPackets = totalPackets;
+            session.isAnnounced = true;
             activeFileTransfers.put(fileName, session);
             
-            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName);
+            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName + (existingSession != null ? " (RESTART)" : " (NEW)"));
             
         } catch (Exception e) {
             Log.e(TAG, "📢 Error processing file transfer announcement", e);
