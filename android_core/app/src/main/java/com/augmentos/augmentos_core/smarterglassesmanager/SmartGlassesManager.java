@@ -28,6 +28,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Bypas
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnableOfflineModeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
@@ -471,6 +472,9 @@ public class SmartGlassesManager extends Service {
                 .edit()
                 .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE), wearableName)
                 .apply();
+
+        // Post event for React Native sync
+        EventBus.getDefault().post(new PreferenceChangedEvent("default_wearable", wearableName));
     }
 
     public static String getPreferredWearable(Context context) {
@@ -483,6 +487,9 @@ public class SmartGlassesManager extends Service {
                 .edit()
                 .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), deviceAddress)
                 .apply();
+
+        // Post event for React Native sync
+        EventBus.getDefault().post(new PreferenceChangedEvent("device_address", deviceAddress));
     }
 
     public static String getPreferredWearableAddress(Context context) {

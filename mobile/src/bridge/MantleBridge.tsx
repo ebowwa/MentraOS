@@ -411,8 +411,8 @@ export class MantleBridge extends EventEmitter {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          // socketComms.sendBinary(bytes)
-          livekitManager.addPcm(bytes)
+          socketComms.sendBinary(bytes)
+          // livekitManager.addPcm(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)
