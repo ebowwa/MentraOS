@@ -23,6 +23,9 @@ export enum ConnectionErrorCode {
 export class ConnectionValidator {
   private static readonly STALE_CONNECTION_THRESHOLD_MS = 60000; // 1 minute
 
+  // SAFETY FLAG: Set to true to enable validation, false to bypass all checks
+  private static readonly VALIDATION_ENABLED = false; // TODO: Set to true when ready to go live
+
   /**
    * Validate connections for hardware requests (photo, display, audio)
    * Checks both phone WebSocket and glasses connection state
@@ -31,6 +34,19 @@ export class ConnectionValidator {
     userSession: UserSession,
     requestType: "photo" | "display" | "audio" | "sensor",
   ): ValidationResult {
+    // SAFETY BYPASS: Return success immediately if validation is disabled
+    if (!ConnectionValidator.VALIDATION_ENABLED) {
+      logger.debug(
+        {
+          userId: userSession.userId,
+          requestType,
+          bypassReason: "VALIDATION_ENABLED=false",
+        },
+        "Connection validation bypassed - returning success",
+      );
+      return { valid: true };
+    }
+
     // Check phone WebSocket connection first
     if (!userSession.websocket) {
       logger.error(
@@ -142,6 +158,18 @@ export class ConnectionValidator {
    * Used for operations that only need phone connection
    */
   static validatePhoneConnection(userSession: UserSession): ValidationResult {
+    // SAFETY BYPASS: Return success immediately if validation is disabled
+    if (!ConnectionValidator.VALIDATION_ENABLED) {
+      logger.debug(
+        {
+          userId: userSession.userId,
+          bypassReason: "VALIDATION_ENABLED=false",
+        },
+        "Phone connection validation bypassed - returning success",
+      );
+      return { valid: true };
+    }
+
     if (
       !userSession.websocket ||
       userSession.websocket.readyState !== WebSocket.OPEN
