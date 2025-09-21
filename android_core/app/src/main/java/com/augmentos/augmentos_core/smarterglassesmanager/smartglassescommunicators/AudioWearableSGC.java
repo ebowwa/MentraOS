@@ -33,7 +33,7 @@ public class AudioWearableSGC extends SmartGlassesCommunicator {
     public void setFontSizes(){
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         connectionEvent(SmartGlassesConnectionState.CONNECTED);
     }
 
@@ -111,6 +111,19 @@ public class AudioWearableSGC extends SmartGlassesCommunicator {
     @Override
     public void displayCustomContent(String json) {
         displayTextLine(json);
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO AUDIO WEARABLE ===");
+        
+        // For Audio Wearable, we can send a TTS message to indicate display cleared
+        // This is a stub implementation since Audio Wearable has no visual display
+        Log.w(TAG, "Audio Wearable does not support clearDisplay");
     }
 
     @Override

@@ -1,23 +1,22 @@
 /**
  * message.ts
  *
- * This file defines constant messages that should be displayed 
+ * This file defines constant messages that should be displayed
  * in the terminal to notify developers about new SDK releases.
  *
- * Each function generates a stylized ASCII message (banner-style) 
+ * Each function generates a stylized ASCII message (banner-style)
  * that highlights the latest SDK version and provides the npm install command.
  * https://patorjk.com/software/taag/
- * 
- * These messages are intended to be logged to the console or shown in 
- * terminal output so developers are aware of updates in a clear 
+ *
+ * These messages are intended to be logged to the console or shown in
+ * terminal output so developers are aware of updates in a clear
  * and visually distinct way.
- * 
- * 
+ *
+ *
  */
 
-
 export const newSDKUpdate2 = (versionNumb: string): string => {
-  return (`
+  return `
           ___     
          /__/:\\        ┬╔╗╔╔═╗╦ ╦  ╦ ╦╔═╗╔╦╗╔═╗╔╦╗╔═╗┬
         |  |:: \\       │║║║║╣ ║║║  ║ ║╠═╝ ║║╠═╣ ║ ║╣ │
@@ -29,11 +28,11 @@ export const newSDKUpdate2 = (versionNumb: string): string => {
        \\  \\:\\        
         \\  \\:\\    
          \\__\\/    
-  `);
+  `;
 };
 
 export const newSDKUpdate = (versionNumb: string): string => {
-  return (`
+  return `
 
  /$$      /$$ /$$$$$$$$ /$$   /$$ /$$$$$$$$ /$$$$$$$   /$$$$$$ 
 | $$$    /$$$| $$_____/| $$$ | $$|__  $$__/| $$__  $$ /$$__  $$
@@ -51,12 +50,5 @@ o╝╚╝╚═╝╚╩╝  ╚═╝╩  ═╩╝╩ ╩ ╩ ╚═╝o
 SDK VERSION V${versionNumb} is out!     
 ------------------------------- 
 bun install @mentra/sdk@latest   
-  `);
-  
-  
-}
-
-
-
-
-    
+  `;
+};

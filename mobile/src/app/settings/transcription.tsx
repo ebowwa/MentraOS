@@ -12,8 +12,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function TranscriptionSettingsScreen() {
   const {status} = useCoreStatus()
@@ -29,14 +28,19 @@ export default function TranscriptionSettingsScreen() {
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000; // 8 seconds
+  const [isOfflineSTTEnabled, setIsOfflineSTTEnabled] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-
   // load settings:
+  const loadSettings = async () => {
+    await settings.get(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
+    await settings.get(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+    await settings.get(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
+  }
   useEffect(() => {
-    loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
+    loadSettings().then(() => setLoading(false))
   }, [])
 
   // Cancel download function
@@ -105,7 +109,7 @@ export default function TranscriptionSettingsScreen() {
 
     const newSetting = !isEnforceLocalTranscriptionEnabled
     await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
+    await settings.set(SETTINGS_KEYS.enforce_local_transcription, newSetting)
     setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
@@ -122,12 +126,17 @@ export default function TranscriptionSettingsScreen() {
     await bridge.restartTranscription()
   }
 
-
   const handleModelChange = async (modelId: string) => {
     const timeRemaining = timeRemainingTillRestart()
 
     if (timeRemaining > 0) {
-      showAlert("Restart already in progress", "A model change is in progress. Please wait " + Math.ceil(timeRemaining/1000) + " seconds before switching to another model", [{text: "OK"}])
+      showAlert(
+        "Restart already in progress",
+        "A model change is in progress. Please wait " +
+          Math.ceil(timeRemaining / 1000) +
+          " seconds before switching to another model",
+        [{text: "OK"}],
+      )
       return
     }
     const info = await STTModelManager.getModelInfo(modelId)
@@ -231,13 +240,32 @@ export default function TranscriptionSettingsScreen() {
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !isBypassVADForDebuggingEnabled
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
+    await settings.set(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
+  }
+
+  const toggleOfflineSTT = async () => {
+    const newSetting = !isOfflineSTTEnabled
+    await settings.set(SETTINGS_KEYS.offline_stt, newSetting)
+    setIsOfflineSTTEnabled(newSetting)
   }
 
   useEffect(() => {
     initSelectedModel()
   }, [])
+
+  if (loading) {
+    return (
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+        <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={handleGoBack} />
+        <View style={{alignItems: "center", padding: theme.spacing.lg}}>
+          <ActivityIndicator size="large" color={theme.colors.text} />
+          <Spacer height={theme.spacing.sm} />
+          <Text>Loading...</Text>
+        </View>
+      </Screen>
+    )
+  }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
@@ -300,6 +328,15 @@ export default function TranscriptionSettingsScreen() {
                     Download a model to enable local transcription
                   </Text>
                 )}
+
+                <Spacer height={theme.spacing.md} />
+                <ToggleSetting
+                  label={translate("settings:offlineSTT")}
+                  subtitle={translate("settings:offlineSTTSubtitle")}
+                  value={isOfflineSTTEnabled}
+                  onValueChange={toggleOfflineSTT}
+                  disabled={!modelInfo?.downloaded || isDownloading}
+                />
               </>
             )}
           </>

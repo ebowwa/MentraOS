@@ -7,7 +7,9 @@ public interface AugmentOsActionsCallback {
     void requestPing();
     void requestStatus();
     void searchForCompatibleDeviceNames(String modelName);
-    void connectToWearable(String modelName, String deviceName);
+
+    void connectToWearable(String modelName, String deviceName, String deviceAddress);
+
     void disconnectWearable(String wearableId);
     void forgetSmartGlasses();
     void startApp(String packageName);
@@ -50,6 +52,16 @@ public interface AugmentOsActionsCallback {
     void onAudioStopRequest(JSONObject audioStopParams);
     void simulateHeadPosition(String position);
     void simulateButtonPress(String buttonId, String pressType);
+
+    void onDisplayTextNotified(String text, int size, int x, int y);
+
+    void onDisplayImageNotified(String imageType, String imageSize);
+
+    void clearDisplay();
+
+    void setLc3AudioEnabled(boolean enabled);
+    void updateSettings(JSONObject newSettings);
+
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();
     void stopBufferRecording();

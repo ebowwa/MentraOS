@@ -94,6 +94,19 @@ public class SelfSGC extends SmartGlassesCommunicator {
     }
 
     @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO SELF GLASSES ===");
+        
+        // For Self glasses, we can send a message to indicate display cleared
+        // This is a stub implementation since Self glasses have limited display capabilities
+        Log.d(TAG, "[STUB] Self glasses display cleared (no actual display)");
+    }
+
+    @Override
     public void showHomeScreen() {
 
     }
@@ -118,7 +131,7 @@ public class SelfSGC extends SmartGlassesCommunicator {
         SMALL_FONT = 0;
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         // Right now, this is the code running onboard our android-based meta ray-ban alternative
         // It has speakers, mic, camera, wifi
         // Let's just figure out camera for now

@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef} from "react"
 import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
-import {Screen, Header, Text, Button} from "@/components/ignite"
+import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
@@ -11,13 +11,11 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
 import {ScrollView} from "react-native-gesture-handler"
-import livekitManager from "@/managers/LivekitManager"
 
 export default function SettingsPage() {
   const {logout, user} = useAuth()
@@ -28,7 +26,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
@@ -69,7 +67,7 @@ export default function SettingsPage() {
     // Handle different press counts
     if (pressCount.current === maxPressCount) {
       showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
-      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      settings.set(SETTINGS_KEYS.DEV_MODE, true)
       setDevMode(true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
@@ -144,6 +142,10 @@ export default function SettingsPage() {
           <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
           <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
+
+          {Platform.OS === "android" && (
+            <RouteButton label="Notification Settings" onPress={() => push("/settings/notifications")} />
+          )}
 
           <RouteButton
             label={translate("settings:transcriptionSettings")}

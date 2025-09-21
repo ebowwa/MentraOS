@@ -161,12 +161,12 @@ const AppStore: React.FC = () => {
         (app.description && app.description.toLowerCase().includes(query)) ||
         app.packageName.toLowerCase().includes(query), // Also match package name
     );
-    
+
     // If we have a single app that was found by package search, show it regardless
     if (apps.length === 1 && apps !== originalApps) {
       return apps;
     }
-    
+
     return filtered;
   }, [apps, originalApps, searchQuery]);
 
@@ -366,68 +366,72 @@ const AppStore: React.FC = () => {
     navigate("/login");
   }, [navigate]);
 
-  const handleSearchChange = useCallback(async (value: string) => {
-    setSearchQuery(value);
-    // console.log("🔍 Search input:", value);
-    
-    // Restore original apps if we had searched by package before
-    if (apps !== originalApps) {
-      setApps(originalApps);
-    }
-    
-    if (value.trim() === "") {
-      // console.log("📊 Total apps available:", originalApps.length);
-      return;
-    }
+  const handleSearchChange = useCallback(
+    async (value: string) => {
+      setSearchQuery(value);
+      // console.log("🔍 Search input:", value);
 
-    const query = value.toLowerCase();
-    const filtered = originalApps.filter(
-      (app) =>
-        app.name.toLowerCase().includes(query) ||
-        (app.description && app.description.toLowerCase().includes(query)),
-    );
-    
-    // console.log(`📊 Apps matching "${value}":`, filtered.length);
-    
-    // If no local matches, try searching by package name
-    if (filtered.length === 0) {
-      // console.log("🔎 No local matches found. Searching by package name...");
-      setIsLoading(true);
-      try {
-        const pkgApp = await api.app.getAppByPackageName(value);
-
-        if (pkgApp) {
-          // console.log("✅ Found app by package name:", pkgApp.name, `(${pkgApp.packageName})`);
-          // Check if user is authenticated to get install status
-          if (isAuthenticated && isAuthTokenReady()) {
-            try {
-              const installedApps = await api.app.getInstalledApps();
-              pkgApp.isInstalled = installedApps.some(app => app.packageName === pkgApp.packageName);
-              console.log(`📱 App install status: ${pkgApp.isInstalled ? 'INSTALLED' : 'NOT INSTALLED'}`);
-            } catch (error) {
-              console.error("⚠️ Error checking install status:", error);
-              pkgApp.isInstalled = false;
-            }
-          } else {
-            pkgApp.isInstalled = false;
-            // console.log("🔒 User not authenticated - showing as not installed");
-          }
-          
-          setApps([pkgApp]);
-          // Don't clear search query - let filteredApps handle it
-        } else {
-          // console.log("❌ No app found with package name:", value);
-        }
-      } catch (error) {
-        // console.error("⚠️ Error searching by package name:", error);
-      } finally {
-        setIsLoading(false);
+      // Restore original apps if we had searched by package before
+      if (apps !== originalApps) {
+        setApps(originalApps);
       }
-    }
-    
-    
-  }, [apps, originalApps, isAuthenticated, isAuthTokenReady]);
 
+      if (value.trim() === "") {
+        // console.log("📊 Total apps available:", originalApps.length);
+        return;
+      }
+
+      const query = value.toLowerCase();
+      const filtered = originalApps.filter(
+        (app) =>
+          app.name.toLowerCase().includes(query) ||
+          (app.description && app.description.toLowerCase().includes(query)),
+      );
+
+      // console.log(`📊 Apps matching "${value}":`, filtered.length);
+
+      // If no local matches, try searching by package name
+      if (filtered.length === 0) {
+        // console.log("🔎 No local matches found. Searching by package name...");
+        setIsLoading(true);
+        try {
+          const pkgApp = await api.app.getAppByPackageName(value);
+
+          if (pkgApp) {
+            // console.log("✅ Found app by package name:", pkgApp.name, `(${pkgApp.packageName})`);
+            // Check if user is authenticated to get install status
+            if (isAuthenticated && isAuthTokenReady()) {
+              try {
+                const installedApps = await api.app.getInstalledApps();
+                pkgApp.isInstalled = installedApps.some(
+                  (app) => app.packageName === pkgApp.packageName,
+                );
+                console.log(
+                  `📱 App install status: ${pkgApp.isInstalled ? "INSTALLED" : "NOT INSTALLED"}`,
+                );
+              } catch (error) {
+                console.error("⚠️ Error checking install status:", error);
+                pkgApp.isInstalled = false;
+              }
+            } else {
+              pkgApp.isInstalled = false;
+              // console.log("🔒 User not authenticated - showing as not installed");
+            }
+
+            setApps([pkgApp]);
+            // Don't clear search query - let filteredApps handle it
+          } else {
+            // console.log("❌ No app found with package name:", value);
+          }
+        } catch (error) {
+          // console.error("⚠️ Error searching by package name:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    },
+    [apps, originalApps, isAuthenticated, isAuthTokenReady],
+  );
 
   return (
     <div

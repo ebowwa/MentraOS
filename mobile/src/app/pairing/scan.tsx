@@ -22,7 +22,7 @@ import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {useSearchResults} from "@/contexts/SearchResultsContext"
+import {useSearchResults, SearchResultDevice} from "@/contexts/SearchResultsContext"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
@@ -33,18 +33,17 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useCoreStatus()
-  const navigation = useNavigation<NavigationProps>()
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {goBack, push, clearHistory, navigate, replace} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
-  const searchResultsRef = useRef<string[]>(searchResults)
+  const searchResultsRef = useRef<SearchResultDevice[]>(searchResults)
 
   const scrollViewOpacity = useSharedValue(0)
   const scrollViewAnimatedStyle = useAnimatedStyle(() => ({
@@ -111,7 +110,15 @@ export default function SelectGlassesBluetoothScreen() {
   const backHandlerRef = useRef<any>(null)
 
   useEffect(() => {
-    const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
+    const handleSearchResult = ({
+      modelName,
+      deviceName,
+      deviceAddress,
+    }: {
+      modelName: string
+      deviceName: string
+      deviceAddress: string
+    }) => {
       // console.log("GOT SOME SEARCH RESULTS:");
       // console.log("ModelName: " + modelName);
       // console.log("DeviceName: " + deviceName);
@@ -122,13 +129,18 @@ export default function SelectGlassesBluetoothScreen() {
         // Quick hack // bugfix => we get NOTREQUIREDSKIP twice in some cases, so just stop after the initial one
         GlobalEventEmitter.removeListener("COMPATIBLE_GLASSES_SEARCH_RESULT", handleSearchResult)
 
-        triggerGlassesPairingGuide(glassesModelName as string, "")
+        triggerGlassesPairingGuide(glassesModelName as string, deviceName, deviceAddress as string)
         return
       }
 
       setSearchResults(prevResults => {
-        if (!prevResults.includes(deviceName)) {
-          return [...prevResults, deviceName]
+        const isDuplicate = deviceAddress
+          ? prevResults.some(device => device.deviceAddress === deviceAddress)
+          : prevResults.some(device => device.deviceName === deviceName)
+
+        if (!isDuplicate) {
+          const newDevice = new SearchResultDevice(modelName, deviceName, deviceAddress)
+          return [...prevResults, newDevice]
         }
         return prevResults
       })
@@ -190,10 +202,10 @@ export default function SelectGlassesBluetoothScreen() {
 
   useEffect(() => {
     // If puck gets d/c'd here, return to home
-    if (!status.core_info.puck_connected) {
-      router.dismissAll()
-      replace("/(tabs)/home")
-    }
+    //     if (!status.core_info.puck_connected) {
+    //       router.dismissAll()
+    //       replace("/(tabs)/home")
+    //     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -202,7 +214,7 @@ export default function SelectGlassesBluetoothScreen() {
     }
   }, [status])
 
-  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string) => {
+  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string, deviceAddress: string) => {
     // On Android, we need to check both microphone and location permissions
     if (Platform.OS === "android") {
       // First check location permission, which is required for Bluetooth scanning on Android
@@ -235,12 +247,12 @@ export default function SelectGlassesBluetoothScreen() {
 
     // update the preferredmic to be the phone mic:
     bridge.sendSetPreferredMic("phone") // TODO: config: remove
-    saveSetting(SETTINGS_KEYS.preferred_mic, "phone")
+    settings.set(SETTINGS_KEYS.preferred_mic, "phone")
 
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {
       // give some time to show the loader (otherwise it's a bit jarring)
-      bridge.sendConnectWearable(glassesModelName, deviceName)
+      bridge.sendConnectWearable(glassesModelName, deviceName, deviceAddress)
     }, 2000)
     push("/pairing/loading", {glassesModelName: glassesModelName})
   }
@@ -270,17 +282,17 @@ export default function SelectGlassesBluetoothScreen() {
           {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
           {searchResults && searchResults.length > 0 && (
             <>
-              {searchResults.map((deviceName, index) => (
+              {searchResults.map((device, index) => (
                 <TouchableOpacity
                   key={index}
                   style={themed($settingItem)}
                   onPress={() => {
-                    triggerGlassesPairingGuide(glassesModelName, deviceName)
+                    triggerGlassesPairingGuide(device.deviceMode, device.deviceName, device.deviceAddress)
                   }}>
                   {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
                   <View style={styles.settingTextContainer}>
                     <Text
-                      text={`${glassesModelName}  ${deviceName}`}
+                      text={`${glassesModelName}  ${device.deviceName}`}
                       style={[
                         styles.label,
                         {
