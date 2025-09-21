@@ -99,16 +99,10 @@ export default function TranscriptionSettingsScreen() {
     }
   }
 
-  const toggleEnforceLocalTranscription = async () => {
-    if (!modelInfo?.downloaded) {
-      showAlert("Model Required", "You need to download the speech recognition model first.", [{text: "OK"}])
-      return
-    }
-
-    const newSetting = !isEnforceLocalTranscriptionEnabled
-    await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.enforce_local_transcription, newSetting)
-    setIsEnforceLocalTranscriptionEnabled(newSetting)
+  const enableEnforceLocalTranscription = async () => {
+    await settings.set(SETTINGS_KEYS.enforce_local_transcription, true)
+    await bridge.sendToggleEnforceLocalTranscription(true)
+    setIsEnforceLocalTranscriptionEnabled(true)
   }
 
   const timeRemainingTillRestart = () => {
@@ -183,8 +177,7 @@ export default function TranscriptionSettingsScreen() {
 
       await activateModelandRestartTranscription(targetModelId)
 
-      setIsEnforceLocalTranscriptionEnabled(true)
-      toggleEnforceLocalTranscription()
+      await enableEnforceLocalTranscription()
 
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
@@ -309,29 +302,6 @@ export default function TranscriptionSettingsScreen() {
                   extractionProgress={extractionProgress}
                   currentModelInfo={modelInfo}
                 />
-
-                <Spacer height={theme.spacing.lg} />
-
-                {/* Local Transcription Toggle */}
-                <ToggleSetting
-                  label={translate("settings:enforceLocalTranscription")}
-                  subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-                  value={isEnforceLocalTranscriptionEnabled}
-                  onValueChange={toggleEnforceLocalTranscription}
-                  disabled={!modelInfo?.downloaded || isDownloading}
-                />
-
-                {(!modelInfo?.downloaded || isDownloading) && (
-                  <Text
-                    size="xs"
-                    style={{
-                      color: theme.colors.textDim,
-                      marginTop: theme.spacing.xs,
-                      paddingHorizontal: theme.spacing.sm,
-                    }}>
-                    Download a model to enable local transcription
-                  </Text>
-                )}
 
                 <Spacer height={theme.spacing.md} />
               </>

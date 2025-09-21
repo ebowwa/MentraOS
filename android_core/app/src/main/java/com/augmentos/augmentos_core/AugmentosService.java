@@ -313,6 +313,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
 
+    // Handler and Runnable to clear the glasses screen after displaying text
+    private final Handler clearScreenHandler = new Handler(Looper.getMainLooper());
+    private Runnable clearScreenRunnable;
+
     // Add fields to cache latest glasses version info
     private String glassesAppVersion = null;
     private String glassesBuildNumber = null;
@@ -393,6 +397,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             String processedText = transcriptProcessor.processString(event.text, event.isFinal);
             if (processedText != null) {
                 smartGlassesManager.sendTextWall(processedText);
+                // Schedule screen clear after 10 seconds, cancelling previous if pending
+                // In case of online captions cloud takes care of this
+                if (clearScreenRunnable != null) {
+                    clearScreenHandler.removeCallbacks(clearScreenRunnable);
+                }
+                clearScreenRunnable = () -> {
+                    if (smartGlassesManager != null) {
+                        smartGlassesManager.sendTextWall("");
+                    }
+                };
+                clearScreenHandler.postDelayed(clearScreenRunnable, 10_000);
             }
         }
     }
@@ -2429,7 +2444,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             requiredData.add(SpeechRequiredDataType.TRANSCRIPTION);
         }
         if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
-            Log.d(TAG, "Changing microphone state yayieeee");
+            if (enabled) {
+                smartGlassesManager.sendReferenceCard("// MentraOS - Starting App", "Offline Captions");
+            } else {
+                smartGlassesManager.sendTextWall("");
+            }   
             smartGlassesManager.changeMicrophoneState(requiredData, false);
         }
     }

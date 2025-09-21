@@ -10,6 +10,7 @@ import {router} from "expo-router"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {useFocusEffect} from "@react-navigation/native";
 import showAlert from "@/utils/AlertUtils"
+import socketComms from "@/managers/SocketComms"
 
 interface AppModel {
   packageName: string
@@ -70,6 +71,29 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     }
   }
 
+  const displayAppStartingMessage = useCallback(() => {
+    socketComms.handle_display_event({
+      type: "display_event",
+      view: "main",
+      layout: {
+        layoutType: "reference_card",
+        title: "// MentraOS - Starting App",
+        text: "Offline Captions",
+      },
+    })
+  }, [])
+
+  const clearDisplayOnAppStop = useCallback(() => {
+    socketComms.handle_display_event({
+      type: "display_event",
+      view: "main",
+      layout: {
+        layoutType: "text_wall",
+        text: "",
+      },
+    })
+  }, [])
+
   const handleToggleOfflineCaptions = useCallback(async () => {
     if (!isLocalTranscriptionEnforced) {
       showAlert("Download and enable local transcription", "Please download and enable local transcription to use offline apps", [
@@ -80,7 +104,14 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
 
     const newOfflineMode = !isOfflineCaptionsEnabled
 
+    if (newOfflineMode) {
+      displayAppStartingMessage()
+    } else {
+      clearDisplayOnAppStop()
+    }
+    
     // Update the bridge with the new offline mode
+    // TODO: Later remove this during android refactor
     bridge.toggleOfflineApps(newOfflineMode)
     
     // Save the preference to storage
