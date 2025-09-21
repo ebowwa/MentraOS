@@ -95,6 +95,9 @@ export class UserSession {
   private pongTimeoutTimer?: NodeJS.Timeout;
   private readonly PONG_TIMEOUT_MS = 30000; // 30 seconds - 3x heartbeat interval
 
+  // SAFETY FLAG: Set to false to disable pong timeout behavior entirely
+  private static readonly PONG_TIMEOUT_ENABLED = false; // TODO: Set to true when ready to enable connection tracking
+
   // Connection state tracking
   public phoneConnected: boolean = false;
   public glassesConnected: boolean = false;
@@ -185,14 +188,20 @@ export class UserSession {
         );
       }
 
-      // Reset the timeout timer
-      this.resetPongTimeout();
+      // Reset the timeout timer only if enabled
+      if (UserSession.PONG_TIMEOUT_ENABLED) {
+        this.resetPongTimeout();
+      }
     });
 
     // Initialize pong tracking
     this.lastPongTime = Date.now();
     this.phoneConnected = true;
-    this.resetPongTimeout();
+
+    // Only start timeout tracking if enabled
+    if (UserSession.PONG_TIMEOUT_ENABLED) {
+      this.resetPongTimeout();
+    }
 
     this.logger.debug(
       `[UserSession:setupGlassesHeartbeat] Heartbeat established for glasses connection`,
@@ -222,6 +231,14 @@ export class UserSession {
    * Reset the pong timeout timer
    */
   private resetPongTimeout(): void {
+    // Skip if pong timeout is disabled
+    if (!UserSession.PONG_TIMEOUT_ENABLED) {
+      this.logger.debug(
+        "[UserSession:resetPongTimeout] Pong timeout disabled by PONG_TIMEOUT_ENABLED=false",
+      );
+      return;
+    }
+
     // Clear existing timer
     if (this.pongTimeoutTimer) {
       clearTimeout(this.pongTimeoutTimer);
