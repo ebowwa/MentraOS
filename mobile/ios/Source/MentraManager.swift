@@ -94,11 +94,11 @@ struct ViewState {
 
     var viewStates: [ViewState] = [
         ViewState(
-            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: ""
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
-            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$",
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$"
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
