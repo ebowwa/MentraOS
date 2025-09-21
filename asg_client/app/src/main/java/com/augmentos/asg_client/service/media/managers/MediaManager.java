@@ -327,6 +327,11 @@ public class MediaManager implements IMediaManager {
                     JSONObject status = new JSONObject();
                     status.put("type", "rtmp_stream_status");
                     status.put("status", "stopped");
+                    // CRITICAL FIX: Always include streamId for terminal status
+                    String streamId = RtmpStreamingService.getCurrentStreamId();
+                    if (streamId != null && !streamId.isEmpty()) {
+                        status.put("streamId", streamId);
+                    }
                     status.put("timestamp", System.currentTimeMillis());
 
                     sendRtmpStatusResponse(true, status);
@@ -346,6 +351,11 @@ public class MediaManager implements IMediaManager {
                     status.put("attempt", attempt);
                     status.put("maxAttempts", maxAttempts);
                     status.put("reason", reason);
+                    // Include streamId for all status updates
+                    String streamId = RtmpStreamingService.getCurrentStreamId();
+                    if (streamId != null && !streamId.isEmpty()) {
+                        status.put("streamId", streamId);
+                    }
                     status.put("timestamp", System.currentTimeMillis());
 
                     sendRtmpStatusResponse(true, status);
@@ -364,6 +374,11 @@ public class MediaManager implements IMediaManager {
                     status.put("status", "reconnected");
                     status.put("rtmpUrl", rtmpUrl);
                     status.put("attempt", attempt);
+                    // Include streamId for all status updates
+                    String streamId = RtmpStreamingService.getCurrentStreamId();
+                    if (streamId != null && !streamId.isEmpty()) {
+                        status.put("streamId", streamId);
+                    }
                     status.put("timestamp", System.currentTimeMillis());
 
                     sendRtmpStatusResponse(true, status);
@@ -381,6 +396,11 @@ public class MediaManager implements IMediaManager {
                     status.put("type", "rtmp_stream_status");
                     status.put("status", "reconnect_failed");
                     status.put("maxAttempts", maxAttempts);
+                    // CRITICAL FIX: Always include streamId for terminal status
+                    String streamId = RtmpStreamingService.getCurrentStreamId();
+                    if (streamId != null && !streamId.isEmpty()) {
+                        status.put("streamId", streamId);
+                    }
                     status.put("timestamp", System.currentTimeMillis());
 
                     sendRtmpStatusResponse(false, status);
@@ -397,7 +417,13 @@ public class MediaManager implements IMediaManager {
                     JSONObject status = new JSONObject();
                     status.put("type", "rtmp_stream_status");
                     status.put("status", "error");
-                    status.put("error", error);
+                    // FIX: Use correct key name that cloud expects
+                    status.put("errorDetails", error);
+                    // CRITICAL FIX: Always include streamId for terminal status
+                    String streamId = RtmpStreamingService.getCurrentStreamId();
+                    if (streamId != null && !streamId.isEmpty()) {
+                        status.put("streamId", streamId);
+                    }
                     status.put("timestamp", System.currentTimeMillis());
 
                     sendRtmpStatusResponse(false, status);

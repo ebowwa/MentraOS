@@ -66,6 +66,7 @@ struct ViewState {
     private var isHeadUp: Bool = false
     private var sendStateWorkItem: DispatchWorkItem?
     private let sendStateQueue = DispatchQueue(label: "sendStateQueue", qos: .userInitiated)
+    private var shouldSendBootingMessage = true
 
     // mic:
     private var useOnboardMic = false
@@ -93,11 +94,11 @@ struct ViewState {
 
     var viewStates: [ViewState] = [
         ViewState(
-            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: ""
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
-            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$",
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$"
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
@@ -1382,8 +1383,6 @@ struct ViewState {
         defaultWearable = "Even Realities G1"
         handle_request_status()
 
-        let shouldSendBootingMessage = true
-
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
@@ -1409,6 +1408,8 @@ struct ViewState {
                 try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
                 sendText(" ") // clear screen
             }
+
+            shouldSendBootingMessage = false
 
             self.handle_request_status()
         }
