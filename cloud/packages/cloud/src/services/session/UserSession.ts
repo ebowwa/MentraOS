@@ -32,6 +32,7 @@ import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
+import LiveKitManager from "./LiveKitManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -61,7 +62,7 @@ export class UserSession {
   public appWebsockets: Map<string, WebSocket> = new Map();
 
   // Transcription
-  public isTranscribing = false;
+  public isTranscribing = false; // TODO(isaiah): Sync with frontend to see if we can remove this property.
   public lastAudioTimestamp?: number;
 
   // Audio
@@ -81,6 +82,7 @@ export class UserSession {
   public transcriptionManager: TranscriptionManager;
   public translationManager: TranslationManager;
   public subscriptionManager: SubscriptionManager;
+  public liveKitManager: LiveKitManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -98,6 +100,9 @@ export class UserSession {
   // Other state
   public userDatetime?: string;
 
+  // LiveKit transport preference
+  public livekitRequested?: boolean;
+
   // Capability Discovery
   public capabilities: Capabilities | null = null;
 
@@ -108,6 +113,7 @@ export class UserSession {
     this.userId = userId;
     this.websocket = websocket;
     this.logger = rootLogger.child({ userId, service: "UserSession" });
+    this.startTime = new Date();
 
     // Initialize managers
     this.appManager = new AppManager(this);
@@ -122,16 +128,18 @@ export class UserSession {
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
+    this.liveKitManager = new LiveKitManager(this);
 
     this._reconnectionTimers = new Map();
-    this.startTime = new Date();
 
     // Set up heartbeat for glasses connection
     this.setupGlassesHeartbeat();
 
     // Register in static session map
     UserSession.sessions.set(userId, this);
-    this.logger.info(`✅ User session created and registered for ${userId} (static map)`);
+    this.logger.info(
+      `✅ User session created and registered for ${userId} (static map)`,
+    );
 
     // Register for leak detection
     memoryLeakDetector.register(this, `UserSession:${userId}`);
@@ -604,7 +612,10 @@ export class UserSession {
     try {
       this.audioManager.processAudioData(audioData, false);
     } catch (error) {
-      this.logger.error({ error }, `Error relaying audio for user: ${this.userId}`);
+      this.logger.error(
+        { error },
+        `Error relaying audio for user: ${this.userId}`,
+      );
     }
   }
 
@@ -615,7 +626,10 @@ export class UserSession {
     try {
       const requestId = audioResponse.requestId;
       if (!requestId) {
-        this.logger.error({ audioResponse }, "Audio play response missing requestId");
+        this.logger.error(
+          { audioResponse },
+          "Audio play response missing requestId",
+        );
         return;
       }
       const packageName = this.audioPlayRequestMapping.get(requestId);
@@ -658,7 +672,10 @@ export class UserSession {
         `🔊 [UserSession] Cleaned up audio request mapping for ${requestId}. Remaining: ${this.audioPlayRequestMapping.size}`,
       );
     } catch (error) {
-      this.logger.error({ error, audioResponse }, `Error relaying audio play response`);
+      this.logger.error(
+        { error, audioResponse },
+        `Error relaying audio play response`,
+      );
     }
   }
 
@@ -735,6 +752,7 @@ export class UserSession {
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();
+    if (this.liveKitManager) this.liveKitManager.dispose();
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();

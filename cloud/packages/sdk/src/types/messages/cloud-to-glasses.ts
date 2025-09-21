@@ -20,6 +20,11 @@ export interface ConnectionAck extends BaseMessage {
   type: CloudToGlassesMessageType.CONNECTION_ACK;
   userSession: Partial<UserSession>;
   sessionId: string;
+  livekit?: {
+    url: string;
+    roomName: string;
+    token: string;
+  };
 }
 
 /**
@@ -105,6 +110,16 @@ export interface SettingsUpdate extends BaseMessage {
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
   };
+}
+
+/**
+ * LiveKit info for client to connect & publish
+ */
+export interface LiveKitInfo extends BaseMessage {
+  type: CloudToGlassesMessageType.LIVEKIT_INFO;
+  url: string;
+  roomName: string;
+  token: string;
 }
 
 //===========================================================
@@ -211,7 +226,8 @@ export type CloudToGlassesMessage =
   | StopRtmpStream
   | KeepRtmpStreamAlive
   | SetLocationTier
-  | RequestSingleLocation;
+  | RequestSingleLocation
+  | LiveKitInfo;
 
 //===========================================================
 // Type guards

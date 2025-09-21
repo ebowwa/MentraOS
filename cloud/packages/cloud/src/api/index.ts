@@ -4,6 +4,7 @@ import type { Application } from "express";
 import userSettingsApi from "./client/user-settings.api";
 import feedbackApi from "./client/feedback.api";
 import minVersionApi from "./client/min-version.api";
+import livekitApi from "./client/livekit.api";
 import sdkVersionApi from "./sdk";
 
 // Legacy route modules (to be migrated gradually)
@@ -13,7 +14,6 @@ import transcriptRoutes from "../routes/transcripts.routes";
 import appSettingsRoutes from "../routes/app-settings.routes";
 import errorReportRoutes from "../routes/error-report.routes";
 import devRoutes from "../routes/developer.routes";
-import serverRoutes from "../routes/server.routes";
 import adminRoutes from "../routes/admin.routes";
 import photoRoutes from "../routes/photos.routes";
 import galleryRoutes from "../routes/gallery.routes";
@@ -38,6 +38,7 @@ export function registerApi(app: Application) {
   app.use("/api/client/user/settings", userSettingsApi);
   app.use("/api/client/feedback", feedbackApi);
   app.use("/api/client/min-version", minVersionApi);
+  app.use("/api/client/livekit", livekitApi);
   app.use("/api/sdk", sdkVersionApi);
 
   // Legacy mounts (to be migrated)
@@ -51,7 +52,6 @@ export function registerApi(app: Application) {
   app.use("/api/admin", adminRoutes);
   app.use("/api/orgs", organizationRoutes);
 
-  app.use("/api/server", serverRoutes);
   app.use("/api/photos", photoRoutes);
   app.use("/api/gallery", galleryRoutes);
   app.use("/api/tools", toolsRoutes);

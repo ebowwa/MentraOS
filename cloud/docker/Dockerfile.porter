@@ -1,6 +1,9 @@
 # Single-stage build with Bun
 FROM oven/bun:latest
 
+# Install ca-certificates for SSL/TLS connections
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy source code
