@@ -1,5 +1,5 @@
 //
-//  MentraNexSGC.swift
+//  MentraNex.swift
 //  MentraOS_Manager
 //
 //  Created by Gemini on 2024-07-29.

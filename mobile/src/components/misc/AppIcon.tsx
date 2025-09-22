@@ -7,7 +7,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {SquircleView} from "expo-squircle-view"
-import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 interface AppIconProps {
   app: AppletInterface
@@ -25,7 +25,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
 
   useEffect(() => {
     const check = async () => {
-      const newUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const newUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
       setUsingNewUI(newUI)
     }
     check()

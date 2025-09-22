@@ -2,8 +2,7 @@ import React, {createContext, useContext, useState, ReactNode, useCallback, useE
 import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl, loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
@@ -78,7 +77,6 @@ interface AppStatusContextType {
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
   clearPendingOperation: (packageName: string) => void
-  checkAppHealthStatus: (packageName: string) => Promise<boolean>
 }
 
 const AppStatusContext = createContext<AppStatusContextType | undefined>(undefined)
@@ -172,7 +170,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
 
     setAppStatus(currentStatus => {
       // Then update the target app to be running
@@ -187,7 +185,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await settings.set(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -232,7 +230,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
 
       if (!usingNewUI) {
         setAppStatus(currentStatus =>
@@ -265,31 +263,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // When an app start/stop operation succeeds, clear the pending operation
   const clearPendingOperation = (packageName: string) => {
     delete pendingOperations.current[packageName]
-  }
-
-  const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
-    // GET the app's /health endpoint
-    try {
-      const app = appStatus.find(app => app.packageName === packageName)
-      if (!app) {
-        return false
-      }
-      const baseUrl = await getRestUrl()
-      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
-      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
-      const healthResponse = await fetch(healthUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({packageName}),
-      })
-      const healthData = await healthResponse.json()
-      return healthData.success
-    } catch (error) {
-      console.error("AppStatusProvider: Error checking app health status:", error)
-      return false
-    }
   }
 
   const onCoreTokenSet = () => {
@@ -337,7 +310,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         optimisticallyStartApp,
         optimisticallyStopApp,
         clearPendingOperation,
-        checkAppHealthStatus,
       }}>
       {children}
     </AppStatusContext.Provider>
