@@ -48,7 +48,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
     
     // Testing: Packet drop simulation
-    private static final boolean ENABLE_PACKET_DROP_TEST = true; // Set to false to disable
+    private static final boolean ENABLE_PACKET_DROP_TEST = false; // Set to false to disable
     private static final int PACKET_TO_DROP = 5; // Drop packet #5 for testing
     private boolean hasDroppedTestPacket = false; // Track if we've already dropped the test packet
 
