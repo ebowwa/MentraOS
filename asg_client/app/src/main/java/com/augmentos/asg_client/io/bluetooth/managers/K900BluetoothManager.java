@@ -438,9 +438,9 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         // Send file transfer announcement first
         sendFileTransferAnnouncement();
         
-        // // Schedule transfer timeout check
-        // fileTransferExecutor.schedule(() -> checkTransferTimeout(), 
-        //                              TRANSFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        // Schedule 5-second transfer timeout check
+        fileTransferExecutor.schedule(() -> checkTransferTimeout(), 
+                                     TRANSFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         
         // Send all packets using iterative approach
         sendAllFilePackets();
@@ -464,48 +464,18 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             return;
         }
         
-        Log.w(TAG, "🔄 TESTING FILENAME BYPASS: Retransmitting " + missingPackets.size() + " missing packets for " + fileName);
+        Log.w(TAG, "🔄 RESTARTING entire file transfer due to " + missingPackets.size() + " missing packets for " + fileName);
         
-        // METHOD 1: FILENAME-BASED SEQUENCE RESET
-        // Create retry filename to reset BES sequence state
-        String retryFileName = fileName + "_retry";
-        Log.d(TAG, "🧪 Using retry filename to bypass BES sequence: " + retryFileName);
-        
-        // Temporarily change the filename for retransmission
-        String originalFileName = currentFileTransfer.fileName;
-        currentFileTransfer.fileName = retryFileName;
-        
-        // Send announcement with retry filename to reset BES sequence
+        // Reset transfer state to beginning
+        currentFileTransfer.currentPacketIndex = 0;
+        currentFileTransfer.startTime = System.currentTimeMillis(); // Reset start time for fresh timeout
+
+        // Send file transfer announcement again to notify phone of restart
         sendFileTransferAnnouncement();
         
-        // Send only the missing packets with retry filename
-        Log.d(TAG, "🔍 Sending " + missingPackets.size() + " missing packets with retry filename");
-        
-        // Send missing packets with sequential indices starting from 0 (to reset BES sequence)
-        for (int i = 0; i < missingPackets.size(); i++) {
-            final int originalPacketIndex = missingPackets.get(i);
-            final int sequentialIndex = i; // Use sequential index for BES (0, 1, 2...)
-            
-            Log.d(TAG, "🧪 Sending missing packet " + originalPacketIndex + " as sequential index " + sequentialIndex + " with retry filename");
-            
-            // Schedule transmission with rate limiting
-            long delay = i * PACKET_SEND_DELAY_MS;
-            fileTransferExecutor.schedule(() -> {
-                // Send missing packet data with sequential index and retry filename
-                boolean sent = transmitMissingPacketWithBypass(originalPacketIndex, sequentialIndex, retryFileName);
-                if (!sent) {
-                    Log.e(TAG, "🔍 Failed to transmit missing packet " + originalPacketIndex + " - restoring original filename");
-                    currentFileTransfer.fileName = originalFileName;
-                }
-            }, delay, TimeUnit.MILLISECONDS);
-        }
-        
-        // Restore original filename after a delay
-        long restoreDelay = missingPackets.size() * PACKET_SEND_DELAY_MS + 100; // Extra 100ms buffer
-        fileTransferExecutor.schedule(() -> {
-            Log.d(TAG, "🔄 Restoring original filename: " + originalFileName);
-            currentFileTransfer.fileName = originalFileName;
-        }, restoreDelay, TimeUnit.MILLISECONDS);
+        // Send all packets from the beginning
+        Log.d(TAG, "🔄 Restarting transmission of all " + currentFileTransfer.totalPackets + " packets");
+        sendAllFilePackets();
     }
     
     /**

@@ -80,7 +80,7 @@ public class MissingPacketCommandHandler implements ICommandHandler {
                 if (serviceManager.getBluetoothManager() instanceof com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) {
                     com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
                         (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) serviceManager.getBluetoothManager();
-                    
+
                     // Request full file transfer restart
                     k900Manager.retransmitMissingPackets(fileName, missingPackets);
                     Log.d(TAG, "🔄 Full file transfer restart request forwarded to K900BluetoothManager");
