@@ -4,12 +4,11 @@ import {StyleSheet, TouchableOpacity, TextStyle} from "react-native"
 import {useFocusEffect} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {useSetting, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function NonProdWarning() {
   const {theme, themed} = useAppTheme()

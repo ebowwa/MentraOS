@@ -30,7 +30,6 @@ import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import NumberSetting from "@/components/settings/NumberSetting"
 import TimeSetting from "@/components/settings/TimeSetting"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -50,7 +49,7 @@ import {
   requestPermissionsUI,
 } from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
-import {useSetting, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()

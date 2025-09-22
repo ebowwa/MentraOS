@@ -33,8 +33,7 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
-import {useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useCoreStatus()

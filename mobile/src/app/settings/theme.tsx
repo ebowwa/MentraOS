@@ -4,11 +4,10 @@ import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {useSettings, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSettings, useSettingsStore} from "@/stores/settings"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
