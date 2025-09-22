@@ -763,7 +763,7 @@ class MentraLive: NSObject, SGCManager {
 
     func forget() {}
 
-    let type = "live"
+    let type = "Mentra Live"
     let hasMic = false
     var isHeadUp = false
     var caseOpen = false

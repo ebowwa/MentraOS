@@ -15,32 +15,12 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
 
-interface AnimatedSectionProps extends PropsWithChildren {
-  delay?: number
-}
-
 export default function Homepage() {
   const {appStatus} = useAppStatus()
   const {status} = useCoreStatus()
-  const {push} = useNavigationHistory()
-  const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
-  const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(-50)).current
-  const {themed, theme} = useAppTheme()
-
-  // Reset loading state when connection status changes
-  useEffect(() => {
-    if (status.core_info.cloud_connection_status === "CONNECTED") {
-      setIsInitialLoading(true)
-      const timer = setTimeout(() => {
-        setIsInitialLoading(false)
-      }, 10000)
-      return () => clearTimeout(timer)
-    }
-  }, [status.core_info.cloud_connection_status])
+  const {theme} = useAppTheme()
 
   // Clear loading state if apps are loaded
   useEffect(() => {
@@ -57,10 +37,6 @@ export default function Homepage() {
   } else {
     pageTitle = translate("glasses:title")
   }
-
-  const ROUTES = {
-    GLASSES_GALLERY: "/asg/gallery" as const,
-  } as const
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
