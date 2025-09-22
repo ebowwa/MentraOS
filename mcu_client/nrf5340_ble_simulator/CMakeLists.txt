@@ -21,6 +21,7 @@ add_subdirectory(src/mos_driver)
 
 target_sources(app PRIVATE
     src/main.c
+    src/extern_code.c
     src/protobuf_handler.c
     src/mentra_ble_service.c
     src/pdm_audio_stream.c
@@ -46,4 +47,8 @@ target_include_directories(app PRIVATE
     src/mos_components/mos_lvgl_display/include
     custom_driver_module/drivers
 )
+
+
+# Run extern_code from the external flash (XIP). No need to copy.
+zephyr_code_relocate(FILES src/extern_code.c LOCATION EXTFLASH_TEXT NOCOPY)
 

@@ -40,7 +40,7 @@
 
 #include <zephyr/logging/log.h>
 #include <nrfx_clock.h>
-
+#include "bspal_littlefs.h"
 
 #define LOG_MODULE_NAME peripheral_uart
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
@@ -64,7 +64,7 @@ static int hfclock_config_and_start(void)
 // 初始化高频时钟128Mhz运行模式
 SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
-#define STACKSIZE 2048
+#define STACKSIZE 4096
 #define PRIORITY 7
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
@@ -733,8 +733,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 
 	// **DEBUG: Enhanced button logging to identify spurious events**
 	if (has_changed != 0) {
-		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
-		        button_state, has_changed, buttons);
+		// LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
+		//         button_state, has_changed, buttons);
 	}
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
@@ -809,7 +809,8 @@ static void configure_gpio(void)
 		LOG_ERR("Cannot init LEDs (err: %d)", err);
 	}
 }
-
+extern void function_in_extern_flash(void);
+extern void test_extern_flash(void);
 int main(void)
 {
 	int blink_status = 0;
@@ -835,6 +836,7 @@ int main(void)
 	
 	// Set initial brightness to 50%
 	protobuf_set_brightness_level(50);
+
 
 	err = uart_init();
 	if (err) {
@@ -874,6 +876,7 @@ int main(void)
 		return 0;
 	}
 	bt_gatt_cb_register(&gatt_callbacks);
+	#if 1
 	// Initialize PDM audio streaming system
 	LOG_INF("🎤 Initializing PDM audio streaming system...");
 	err = pdm_audio_stream_init();
@@ -891,17 +894,17 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
-        // Initialize LVGL display system with working driver implementation
-        printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
-        
-        // Start the LVGL display thread first!
-        printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
-        lvgl_display_thread();
-        printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+	// Initialize LVGL display system with working driver implementation
+	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	
+	// Start the LVGL display thread first!
+	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	lvgl_display_thread();
+	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
 
-        // Give the thread a moment to initialize
-        k_msleep(100);
-        
+	// Give the thread a moment to initialize
+	k_msleep(100);
+
         // Send LCD_CMD_OPEN to start the LVGL display system
         printk("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
         display_open();
@@ -940,13 +943,19 @@ int main(void)
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here
         LOG_INF("LVGL demo thread will start automatically");
-
+#endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
-
+	k_msleep(1000);
+	littlefs_test();
+	#if 1 //test extern flash
+	function_in_extern_flash();
+	test_extern_flash();
+	#endif
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+		
 	}
 }
 
@@ -957,7 +966,7 @@ void ble_write_thread(void)
 	struct uart_data_t mentra_data = {
 		.len = 0,
 	};
-
+	
 	for (;;) {
 		/* Wait indefinitely for data to be sent over bluetooth */
 		struct uart_data_t *buf = k_fifo_get(&fifo_uart_rx_data,
