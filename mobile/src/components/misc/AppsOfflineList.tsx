@@ -11,6 +11,7 @@ import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {useFocusEffect} from "@react-navigation/native";
 import showAlert from "@/utils/AlertUtils"
 import socketComms from "@/managers/SocketComms"
+import { STTModelManager } from "@/services/STTModelManager"
 
 interface AppModel {
   packageName: string
@@ -43,6 +44,20 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     ])
     setIsOfflineCaptionsEnabled(savedState)
     setIsLocalTranscriptionEnforced(isEnforced)
+
+    // TODO: Remove this logic later. It's just to ensure that the users who have already installed the models don't face any issues
+    if (!isEnforced) {
+      const models = await STTModelManager.getInstance().getAllModelsInfo()
+      const hasModels = models.some(model => model.downloaded)
+      if (hasModels) {
+        console.log('AppsOfflineList: Models downloaded but local transcription not enforced')
+        console.log('AppsOfflineList: Enforcing local transcription')
+        await settings.set(SETTINGS_KEYS.enforce_local_transcription, true)
+        await bridge.sendToggleEnforceLocalTranscription(true)
+        console.log('AppsOfflineList: Local transcription enforced')
+        setIsLocalTranscriptionEnforced(true)
+      }
+    }
   }, [])
 
   // Load state on mount
