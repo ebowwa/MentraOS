@@ -112,44 +112,9 @@ export class LiveKitClient {
     }
     this.connected = true;
     let frameCount = 0; // TODO(isaiah): clean up after livekit feature implementation.
-    const chunkStats = {
-      count: 0,
-      lastTime: 0,
-      gaps: [] as number[],
-    };
 
     // Wire message handler before sending commands
     this.ws.on("message", (data: WebSocket.RawData) => {
-      // calculate jitter.
-
-      const now = Date.now();
-      chunkStats.count++;
-
-      if (chunkStats.lastTime > 0) {
-        const gap = now - chunkStats.lastTime;
-        chunkStats.gaps.push(gap);
-
-        // Log same format as your app
-        // this.logger.debug(
-        //   { feature: "jitter" },
-        //   `${chunkStats.count}: Cloud chunk gap: ${gap}ms`,
-        // );
-
-        // Every 20 chunks, show stats
-        if (chunkStats.count % 20 === 0) {
-          const recent = chunkStats.gaps.slice(-20);
-          const avg = recent.reduce((a, b) => a + b) / recent.length;
-          const min = Math.min(...recent);
-          const max = Math.max(...recent);
-          this.logger.debug(
-            { feature: "jitter" },
-            `Cloud stats: avg=${avg.toFixed(1)}ms, min=${min}ms, max=${max}ms`,
-          );
-        }
-      }
-
-      chunkStats.lastTime = now;
-
       // Rest of logic.
       try {
         // Normalize data to a Node Buffer regardless of how ws delivered it
