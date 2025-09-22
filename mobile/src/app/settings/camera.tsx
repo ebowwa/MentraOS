@@ -10,8 +10,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {Screen, Header} from "@/components/ignite"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
@@ -83,7 +82,7 @@ export default function CameraSettingsScreen() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()

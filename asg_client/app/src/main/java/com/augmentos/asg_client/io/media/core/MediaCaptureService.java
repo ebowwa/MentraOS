@@ -207,124 +207,6 @@ public class MediaCaptureService {
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
     }
-
-    /**
-     * Handles the photo button press by sending a request to the cloud server
-     * If connected, makes REST API call to server
-     * If disconnected or server error, takes photo locally
-     */
-    public void handlePhotoButtonPress() {
-        // Get core token for authentication
-        String coreToken = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getString("core_token", "");
-
-        // Get device ID for hardware identification
-        String deviceId = android.os.Build.MODEL + "_" + android.os.Build.SERIAL;
-
-        if (coreToken == null || coreToken.isEmpty()) {
-            Log.e(TAG, "No core token available, taking photo locally");
-            takePhotoLocally();
-            return;
-        }
-
-        // Prepare REST API call
-        try {
-            // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
-
-            // Create payload for button press event
-            JSONObject buttonPressPayload = new JSONObject();
-            buttonPressPayload.put("buttonId", "photo");
-            buttonPressPayload.put("pressType", "short");
-            buttonPressPayload.put("deviceId", deviceId);
-
-            Log.d(TAG, "Sending button press event to server: " + buttonPressUrl);
-
-            // Make REST API call with timeout
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .build();
-
-            RequestBody requestBody = RequestBody.create(
-                    MediaType.parse("application/json"),
-                    buttonPressPayload.toString()
-            );
-
-            Request request = new Request.Builder()
-                    .url(buttonPressUrl)
-                    .header("Authorization", "Bearer " + coreToken)
-                    .post(requestBody)
-                    .build();
-
-            // Execute request asynchronously
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send button press event", e);
-                    // Connection failed, take photo locally
-                    takePhotoLocally();
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) {
-                    try {
-                        if (!response.isSuccessful()) {
-                            Log.e(TAG, "Server returned error: " + response.code());
-                            // Server error, take photo locally
-                            takePhotoLocally();
-                            return;
-                        }
-
-                        // Parse response
-                        String responseBody = response.body().string();
-                        Log.d(TAG, "Server response: " + responseBody);
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-
-                        // Check if we need to take a photo
-                        if ("take_photo".equals(jsonResponse.optString("action"))) {
-                            String requestId = jsonResponse.optString("requestId");
-                            boolean save = jsonResponse.optBoolean("save", false);  // Default to false
-
-                            Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
-
-                            // Take photo and upload directly to server
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
-                            int randomSuffix = (int)(Math.random() * 1000);
-                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, "", save, "medium", false);
-                        } else {
-                            Log.d(TAG, "Button press handled by server, no photo needed");
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing server response", e);
-                        takePhotoLocally();
-                    } finally {
-                        response.close();
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error preparing button press request", e);
-            // Something went wrong, take photo locally
-            takePhotoLocally();
-        }
-    }
-
-    /**
-     * Handles the video button press by toggling video recording
-     * Simple toggle logic - no cloud communication
-     */
-    public void handleVideoButtonPress() {
-        if (isRecordingVideo) {
-            Log.d(TAG, "Stopping video recording");
-            stopVideoRecording();
-        } else {
-            Log.d(TAG, "Starting video recording");
-            startVideoRecording();
-        }
-    }
     
     /**
      * Start video recording with specific settings
@@ -887,11 +769,14 @@ public class MediaCaptureService {
 
                 Log.d(TAG, "### Sending photo request");
 
-                // Create multipart form request
+                // Create multipart form request with smarter timeouts:
+                // - 1 second to connect (fails fast if no internet)
+                // - 10 seconds to write the photo data
+                // - 5 seconds to read the response
                 OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .connectTimeout(1, java.util.concurrent.TimeUnit.SECONDS)  // Fast fail if no internet
+                        .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)   // Time to upload photo data
+                        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)     // Time to get response
                         .build();
 
                 RequestBody fileBody = RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile);

@@ -26,6 +26,7 @@ import com.augmentos.augmentoslib.events.ManagerToCoreRequestEvent;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -570,6 +571,24 @@ public class AugmentosBlePeripheral {
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Subscribe
+    public void onPreferenceChanged(PreferenceChangedEvent event) {
+        sendSaveSettingToManager(event.key, event.value);
+    }
+
+    public void sendSaveSettingToManager(String key, String value) {
+        JSONObject data = new JSONObject();
+        try {
+            data.put("type", "save_setting");
+            data.put("key", key);
+            data.put("value", value);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating save_setting message", e);
+            return;
+        }
+        sendDataToAugmentOsManager(data.toString());
     }
 
     @SuppressLint("MissingPermission")

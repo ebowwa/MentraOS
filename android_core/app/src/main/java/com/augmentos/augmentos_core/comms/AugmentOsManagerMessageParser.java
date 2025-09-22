@@ -324,6 +324,11 @@ public class AugmentOsManagerMessageParser {
                 callback.setLc3AudioEnabled(enabled);
             }
             break;
+            case "update_settings": {
+                JSONObject newSettings = commandObject.getJSONObject("params");
+                callback.updateSettings(newSettings);
+            }
+            break;
 
             default:
                 Log.w(TAG, "Unknown command: " + command);

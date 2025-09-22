@@ -316,9 +316,11 @@ export function GalleryScreen() {
         await localStorageService.saveDownloadedFile(downloadedFile)
       }
 
+      // Files are now deleted immediately after each successful download in batchSyncFiles
       if (downloadResult.downloaded.length > 0) {
-        const deleteResult = await asgCameraApi.deleteFilesFromServer(downloadResult.downloaded.map(f => f.name))
-        console.log(`[GalleryScreen] Delete result:`, deleteResult)
+        console.log(
+          `[GalleryScreen] Successfully synced ${downloadResult.downloaded.length} files (deleted from glasses after each download)`,
+        )
       }
 
       await localStorageService.updateSyncState({

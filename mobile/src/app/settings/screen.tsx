@@ -9,7 +9,7 @@ import {useFocusEffect} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import SliderSetting from "@/components/settings/SliderSetting"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 
 export default function ScreenSettingsScreen() {
   const {theme, themed} = useAppTheme()
@@ -21,8 +21,8 @@ export default function ScreenSettingsScreen() {
 
   // load settings:
   useEffect(() => {
-    loadSetting(SETTINGS_KEYS.dashboard_depth).then(setDepth)
-    loadSetting(SETTINGS_KEYS.dashboard_height).then(setHeight)
+    settings.get(SETTINGS_KEYS.dashboard_depth).then(setDepth)
+    settings.get(SETTINGS_KEYS.dashboard_height).then(setHeight)
   }, [])
 
   useFocusEffect(
@@ -47,19 +47,19 @@ export default function ScreenSettingsScreen() {
 
     // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
     await bridge.setGlassesBrightnessMode(newBrightness, false) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.brightness, newBrightness)
+    await settings.set(SETTINGS_KEYS.brightness, newBrightness)
     setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
     await bridge.setGlassesDepth(newDepth) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.dashboard_depth, newDepth)
+    await settings.set(SETTINGS_KEYS.dashboard_depth, newDepth)
     setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
     await bridge.setGlassesHeight(newHeight) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.dashboard_height, newHeight)
+    await settings.set(SETTINGS_KEYS.dashboard_height, newHeight)
     setHeight(newHeight)
   }
 
