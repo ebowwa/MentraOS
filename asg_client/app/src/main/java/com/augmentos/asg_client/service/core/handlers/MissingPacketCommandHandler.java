@@ -81,9 +81,9 @@ public class MissingPacketCommandHandler implements ICommandHandler {
                     com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
                         (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) serviceManager.getBluetoothManager();
                     
-                    // Request retransmission of only the missing packets
+                    // Request full file transfer restart
                     k900Manager.retransmitMissingPackets(fileName, missingPackets);
-                    Log.d(TAG, "🔍 Missing packets retransmission request forwarded to K900BluetoothManager");
+                    Log.d(TAG, "🔄 Full file transfer restart request forwarded to K900BluetoothManager");
                     return true;
                 } else {
                     Log.w(TAG, "🔍 Bluetooth manager is not K900BluetoothManager, cannot handle missing packets request");

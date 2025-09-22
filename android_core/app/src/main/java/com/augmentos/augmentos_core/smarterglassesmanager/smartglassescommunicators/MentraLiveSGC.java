@@ -3916,16 +3916,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error saving BLE photo locally", e);
         }
 
-        // Use the per-request auth token if available, otherwise empty string
-        // Do NOT use core token - that's for MentraOS cloud authentication only
-        String authToken = transfer.authToken != null ? transfer.authToken : "";
+        // Get core token for authentication
+        String coreToken = getCoreToken();
 
         // Use BlePhotoUploadService to handle decoding and upload
         BlePhotoUploadService.processAndUploadPhoto(
             imageData,
             transfer.requestId,
             transfer.webhookUrl,
-            authToken,
+            coreToken,
             new BlePhotoUploadService.UploadCallback() {
                 @Override
                 public void onSuccess(String requestId) {
