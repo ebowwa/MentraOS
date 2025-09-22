@@ -449,35 +449,36 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     
     /**
-     * Restart entire file transfer due to missing packets
+     * Retransmit only the missing packets
      */
-    public void restartFileTransfer(String fileName, List<Integer> missingPackets) {
-        Log.d(TAG, "🔄 restartFileTransfer() called - fileName: " + fileName + ", missing " + missingPackets.size() + " packets: " + missingPackets);
+    public void retransmitMissingPackets(String fileName, List<Integer> missingPackets) {
+        Log.d(TAG, "🔍 retransmitMissingPackets() called - fileName: " + fileName + ", missing " + missingPackets.size() + " packets: " + missingPackets);
         
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
-            Log.w(TAG, "🔄 Cannot restart - no active transfer (currentFileTransfer: " + (currentFileTransfer != null ? "exists but inactive" : "null") + ")");
+            Log.w(TAG, "🔍 Cannot retransmit - no active transfer (currentFileTransfer: " + (currentFileTransfer != null ? "exists but inactive" : "null") + ")");
             return;
         }
         
         if (!currentFileTransfer.fileName.equals(fileName)) {
-            Log.w(TAG, "🔄 Cannot restart - filename mismatch. Expected: " + currentFileTransfer.fileName + ", Got: " + fileName);
+            Log.w(TAG, "🔍 Cannot retransmit - filename mismatch. Expected: " + currentFileTransfer.fileName + ", Got: " + fileName);
             return;
         }
         
-        Log.w(TAG, "🔄 RESTARTING entire file transfer due to " + missingPackets.size() + " missing packets for " + fileName);
+        Log.d(TAG, "🔍 Retransmitting " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
         
-        // Reset transfer state to beginning
-        currentFileTransfer.currentPacketIndex = 0;
-        currentFileTransfer.startTime = System.currentTimeMillis(); // Reset start time for fresh timeout
-        
-        // Reset packet tracking (no pending packets in fire-and-forget mode)
-        
-        // Send file transfer announcement again
-        sendFileTransferAnnouncement();
-        
-        // Start sending packets from the beginning
-        Log.d(TAG, "🔄 Restarting packet transmission from packet 0");
-        sendFilePacket(0); // Start from packet 0
+        // Send only the missing packets with rate limiting
+        for (int i = 0; i < missingPackets.size(); i++) {
+            Integer packetIndex = missingPackets.get(i);
+            if (packetIndex >= 0 && packetIndex < currentFileTransfer.totalPackets) {
+                // Schedule retransmission with delay to prevent UART overflow
+                final int finalPacketIndex = packetIndex;
+                fileTransferExecutor.schedule(() -> sendFilePacket(finalPacketIndex), 
+                                            i * RETRANSMISSION_DELAY_MS, TimeUnit.MILLISECONDS);
+                Log.d(TAG, "🔍 Scheduled retransmission of packet " + packetIndex + " in " + (i * RETRANSMISSION_DELAY_MS) + "ms");
+            } else {
+                Log.w(TAG, "🔍 Invalid packet index for retransmission: " + packetIndex);
+            }
+        }
     }
     
     /**
