@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -12,14 +11,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function TranscriptionSettingsScreen() {
-  const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack} = useNavigationHistory()
 
-  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState(STTModelManager.getCurrentModelId())
   const [modelInfo, setModelInfo] = useState<any>(null)
   const [allModels, setAllModels] = useState<any[]>([])
@@ -27,20 +24,19 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const [isOfflineSTTEnabled, setIsOfflineSTTEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-  // load settings:
-  const loadSettings = async () => {
-    await settings.get(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    await settings.get(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
-    await settings.get(SETTINGS_KEYS.offline_stt).then(setIsOfflineSTTEnabled)
-  }
+  const settings = useSettings([
+    SETTINGS_KEYS.enforce_local_transcription,
+    SETTINGS_KEYS.bypass_vad_for_debugging,
+    SETTINGS_KEYS.offline_stt,
+  ])
+  const setSetting = useSettingsStore(state => state.setSetting)
+
   useEffect(() => {
-    loadSettings().then(() => setLoading(false))
+    setLoading(false)
   }, [])
 
   // Cancel download function
@@ -107,10 +103,9 @@ export default function TranscriptionSettingsScreen() {
       return
     }
 
-    const newSetting = !isEnforceLocalTranscriptionEnabled
+    const newSetting = !settings.enforce_local_transcription
+    await setSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
     await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.enforce_local_transcription, newSetting)
-    setIsEnforceLocalTranscriptionEnabled(newSetting)
   }
 
   const timeRemainingTillRestart = () => {
@@ -202,9 +197,9 @@ export default function TranscriptionSettingsScreen() {
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
-              if (isEnforceLocalTranscriptionEnabled) {
+              if (settings.enforce_local_transcription) {
                 await bridge.sendToggleEnforceLocalTranscription(false)
-                setIsEnforceLocalTranscriptionEnabled(false)
+                await setSetting(SETTINGS_KEYS.enforce_local_transcription, false)
               }
             } catch (error: any) {
               showAlert("Error", error.message || "Failed to delete model", [{text: "OK"}])
@@ -238,16 +233,14 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
+    const newSetting = !settings.bypass_vad_for_debugging
+    await setSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   const toggleOfflineSTT = async () => {
-    const newSetting = !isOfflineSTTEnabled
-    await settings.set(SETTINGS_KEYS.offline_stt, newSetting)
-    setIsOfflineSTTEnabled(newSetting)
+    const newSetting = !settings.offline_stt
+    await setSetting(SETTINGS_KEYS.offline_stt, newSetting)
   }
 
   useEffect(() => {
@@ -277,7 +270,7 @@ export default function TranscriptionSettingsScreen() {
         <ToggleSetting
           label={translate("settings:bypassVAD")}
           subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
+          value={settings.bypass_vad_for_debugging}
           onValueChange={toggleBypassVadForDebugging}
         />
 
@@ -312,7 +305,7 @@ export default function TranscriptionSettingsScreen() {
                 <ToggleSetting
                   label={translate("settings:enforceLocalTranscription")}
                   subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-                  value={isEnforceLocalTranscriptionEnabled}
+                  value={settings.enforce_local_transcription}
                   onValueChange={toggleEnforceLocalTranscription}
                   disabled={!modelInfo?.downloaded || isDownloading}
                 />
@@ -333,7 +326,7 @@ export default function TranscriptionSettingsScreen() {
                 <ToggleSetting
                   label={translate("settings:offlineSTT")}
                   subtitle={translate("settings:offlineSTTSubtitle")}
-                  value={isOfflineSTTEnabled}
+                  value={settings.offline_stt}
                   onValueChange={toggleOfflineSTT}
                   disabled={!modelInfo?.downloaded || isDownloading}
                 />

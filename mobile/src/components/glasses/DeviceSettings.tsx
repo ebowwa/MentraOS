@@ -18,8 +18,8 @@ import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import ToggleSetting from "../settings/ToggleSetting"
-import SliderSetting from "../settings/SliderSetting"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import SliderSetting from "@/components/settings/SliderSetting"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
@@ -29,13 +29,10 @@ import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
-import {isMentraUser} from "@/utils/isMentraUser"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
-import {spacing} from "@/theme"
+import {useSetting, useSettingsStore} from "@/stores/settings"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -102,16 +99,8 @@ export default function DeviceSettings() {
   const {push} = useNavigationHistory()
   const {user} = useAuth()
 
-  const [devMode, setDevMode] = useState(true)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
   const [isSigningOut, setIsSigningOut] = useState(false)
-
-  useEffect(() => {
-    const checkDevMode = async () => {
-      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
-      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
-    }
-    checkDevMode()
-  }, [])
 
   const {model_name} = status.glasses_info ?? {}
   const {default_wearable} = status.core_info ?? {}
@@ -207,14 +196,14 @@ export default function DeviceSettings() {
     }
 
     setPreferredMic(val)
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, val)
     await bridge.sendSetPreferredMic(val) // TODO: config: remove
-    settings.set(SETTINGS_KEYS.preferred_mic, val)
   }
 
   const setButtonModeWithSave = async (mode: string) => {
     setButtonMode(mode)
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.button_mode, mode)
     await bridge.sendSetButtonMode(mode) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.button_mode, mode)
   }
 
   const confirmForgetGlasses = () => {

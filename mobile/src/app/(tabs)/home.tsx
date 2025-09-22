@@ -19,10 +19,10 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -31,17 +31,7 @@ export default function Homepage() {
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
   const [hasLoaded, setHasLoaded] = useState(false)
-
-  const [showNewUi, setShowNewUi] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-      setShowNewUi(newUiSetting)
-      setHasLoaded(true)
-    }
-    check()
-  }, [])
+  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
 
   useFocusEffect(
     useCallback(() => {

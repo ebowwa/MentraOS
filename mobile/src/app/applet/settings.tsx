@@ -50,6 +50,7 @@ import {
   requestPermissionsUI,
 } from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
+import {useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
@@ -84,26 +85,16 @@ export default function AppSettings() {
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
-
-  // Check if we're in old UI mode
-  const [isOldUI, setIsOldUI] = useState(false)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
 
   if (!packageName || typeof packageName !== "string") {
     console.error("No packageName found in params")
     return null
   }
 
-  useEffect(() => {
-    const checkUIMode = async () => {
-      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-      setIsOldUI(!newUiSetting) // Old UI is when NEW_UI is false
-    }
-    checkUIMode()
-  }, [])
-
   // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly (OLD UI ONLY)
   useEffect(() => {
-    if (isOldUI && appInfo?.webviewURL && fromWebView !== "true" && appInfo?.isOnline !== false) {
+    if (!newUi && appInfo?.webviewURL && fromWebView !== "true" && appInfo?.isOnline !== false) {
       console.log("OLD UI: webviewURL detected in app status, executing immediate redirect")
       replace("/applet/webview", {
         webviewURL: appInfo.webviewURL,
@@ -111,7 +102,7 @@ export default function AppSettings() {
         packageName: packageName,
       })
     }
-  }, [appInfo, fromWebView, appName, packageName, replace, isOldUI])
+  }, [appInfo, fromWebView, appName, packageName, replace, newUi])
 
   useFocusEffect(
     useCallback(() => {
@@ -277,7 +268,7 @@ export default function AppSettings() {
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         // Get cached settings to preserve user values for existing settings
-        const cached = await settings.get(SETTINGS_CACHE_KEY(packageName), null)
+        const cached = await useSettingsStore.getState().loadSetting(SETTINGS_CACHE_KEY(packageName))
         const cachedState = cached?.settingsState || {}
 
         const initialState: {[key: string]: any} = {}
@@ -290,7 +281,7 @@ export default function AppSettings() {
         })
         setSettingsState(initialState)
         // Cache the settings
-        settings.set(SETTINGS_CACHE_KEY(packageName), {
+        useSettingsStore.getState().setSetting(SETTINGS_CACHE_KEY(packageName), {
           serverAppInfo: data,
           settingsState: initialState,
         })
@@ -505,7 +496,7 @@ export default function AppSettings() {
     let debounceTimeout: NodeJS.Timeout
 
     const loadCachedSettings = async () => {
-      const cached = await settings.get(SETTINGS_CACHE_KEY(packageName), null)
+      const cached = await useSettingsStore.getState().loadSetting(SETTINGS_CACHE_KEY(packageName))
       if (cached && isMounted) {
         setServerAppInfo(cached.serverAppInfo)
         setSettingsState(cached.settingsState)
@@ -561,7 +552,7 @@ export default function AppSettings() {
           title=""
           leftIcon="caretLeft"
           onLeftPress={() => {
-            if (!isOldUI) {
+            if (newUi) {
               goBack()
               return
             }
@@ -578,7 +569,7 @@ export default function AppSettings() {
             goBack()
           }}
           RightActionComponent={
-            isOldUI && serverAppInfo?.webviewURL ? (
+            !newUi && serverAppInfo?.webviewURL ? (
               <TouchableOpacity
                 style={{marginRight: 8}}
                 onPress={() => {

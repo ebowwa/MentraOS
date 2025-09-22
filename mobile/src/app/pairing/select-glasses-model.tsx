@@ -13,16 +13,15 @@ import {
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
-import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
+import {getGlassesImage} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite/Screen"
 import {Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import Svg, {Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop} from "react-native-svg"
+import Svg, {Defs, RadialGradient, Rect, Stop} from "react-native-svg"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function SelectGlassesModelScreen() {
   const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null)
@@ -57,7 +56,7 @@ export default function SelectGlassesModelScreen() {
   useFocusEffect(
     useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const onboardingCompleted = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        const onboardingCompleted = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
         console.log("ONBOARDING COMPLETED IN SELECTGLASSESMODELSCREEN???: " + onboardingCompleted)
         setIsOnboarding(!onboardingCompleted)
       }

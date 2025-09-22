@@ -14,6 +14,7 @@ import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
+import {useSetting, useSettingsStore} from "@/stores/settings"
 
 type PhotoSize = "small" | "medium" | "large"
 type VideoResolution = "720p" | "1080p" | "1440p" | "4K"
@@ -36,8 +37,7 @@ export default function CameraSettingsScreen() {
   const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {user} = useAuth()
-
-  const [devMode, setDevMode] = useState(false)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
 
   // Local state for optimistic updates - initialize from status
   const [photoSize, setPhotoSize] = useState<PhotoSize>(
@@ -82,7 +82,7 @@ export default function CameraSettingsScreen() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.DEV_MODE)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()

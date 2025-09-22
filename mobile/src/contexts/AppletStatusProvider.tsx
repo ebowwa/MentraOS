@@ -2,12 +2,12 @@ import React, {createContext, useContext, useState, ReactNode, useCallback, useE
 import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export type AppPermissionType =
   | "ALL"
@@ -170,7 +170,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
     setAppStatus(currentStatus => {
       // Then update the target app to be running
@@ -185,7 +185,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await settings.set(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -230,7 +230,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+      const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
       if (!usingNewUI) {
         setAppStatus(currentStatus =>

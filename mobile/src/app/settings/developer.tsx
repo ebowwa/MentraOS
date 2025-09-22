@@ -3,7 +3,6 @@ import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
@@ -15,6 +14,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useCoreStatus()
@@ -24,24 +24,26 @@ export default function DeveloperSettingsScreen() {
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false)
-  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
-  const [showNewUi, setShowNewUi] = useState(false)
-  const [powerSavingMode, setPowerSavingMode] = useState(false)
+  const settings = useSettings([
+    SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND,
+    SETTINGS_KEYS.NEW_UI,
+    SETTINGS_KEYS.CUSTOM_BACKEND_URL,
+    SETTINGS_KEYS.power_saving_mode,
+  ])
+  const setSetting = useSettingsStore(state => state.setSetting)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
   const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
 
   const toggleReconnectOnAppForeground = async () => {
-    const newSetting = !reconnectOnAppForeground
-    await settings.set(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
-    setReconnectOnAppForeground(newSetting)
+    const newSetting = !settings.RECONNECT_ON_APP_FOREGROUND
+    await setSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
   }
 
   const toggleNewUi = async () => {
-    const newSetting = !showNewUi
-    await settings.set(SETTINGS_KEYS.NEW_UI, newSetting)
-    setShowNewUi(newSetting)
+    const newSetting = !settings.NEW_UI
+    await setSetting(SETTINGS_KEYS.NEW_UI, newSetting)
   }
 
   // Modified handler for Custom URL
@@ -84,7 +86,7 @@ export default function DeveloperSettingsScreen() {
           console.log("URL Test Successful:", data)
 
           // Save the URL if the test passes
-          await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
+          await useSettingsStore.getState().setSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
           await bridge.setServerUrl(urlToTest) // TODO: config: remove
           setSavedCustomUrl(urlToTest)
 
@@ -135,7 +137,7 @@ export default function DeveloperSettingsScreen() {
   }
 
   const handleResetUrl = async () => {
-    await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
     await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
@@ -171,25 +173,6 @@ export default function DeveloperSettingsScreen() {
     }
   }
 
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
-
-      const reconnectOnAppForeground = await settings.get(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
-
-      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI)
-      setShowNewUi(newUiSetting)
-
-      const powerSavingMode = await settings.get(SETTINGS_KEYS.power_saving_mode)
-      setPowerSavingMode(powerSavingMode)
-    }
-    loadSettings()
-  }, [])
-
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -223,7 +206,7 @@ export default function DeveloperSettingsScreen() {
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
-          value={reconnectOnAppForeground}
+          value={settings.RECONNECT_ON_APP_FOREGROUND}
           onValueChange={toggleReconnectOnAppForeground}
         />
 
@@ -232,7 +215,7 @@ export default function DeveloperSettingsScreen() {
         <ToggleSetting
           label={translate("settings:newUi")}
           subtitle={translate("settings:newUiSubtitle")}
-          value={showNewUi}
+          value={settings.NEW_UI}
           onValueChange={toggleNewUi}
         />
 
@@ -247,10 +230,10 @@ export default function DeveloperSettingsScreen() {
               <ToggleSetting
                 label={translate("settings:powerSavingMode")}
                 subtitle={translate("settings:powerSavingModeSubtitle")}
-                value={powerSavingMode}
+                value={settings.power_saving_mode}
                 onValueChange={async value => {
-                  setPowerSavingMode(value)
-                  await bridge.sendTogglePowerSavingMode(value)
+                  await setSetting(SETTINGS_KEYS.power_saving_mode, value)
+                  await bridge.sendTogglePowerSavingMode(value) // TODO: config: remove
                 }}
               />
               <Spacer height={theme.spacing.md} />

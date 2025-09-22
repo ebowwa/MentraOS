@@ -29,10 +29,9 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSettings, useSettingsStore} from "@/stores/settings"
 
 export default function PrivacySettingsScreen() {
-  const [isSensingEnabled, setIsSensingEnabled] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [calendarEnabled, setCalendarEnabled] = useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = useState(false)
@@ -41,11 +40,8 @@ export default function PrivacySettingsScreen() {
   const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-
-  // load settings:
-  useEffect(() => {
-    settings.get(SETTINGS_KEYS.sensing_enabled).then(setIsSensingEnabled)
-  }, [])
+  const settings = useSettings([SETTINGS_KEYS.sensing_enabled])
+  const setSetting = useSettingsStore(state => state.setSetting)
 
   // Check permissions when screen loads
   useEffect(() => {
@@ -145,10 +141,9 @@ export default function PrivacySettingsScreen() {
   }, []) // subscribe only once
 
   const toggleSensing = async () => {
-    const newSensing = !isSensingEnabled
+    const newSensing = !settings.sensing_enabled
+    await setSetting(SETTINGS_KEYS.sensing_enabled, newSensing)
     await bridge.sendToggleSensing(newSensing) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.sensing_enabled, newSensing)
-    setIsSensingEnabled(newSensing)
   }
 
   const handleToggleNotifications = async () => {
@@ -271,7 +266,7 @@ export default function PrivacySettingsScreen() {
         <ToggleSetting
           label={translate("settings:sensingLabel")}
           subtitle={translate("settings:sensingSubtitle")}
-          value={isSensingEnabled}
+          value={settings.sensing_enabled}
           onValueChange={toggleSensing}
         />
       </ScrollView>

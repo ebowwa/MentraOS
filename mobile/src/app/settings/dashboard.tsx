@@ -25,38 +25,33 @@ import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(false)
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
-  const [headUpAngle, setHeadUpAngle] = useState<number | null>(null)
-  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(false)
 
-  // load settings:
-  useEffect(() => {
-    settings.get(SETTINGS_KEYS.contextual_dashboard_enabled).then(setIsContextualDashboardEnabled)
-    settings.get(SETTINGS_KEYS.metric_system_enabled).then(setIsMetricSystemEnabled)
-    settings.get(SETTINGS_KEYS.head_up_angle).then(setHeadUpAngle)
-  }, [])
+  const settings = useSettings([
+    SETTINGS_KEYS.contextual_dashboard_enabled,
+    SETTINGS_KEYS.metric_system_enabled,
+    SETTINGS_KEYS.head_up_angle,
+  ])
+  const setSetting = useSettingsStore(state => state.setSetting)
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
-    const newVal = !isContextualDashboardEnabled
+    const newVal = !settings.contextual_dashboard_enabled
     await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
-    setIsContextualDashboardEnabled(newVal)
+    await setSetting(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
   }
 
   const toggleMetricSystem = async () => {
-    const newVal = !isMetricSystemEnabled
+    const newVal = !settings.metric_system_enabled
     try {
       await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
-      await settings.set(SETTINGS_KEYS.metric_system_enabled, newVal)
-      setIsMetricSystemEnabled(newVal)
+      await setSetting(SETTINGS_KEYS.metric_system_enabled, newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
     }
@@ -73,8 +68,7 @@ export default function DashboardSettingsScreen() {
 
     setHeadUpAngleComponentVisible(false)
     await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
-    setHeadUpAngle(newHeadUpAngle)
+    await setSetting(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
   }
 
   const onCancelHeadUpAngle = () => {
@@ -109,7 +103,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:contextualDashboardLabel")}
           subtitle={translate("settings:contextualDashboardSubtitle")}
-          value={isContextualDashboardEnabled}
+          value={settings.contextual_dashboard_enabled}
           onValueChange={toggleContextualDashboard}
         />
 
@@ -118,7 +112,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:metricSystemLabel")}
           subtitle={translate("settings:metricSystemSubtitle")}
-          value={isMetricSystemEnabled}
+          value={settings.metric_system_enabled}
           onValueChange={toggleMetricSystem}
         />
 
@@ -169,10 +163,10 @@ export default function DashboardSettingsScreen() {
           />
         )}
 
-        {headUpAngle !== null && (
+        {settings.head_up_angle !== null && (
           <HeadUpAngleComponent
             visible={headUpAngleComponentVisible}
-            initialAngle={headUpAngle}
+            initialAngle={settings.head_up_angle}
             onCancel={onCancelHeadUpAngle}
             onSave={onSaveHeadUpAngle}
           />
