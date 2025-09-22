@@ -117,7 +117,11 @@ export const ConnectDeviceButton = () => {
     return null
   }
 
-  if (!status.core_info.default_wearable) {
+  // Debug the conditional logic
+  const defaultWearableNull = status.core_info.default_wearable == null
+  const defaultWearableStringNull = status.core_info.default_wearable == "null"
+
+  if (defaultWearableNull || defaultWearableStringNull) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
@@ -230,7 +234,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   }
 
   // no glasses paired
-  if (!status.core_info.default_wearable) {
+  if (!status.core_info.default_wearable || status.core_info.default_wearable === "null") {
     return null
   }
 

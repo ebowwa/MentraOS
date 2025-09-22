@@ -170,7 +170,9 @@ export class MantleBridge extends EventEmitter {
     setTimeout(async () => {
       const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
       const deviceName = await settings.get(SETTINGS_KEYS.device_name)
-      this.sendConnectWearable(defaultWearable, deviceName)
+      if (defaultWearable && defaultWearable != "" && deviceName && deviceName != "") {
+        this.sendConnectWearable(defaultWearable, deviceName)
+      }
     }, 3000)
 
     // Start the external service
