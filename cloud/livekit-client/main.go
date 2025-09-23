@@ -22,6 +22,25 @@ import (
 	webrtc "github.com/pion/webrtc/v4"
 )
 
+// Overview (TypeScript-friendly explanation):
+// This service exposes a WebSocket API. Each WebSocket client can:
+//   1. Join a LiveKit room (publishing a PCM16 16kHz mono track lazily when needed)
+//   2. Send raw PCM16 16kHz mono bytes over the WebSocket (binary messages) to feed into the published track.
+//   3. Request generation of a test tone (publish_tone) which synthesizes sine wave frames.
+//   4. Enable subscription forwarding: remote audio tracks are downsampled to 16kHz mono and re-emitted to the WebSocket as 10ms binary frames.
+//
+// The LiveKit Go SDK provides a PCMLocalTrack (for publishing PCM) and a PCMRemoteTrack (for receiving remote audio as PCM).
+// We slice / group audio into 10ms frames (160 samples at 16 kHz) which is a common cadence for Opus and many real-time pipelines.
+//
+// Concurrency model:
+// - Each client has its own goroutines for pinging, tone generation, forwarding remote tracks, etc.
+// - Mutexes protect shared state (e.g., active room connection, published track reference, subscription maps).
+// - Channels (e.g., context cancellation) are used for lifecycle shutdown.
+//
+// Naming notes:
+// - We keep some original LiveKit naming (Room, Track) but add clearer field names where helpful.
+// - Methods like ensurePublishTrack lazily create and publish the audio track only when first needed.
+
 var publishGain float64 = 1.0
 
 func init() {
@@ -44,31 +63,38 @@ type LiveKitService struct {
 }
 
 type LiveKitClient struct {
-	userId             string
-	ws                 *websocket.Conn
-	room               *lksdk.Room
-	publishTrack       *lkmedia.PCMLocalTrack
-	ctx                context.Context
-	cancel             context.CancelFunc
-	mu                 sync.Mutex
-	connected          bool
-	receivedFrameCount int
-	sampleRate         int
-	// subscribe state
-	subscribeEnabled bool
-	targetIdentity   string
-	subQuit          chan struct{}
-	// track registry
+	userId string          // logical user identifier (query param)
+	ws     *websocket.Conn // active WebSocket connection
+
+	room         *lksdk.Room            // LiveKit room handle (nil until joined)
+	publishTrack *lkmedia.PCMLocalTrack // lazily created local PCM track (16kHz mono)
+
+	ctx    context.Context    // per-client root context
+	cancel context.CancelFunc // cancels ctx and all derived work
+
+	mu        sync.Mutex // guards room / publishTrack / connection flags
+	connected bool       // true after successful join
+
+	receivedFrameCount int // number of inbound binary audio chunks accepted via WS
+	sampleRate         int // cached publish track sample rate (expect 16000)
+
+	// Subscription forwarding state (remote -> WS)
+	subscribeEnabled bool          // if true we forward remote audio
+	targetIdentity   string        // optional filter on participant identity
+	subQuit          chan struct{} // future use (not heavily used now)
+
+	// Remote track registry
 	tracksMu      sync.Mutex
-	subTracks     map[string]*webrtc.TrackRemote     // by publication SID
-	subTrackOwner map[string]string                  // SID -> participant identity
-	subActive     map[string]bool                    // SID -> forwarding active
-	pcmBySID      map[string]*lkmedia.PCMRemoteTrack // SID -> PCM remote track
-	// subscriber outgoing 16kHz frame buffer (bytes)
+	subTracks     map[string]*webrtc.TrackRemote     // publication SID -> remote RTP track
+	subTrackOwner map[string]string                  // publication SID -> participant identity
+	subActive     map[string]bool                    // publication SID -> forwarding active
+	pcmBySID      map[string]*lkmedia.PCMRemoteTrack // publication SID -> PCM decoding helper
+
+	// Outgoing subscription PCM frame assembly buffer (always 16kHz mono)
 	subBuf16k     []byte
 	subFrameCount int
 
-	// lifecycle
+	// Lifecycle close signaling
 	closedCh  chan struct{}
 	closeOnce sync.Once
 }
@@ -358,6 +384,8 @@ func (c *LiveKitClient) joinRoomWithURL(roomName, token, customURL string) {
 }
 
 // ensurePublishTrack lazily creates & publishes a local PCM track if not present.
+// ensurePublishTrack lazily creates a 16kHz mono PCM track and publishes it to the room.
+// Safe for repeated calls; returns fast if already created.
 func (c *LiveKitClient) ensurePublishTrack() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -381,6 +409,8 @@ func (c *LiveKitClient) ensurePublishTrack() error {
 }
 
 // publishTone generates a sine wave at the given frequency and publishes via WriteSample at ~10ms cadence
+// publishTone synthesizes a sine wave at freqHz for durationMs, writing 10ms frames.
+// Frames are spaced with time.Sleep to emulate real-time capture.
 func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
 	if err := c.ensurePublishTrack(); err != nil {
 		log.Printf("Cannot publish tone - ensurePublishTrack failed: %v", err)
@@ -449,6 +479,10 @@ func (c *LiveKitClient) publishTone(freqHz int, durationMs int) {
 	log.Printf("Completed tone publishing")
 }
 
+// handleAudioData ingests raw PCM16 (little-endian) bytes supplied over the WebSocket
+// and feeds them into the published local track. Assumes 16 kHz mono layout.
+// Large incoming chunks are split into 10ms frames (160 samples) and queued to LiveKit.
+// We intentionally do NOT sleep here; the SDK/pacer will smooth timing.
 func (c *LiveKitClient) handleAudioData(data []byte) {
 	if err := c.ensurePublishTrack(); err != nil {
 		log.Printf("Cannot send audio - ensurePublishTrack failed: %v", err)
@@ -528,6 +562,8 @@ func (c *LiveKitClient) handleAudioData(data []byte) {
 }
 
 // handleIncomingPCM16_16k appends 16 kHz PCM16 bytes and emits fixed 10 ms frames over WS.
+// handleIncomingPCM16_16k buffers decoded remote PCM (already 16kHz mono) into 10ms frames
+// and sends each frame as a binary WebSocket message to the client.
 func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -558,6 +594,7 @@ func (c *LiveKitClient) handleIncomingPCM16_16k(pcm16 []byte) {
 }
 
 // enableSubscribe marks subscription forwarding enabled and optionally sets a target identity filter.
+// enableSubscribe begins forwarding remote audio tracks (optionally filtered by participant identity).
 func (c *LiveKitClient) enableSubscribe(target string) {
 	c.mu.Lock()
 	c.subscribeEnabled = true
@@ -585,6 +622,7 @@ func (c *LiveKitClient) enableSubscribe(target string) {
 }
 
 // disableSubscribe stops forwarding subscribed audio.
+// disableSubscribe stops forwarding remote audio.
 func (c *LiveKitClient) disableSubscribe() {
 	c.mu.Lock()
 	c.subscribeEnabled = false
@@ -597,6 +635,8 @@ func (c *LiveKitClient) disableSubscribe() {
 }
 
 // onTrackSubscribed is invoked by RoomCallback when a remote audio track is available.
+// onTrackSubscribed fires when a remote track is available; we attach a PCM decoder
+// and start forwarding if subscription forwarding is enabled.
 func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication *lksdk.RemoteTrackPublication, rp *lksdk.RemoteParticipant) {
 	if track.Kind() != webrtc.RTPCodecTypeAudio {
 		return
@@ -626,6 +666,7 @@ func (c *LiveKitClient) onTrackSubscribed(track *webrtc.TrackRemote, publication
 }
 
 // forwardTrack uses SDK's PCM remote track at 16 kHz mono and streams fixed 10 ms frames over WS.
+// forwardTrack converts the remote RTP audio to PCM16 (16kHz mono) and pushes 10ms frames to the websocket.
 func (c *LiveKitClient) forwardTrack(track *webrtc.TrackRemote, owner string, sid string) {
 	writer := &pcm16WSWriter{client: c}
 	pcmTrack, err := lkmedia.NewPCMRemoteTrack(track, writer,
@@ -655,6 +696,8 @@ type pcm16WSWriter struct {
 	client *LiveKitClient
 }
 
+// WriteSample is invoked by the LiveKit SDK with a slice of int16 samples at 16kHz.
+// We convert to bytes and enqueue for WS forwarding.
 func (w *pcm16WSWriter) WriteSample(sample media.PCM16Sample) error {
 	// Treat PCM16Sample as a slice of int16 (API may alias []int16)
 	data := []int16(sample)
@@ -672,6 +715,7 @@ func (w *pcm16WSWriter) WriteSample(sample media.PCM16Sample) error {
 
 func (w *pcm16WSWriter) Close() error { return nil }
 
+// leaveRoom disconnects from the LiveKit room, closing all tracks and cleaning up.
 func (c *LiveKitClient) leaveRoom() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -704,6 +748,7 @@ func (c *LiveKitClient) leaveRoom() {
 	})
 }
 
+// sendEvent serializes and pushes a JSON event over the client WebSocket.
 func (c *LiveKitClient) sendEvent(event Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -717,6 +762,7 @@ func (c *LiveKitClient) sendEvent(event Event) {
 	}
 }
 
+// sendError helper to send an error event.
 func (c *LiveKitClient) sendError(message string) {
 	c.sendEvent(Event{
 		Type:  "error",
@@ -724,6 +770,7 @@ func (c *LiveKitClient) sendError(message string) {
 	})
 }
 
+// pingLoop periodically sends WebSocket pings to keep the connection alive.
 func (c *LiveKitClient) pingLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -746,6 +793,7 @@ func (c *LiveKitClient) pingLoop() {
 	}
 }
 
+// Close tears down the client: cancels context, disconnects room, closes tracks & websocket.
 func (c *LiveKitClient) Close() {
 	c.cancel()
 	c.mu.Lock()
