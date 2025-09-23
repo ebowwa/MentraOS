@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	lkauth "github.com/livekit/protocol/auth"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 	lkmedia "github.com/livekit/server-sdk-go/v2/pkg/media"
-	"github.com/joho/godotenv"
 )
 
 // Simple WAV loop publisher.
@@ -61,20 +61,36 @@ func main() {
 	_ = godotenv.Load()
 	flag.Parse()
 	// After parsing, if critical flags empty, fill from env (already set by godotenv)
-	if flagURL == "" { flagURL = os.Getenv("LIVEKIT_URL") }
-	if flagRoom == "" { flagRoom = os.Getenv("LIVEKIT_ROOM_NAME") }
-	if flagToken == "" { flagToken = os.Getenv("LIVEKIT_TOKEN") }
-	if flagAPIKey == "" { flagAPIKey = os.Getenv("LIVEKIT_API_KEY") }
-	if flagAPISecret == "" { flagAPISecret = os.Getenv("LIVEKIT_API_SECRET") }
-	if flagIdentity == "" { flagIdentity = os.Getenv("LIVEKIT_IDENTITY") }
+	if flagURL == "" {
+		flagURL = os.Getenv("LIVEKIT_URL")
+	}
+	if flagRoom == "" {
+		flagRoom = os.Getenv("LIVEKIT_ROOM_NAME")
+	}
+	if flagToken == "" {
+		flagToken = os.Getenv("LIVEKIT_TOKEN")
+	}
+	if flagAPIKey == "" {
+		flagAPIKey = os.Getenv("LIVEKIT_API_KEY")
+	}
+	if flagAPISecret == "" {
+		flagAPISecret = os.Getenv("LIVEKIT_API_SECRET")
+	}
+	if flagIdentity == "" {
+		flagIdentity = os.Getenv("LIVEKIT_IDENTITY")
+	}
 	if err := run(); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }
 
 func run() error {
-	if flagURL == "" { return errors.New("--url or LIVEKIT_URL required") }
-	if flagRoom == "" { return errors.New("--room or LIVEKIT_ROOM_NAME required") }
+	if flagURL == "" {
+		return errors.New("--url or LIVEKIT_URL required")
+	}
+	if flagRoom == "" {
+		return errors.New("--room or LIVEKIT_ROOM_NAME required")
+	}
 	if flagWavPath == "" {
 		return errors.New("--wav path required")
 	}
@@ -132,8 +148,12 @@ func run() error {
 	defer room.Disconnect()
 	log.Printf("connected: identity=%s remotes=%d", room.LocalParticipant.Identity(), len(room.GetRemoteParticipants()))
 	track, err := lkmedia.NewPCMLocalTrack(wav.SampleRate, wav.Channels, nil)
-	if err != nil { return fmt.Errorf("new PCM track: %w", err) }
-	if _, err := room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{Name: flagTrackName}); err != nil { return fmt.Errorf("publish: %w", err) }
+	if err != nil {
+		return fmt.Errorf("new PCM track: %w", err)
+	}
+	if _, err := room.LocalParticipant.PublishTrack(track, &lksdk.TrackPublicationOptions{Name: flagTrackName}); err != nil {
+		return fmt.Errorf("publish: %w", err)
+	}
 	log.Printf("published track '%s' (sr=%d ch=%d)", flagTrackName, wav.SampleRate, wav.Channels)
 	samplesPerFrame := wav.SampleRate * wav.Channels * flagFrameMs / 1000
 	if samplesPerFrame <= 0 {
@@ -171,7 +191,9 @@ func run() error {
 				endSample = len(pcm)
 			}
 		}
-		if err := track.WriteSample(pcm[startSample:endSample]); err != nil { return fmt.Errorf("write sample: %w", err) }
+		if err := track.WriteSample(pcm[startSample:endSample]); err != nil {
+			return fmt.Errorf("write sample: %w", err)
+		}
 		frameIndex++
 		if flagLogEvery > 0 && frameIndex%flagLogEvery == 0 {
 			playedMs := float64(frameIndex * flagFrameMs)
