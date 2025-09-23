@@ -1,8 +1,10 @@
 import React, {useState, useCallback, useMemo} from "react"
 import {View, FlatList, TouchableOpacity, Alert, Dimensions, ActivityIndicator} from "react-native"
+import {useRouter} from "expo-router"
 
 import {Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
+import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
 import {useNewUiForegroundApps, useNewUiActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -15,21 +17,65 @@ import showAlert from "@/utils/AlertUtils"
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
 
+// Special type for the Get More Apps item
+interface GridItem extends AppletInterface {
+  isGetMoreApps?: boolean
+}
+
 export const NewUiForegroundAppsGrid: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
+  const router = useRouter()
   const foregroundApps = useNewUiForegroundApps()
   const activeForegroundApp = useNewUiActiveForegroundApp()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const [isLoading, setIsLoading] = useState(false)
 
-  // Filter out the currently active app from the grid
-  const inactiveApps = useMemo(() => {
-    return foregroundApps.filter(app => !app.is_running)
+  // Prepare grid data with placeholders and "Get More Apps"
+  const gridData = useMemo(() => {
+    const inactiveApps = foregroundApps.filter(app => !app.is_running)
+
+    // Add "Get More Apps" as the last item
+    const appsWithGetMore = [
+      ...inactiveApps,
+      {
+        packageName: "get-more-apps",
+        name: "Get More Apps",
+        type: "standard",
+        isGetMoreApps: true,
+        logoURL: "",
+        permissions: [],
+      } as GridItem,
+    ]
+
+    // Calculate how many empty placeholders we need to fill the last row
+    const totalItems = appsWithGetMore.length
+    const remainder = totalItems % GRID_COLUMNS
+    const emptySlots = remainder === 0 ? 0 : GRID_COLUMNS - remainder
+
+    // Add empty placeholders to align items to the left
+    const paddedApps = [...appsWithGetMore]
+    for (let i = 0; i < emptySlots; i++) {
+      paddedApps.push({
+        packageName: `empty-${i}`,
+        name: "",
+        type: "standard",
+        logoURL: "",
+        permissions: [],
+      } as GridItem)
+    }
+
+    return paddedApps
   }, [foregroundApps])
 
   const handleAppPress = useCallback(
-    async (app: AppletInterface) => {
+    async (app: GridItem) => {
+      // Handle "Get More Apps" specially
+      if (app.isGetMoreApps) {
+        router.push("/store")
+        return
+      }
+
       // Check if app is offline
       if (app.isOnline === false) {
         const developerName = (" " + (app.developerName || "") + " ").replace("  ", " ")
@@ -70,7 +116,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         await startApp(app.packageName)
       }
     },
-    [activeForegroundApp],
+    [activeForegroundApp, router],
   )
 
   const startApp = async (packageName: string) => {
@@ -104,7 +150,22 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
   }
 
   const renderItem = useCallback(
-    ({item}: {item: AppletInterface}) => {
+    ({item}: {item: GridItem}) => {
+      // Don't render empty placeholders
+      if (!item.name && !item.isGetMoreApps) {
+        return <View style={themed($gridItem)} />
+      }
+
+      // Render "Get More Apps" item
+      if (item.isGetMoreApps) {
+        return (
+          <TouchableOpacity style={themed($gridItem)} onPress={() => handleAppPress(item)} activeOpacity={0.7}>
+            <GetMoreAppsIcon size="large" style={{marginBottom: theme.spacing.xs}} />
+            <Text text={item.name} style={themed($appName)} numberOfLines={2} />
+          </TouchableOpacity>
+        )
+      }
+
       const isOffline = item.isOnline === false
 
       return (
@@ -132,10 +193,15 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
     [themed, theme, handleAppPress, isLoading],
   )
 
-  if (inactiveApps.length === 0) {
+  if (foregroundApps.length === 0) {
+    // Still show "Get More Apps" even when no apps
     return (
-      <View style={themed($emptyContainer)}>
+      <View style={themed($container)}>
         <Text style={themed($emptyText)}>No foreground apps available</Text>
+        <TouchableOpacity style={themed($getMoreAppsButton)} onPress={() => router.push("/store")} activeOpacity={0.7}>
+          <GetMoreAppsIcon size="large" style={{marginBottom: theme.spacing.xs}} />
+          <Text text="Get More Apps" style={themed($appName)} />
+        </TouchableOpacity>
       </View>
     )
   }
@@ -151,7 +217,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
   return (
     <View style={themed($container)}>
       <FlatList
-        data={inactiveApps}
+        data={gridData}
         renderItem={renderItem}
         keyExtractor={item => item.packageName}
         numColumns={GRID_COLUMNS}
@@ -197,6 +263,7 @@ const $appName = theme => ({
   color: theme.colors.text,
   textAlign: "center",
   marginTop: theme.spacing.xxs,
+  lineHeight: 14,
 })
 
 const $appNameOffline = theme => ({
@@ -205,6 +272,7 @@ const $appNameOffline = theme => ({
   textAlign: "center",
   marginTop: theme.spacing.xxs,
   textDecorationLine: "line-through",
+  lineHeight: 14,
 })
 
 const $offlineBadge = theme => ({
@@ -227,6 +295,12 @@ const $emptyText = theme => ({
   fontSize: 15,
   color: theme.colors.textDim,
   textAlign: "center",
+  marginBottom: theme.spacing.lg,
+})
+
+const $getMoreAppsButton = theme => ({
+  alignItems: "center",
+  marginTop: theme.spacing.md,
 })
 
 const $loadingContainer = theme => ({

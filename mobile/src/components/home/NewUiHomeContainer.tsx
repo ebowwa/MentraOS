@@ -5,10 +5,12 @@ import {NewUiActiveForegroundApp} from "@/components/home/NewUiActiveForegroundA
 import {NewUiBackgroundAppsLink} from "@/components/home/NewUiBackgroundAppsLink"
 import {NewUiCompactDeviceStatus} from "@/components/home/NewUiCompactDeviceStatus"
 import {NewUiForegroundAppsGrid} from "@/components/home/NewUiForegroundAppsGrid"
+import Divider from "@/components/misc/Divider"
+import {Spacer} from "@/components/misc/Spacer"
 import {useAppTheme} from "@/utils/useAppTheme"
 
 export const NewUiHomeContainer: React.FC = () => {
-  const {themed} = useAppTheme()
+  const {themed, theme} = useAppTheme()
 
   return (
     <ScrollView
@@ -16,8 +18,17 @@ export const NewUiHomeContainer: React.FC = () => {
       contentContainerStyle={themed($scrollViewContent)}
       showsVerticalScrollIndicator={false}>
       <NewUiCompactDeviceStatus />
+
+      <Divider variant="full" />
+
       <NewUiActiveForegroundApp />
+
+      <Divider variant="full" />
+
       <NewUiBackgroundAppsLink />
+
+      <Divider variant="full" />
+
       <NewUiForegroundAppsGrid />
     </ScrollView>
   )

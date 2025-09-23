@@ -5,6 +5,8 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 
 import {Header, Screen, Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
+import ChevronRight from "assets/icons/component/ChevronRight"
+import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
 import {useNewUiBackgroundApps} from "@/hooks/useNewUiFilteredApps"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -160,7 +162,18 @@ export default function NewUiBackgroundAppsScreen() {
               <>
                 <Text style={themed($sectionHeader)}>Inactive Background Apps</Text>
                 <View style={themed($sectionContent)}>
-                  {inactiveApps.map((app, index) => renderAppItem(app, index, index === inactiveApps.length - 1))}
+                  {inactiveApps.map((app, index) => renderAppItem(app, index, false))}
+                  {/* Get More Apps item */}
+                  <TouchableOpacity style={themed($appRow)} onPress={() => router.push("/store")} activeOpacity={0.7}>
+                    <View style={themed($appContent)}>
+                      <GetMoreAppsIcon size="medium" />
+                      <View style={themed($appInfo)}>
+                        <Text text="Get More Apps" style={themed($appName)} />
+                        <Text text="Explore the MentraOS Store" style={themed($getMoreAppsSubtext)} />
+                      </View>
+                    </View>
+                    <ChevronRight color={theme.colors.textDim} />
+                  </TouchableOpacity>
                 </View>
               </>
             )}
@@ -308,4 +321,10 @@ const $loadingOverlay = theme => ({
   backgroundColor: "rgba(0, 0, 0, 0.3)",
   alignItems: "center",
   justifyContent: "center",
+})
+
+const $getMoreAppsSubtext = theme => ({
+  fontSize: 12,
+  color: theme.colors.textDim,
+  marginTop: 2,
 })
