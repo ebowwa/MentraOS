@@ -5,6 +5,7 @@ import {useDisplayStore} from "@/stores/display"
 import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import {AudioPlayService} from "@/services/AudioPlayService"
 
 class SocketComms {
   private static instance: SocketComms | null = null
@@ -79,6 +80,17 @@ class SocketComms {
     this.userid = userid
     useSettingsStore.getState().setSetting(SETTINGS_KEYS.core_token, coreToken)
     this.connectWebsocket()
+  }
+
+  sendAudioPlayResponse(requestId: string, success: boolean, error: string | null, duration: number | null) {
+    const msg = {
+      type: "audio_play_response",
+      requestId: requestId,
+      success: success,
+      error: error,
+      duration: duration,
+    }
+    this.ws.sendText(JSON.stringify(msg))
   }
 
   sendText(text: string) {
@@ -317,19 +329,7 @@ class SocketComms {
     const requestId = msg.requestId
     if (!requestId) return
 
-    console.log(`SocketCommsTS: Handling audio play request for requestId: ${requestId}`)
-
-    const audioUrl = msg.audioUrl || ""
-    const volume = msg.volume || 1.0
-    const stopOtherAudio = msg.stopOtherAudio !== false
-
-    // Forward to native audio handling through bridge
-    bridge.sendCommand("audio_play_request", {
-      requestId,
-      audioUrl,
-      volume,
-      stopOtherAudio,
-    })
+    AudioPlayService.getInstance().handle_audio_play_request(msg)
   }
 
   private handle_audio_stop_request() {

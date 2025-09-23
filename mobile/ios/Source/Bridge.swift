@@ -381,7 +381,6 @@ class Bridge: RCTEventEmitter {
             case check_stt_model_available
             case validate_stt_model
             case extract_tar_bz2
-            case setup
             case display_event
             case display_text
             case update_settings
@@ -409,8 +408,6 @@ class Bridge: RCTEventEmitter {
 
                 // Process based on command type
                 switch commandType {
-                case .setup:
-                    m.setup()
                 case .set_auth_secret_key:
                     guard let params = params,
                           let userId = params["userId"] as? String,

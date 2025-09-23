@@ -145,10 +145,6 @@ struct ViewState {
 
     // MARK: - Public Methods (for React Native)
 
-    func setup() {
-        Bridge.log("Mentra: setup()")
-    }
-
     func initSGC(_ wearable: String) {
         Bridge.log("Initializing manager for wearable: \(wearable)")
         if wearable.contains("G1") && sgc == nil {
@@ -909,7 +905,6 @@ struct ViewState {
     // command functions:
     func setAuthCreds(_ token: String, _ userId: String) {
         Bridge.log("Mentra: Setting core token to: \(token) for user: \(userId)")
-        setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
         handle_request_status()

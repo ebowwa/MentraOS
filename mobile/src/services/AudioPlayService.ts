@@ -1,4 +1,6 @@
-import AudioManager, {AudioPlayRequest} from "../managers/AudioManager"
+// import {Audio} from "expo-av"
+import socketComms from "@/managers/SocketComms"
+import {AudioPlayer, createAudioPlayer} from "expo-audio"
 
 export interface AudioPlayRequestMessage {
   type: "audio_play_request"
@@ -19,9 +21,11 @@ export type AudioPlayResponseCallback = (response: AudioPlayResponse) => void
 
 export class AudioPlayService {
   private static instance: AudioPlayService
-  private responseCallback: AudioPlayResponseCallback | null = null
+  private player: AudioPlayer
 
-  private constructor() {}
+  private constructor() {
+    this.player = createAudioPlayer()
+  }
 
   public static getInstance(): AudioPlayService {
     if (!AudioPlayService.instance) {
@@ -30,94 +34,47 @@ export class AudioPlayService {
     return AudioPlayService.instance
   }
 
-  /**
-   * Set the callback function that will be called when audio responses are received
-   */
-  public setResponseCallback(callback: AudioPlayResponseCallback): void {
-    this.responseCallback = callback
-  }
+  //   func sendAudioPlayResponse(requestId: String, success: Bool, error: String? = nil, duration: Double? = nil) {
+  //     Bridge.log("ServerComms: Sending audio play response - requestId: \(requestId), success: \(success), error: \(error ?? "none")")
+  //     let message: [String: Any] = [
+  //         "type": "audio_play_response",
+  //         "requestId": requestId,
+  //         "success": success,
+  //         "error": error as Any,
+  //         "duration": duration as Any,
+  //     ].compactMapValues { $0 }
 
-  /**
-   * Handle a response from the native audio layer
-   */
-  public handleAudioPlayResponse(response: AudioPlayResponse): void {
-    console.log(
-      `AudioPlayService: Received response for requestId: ${response.requestId}, success: ${response.success}`,
-    )
+  //     do {
+  //         let jsonData = try JSONSerialization.data(withJSONObject: message)
+  //         if let jsonString = String(data: jsonData, encoding: .utf8) {
+  //             wsManager.sendText(jsonString)
+  //             Bridge.log("ServerComms: Sent audio play response to server")
+  //         }
+  //     } catch {
+  //         Bridge.log("ServerComms: Failed to serialize audio play response: \(error)")
+  //     }
+  // }
 
-    if (this.responseCallback) {
-      this.responseCallback(response)
-    } else {
-      console.warn("AudioPlayService: No response callback set, dropping response")
-    }
-  }
+  public async handle_audio_play_request(msg: any) {
+    const {requestId, audioUrl} = msg
 
-  /**
-   * Handle an incoming audio play request message
-   */
-  public async handleAudioPlayRequest(message: AudioPlayRequestMessage): Promise<void> {
-    console.log(`AudioPlayService: Handling audio play request for requestId: ${message.requestId}`)
+    const player = createAudioPlayer(audioUrl)
 
-    try {
-      const request: AudioPlayRequest = {
-        requestId: message.requestId,
-        audioUrl: message.audioUrl,
-        volume: message.volume,
-        stopOtherAudio: message.stopOtherAudio,
+    // Set up a listener for playback status updates
+    const subscription = player.addListener("playbackStatusUpdate", status => {
+      // Check if the audio just finished playing
+      if (status.didJustFinish) {
+        console.log(`Request ${requestId} finished playing`)
+        socketComms.sendAudioPlayResponse(requestId, true, null, 1000)
+
+        // Clean up: remove listener and release the player
+        subscription.remove()
+        player.remove()
       }
+    })
 
-      await AudioManager.playAudio(request)
-      console.log(`AudioPlayService: Started audio play for requestId: ${message.requestId}`)
-    } catch (error) {
-      console.error(`AudioPlayService: Failed to start audio play for requestId ${message.requestId}:`, error)
-
-      // Send error response immediately
-      this.handleAudioPlayResponse({
-        requestId: message.requestId,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      })
-
-      throw error
-    }
-  }
-
-  /**
-   * Stop audio playback for a specific request
-   */
-  public async stopAudio(requestId: string): Promise<void> {
-    try {
-      await AudioManager.stopAudio(requestId)
-      console.log(`AudioPlayService: Stopped audio for requestId: ${requestId}`)
-    } catch (error) {
-      console.error(`AudioPlayService: Failed to stop audio for requestId ${requestId}:`, error)
-      throw error
-    }
-  }
-
-  /**
-   * Stop all audio playback
-   */
-  public async stopAllAudio(): Promise<void> {
-    try {
-      await AudioManager.stopAllAudio()
-      console.log("AudioPlayService: Stopped all audio")
-    } catch (error) {
-      console.error("AudioPlayService: Failed to stop all audio:", error)
-      throw error
-    }
-  }
-
-  /**
-   * Parse and handle a generic message that might be an audio play request
-   */
-  public async handleMessage(message: any): Promise<boolean> {
-    if (message && message.type === "audio_play_request") {
-      await this.handleAudioPlayRequest(message as AudioPlayRequestMessage)
-      return true
-    }
-
-    return false
+    // Start playing the audio
+    player.play()
   }
 }
 
