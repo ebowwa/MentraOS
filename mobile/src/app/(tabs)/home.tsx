@@ -26,6 +26,7 @@ import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 import bridge from "@/bridge/MantleBridge"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {NewUiHomeContainer} from "@/components/home/NewUiHomeContainer"
 
 export default function Homepage() {
   const {refreshAppStatus, stopAllApps} = useAppStatus()
@@ -35,21 +36,23 @@ export default function Homepage() {
   const {themed, theme} = useAppTheme()
   const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
   const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
-  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(SETTINGS_KEYS.offline_captions_app_running)
+  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+    SETTINGS_KEYS.offline_captions_app_running,
+  )
 
-  const handleToggleOfflineMode = useCallback(async (newIsOfflineMode: boolean) => {
-    if (newIsOfflineMode) {
-      // If enabling offline mode, stop all running apps
-      await stopAllApps()
-    } else {
-      setOfflineCaptionsAppRunning(false)
-      bridge.toggleOfflineApps(false)
-    }
-    setIsOfflineMode(newIsOfflineMode)
-  }, [stopAllApps])
-
-
-  
+  const handleToggleOfflineMode = useCallback(
+    async (newIsOfflineMode: boolean) => {
+      if (newIsOfflineMode) {
+        // If enabling offline mode, stop all running apps
+        await stopAllApps()
+      } else {
+        setOfflineCaptionsAppRunning(false)
+        bridge.toggleOfflineApps(false)
+      }
+      setIsOfflineMode(newIsOfflineMode)
+    },
+    [stopAllApps],
+  )
 
   useFocusEffect(
     useCallback(() => {
@@ -59,7 +62,7 @@ export default function Homepage() {
 
   if (showNewUi) {
     return (
-      <Screen preset="fixed" style={themed($screen)}>
+      <Screen preset="fixed" style={[themed($screen), {paddingHorizontal: theme.spacing.md}]}>
         <Header
           leftTx="home:title"
           RightActionComponent={
@@ -73,21 +76,12 @@ export default function Homepage() {
 
         <CloudConnection />
         <SensingDisabledWarning />
-        <View>
-          <ConnectedGlasses showTitle={false} />
-          <DeviceToolbar />
-        </View>
-        <Spacer height={theme.spacing.lg} />
         <View ref={connectButtonRef}>
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.md} />
-        
-        {isOfflineMode ? (
-          <AppsOfflineList />
-        ) : (
-          <AppsCombinedGridView />
-        )}
+
+        {isOfflineMode ? <AppsOfflineList /> : <NewUiHomeContainer />}
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
@@ -110,10 +104,7 @@ export default function Homepage() {
         RightActionComponent={
           <View style={themed($headerRight)}>
             <PermissionsWarning />
-            <OfflineModeButton 
-              isOfflineMode={isOfflineMode} 
-              onToggle={handleToggleOfflineMode} 
-            />
+            <OfflineModeButton isOfflineMode={isOfflineMode} onToggle={handleToggleOfflineMode} />
             <MicIcon width={24} height={24} />
             <NonProdWarning />
           </View>
@@ -133,7 +124,7 @@ export default function Homepage() {
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.lg} />
-        
+
         <Divider variant="full" />
         <Spacer height={theme.spacing.md} />
 
