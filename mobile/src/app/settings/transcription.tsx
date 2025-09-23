@@ -24,7 +24,6 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const [loading, setLoading] = useState(true)
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
@@ -33,10 +32,6 @@ export default function TranscriptionSettingsScreen() {
   )
   const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
   const [offlineStt, setOfflineStt] = useSetting(SETTINGS_KEYS.offline_stt)
-
-  useEffect(() => {
-    setLoading(false)
-  }, [])
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -245,19 +240,6 @@ export default function TranscriptionSettingsScreen() {
   useEffect(() => {
     initSelectedModel()
   }, [])
-
-  if (loading) {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={handleGoBack} />
-        <View style={{alignItems: "center", padding: theme.spacing.lg}}>
-          <ActivityIndicator size="large" color={theme.colors.text} />
-          <Spacer height={theme.spacing.sm} />
-          <Text>Loading...</Text>
-        </View>
-      </Screen>
-    )
-  }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
