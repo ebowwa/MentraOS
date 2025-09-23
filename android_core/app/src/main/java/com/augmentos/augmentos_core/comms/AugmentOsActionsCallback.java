@@ -22,6 +22,7 @@ public interface AugmentOsActionsCallback {
     void setBypassVadForDebugging(boolean bypassVadForDebugging);
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
     void setEnforceLocalTranscription(boolean enforceLocalTranscription);
+    void onEnableOfflineMode(boolean enabled);
     void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);
     void setPowerSavingMode(boolean powerSavingMode);
     void installAppFromRepository(String repository, String packageName) throws JSONException;

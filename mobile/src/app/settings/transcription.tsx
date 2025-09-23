@@ -11,7 +11,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function TranscriptionSettingsScreen() {
   const {theme} = useAppTheme()
@@ -24,14 +24,14 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
-  const [lastRestartTime, setLastRestartTime] = useState(0)
-
+  const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
   const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
     SETTINGS_KEYS.enforce_local_transcription,
   )
-  const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
-  const [offlineStt, setOfflineStt] = useSetting(SETTINGS_KEYS.offline_stt)
+  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
+  const [lastRestartTime, setLastRestartTime] = useState(0)
+
+
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -91,15 +91,9 @@ export default function TranscriptionSettingsScreen() {
     }
   }
 
-  const toggleEnforceLocalTranscription = async () => {
-    if (!modelInfo?.downloaded) {
-      showAlert("Model Required", "You need to download the speech recognition model first.", [{text: "OK"}])
-      return
-    }
-
-    const newSetting = !enforceLocalTranscription
-    await setEnforceLocalTranscription(newSetting)
-    await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
+  const enableEnforceLocalTranscription = async () => {
+    await bridge.sendToggleEnforceLocalTranscription(true)
+    await setEnforceLocalTranscription(true)
   }
 
   const timeRemainingTillRestart = () => {
@@ -117,6 +111,15 @@ export default function TranscriptionSettingsScreen() {
 
   const handleModelChange = async (modelId: string) => {
     const timeRemaining = timeRemainingTillRestart()
+
+    if (isDownloading) {
+      // Also add cancel download button
+      showAlert("Download in Progress", "A model is currently downloading. Please wait before switching to another model", [
+        {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
+        {text: "OK", style: "cancel"},
+      ])
+      return
+    }
 
     if (timeRemaining > 0) {
       showAlert(
@@ -164,6 +167,8 @@ export default function TranscriptionSettingsScreen() {
       await checkModelStatus()
 
       await activateModelandRestartTranscription(targetModelId)
+
+      await enableEnforceLocalTranscription()
 
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
@@ -232,11 +237,6 @@ export default function TranscriptionSettingsScreen() {
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
   }
 
-  const toggleOfflineSTT = async () => {
-    const newSetting = !offlineStt
-    await setOfflineStt(newSetting)
-  }
-
   useEffect(() => {
     initSelectedModel()
   }, [])
@@ -280,37 +280,7 @@ export default function TranscriptionSettingsScreen() {
                   currentModelInfo={modelInfo}
                 />
 
-                <Spacer height={theme.spacing.lg} />
-
-                {/* Local Transcription Toggle */}
-                <ToggleSetting
-                  label={translate("settings:enforceLocalTranscription")}
-                  subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-                  value={enforceLocalTranscription}
-                  onValueChange={toggleEnforceLocalTranscription}
-                  disabled={!modelInfo?.downloaded || isDownloading}
-                />
-
-                {(!modelInfo?.downloaded || isDownloading) && (
-                  <Text
-                    size="xs"
-                    style={{
-                      color: theme.colors.textDim,
-                      marginTop: theme.spacing.xs,
-                      paddingHorizontal: theme.spacing.sm,
-                    }}>
-                    {translate("transcription:downloadModelToEnableLocalTranscription")}
-                  </Text>
-                )}
-
                 <Spacer height={theme.spacing.md} />
-                <ToggleSetting
-                  label={translate("settings:offlineSTT")}
-                  subtitle={translate("settings:offlineSTTSubtitle")}
-                  value={offlineStt}
-                  onValueChange={toggleOfflineSTT}
-                  disabled={!modelInfo?.downloaded || isDownloading}
-                />
               </>
             )}
           </>

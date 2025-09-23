@@ -3,6 +3,7 @@ import * as Calendar from "expo-calendar"
 import restComms from "@/managers/RestComms"
 import * as TaskManager from "expo-task-manager"
 import * as Location from "expo-location"
+import TranscriptProcessor from "@/utils/TranscriptProcessor"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 const LOCATION_TASK_NAME = "handleLocationUpdates"
@@ -28,6 +29,10 @@ class MantleManager {
   private static instance: MantleManager | null = null
 
   private calendarSyncTimer: NodeJS.Timeout | null = null
+  private transcriptProcessor: TranscriptProcessor
+  private clearTextTimeout: NodeJS.Timeout | null = null
+  private readonly MAX_CHARS_PER_LINE = 30
+  private readonly MAX_LINES = 3
 
   public static getInstance(): MantleManager {
     if (!MantleManager.instance) {
@@ -36,7 +41,9 @@ class MantleManager {
     return MantleManager.instance
   }
 
-  private constructor() {}
+  private constructor() {
+    this.transcriptProcessor = new TranscriptProcessor(this.MAX_CHARS_PER_LINE, this.MAX_LINES)
+  }
 
   public init() {
     this.setupPeriodicTasks()
@@ -49,6 +56,7 @@ class MantleManager {
       this.calendarSyncTimer = null
     }
     Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME)
+    this.transcriptProcessor.clear()
   }
 
   private async setupPeriodicTasks() {
@@ -140,18 +148,46 @@ class MantleManager {
   }
 
   public async handleLocalTranscription(data: any) {
-    console.log("Mantle: handleLocalTranscription()", data)
     // TODO: performance!
-    const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_stt)
+    const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
-      socketComms.handle_display_event({
-        type: "display_event",
-        view: "main",
-        layout: {
-          layoutType: "text_wall",
-          text: data.text,
-        },
-      })
+      this.transcriptProcessor.changeLanguage(data.transcribeLanguage)
+      const processedText = this.transcriptProcessor.processString(
+        data.text,
+        data.isFinal ?? false
+      )
+
+      // Scheduling timeout to clear text from wall. In case of online STT online dashboard manager will handle it.
+      if (data.isFinal) {
+        console.log("Mantle: isFinal, scheduling timeout to clear text from wall")
+        if (this.clearTextTimeout) {
+          console.log("Mantle: canceling pending timeout")
+          clearTimeout(this.clearTextTimeout)
+        }
+        this.clearTextTimeout = setTimeout(() => {
+          console.log("Mantle: clearing text from wall")
+          socketComms.handle_display_event({
+            type: "display_event",
+            view: "main",
+            layout: {
+              layoutType: "text_wall",
+              text: "",
+            },
+          })
+        }, 10000) // 10 seconds
+      }
+
+      if (processedText) {
+        socketComms.handle_display_event({
+          type: "display_event",
+          view: "main",
+          layout: {
+            layoutType: "text_wall",
+            text: processedText,
+          },
+        })
+      }
+
       return
     }
 
