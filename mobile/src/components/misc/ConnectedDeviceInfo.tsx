@@ -146,7 +146,7 @@ export const ConnectDeviceButton = () => {
     )
   }
 
-  if (!defaultWearable) {
+  if (!status.glasses_info?.model_name) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
