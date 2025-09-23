@@ -1566,6 +1566,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "transfer_timeout":
                 handleTransferTimeout(json);
                 break;
+            case "transfer_failed":
+                handleTransferFailed(json);
+                break;
             case "ble_photo_ready":
                 processBlePhotoReady(json);
                 break;
@@ -2065,7 +2068,49 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "⏰ Error processing transfer timeout notification", e);
         }
     }
-    
+
+    /**
+     * Handle transfer failed notification from glasses (max retries exceeded)
+     */
+    private void handleTransferFailed(JSONObject json) {
+        try {
+            String fileName = json.optString("fileName", "");
+            String reason = json.optString("reason", "unknown");
+
+            Log.e(TAG, "❌ Transfer failed notification received for: " + fileName + " (reason: " + reason + ")");
+
+            if (!fileName.isEmpty()) {
+                // Clean up any active transfer for this file
+                FileTransferSession session = activeFileTransfers.remove(fileName);
+                if (session != null) {
+                    Log.d(TAG, "🧹 Cleaned up failed transfer session for: " + fileName);
+                    Log.d(TAG, "📊 Transfer stats - Received: " + session.receivedPackets.size() + "/" + session.totalPackets + " packets");
+                    Log.d(TAG, "❌ Failure reason: " + reason);
+                }
+
+                // Clean up any BLE photo transfer
+                String bleImgId = fileName;
+                int dotIndex = bleImgId.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    bleImgId = bleImgId.substring(0, dotIndex);
+                }
+                BlePhotoTransfer photoTransfer = blePhotoTransfers.remove(bleImgId);
+                if (photoTransfer != null) {
+                    Log.d(TAG, "🧹 Cleaned up failed BLE photo transfer for: " + bleImgId);
+
+                    // Notify that BLE photo transfer failed if we have a requestId
+                    if (photoTransfer.requestId != null) {
+                        // Could send failure notification to any listeners if needed
+                        Log.e(TAG, "❌ BLE photo transfer failed for requestId: " + photoTransfer.requestId);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error processing transfer failed notification", e);
+        }
+    }
+
     /**
      * Handle file transfer announcement from glasses
      */
@@ -3745,21 +3790,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "✅ No missing packets for " + fileName + " - should not have been called");
             return;
         }
-        
-        // Check if too many packets are missing (>50% = likely failure)
-        FileTransferSession session = activeFileTransfers.get(fileName);
-        if (session != null && missingPackets.size() > session.totalPackets / 2) {
-            Log.e(TAG, "❌ Too many missing packets (" + missingPackets.size() + "/" + session.totalPackets + ") for " + fileName + " - treating as failed transfer");
-            
-            // Send failure confirmation to glasses
-            sendTransferCompleteConfirmation(fileName, false);
-            
-            // Clean up the failed session
-            activeFileTransfers.remove(fileName);
-            return;
-        }
-        
-        Log.d(TAG, "🔍 Requesting retransmission of " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
+
+        // ANY missing packets trigger a full restart (for now)
+        // TODO: In future, implement selective packet retransmission instead of full restart
+        Log.d(TAG, "🔍 Requesting full retransmission due to " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
         
         try {
             // Send missing packets request to glasses
