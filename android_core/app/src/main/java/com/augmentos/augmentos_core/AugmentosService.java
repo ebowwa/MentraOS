@@ -2190,7 +2190,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Searching for compatible device names for model: " + modelName);
         SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
-            blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
+            Log.d(TAG, "Tried to pair to Incorrect model name: " + modelName);
+            //blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
             return;
         }
 
@@ -2252,7 +2253,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
-            blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
+            Log.d(TAG, "Tried to pair to Incorrect model name: " + modelName);
+            //blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
             return;
         }
 
