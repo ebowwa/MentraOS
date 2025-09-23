@@ -5,7 +5,7 @@ import {ThemedStyle} from "@/theme"
 import {AppListItem} from "./AppListItem"
 import {Text} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {router} from "expo-router"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
 import {useFocusEffect} from "@react-navigation/native";
@@ -32,30 +32,22 @@ interface AppsOfflineListProps {
 
 export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = false}) => {
   const {themed} = useAppTheme()
-  const [isOfflineCaptionsEnabled, setIsOfflineCaptionsEnabled] = useState(false)
 
-  const [isLocalTranscriptionEnforced, setIsLocalTranscriptionEnforced] = useState(false)
+  const [isLocalTranscriptionEnforced, setIsLocalTranscriptionEnforced] = useSetting(SETTINGS_KEYS.enforce_local_transcription)
+  const [isOfflineCaptionsEnabled, setIsOfflineCaptionsEnabled] = useSetting(SETTINGS_KEYS.offline_captions_app_running)
 
   // Load saved states on mount and when screen comes into focus
   const loadState = useCallback(async () => {
-    const [savedState, isEnforced] = await Promise.all([
-      settings.get(SETTINGS_KEYS.offline_captions_app_running, false),
-      settings.get(SETTINGS_KEYS.enforce_local_transcription, false)
-    ])
-    setIsOfflineCaptionsEnabled(savedState)
-    setIsLocalTranscriptionEnforced(isEnforced)
-
     // TODO: Remove this logic later. It's just to ensure that the users who have already installed the models don't face any issues
-    if (!isEnforced) {
+    if (!isLocalTranscriptionEnforced) {
       const models = await STTModelManager.getInstance().getAllModelsInfo()
       const hasModels = models.some(model => model.downloaded)
       if (hasModels) {
         console.log('AppsOfflineList: Models downloaded but local transcription not enforced')
         console.log('AppsOfflineList: Enforcing local transcription')
-        await settings.set(SETTINGS_KEYS.enforce_local_transcription, true)
+        await setIsLocalTranscriptionEnforced(true)
         await bridge.sendToggleEnforceLocalTranscription(true)
         console.log('AppsOfflineList: Local transcription enforced')
-        setIsLocalTranscriptionEnforced(true)
       }
     }
   }, [])
@@ -126,13 +118,9 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     }
     
     // Update the bridge with the new offline mode
+    // Update the local state
     // TODO: Later remove this during android refactor
     bridge.toggleOfflineApps(newOfflineMode)
-    
-    // Save the preference to storage
-    await settings.set(SETTINGS_KEYS.offline_captions_app_running, newOfflineMode)
-    
-    // Update the local state
     setIsOfflineCaptionsEnabled(newOfflineMode)
   }, [isOfflineCaptionsEnabled, isLocalTranscriptionEnforced])
 

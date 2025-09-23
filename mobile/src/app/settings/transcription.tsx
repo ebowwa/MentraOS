@@ -93,7 +93,7 @@ export default function TranscriptionSettingsScreen() {
 
   const enableEnforceLocalTranscription = async () => {
     await bridge.sendToggleEnforceLocalTranscription(true)
-    setEnforceLocalTranscription(true)
+    await setEnforceLocalTranscription(true)
   }
 
   const timeRemainingTillRestart = () => {
