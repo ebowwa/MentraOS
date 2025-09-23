@@ -1,6 +1,6 @@
 // import {Audio} from "expo-av"
 import socketComms from "@/managers/SocketComms"
-import {AudioPlayer, createAudioPlayer} from "expo-audio"
+import {createAudioPlayer} from "expo-audio"
 
 export interface AudioPlayRequestMessage {
   type: "audio_play_request"
@@ -21,11 +21,8 @@ export type AudioPlayResponseCallback = (response: AudioPlayResponse) => void
 
 export class AudioPlayService {
   private static instance: AudioPlayService
-  private player: AudioPlayer
 
-  private constructor() {
-    this.player = createAudioPlayer()
-  }
+  private constructor() {}
 
   public static getInstance(): AudioPlayService {
     if (!AudioPlayService.instance) {
