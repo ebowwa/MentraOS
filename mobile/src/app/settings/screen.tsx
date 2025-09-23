@@ -9,21 +9,13 @@ import {useFocusEffect} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import SliderSetting from "@/components/settings/SliderSetting"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function ScreenSettingsScreen() {
   const {theme, themed} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  // -- States --
-  const [brightness, setBrightness] = useState<number | null>(null)
-  const [depth, setDepth] = useState<number | null>(null)
-  const [height, setHeight] = useState<number | null>(null)
-
-  // load settings:
-  useEffect(() => {
-    settings.get(SETTINGS_KEYS.dashboard_depth).then(setDepth)
-    settings.get(SETTINGS_KEYS.dashboard_height).then(setHeight)
-  }, [])
+  const settings = useSettings([SETTINGS_KEYS.dashboard_depth, SETTINGS_KEYS.dashboard_height])
+  const setSetting = useSettingsStore(state => state.setSetting)
 
   useFocusEffect(
     useCallback(() => {
@@ -45,22 +37,18 @@ export default function ScreenSettingsScreen() {
       return
     }
 
-    // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
+    await setSetting(SETTINGS_KEYS.brightness, newBrightness)
     await bridge.setGlassesBrightnessMode(newBrightness, false) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.brightness, newBrightness)
-    setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
+    await setSetting(SETTINGS_KEYS.dashboard_depth, newDepth)
     await bridge.setGlassesDepth(newDepth) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.dashboard_depth, newDepth)
-    setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
+    await setSetting(SETTINGS_KEYS.dashboard_height, newHeight)
     await bridge.setGlassesHeight(newHeight) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.dashboard_height, newHeight)
-    setHeight(newHeight)
   }
 
   return (
@@ -71,10 +59,10 @@ export default function ScreenSettingsScreen() {
         <SliderSetting
           label="Display Depth"
           subtitle="Adjust how far the content appears from you."
-          value={depth ?? 5}
+          value={settings.dashboard_depth ?? 5}
           min={1}
           max={5}
-          onValueChange={value => setDepth(value)}
+          onValueChange={value => setSetting(SETTINGS_KEYS.dashboard_depth, value)}
           onValueSet={changeDepth}
         />
 
@@ -83,10 +71,10 @@ export default function ScreenSettingsScreen() {
         <SliderSetting
           label="Display Height"
           subtitle="Adjust the vertical position of the content."
-          value={height ?? 4}
+          value={settings.dashboard_height ?? 4}
           min={1}
           max={8}
-          onValueChange={value => setHeight(value)}
+          onValueChange={value => setSetting(SETTINGS_KEYS.dashboard_height, value)}
           onValueSet={changeHeight}
         />
       </ScrollView>

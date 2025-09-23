@@ -227,6 +227,9 @@ const en = {
     offlineSTT: "Offline Transcriptions",
     offlineSTTSubtitle: "Transcribe audio and display on connected glasses completely offline.",
   },
+  transcription: {
+    downloadModelToEnableLocalTranscription: "Download a model to enable local transcription",
+  },
   profileSettings: {
     title: "Profile Settings",
     noProfilePicture: "No profile picture available.",

@@ -7,7 +7,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {SquircleView} from "expo-squircle-view"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSetting, SETTINGS_KEYS} from "@/stores/settings"
 
 interface AppIconProps {
   app: AppletInterface
@@ -21,15 +21,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
-  const [usingNewUI, setUsingNewUI] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const newUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-      setUsingNewUI(newUI)
-    }
-    check()
-  }, [])
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
 
   return (
     <WrapperComponent
@@ -38,7 +30,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      {Platform.OS === "ios" && usingNewUI ? (
+      {Platform.OS === "ios" && newUi ? (
         <SquircleView
           cornerSmoothing={100}
           preserveSmoothing={true}
@@ -65,7 +57,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
         </SquircleView>
       ) : (
         <>
-          {app.loading && usingNewUI && (
+          {app.loading && newUi && (
             <View style={themed($loadingContainer)}>
               <ActivityIndicator size="large" color={theme.colors.tint} />
             </View>

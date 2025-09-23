@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -12,14 +11,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function TranscriptionSettingsScreen() {
-  const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack} = useNavigationHistory()
 
-  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState(STTModelManager.getCurrentModelId())
   const [modelInfo, setModelInfo] = useState<any>(null)
   const [allModels, setAllModels] = useState<any[]>([])
@@ -27,19 +24,14 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
+  const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
+    SETTINGS_KEYS.enforce_local_transcription,
+  )
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-  // load settings:
-  const loadSettings = async () => {
-    await settings.get(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    await settings.get(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
-  }
-  useEffect(() => {
-    loadSettings().then(() => setLoading(false))
-  }, [])
+
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -100,9 +92,8 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const enableEnforceLocalTranscription = async () => {
-    await settings.set(SETTINGS_KEYS.enforce_local_transcription, true)
     await bridge.sendToggleEnforceLocalTranscription(true)
-    setIsEnforceLocalTranscriptionEnabled(true)
+    setEnforceLocalTranscription(true)
   }
 
   const timeRemainingTillRestart = () => {
@@ -205,9 +196,9 @@ export default function TranscriptionSettingsScreen() {
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
-              if (isEnforceLocalTranscriptionEnabled) {
+              if (enforceLocalTranscription) {
                 await bridge.sendToggleEnforceLocalTranscription(false)
-                setIsEnforceLocalTranscriptionEnabled(false)
+                await setEnforceLocalTranscription(false)
               }
             } catch (error: any) {
               showAlert("Error", error.message || "Failed to delete model", [{text: "OK"}])
@@ -241,28 +232,14 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
+    const newSetting = !bypassVadForDebugging
+    await setBypassVadForDebugging(newSetting)
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   useEffect(() => {
     initSelectedModel()
   }, [])
-
-  if (loading) {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title={translate("settings:transcriptionSettings")} leftIcon="caretLeft" onLeftPress={handleGoBack} />
-        <View style={{alignItems: "center", padding: theme.spacing.lg}}>
-          <ActivityIndicator size="large" color={theme.colors.text} />
-          <Spacer height={theme.spacing.sm} />
-          <Text>Loading...</Text>
-        </View>
-      </Screen>
-    )
-  }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
@@ -274,7 +251,7 @@ export default function TranscriptionSettingsScreen() {
         <ToggleSetting
           label={translate("settings:bypassVAD")}
           subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
+          value={bypassVadForDebugging}
           onValueChange={toggleBypassVadForDebugging}
         />
 

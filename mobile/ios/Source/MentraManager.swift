@@ -145,10 +145,6 @@ struct ViewState {
 
     // MARK: - Public Methods (for React Native)
 
-    func setup() {
-        Bridge.log("Mentra: setup()")
-    }
-
     func initSGC(_ wearable: String) {
         Bridge.log("Initializing manager for wearable: \(wearable)")
         if wearable.contains("G1") && sgc == nil {
@@ -909,7 +905,6 @@ struct ViewState {
     // command functions:
     func setAuthCreds(_ token: String, _ userId: String) {
         Bridge.log("Mentra: Setting core token to: \(token) for user: \(userId)")
-        setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
         handle_request_status()
@@ -1359,18 +1354,26 @@ struct ViewState {
     }
 
     private func handleDeviceReady() {
-        Bridge.log("Mentra: Device ready")
+        guard let sgc else {
+            Bridge.log("Mentra: SGC is nil, returning")
+            return
+        }
+        Bridge.log("Mentra: handleDeviceReady(): \(sgc.type)")
         // send to the server our battery status:
-        Bridge.sendBatteryStatus(level: sgc?.batteryLevel ?? -1, charging: false)
+        Bridge.sendBatteryStatus(level: sgc.batteryLevel ?? -1, charging: false)
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
-        if pendingWearable.contains("Live") {
-            handleLiveReady()
-        } else if pendingWearable.contains("G1") {
+        pendingWearable = ""
+        defaultWearable = sgc.type
+        isSearching = false
+        handle_request_status()
+
+        if defaultWearable.contains("G1") {
             handleG1Ready()
-        } else if pendingWearable.contains("Mach1") {
+        } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
         }
+
         // save the default_wearable now that we're connected:
         Bridge.saveSetting("default_wearable", defaultWearable)
         Bridge.saveSetting("device_name", deviceName)
@@ -1378,11 +1381,6 @@ struct ViewState {
     }
 
     private func handleG1Ready() {
-        Bridge.log("Mentra: G1 device ready")
-        isSearching = false
-        defaultWearable = "Even Realities G1"
-        handle_request_status()
-
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
@@ -1415,19 +1413,7 @@ struct ViewState {
         }
     }
 
-    private func handleLiveReady() {
-        Bridge.log("Mentra: Mentra Live device ready")
-        isSearching = false
-        defaultWearable = "Mentra Live"
-        handle_request_status()
-    }
-
     private func handleMach1Ready() {
-        Bridge.log("Mentra: Mach1 device ready")
-        isSearching = false
-        defaultWearable = "Mentra Mach1"
-        handle_request_status()
-
         Task {
             // Send startup message
             sendText("MENTRAOS CONNECTED")

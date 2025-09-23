@@ -1,45 +1,41 @@
 // SensingDisabledWarning.tsx
-import React, {useCallback, useState} from "react"
+import React, {useCallback, useEffect, useState} from "react"
 import {StyleSheet, TouchableOpacity, TextStyle} from "react-native"
 import {useFocusEffect} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function NonProdWarning() {
   const {theme, themed} = useAppTheme()
   const [isProdBackend, setIsProdBackend] = useState(true)
   const {push} = useNavigationHistory()
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
 
   const checkNonProdBackend = async () => {
-    const url = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL, "prod.augmentos.cloud")
-
     let isProd = false
     if (
-      url.includes("prod.augmentos.cloud") ||
-      url.includes("global.augmentos.cloud") ||
-      url.includes("api.mentra.glass")
+      customBackendUrl.includes("prod.augmentos.cloud") ||
+      customBackendUrl.includes("global.augmentos.cloud") ||
+      customBackendUrl.includes("api.mentra.glass")
     ) {
       isProd = true
     }
 
-    if (url.includes("devapi")) {
+    if (customBackendUrl.includes("devapi")) {
       isProd = false
     }
 
     setIsProdBackend(isProd)
   }
 
-  useFocusEffect(
-    useCallback(() => {
-      checkNonProdBackend()
-      return () => {}
-    }, []),
-  )
+  useEffect(() => {
+    checkNonProdBackend()
+  }, [customBackendUrl])
 
   if (isProdBackend) {
     return null
