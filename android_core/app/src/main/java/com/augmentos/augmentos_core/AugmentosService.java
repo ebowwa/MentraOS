@@ -58,6 +58,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
@@ -168,6 +169,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public SmartGlassesManager smartGlassesManager;
     private boolean smartGlassesManagerBound = false;
+    private final TranscriptProcessor transcriptProcessor = new TranscriptProcessor(30, 3); // 30 chars per line, 3 lines max
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
 
     private byte[] hexStringToByteArray(String hex) {
@@ -311,6 +313,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
 
+    // Handler and Runnable to clear the glasses screen after displaying text
+    private final Handler clearScreenHandler = new Handler(Looper.getMainLooper());
+    private Runnable clearScreenRunnable;
+
     // Add fields to cache latest glasses version info
     private String glassesAppVersion = null;
     private String glassesBuildNumber = null;
@@ -385,7 +391,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Subscribe
-    public void onGlassesHeadUpEvent(GlassesHeadUpEvent event) {
+    public void onLocalTranscriptionEvent(LocalTranscriptionEvent event) {
+        if (smartGlassesManager != null) {
+            transcriptProcessor.modifyLanguage(event.language);
+            String processedText = transcriptProcessor.processString(event.text, event.isFinal);
+            if (processedText != null) {
+                smartGlassesManager.sendTextWall(processedText);
+                // Schedule screen clear after 10 seconds, cancelling previous if pending
+                // In case of online captions cloud takes care of this
+                if (clearScreenRunnable != null) {
+                    clearScreenHandler.removeCallbacks(clearScreenRunnable);
+                }
+                clearScreenRunnable = () -> {
+                    if (smartGlassesManager != null) {
+                        smartGlassesManager.sendTextWall("");
+                    }
+                };
+                clearScreenHandler.postDelayed(clearScreenRunnable, 10_000);
+            }
+        }
+    }
+
+    @Subscribe
+    public void onGlassesHeadUpEvent(GlassesHeadUpEvent event){
         ServerComms.getInstance().sendHeadPosition("up");
         // BATTERY OPTIMIZATION: Directly call method instead of posting additional event
         if (contextualDashboardEnabled && smartGlassesManager != null) {
@@ -2406,6 +2434,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         SmartGlassesManager.saveEnforceLocalTranscription(this, enforceLocalTranscription);
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
+    }
+
+    @Override
+    public void onEnableOfflineMode(boolean enabled) {
+        Log.d(TAG, "Enabling offline captions");
+        // save a string offline in the preferences
+        SmartGlassesManager.saveEnableOfflineMode(this, enabled);
+        List<SpeechRequiredDataType> requiredData = new ArrayList<>();
+        if (enabled) {
+            requiredData.add(SpeechRequiredDataType.TRANSCRIPTION);
+        }
+        if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
+            if (enabled) {
+                smartGlassesManager.sendReferenceCard("// MentraOS - Starting App", "Offline Captions");
+            } else {
+                smartGlassesManager.sendTextWall("");
+            }   
+            smartGlassesManager.changeMicrophoneState(requiredData, false);
+        }
     }
 
     @Override

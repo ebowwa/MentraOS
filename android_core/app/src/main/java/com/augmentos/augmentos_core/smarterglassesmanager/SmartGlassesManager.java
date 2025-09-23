@@ -26,6 +26,7 @@ import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
 import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnableOfflineModeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
@@ -658,6 +659,23 @@ public class SmartGlassesManager extends Service {
         }
         editor.putBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), enabled);
         editor.apply();
+    }
+
+    public static void saveEnableOfflineMode(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean("is_offline_mode_enabled", enabled);
+        editor.apply();
+
+        if (context instanceof AugmentosService) {
+            AugmentosService service = (AugmentosService) context;
+            if (service.smartGlassesManager != null &&
+                service.smartGlassesManager.speechRecSwitchSystem != null) {
+                service.smartGlassesManager.speechRecSwitchSystem.setEnableOfflineMode(enabled);
+            }
+        } else {
+            EventBus.getDefault().post(new EnableOfflineModeEvent(enabled));
+        }
     }
 
     public static boolean getBypassAudioEncodingForDebugging(Context context) {

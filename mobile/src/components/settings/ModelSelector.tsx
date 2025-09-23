@@ -116,7 +116,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text text="Speech Recognition Model" style={[styles.label, {color: theme.colors.text}]} />
+      <Text text="Offline Mode Speech Model" style={[styles.label, {color: theme.colors.text}]} />
 
       <TouchableOpacity
         style={[

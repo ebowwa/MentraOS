@@ -21,6 +21,7 @@ export const SETTINGS_KEYS = {
   THEME_PREFERENCE: "THEME_PREFERENCE",
   DEV_MODE: "DEV_MODE",
   NEW_UI: "NEW_UI",
+  OFFLINE_MODE: "OFFLINE_MODE",
   sensing_enabled: "sensing_enabled",
   power_saving_mode: "power_saving_mode",
   always_on_status_bar: "always_on_status_bar",
@@ -47,8 +48,8 @@ export const SETTINGS_KEYS = {
   server_url: "server_url",
   time_zone: "time_zone",
   time_zone_override: "time_zone_override",
-  offline_stt: "offline_stt",
   location_tier: "location_tier",
+  offline_captions_app_running: "offline_captions_app_running",
 } as const
 
 type SettingsKeys = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS]
@@ -74,6 +75,7 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   [SETTINGS_KEYS.THEME_PREFERENCE]: "system",
   [SETTINGS_KEYS.DEV_MODE]: false,
   [SETTINGS_KEYS.NEW_UI]: false,
+  [SETTINGS_KEYS.OFFLINE_MODE]: false,
   [SETTINGS_KEYS.sensing_enabled]: true,
   [SETTINGS_KEYS.power_saving_mode]: false,
   [SETTINGS_KEYS.always_on_status_bar]: false,
@@ -95,8 +97,8 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   [SETTINGS_KEYS.button_photo_size]: "medium",
   [SETTINGS_KEYS.time_zone]: null,
   [SETTINGS_KEYS.time_zone_override]: null,
-  [SETTINGS_KEYS.offline_stt]: false,
   [SETTINGS_KEYS.location_tier]: null,
+  [SETTINGS_KEYS.offline_captions_app_running]: false,
 }
 
 const CORE_SETTINGS_KEYS = [
@@ -119,7 +121,7 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.dashboard_depth,
   SETTINGS_KEYS.button_mode,
   SETTINGS_KEYS.button_photo_size,
-  SETTINGS_KEYS.offline_stt,
+  SETTINGS_KEYS.offline_captions_app_running,
 ]
 
 interface SettingsState {

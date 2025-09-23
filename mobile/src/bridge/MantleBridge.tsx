@@ -742,6 +742,16 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  async toggleOfflineApps(enabled: boolean) {
+    console.log("toggleOfflineApss", enabled)
+    return await this.sendData({
+      command: "enable_offline_mode",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
   // TODO: config: remove
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
     console.log("sendToggleAlwaysOnStatusBar")
