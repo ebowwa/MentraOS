@@ -123,9 +123,7 @@ export default function InitScreen() {
 
     if (useNewWsManager) {
       bridge.setup()
-      if (Platform.OS === "android") {
-        socketComms.setAuthCreds(coreToken, uid) // not needed for iOS
-      }
+      socketComms.setAuthCreds(coreToken, uid)
 
       try {
         const loadedSettings = await restComms.loadUserSettings() // get settings from server
