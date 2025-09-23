@@ -138,11 +138,11 @@
 			path = sgcs;
 			sourceTree = "<group>";
 		};
-		C5033C242E56657F006A0718 /* subs */ = {
+		C5033C242E56657F006A0718 /* services */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 			);
-			path = subs;
+			path = services;
 			sourceTree = "<group>";
 		};
 		C5033C332E5665D4006A0718 /* utils */ = {
@@ -267,7 +267,7 @@
 			children = (
 				C5033C3A2E56664B006A0718 /* stt */,
 				C5033C332E5665D4006A0718 /* utils */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C232E56654E006A0718 /* sgcs */,
 				C5DE98952DE267CD0032FC99 /* Bridge.m */,
 				C5DE98962DE267CD0032FC99 /* Bridge.swift */,
@@ -432,7 +432,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C5033C232E56654E006A0718 /* sgcs */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C332E5665D4006A0718 /* utils */,
 				C5033C3A2E56664B006A0718 /* stt */,
 			);
@@ -801,7 +801,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -809,7 +809,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -960,14 +960,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;

@@ -1,8 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
 
-import {useFocusEffect} from "@react-navigation/native"
-import coreCommunicator from "@/bridge/MantleBridge"
+import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -15,7 +14,6 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
 import {PillButton} from "@/components/ignite"
 import {MOCK_CONNECTION} from "@/consts"
-import {SvgXml} from "react-native-svg"
 
 // Nex Interface Version - Single source of truth
 export const NEX_INTERFACE_VERSION = "1.0.0"
@@ -335,7 +333,7 @@ export default function NexDeveloperSettings() {
         ])
         return
       }
-      await coreCommunicator.sendDisplayText(text, parseInt(positionX, 0), parseInt(positionY, 0), parseInt(size, 10))
+      await bridge.sendDisplayText(text, parseInt(positionX, 0), parseInt(positionY, 0), parseInt(size, 10))
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -356,7 +354,7 @@ export default function NexDeveloperSettings() {
 
   const onSendImageClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.sendDisplayImage(selectedImageType, selectedImageSize)
+      await bridge.sendDisplayImage(selectedImageType, selectedImageSize)
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -370,7 +368,7 @@ export default function NexDeveloperSettings() {
 
   const onClearDisplayClick = async () => {
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.sendClearDisplay()
+      await bridge.sendClearDisplay()
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -385,7 +383,7 @@ export default function NexDeveloperSettings() {
   const onLc3AudioToggle = async (enabled: boolean) => {
     setLc3AudioEnabled(enabled)
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await coreCommunicator.setLc3AudioEnabled(enabled)
+      await bridge.setLc3AudioEnabled(enabled)
     }
   }
 

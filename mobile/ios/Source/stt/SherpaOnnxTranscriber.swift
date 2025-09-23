@@ -203,9 +203,9 @@ class SherpaOnnxTranscriber {
         // Forward to delegate if set
         DispatchQueue.main.async { [weak self] in
             if isFinal {
-                MentraManager.shared.didReceiveFinalTranscription(text)
+                STTTools.didReceiveFinalTranscription(text)
             } else {
-                MentraManager.shared.didReceivePartialTranscription(text)
+                STTTools.didReceivePartialTranscription(text)
             }
         }
     }

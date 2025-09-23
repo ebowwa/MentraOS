@@ -14,8 +14,7 @@ import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {router, usePathname} from "expo-router"
 
 export default function Layout() {
@@ -62,7 +61,7 @@ export default function Layout() {
     if (pressCount.current === maxPressCount) {
       // Show alert on 8th press
       showAlert("Developer Mode", "You are now a developer!", [{text: translate("common:ok")}])
-      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      settings.set(SETTINGS_KEYS.DEV_MODE, true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -85,8 +84,8 @@ export default function Layout() {
   // enable new home ui if you tap and hold
   const handleHomeLongPress = async () => {
     replace("/home")
-    const isNewUi = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-    saveSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    const isNewUi = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+    settings.set(SETTINGS_KEYS.NEW_UI, !isNewUi)
     Toast.show({
       type: "info",
       text1: isNewUi ? "New UI disabled" : "New UI enabled",
