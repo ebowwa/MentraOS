@@ -1,0 +1,36 @@
+services:
+  # Cloud service - handles its own SDK building
+  cloud:
+    stop_grace_period: 10s
+    init: true
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          memory: 256M
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.dev
+    ports:
+      - "8002:80"
+    environment:
+      - HOST=0.0.0.0
+      - SERVICE_NAME=cloud
+      - CONTAINER_ENVIRONMENT=true
+      - CLOUD_HOST_NAME=cloud
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+      - bun_cache:/root/.bun
+    command: bash -c "bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev"
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules:
+  bun_cache:

@@ -1,5 +1,16 @@
+local/*
+K900_server_sdk/*
+AugmentOS-Cloud-Example-App/*
+RtmpStreamExampleBasic/*
 server/config.json
-
+K900_server_sdk/*
+K900Server_open/*
+.claude/*
+aar_extract/*
+aar-extract/*
+temp_extract/*
+asg_client/temp/*
+asg_client/app/libs/temp_check/*
 ### REACT
 .idea/
 .vscode/
@@ -16,6 +27,16 @@ yarn-error.log*
 /.changelog
 .npm/
 augmentos_npm/
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
+
+.expo
+**/.expo
+.docusaurus
+**/.docusaurus
+**/expo-env.d.ts
 
 ### PYTHON
 #
@@ -81,7 +102,7 @@ nosetests.xml
 parts
 pip-wheel-metadata
 pyvenv
-sources
+./sources
 var/*
 venv
 virtualenv.py
@@ -102,7 +123,6 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
-*.apk
 output.json
 
 # IntelliJ
@@ -287,6 +307,9 @@ cython_debug/
 # pyenv
 .python-version
 
+# Ensure authCore.ts is not ignored despite lib/ pattern
+!**/react-sdk/src/lib/
+
 # macos garbage
 .DS_Store
 
@@ -298,3 +321,18 @@ server/helpers/token.json
 server/word_freq_lists/
 server/glove.6B/glove.6B.50d.txt
 server/auth/serviceAccountKey.json
+
+# Environment variables
+.env
+.env.development
+.env.production
+.env.staging
+asg_client/StreamPackLite/
+
+
+### iOS Large Files - XCFrameworks and Models
+# Sherpa-ONNX XCFramework (large binary)
+mobile/ios/Packages/SherpaOnnx/sherpa-onnx.xcframework/
+
+# ONNX Model files (large ML models)
+mobile/ios/Packages/SherpaOnnx/Model/*

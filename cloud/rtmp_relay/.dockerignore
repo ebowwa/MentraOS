@@ -1,0 +1,6 @@
+README.md
+porter.yaml
+.git
+.gitignore
+*.log
+test/

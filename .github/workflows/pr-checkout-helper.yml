@@ -1,0 +1,78 @@
+name: PR Checkout Helper
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment-checkout-instructions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment PR with checkout instructions
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
+            const prBranch = pr.head.ref;
+            const prRepo = pr.head.repo;
+
+            // Check if PR is from a fork
+            const isFork = pr.head.repo.full_name !== pr.base.repo.full_name;
+
+            let checkoutInstructions = '';
+
+            if (isFork && prRepo) {
+              // PR from fork
+              const forkOwner = pr.head.repo.owner.login;
+              const forkRepo = pr.head.repo.name;
+              const localBranchName = `${forkOwner}-${prBranch}`.replace(/[^a-zA-Z0-9-]/g, '-');
+              
+              checkoutInstructions = `## 🚀 Checkout Instructions
+
+            To test this PR locally, use one of these methods:
+
+            ### Option 1: GitHub CLI (Recommended)
+            \`\`\`bash
+            gh pr checkout ${prNumber}
+            \`\`\`
+
+            ### Option 2: Manual fetch
+            \`\`\`bash
+            git fetch https://github.com/${forkOwner}/${forkRepo}.git ${prBranch}:${localBranchName} && git checkout ${localBranchName}
+            \`\`\`
+
+            ### Option 3: Add remote and fetch
+            \`\`\`bash
+            git remote add ${forkOwner} https://github.com/${forkOwner}/${forkRepo}.git
+            git fetch ${forkOwner} ${prBranch}
+            git checkout -b ${localBranchName} ${forkOwner}/${prBranch}
+            \`\`\``;
+            } else {
+              // PR from same repo
+              checkoutInstructions = `## 🚀 Checkout Instructions
+
+            To test this PR locally, use one of these methods:
+
+            ### Option 1: GitHub CLI (Recommended)
+            \`\`\`bash
+            gh pr checkout ${prNumber}
+            \`\`\`
+
+            ### Option 2: Direct checkout
+            \`\`\`bash
+            git fetch origin ${prBranch}
+            git checkout ${prBranch}
+            \`\`\``;
+            }
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: checkoutInstructions
+            });

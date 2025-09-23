@@ -1,0 +1,91 @@
+name: Mobile App Android Build
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mentraos-manager-android-build.yml"
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Clean workspace
+        run: |
+          # Clean previous build artifacts
+          rm -rf mobile/node_modules mobile/.pnpm-store mobile/.pnpm
+          rm -rf mobile/android/build mobile/android/.gradle
+          rm -rf ~/.pnpm-store 2>/dev/null || true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@8
+          # Verify pnpm is in PATH
+          which pnpm
+          pnpm --version
+
+      - name: Configure pnpm store
+        working-directory: ./mobile
+        run: |
+          # Use local store to avoid permission issues
+          pnpm config set store-dir .pnpm-store
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: pnpm install --no-frozen-lockfile
+        env:
+          PNPM_HOME: ${{ github.workspace }}/mobile/.pnpm
+          PNPM_STORE_PATH: ${{ github.workspace }}/mobile/.pnpm-store
+
+      - name: Setup environment
+        working-directory: ./mobile
+        run: |
+          # Create .env from example
+          cp .env.example .env
+          # Copy to Android directory
+          cp .env android/.env
+
+      - name: Run Expo prebuild
+        working-directory: ./mobile
+        run: pnpm expo prebuild --platform android
+
+      - name: Fix React Native symlinks
+        working-directory: ./mobile
+        run: |
+          if [ -f "./fix-react-native-symlinks.sh" ]; then
+            chmod +x ./fix-react-native-symlinks.sh
+            ./fix-react-native-symlinks.sh
+          fi
+
+      - name: Build Android Debug APK
+        working-directory: ./mobile/android
+        run: ./gradlew assembleDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk

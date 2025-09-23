@@ -44,6 +44,7 @@ android {
 
     externalNativeBuild {
         cmake {
+            '-DCMAKE_OBJECT_PATH_MAX=600'
             '-DANDROID_STL=c++_static'
         }
     }
@@ -72,6 +73,7 @@ android {
 //
     externalNativeBuild {
         cmake {
+            '-DCMAKE_OBJECT_PATH_MAX=600'
             path file('src/main/cpp/liblc3/CMakeLists.txt')
             version '3.22.1'
         }
@@ -149,7 +151,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
 
     //for VAD (using Silero DNN)
-    implementation 'com.github.gkonovalov:android-vad:2.0.9'
+    // implementation 'com.github.gkonovalov:android-vad:2.0.9'
     //implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.15.0'
 
     //Vuzix Ultralite OEM Platform / Vuzix Z100
