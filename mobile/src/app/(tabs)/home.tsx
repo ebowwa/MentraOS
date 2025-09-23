@@ -30,7 +30,6 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [hasLoaded, setHasLoaded] = useState(false)
   const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
 
   useFocusEffect(
@@ -38,23 +37,6 @@ export default function Homepage() {
       refreshAppStatus()
     }, []),
   )
-
-  if (!hasLoaded) {
-    return (
-      <Screen preset="fixed" style={themed($screen)}>
-        <Header
-          leftTx="home:title"
-          RightActionComponent={
-            <View style={themed($headerRight)}>
-              <PermissionsWarning />
-              <MicIcon width={24} height={24} />
-              <NonProdWarning />
-            </View>
-          }
-        />
-      </Screen>
-    )
-  }
 
   if (showNewUi) {
     return (

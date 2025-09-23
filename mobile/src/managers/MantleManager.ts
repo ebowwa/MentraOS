@@ -1,9 +1,9 @@
 import socketComms from "@/managers/SocketComms"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import * as Calendar from "expo-calendar"
 import restComms from "@/managers/RestComms"
 import * as TaskManager from "expo-task-manager"
 import * as Location from "expo-location"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 const LOCATION_TASK_NAME = "handleLocationUpdates"
 
@@ -61,7 +61,7 @@ class MantleManager {
       60 * 60 * 1000,
     ) // 1 hour
     try {
-      let locationAccuracy = await settings.get(SETTINGS_KEYS.location_tier)
+      let locationAccuracy = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.location_tier)
       let properAccuracy = this.getLocationAccuracy(locationAccuracy)
       Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: properAccuracy,
@@ -142,7 +142,7 @@ class MantleManager {
   public async handleLocalTranscription(data: any) {
     console.log("Mantle: handleLocalTranscription()", data)
     // TODO: performance!
-    const offlineStt = await settings.get(SETTINGS_KEYS.offline_stt)
+    const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_stt)
     if (offlineStt) {
       socketComms.handle_display_event({
         type: "display_event",

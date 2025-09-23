@@ -15,6 +15,7 @@ import {Text} from "@/components/ignite"
 import * as Sentry from "@sentry/react-native"
 import Constants from "expo-constants"
 import {registerGlobals} from "@livekit/react-native-webrtc"
+import {initializeSettings} from "@/stores/settings"
 
 Sentry.init({
   dsn: Constants.expoConfig?.extra?.SENTRY_DSN,
@@ -38,6 +39,8 @@ Sentry.init({
   //   return event
   // },
 })
+
+initializeSettings()
 
 SplashScreen.preventAutoHideAsync()
 

@@ -1,10 +1,10 @@
 import bridge from "@/bridge/MantleBridge"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
 import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 class SocketComms {
   private static instance: SocketComms | null = null
@@ -35,7 +35,7 @@ class SocketComms {
 
   private async connectWebsocket() {
     console.log("SocketCommsTS: connectWebsocket()")
-    const url = await settings.getWsUrl()
+    const url = await useSettingsStore.getState().getWsUrl()
     if (!url) {
       console.error(`SocketCommsTS: Invalid server URL`)
       return
@@ -77,7 +77,7 @@ class SocketComms {
     console.log(`SocketCommsTS: setAuthCreds(): ${coreToken}, ${userid}`)
     this.coreToken = coreToken
     this.userid = userid
-    settings.set(SETTINGS_KEYS.core_token, coreToken)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.core_token, coreToken)
     this.connectWebsocket()
   }
 

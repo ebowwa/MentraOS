@@ -11,7 +11,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {SETTINGS_KEYS, useDevMode} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const {push, replace} = useNavigationHistory()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const [devMode, setDevMode] = useDevMode()
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
 
   useEffect(() => {
     const checkDevMode = async () => {

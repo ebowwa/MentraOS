@@ -7,17 +7,16 @@ import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS, useSettings, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
   const {replace} = useNavigationHistory()
 
-  const settings = useSettings([SETTINGS_KEYS.THEME_PREFERENCE])
-  const setSetting = useSettingsStore(state => state.setSetting)
+  const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
 
   const handleThemeChange = async (newTheme: ThemeType) => {
-    await setSetting(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
+    await setThemePreference(newTheme)
 
     // Apply theme immediately
     if (newTheme === "system") {
@@ -40,9 +39,7 @@ export default function ThemeSettingsPage() {
           name="check"
           size={24}
           color={
-            settings.THEME_PREFERENCE === themeKey
-              ? theme.colors.checkmark || theme.colors.palette.primary300
-              : "transparent"
+            themePreference === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"
           }
         />
       </TouchableOpacity>

@@ -11,7 +11,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function TranscriptionSettingsScreen() {
   const {theme} = useAppTheme()
@@ -28,12 +28,11 @@ export default function TranscriptionSettingsScreen() {
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-  const settings = useSettings([
+  const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
     SETTINGS_KEYS.enforce_local_transcription,
-    SETTINGS_KEYS.bypass_vad_for_debugging,
-    SETTINGS_KEYS.offline_stt,
-  ])
-  const setSetting = useSettingsStore(state => state.setSetting)
+  )
+  const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
+  const [offlineStt, setOfflineStt] = useSetting(SETTINGS_KEYS.offline_stt)
 
   useEffect(() => {
     setLoading(false)
@@ -103,8 +102,8 @@ export default function TranscriptionSettingsScreen() {
       return
     }
 
-    const newSetting = !settings.enforce_local_transcription
-    await setSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
+    const newSetting = !enforceLocalTranscription
+    await setEnforceLocalTranscription(newSetting)
     await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
   }
 
@@ -197,9 +196,9 @@ export default function TranscriptionSettingsScreen() {
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
-              if (settings.enforce_local_transcription) {
+              if (enforceLocalTranscription) {
                 await bridge.sendToggleEnforceLocalTranscription(false)
-                await setSetting(SETTINGS_KEYS.enforce_local_transcription, false)
+                await setEnforceLocalTranscription(false)
               }
             } catch (error: any) {
               showAlert("Error", error.message || "Failed to delete model", [{text: "OK"}])
@@ -233,14 +232,14 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const toggleBypassVadForDebugging = async () => {
-    const newSetting = !settings.bypass_vad_for_debugging
-    await setSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
+    const newSetting = !bypassVadForDebugging
+    await setBypassVadForDebugging(newSetting)
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
   }
 
   const toggleOfflineSTT = async () => {
-    const newSetting = !settings.offline_stt
-    await setSetting(SETTINGS_KEYS.offline_stt, newSetting)
+    const newSetting = !offlineStt
+    await setOfflineStt(newSetting)
   }
 
   useEffect(() => {
@@ -270,7 +269,7 @@ export default function TranscriptionSettingsScreen() {
         <ToggleSetting
           label={translate("settings:bypassVAD")}
           subtitle={translate("settings:bypassVADSubtitle")}
-          value={settings.bypass_vad_for_debugging}
+          value={bypassVadForDebugging}
           onValueChange={toggleBypassVadForDebugging}
         />
 
@@ -305,7 +304,7 @@ export default function TranscriptionSettingsScreen() {
                 <ToggleSetting
                   label={translate("settings:enforceLocalTranscription")}
                   subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-                  value={settings.enforce_local_transcription}
+                  value={enforceLocalTranscription}
                   onValueChange={toggleEnforceLocalTranscription}
                   disabled={!modelInfo?.downloaded || isDownloading}
                 />
@@ -318,7 +317,7 @@ export default function TranscriptionSettingsScreen() {
                       marginTop: theme.spacing.xs,
                       paddingHorizontal: theme.spacing.sm,
                     }}>
-                    Download a model to enable local transcription
+                    {translate("transcription:downloadModelToEnableLocalTranscription")}
                   </Text>
                 )}
 
@@ -326,7 +325,7 @@ export default function TranscriptionSettingsScreen() {
                 <ToggleSetting
                   label={translate("settings:offlineSTT")}
                   subtitle={translate("settings:offlineSTTSubtitle")}
-                  value={settings.offline_stt}
+                  value={offlineStt}
                   onValueChange={toggleOfflineSTT}
                   disabled={!modelInfo?.downloaded || isDownloading}
                 />

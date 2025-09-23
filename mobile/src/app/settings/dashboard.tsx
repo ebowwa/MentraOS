@@ -25,33 +25,32 @@ import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import {useSettings, useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
-
-  const settings = useSettings([
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [headUpAngle, setHeadUpAngle] = useSetting(SETTINGS_KEYS.head_up_angle)
+  const [contextualDashboardEnabled, setContextualDashboardEnabled] = useSetting(
     SETTINGS_KEYS.contextual_dashboard_enabled,
-    SETTINGS_KEYS.metric_system_enabled,
-    SETTINGS_KEYS.head_up_angle,
-  ])
-  const setSetting = useSettingsStore(state => state.setSetting)
+  )
+  const [metricSystemEnabled, setMetricSystemEnabled] = useSetting(SETTINGS_KEYS.metric_system_enabled)
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
-    const newVal = !settings.contextual_dashboard_enabled
+    const newVal = !contextualDashboardEnabled
+    await setContextualDashboardEnabled(newVal)
     await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
-    await setSetting(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
   }
 
   const toggleMetricSystem = async () => {
-    const newVal = !settings.metric_system_enabled
+    const newVal = !metricSystemEnabled
     try {
+      await setMetricSystemEnabled(newVal)
       await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
-      await setSetting(SETTINGS_KEYS.metric_system_enabled, newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
     }
@@ -68,7 +67,7 @@ export default function DashboardSettingsScreen() {
 
     setHeadUpAngleComponentVisible(false)
     await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
-    await setSetting(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
+    await setHeadUpAngle(newHeadUpAngle)
   }
 
   const onCancelHeadUpAngle = () => {
@@ -103,7 +102,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:contextualDashboardLabel")}
           subtitle={translate("settings:contextualDashboardSubtitle")}
-          value={settings.contextual_dashboard_enabled}
+          value={contextualDashboardEnabled}
           onValueChange={toggleContextualDashboard}
         />
 
@@ -112,7 +111,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:metricSystemLabel")}
           subtitle={translate("settings:metricSystemSubtitle")}
-          value={settings.metric_system_enabled}
+          value={metricSystemEnabled}
           onValueChange={toggleMetricSystem}
         />
 
@@ -155,7 +154,7 @@ export default function DashboardSettingsScreen() {
             )}
           </TouchableOpacity>
         </View> */}
-        {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.imu && (
+        {defaultWearable && glassesFeatures[defaultWearable]?.imu && (
           <RouteButton
             label={translate("settings:adjustHeadAngleLabel")}
             subtitle={translate("settings:adjustHeadAngleSubtitle")}
@@ -163,10 +162,10 @@ export default function DashboardSettingsScreen() {
           />
         )}
 
-        {settings.head_up_angle !== null && (
+        {headUpAngle !== null && (
           <HeadUpAngleComponent
             visible={headUpAngleComponentVisible}
-            initialAngle={settings.head_up_angle}
+            initialAngle={headUpAngle}
             onCancel={onCancelHeadUpAngle}
             onSave={onSaveHeadUpAngle}
           />

@@ -234,11 +234,9 @@ export const useSettingsStore = create<SettingsState>()(
     getSetting: (key: string) => {
       const state = get()
 
-      // Handle special cases
-      if (key === SETTINGS_KEYS.time_zone) {
-        const override = state.settings[SETTINGS_KEYS.time_zone_override]
-        if (override) return override
-        return state.settings[key] || getTimeZone()
+      const specialCase = state.handleSpecialCases(key)
+      if (specialCase !== null) {
+        return specialCase
       }
 
       return state.settings[key] ?? DEFAULT_SETTINGS[key]
@@ -254,9 +252,10 @@ export const useSettingsStore = create<SettingsState>()(
       return DEFAULT_SETTINGS[key]
     },
 
-    handleSpecialCases: async (key: string) => {
+    handleSpecialCases: (key: string) => {
+      const state = get()
       if (key === SETTINGS_KEYS.time_zone) {
-        const override = get().getSetting(SETTINGS_KEYS.time_zone_override)
+        const override = state.getSetting(SETTINGS_KEYS.time_zone_override)
         if (override) {
           return override
         }
@@ -266,9 +265,10 @@ export const useSettingsStore = create<SettingsState>()(
     },
 
     loadSetting: async (key: string) => {
+      const state = get()
       try {
         // Check for special cases first
-        const specialCase = await get().handleSpecialCases(key)
+        const specialCase = state.handleSpecialCases(key)
         if (specialCase !== null) {
           return specialCase
         }
@@ -376,7 +376,7 @@ export const useSettingsStore = create<SettingsState>()(
 // Initialize settings on app startup
 export const initializeSettings = async () => {
   await useSettingsStore.getState().loadAllSettings()
-  await useSettingsStore.getState().initUserSettings()
+  // await useSettingsStore.getState().initUserSettings()
 }
 
 // Utility hooks for common patterns
