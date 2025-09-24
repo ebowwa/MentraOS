@@ -596,7 +596,6 @@ const $advancedSettingsButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => (
   borderRadius: spacing.md,
   borderWidth: 2,
   borderColor: colors.border,
-  marginTop: spacing.xs,
 })
 
 const $advancedSettingsContent: ThemedStyle<ViewStyle> = () => ({

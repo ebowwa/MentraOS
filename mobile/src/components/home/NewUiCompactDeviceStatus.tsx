@@ -1,11 +1,11 @@
-import React, {useCallback, useRef} from "react"
+import React, {useCallback, useRef, useState} from "react"
 import {View, Text, Animated, Image, ActivityIndicator, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
-import {Icon} from "@/components/ignite"
+import {Icon, Button} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 import {glassesFeatures} from "@/config/glassesFeatures"
 import {
   getGlassesImage,
@@ -16,12 +16,20 @@ import {
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import SunIcon from "assets/icons/component/SunIcon"
+import bridge from "@/bridge/MantleBridge"
+import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
+import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
+import ChevronRight from "assets/icons/component/ChevronRight"
+import {spacing} from "@/theme"
+import {translate} from "@/i18n"
+import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 
 export const NewUiCompactDeviceStatus: React.FC = () => {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
   const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
   const fadeAnim = useRef(new Animated.Value(0)).current
 
   useFocusEffect(
@@ -43,9 +51,81 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
     return null
   }
 
-  // Don't show for simulated glasses
+  // Show simulated glasses view for simulated glasses
   if (defaultWearable.toLowerCase().includes("simulated")) {
-    return null
+    return <ConnectedSimulatedGlassesInfo />
+  }
+
+  // Connect glasses function
+  const connectGlasses = async () => {
+    if (!defaultWearable) {
+      push("/pairing/select-glasses-model")
+      return
+    }
+
+    setIsCheckingConnectivity(true)
+
+    try {
+      const requirementsCheck = await bridge.checkConnectivityRequirements()
+
+      if (!requirementsCheck.isReady) {
+        // Use the appropriate connectivity alert based on the requirement
+        switch (requirementsCheck.requirement) {
+          case "bluetooth":
+            showBluetoothAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Bluetooth is required to connect to glasses",
+            )
+            break
+          case "location":
+            showLocationAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Location permission is required to scan for glasses",
+            )
+            break
+          case "locationServices":
+            showLocationServicesAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Location services are required to scan for glasses",
+            )
+            break
+          default:
+            showAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+              [{text: "OK"}],
+            )
+        }
+        return
+      }
+
+      // Connectivity check passed, proceed with connection
+      const deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
+      console.log("Connecting to glasses:", defaultWearable, deviceName)
+      if (defaultWearable && defaultWearable != "") {
+        await bridge.sendConnectWearable(defaultWearable, deviceName, "")
+      }
+    } catch (error) {
+      console.error("connect to glasses error:", error)
+      showAlert("Connection Error", "Failed to connect to glasses. Please try again.", [{text: "OK"}])
+    } finally {
+      setIsCheckingConnectivity(false)
+    }
+  }
+
+  const sendDisconnectWearable = async () => {
+    console.log("Disconnecting wearable")
+    try {
+      await bridge.sendDisconnectWearable()
+    } catch (error) {}
+  }
+
+  const handleConnectOrDisconnect = async () => {
+    if (status.core_info.is_searching) {
+      await sendDisconnectWearable()
+    } else {
+      await connectGlasses()
+    }
   }
 
   // Get current glasses image
@@ -79,18 +159,57 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
     return image
   }
 
+  // Helper to truncate text with ellipsis
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength - 3) + "..."
+  }
+
+  // Check if we're currently connecting
+  if (status.core_info.is_searching || isCheckingConnectivity) {
+    return (
+      <View style={themed($disconnectedContainer)}>
+        <Animated.View style={[themed($disconnectedImageContainer), {opacity: fadeAnim}]}>
+          <Image source={getCurrentGlassesImage()} style={themed($disconnectedGlassesImage)} />
+        </Animated.View>
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginLeft: 5}} />}
+          onPress={handleConnectOrDisconnect}
+          tx="home:connectingGlasses"
+        />
+      </View>
+    )
+  }
+
+  // If glasses are not connected, show just the image and connect button
+  if (!status.glasses_info?.model_name) {
+    return (
+      <View style={themed($disconnectedContainer)}>
+        <Animated.View style={[themed($disconnectedImageContainer), {opacity: fadeAnim}]}>
+          <Image source={getCurrentGlassesImage()} style={themed($disconnectedGlassesImage)} />
+        </Animated.View>
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
+          RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
+          onPress={handleConnectOrDisconnect}
+          tx="home:connectGlasses"
+          disabled={isCheckingConnectivity}
+        />
+      </View>
+    )
+  }
+
+  // Glasses are connected, show the compact status layout
   const modelName = status.glasses_info?.model_name || ""
   const hasDisplay = glassesFeatures[modelName]?.display ?? true
   const hasWifi = glassesFeatures[modelName]?.wifi ?? false
   const wifiSsid = status.glasses_info?.glasses_wifi_ssid
   const autoBrightness = status.glasses_settings?.auto_brightness
   const batteryLevel = status.glasses_info?.battery_level
-
-  // Helper to truncate text with ellipsis
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength - 3) + "..."
-  }
 
   return (
     <View style={themed($container)}>
@@ -188,4 +307,22 @@ const $statusText = theme => ({
   fontSize: 14,
   fontFamily: "Inter-Regular",
   flex: 1,
+})
+
+const $disconnectedContainer = theme => ({
+  alignItems: "center",
+  marginTop: -theme.spacing.md,
+  paddingBottom: theme.spacing.sm,
+  gap: theme.spacing.xs,
+})
+
+const $disconnectedImageContainer = theme => ({
+  width: "100%",
+  alignItems: "center",
+})
+
+const $disconnectedGlassesImage = theme => ({
+  width: "80%",
+  height: 160,
+  resizeMode: "contain",
 })

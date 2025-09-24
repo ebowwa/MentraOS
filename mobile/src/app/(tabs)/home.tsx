@@ -78,9 +78,6 @@ export default function Homepage() {
         <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
           <CloudConnection />
           <SensingDisabledWarning />
-          <View ref={connectButtonRef}>
-            <ConnectDeviceButton />
-          </View>
 
           {isOfflineMode ? <AppsOfflineList /> : <NewUiHomeContainer />}
         </ScrollView>
