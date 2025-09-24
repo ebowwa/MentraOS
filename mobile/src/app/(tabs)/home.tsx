@@ -62,7 +62,7 @@ export default function Homepage() {
 
   if (showNewUi) {
     return (
-      <Screen preset="fixed" style={[themed($screen), {paddingHorizontal: theme.spacing.md}]}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header
           leftTx="home:title"
           RightActionComponent={
@@ -74,14 +74,15 @@ export default function Homepage() {
           }
         />
 
-        <CloudConnection />
-        <SensingDisabledWarning />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.md} />
+        <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
+          <CloudConnection />
+          <SensingDisabledWarning />
+          <View ref={connectButtonRef}>
+            <ConnectDeviceButton />
+          </View>
 
-        {isOfflineMode ? <AppsOfflineList /> : <NewUiHomeContainer />}
+          {isOfflineMode ? <AppsOfflineList /> : <NewUiHomeContainer />}
+        </ScrollView>
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}

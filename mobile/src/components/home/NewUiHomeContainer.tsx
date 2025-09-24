@@ -1,5 +1,5 @@
 import React from "react"
-import {ScrollView, View} from "react-native"
+import {View} from "react-native"
 
 import {NewUiActiveForegroundApp} from "@/components/home/NewUiActiveForegroundApp"
 import {NewUiBackgroundAppsLink} from "@/components/home/NewUiBackgroundAppsLink"
@@ -13,10 +13,7 @@ export const NewUiHomeContainer: React.FC = () => {
   const {themed, theme} = useAppTheme()
 
   return (
-    <ScrollView
-      style={themed($scrollView)}
-      contentContainerStyle={themed($scrollViewContent)}
-      showsVerticalScrollIndicator={false}>
+    <View>
       <NewUiCompactDeviceStatus />
 
       <Divider variant="full" />
@@ -30,15 +27,8 @@ export const NewUiHomeContainer: React.FC = () => {
       <Divider variant="full" />
 
       <NewUiForegroundAppsGrid />
-    </ScrollView>
+
+      <Spacer height={theme.spacing.xl} />
+    </View>
   )
 }
-
-const $scrollView = theme => ({
-  flex: 1,
-})
-
-const $scrollViewContent = theme => ({
-  flexGrow: 1,
-  paddingBottom: theme.spacing.xl,
-})
