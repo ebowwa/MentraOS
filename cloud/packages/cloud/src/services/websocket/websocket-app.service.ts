@@ -61,6 +61,7 @@ export enum AppErrorCode {
   MALFORMED_MESSAGE = "MALFORMED_MESSAGE",
   PERMISSION_DENIED = "PERMISSION_DENIED",
   INTERNAL_ERROR = "INTERNAL_ERROR",
+  CAMERA_BUSY = "CAMERA_BUSY",
 }
 
 /**
@@ -88,7 +89,7 @@ export class AppWebSocketService {
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
 
-  constructor() { }
+  constructor() {}
 
   /**
    * Get the singleton instance of AppWebSocketService
@@ -385,6 +386,38 @@ export class AppWebSocketService {
                 appWebsocket,
                 AppErrorCode.PERMISSION_DENIED,
                 "Camera permission required to take photos. Please add the CAMERA permission in the developer console.",
+              );
+              break;
+            }
+
+            // Check if camera is busy with streaming
+            const managedStreamState =
+              userSession.managedStreamingExtension.getUserStreamState(
+                userSession.userId,
+              );
+            const unmanagedStreamInfo =
+              userSession.videoManager.getActiveStreamInfo();
+
+            if (managedStreamState || unmanagedStreamInfo) {
+              const streamType = managedStreamState ? "managed" : "unmanaged";
+              const streamId =
+                managedStreamState?.streamId || unmanagedStreamInfo?.streamId;
+
+              this.logger.warn(
+                {
+                  packageName: photoRequestMsg.packageName,
+                  userId: userSession.userId,
+                  streamType,
+                  streamId,
+                  managedStreamActive: !!managedStreamState,
+                  unmanagedStreamActive: !!unmanagedStreamInfo,
+                },
+                "Photo request denied: camera is busy with active stream",
+              );
+              this.sendError(
+                appWebsocket,
+                AppErrorCode.CAMERA_BUSY,
+                "Camera is currently busy with live streaming. Please stop the stream before taking photos.",
               );
               break;
             }
@@ -785,7 +818,7 @@ export class AppWebSocketService {
     // Check if language subscriptions have changed
     const languageSubscriptionsChanged =
       previousLanguageSubscriptions.length !==
-      newLanguageSubscriptions.length ||
+        newLanguageSubscriptions.length ||
       !previousLanguageSubscriptions.every((sub) =>
         newLanguageSubscriptions.includes(sub),
       );
