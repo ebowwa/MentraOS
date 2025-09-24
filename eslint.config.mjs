@@ -64,7 +64,7 @@ export default [
       "react/prop-types": "off",
       
       // React Native - these rules are smart enough to only apply to RN code
-      "react-native/no-unused-styles": "warn",
+      "react-native/no-unused-styles": "error",
       "react-native/split-platform-components": "warn",
       "react-native/no-inline-styles": "warn",
       "react-native/no-color-literals": "off",
