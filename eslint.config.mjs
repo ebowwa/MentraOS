@@ -80,6 +80,7 @@ export default [
       "no-global-assign": "off",
       "quotes": "off",
       "space-before-function-paren": "off",
+      "no-case-declarations": "warn",
       "no-restricted-imports": [
         "error",
         {

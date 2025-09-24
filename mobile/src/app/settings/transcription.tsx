@@ -1,7 +1,7 @@
-import React, {useState, useEffect, useCallback} from "react"
-import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
+import {useState, useEffect, useCallback} from "react"
+import {ScrollView, View, ActivityIndicator, Platform, BackHandler} from "react-native"
 import bridge from "@/bridge/MantleBridge"
-import {Header, Screen, Text, Button} from "@/components/ignite"
+import {Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import ModelSelector from "@/components/settings/ModelSelector"
@@ -30,8 +30,6 @@ export default function TranscriptionSettingsScreen() {
   )
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
-
-
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -114,10 +112,14 @@ export default function TranscriptionSettingsScreen() {
 
     if (isDownloading) {
       // Also add cancel download button
-      showAlert("Download in Progress", "A model is currently downloading. Please wait before switching to another model", [
-        {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
-        {text: "OK", style: "cancel"},
-      ])
+      showAlert(
+        "Download in Progress",
+        "A model is currently downloading. Please wait before switching to another model",
+        [
+          {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
+          {text: "OK", style: "cancel"},
+        ],
+      )
       return
     }
 

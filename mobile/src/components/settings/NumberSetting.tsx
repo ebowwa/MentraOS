@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, TextInput, StyleSheet, Platform, Pressable, Alert} from "react-native"
+import {useState, useEffect} from "react"
+import {View, Text, TextInput, Platform, Pressable, Alert} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
@@ -27,7 +27,7 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
 }) => {
   const {theme, themed} = useAppTheme()
   const [localValue, setLocalValue] = useState(value.toString())
-  const [isEditing, setIsEditing] = useState(false)
+  const [_isEditing, setIsEditing] = useState(false)
 
   // Update local value when prop changes
   useEffect(() => {
@@ -183,7 +183,7 @@ const $input: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   minHeight: Platform.OS === "ios" ? 44 : 48,
 })
 
-const $decrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $decrementButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   borderWidth: 1,
   borderColor: colors.border,
@@ -194,7 +194,7 @@ const $decrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   alignItems: "center",
 })
 
-const $incrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $incrementButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   borderWidth: 1,
   borderColor: colors.border,
