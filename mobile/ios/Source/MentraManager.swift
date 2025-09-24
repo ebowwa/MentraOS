@@ -54,6 +54,7 @@ struct ViewState {
     private var bypassVad: Bool = true
     private var bypassVadForPCM: Bool = false // NEW: PCM subscription bypass
     private var enforceLocalTranscription: Bool = false
+    private var offlineModeEnabled: Bool = false
     private var bypassAudioEncoding: Bool = false
     private var onboardMicUnavailable: Bool = false
     private var metricSystemEnabled: Bool = false
@@ -65,11 +66,11 @@ struct ViewState {
     private var isHeadUp: Bool = false
     private var sendStateWorkItem: DispatchWorkItem?
     private let sendStateQueue = DispatchQueue(label: "sendStateQueue", qos: .userInitiated)
+    private var shouldSendBootingMessage = true
 
     // mic:
     private var useOnboardMic = false
     private var preferredMic = "glasses"
-    private var offlineStt = false
     private var micEnabled = false
     private var currentRequiredData: [SpeechRequiredDataType] = []
 
@@ -93,11 +94,11 @@ struct ViewState {
 
     var viewStates: [ViewState] = [
         ViewState(
-            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
+            topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: ""
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall",
-            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$",
+            text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS$"
         ),
         ViewState(
             topText: " ", bottomText: " ", title: " ", layoutType: "text_wall", text: "",
@@ -143,10 +144,6 @@ struct ViewState {
     }
 
     // MARK: - Public Methods (for React Native)
-
-    func setup() {
-        Bridge.log("Mentra: setup()")
-    }
 
     func initSGC(_ wearable: String) {
         Bridge.log("Initializing manager for wearable: \(wearable)")
@@ -452,7 +449,7 @@ struct ViewState {
         // this must be done before the requiredData is modified by offlineStt:
         currentRequiredData = requiredData
 
-        if offlineStt, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
+        if offlineModeEnabled, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
             requiredData.append(.TRANSCRIPTION)
         }
 
@@ -891,7 +888,7 @@ struct ViewState {
         }
     }
 
-    private func sendText(_ text: String) {
+    func sendText(_ text: String) {
         // Core.log("Mentra: Sending text: \(text)")
         if sgc == nil {
             return
@@ -908,7 +905,6 @@ struct ViewState {
     // command functions:
     func setAuthCreds(_ token: String, _ userId: String) {
         Bridge.log("Mentra: Setting core token to: \(token) for user: \(userId)")
-        setup() // finish init():
         coreToken = token
         coreTokenOwner = userId
         handle_request_status()
@@ -989,13 +985,7 @@ struct ViewState {
 
         handle_request_status() // to update the UI
     }
-
-    func setOfflineStt(_ enabled: Bool) {
-        offlineStt = enabled
-        // trigger a microphone state change if needed:
-        handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
-    }
-
+    
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         sgc?.setHeadUpAngle(value)
@@ -1074,6 +1064,18 @@ struct ViewState {
         }
 
         handle_request_status() // to update the UI
+    }
+
+    func enableOfflineMode(_ enabled: Bool) {
+        offlineModeEnabled = enabled
+
+        var requiredData: [SpeechRequiredDataType]  = []
+
+        if enabled {
+            requiredData.append(.TRANSCRIPTION)
+        }
+        
+        handle_microphone_state_change(requiredData, bypassVadForPCM)
     }
 
     func startBufferRecording() {
@@ -1352,18 +1354,26 @@ struct ViewState {
     }
 
     private func handleDeviceReady() {
-        Bridge.log("Mentra: Device ready")
+        guard let sgc else {
+            Bridge.log("Mentra: SGC is nil, returning")
+            return
+        }
+        Bridge.log("Mentra: handleDeviceReady(): \(sgc.type)")
         // send to the server our battery status:
-        Bridge.sendBatteryStatus(level: sgc?.batteryLevel ?? -1, charging: false)
+        Bridge.sendBatteryStatus(level: sgc.batteryLevel ?? -1, charging: false)
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "CONNECTED")
 
-        if pendingWearable.contains("Live") {
-            handleLiveReady()
-        } else if pendingWearable.contains("G1") {
+        pendingWearable = ""
+        defaultWearable = sgc.type
+        isSearching = false
+        handle_request_status()
+
+        if defaultWearable.contains("G1") {
             handleG1Ready()
         } else if defaultWearable.contains("Mach1") {
             handleMach1Ready()
         }
+
         // save the default_wearable now that we're connected:
         Bridge.saveSetting("default_wearable", defaultWearable)
         Bridge.saveSetting("device_name", deviceName)
@@ -1371,13 +1381,6 @@ struct ViewState {
     }
 
     private func handleG1Ready() {
-        Bridge.log("Mentra: G1 device ready")
-        isSearching = false
-        defaultWearable = "Even Realities G1"
-        handle_request_status()
-
-        let shouldSendBootingMessage = true
-
         // load settings and send the animation:
         Task {
             // give the glasses some extra time to finish booting:
@@ -1404,23 +1407,13 @@ struct ViewState {
                 sendText(" ") // clear screen
             }
 
+            shouldSendBootingMessage = false
+
             self.handle_request_status()
         }
     }
 
-    private func handleLiveReady() {
-        Bridge.log("Mentra: Mentra Live device ready")
-        isSearching = false
-        defaultWearable = "Mentra Live"
-        handle_request_status()
-    }
-
     private func handleMach1Ready() {
-        Bridge.log("Mentra: Mach1 device ready")
-        isSearching = false
-        defaultWearable = "Mentra Mach1"
-        handle_request_status()
-
         Task {
             // Send startup message
             sendText("MENTRAOS CONNECTED")
@@ -1568,6 +1561,12 @@ struct ViewState {
             enforceLocalTranscription(newEnforceLocalTranscription)
         }
 
+        if let newEnableOfflineMode = settings["offline_captions_app_running"] as? Bool,
+           newEnableOfflineMode != offlineModeEnabled
+        {
+            enableOfflineMode(newEnableOfflineMode)
+        }
+
         if let newMetricSystemEnabled = settings["metric_system_enabled"] as? Bool,
            newMetricSystemEnabled != metricSystemEnabled
         {
@@ -1600,10 +1599,6 @@ struct ViewState {
            newPhotoSize != buttonPhotoSize
         {
             setButtonPhotoSize(newPhotoSize)
-        }
-
-        if let newOfflineStt = settings["offline_stt"] as? Bool, newOfflineStt != offlineStt {
-            setOfflineStt(newOfflineStt)
         }
 
         // get default wearable from core_info:

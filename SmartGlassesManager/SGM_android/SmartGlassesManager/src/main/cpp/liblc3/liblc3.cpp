@@ -126,8 +126,8 @@ static jbyteArray decodeLC3WithFrameSize(JNIEnv *env, jlong decPtr, jbyteArray l
     uint16_t bytesPerFrame = samplesPerFrame * 2;
 
     int outSize = (lc3Length / encodedFrameSize) * bytesPerFrame;
-    LOGI("decode lc3Length=%d, bytesPerFrame=%d, encodedFrameSize=%d, outSize=%d", 
-         lc3Length, bytesPerFrame, encodedFrameSize, outSize);
+    // LOGI("decode lc3Length=%d, bytesPerFrame=%d, encodedFrameSize=%d, outSize=%d", 
+    //      lc3Length, bytesPerFrame, encodedFrameSize, outSize);
     
     unsigned char* outArray = (unsigned char*)malloc(outSize);
     int16_t* outBuf = (int16_t*)malloc(bytesPerFrame);

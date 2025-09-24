@@ -22,6 +22,7 @@ public interface AugmentOsActionsCallback {
     void setBypassVadForDebugging(boolean bypassVadForDebugging);
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
     void setEnforceLocalTranscription(boolean enforceLocalTranscription);
+    void onEnableOfflineMode(boolean enabled);
     void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);
     void setPowerSavingMode(boolean powerSavingMode);
     void installAppFromRepository(String repository, String packageName) throws JSONException;
@@ -60,6 +61,7 @@ public interface AugmentOsActionsCallback {
     void clearDisplay();
 
     void setLc3AudioEnabled(boolean enabled);
+    void updateSettings(JSONObject newSettings);
 
     void handleNotificationDismissal(JSONObject dismissalData);
     void startBufferRecording();

@@ -1,4 +1,4 @@
-import React, {useRef, useCallback, useState, useEffect} from "react"
+import {useRef, useCallback, useState} from "react"
 import {View, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -17,10 +17,12 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
+import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
+import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -28,41 +30,14 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [hasLoaded, setHasLoaded] = useState(false)
-
-  const [showNewUi, setShowNewUi] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-      setShowNewUi(newUiSetting)
-      setHasLoaded(true)
-    }
-    check()
-  }, [])
+  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
 
   useFocusEffect(
     useCallback(() => {
       refreshAppStatus()
     }, []),
   )
-
-  if (!hasLoaded) {
-    return (
-      <Screen preset="fixed" style={themed($screen)}>
-        <Header
-          leftTx="home:title"
-          RightActionComponent={
-            <View style={themed($headerRight)}>
-              <PermissionsWarning />
-              <MicIcon width={24} height={24} />
-              <NonProdWarning />
-            </View>
-          }
-        />
-      </Screen>
-    )
-  }
 
   if (showNewUi) {
     return (
@@ -89,7 +64,8 @@ export default function Homepage() {
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.md} />
-        <AppsCombinedGridView />
+
+        {isOfflineMode ? <AppsOfflineList /> : <AppsCombinedGridView />}
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
@@ -112,6 +88,7 @@ export default function Homepage() {
         RightActionComponent={
           <View style={themed($headerRight)}>
             <PermissionsWarning />
+            <OfflineModeButton />
             <MicIcon width={24} height={24} />
             <NonProdWarning />
           </View>
@@ -131,15 +108,22 @@ export default function Homepage() {
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.lg} />
+
         <Divider variant="full" />
         <Spacer height={theme.spacing.md} />
 
-        <AppsActiveList />
-        <Spacer height={spacing.xl} />
-        <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
-        <Spacer height={spacing.md} />
-        <AppsIncompatibleListOld />
-        <Spacer height={spacing.xl} />
+        {isOfflineMode ? (
+          <AppsOfflineList />
+        ) : (
+          <>
+            <AppsActiveList />
+            <Spacer height={spacing.xl} />
+            <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
+            <Spacer height={spacing.md} />
+            <AppsIncompatibleListOld />
+            <Spacer height={spacing.xl} />
+          </>
+        )}
       </ScrollView>
 
       <Reconnect />

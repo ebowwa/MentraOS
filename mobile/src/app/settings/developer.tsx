@@ -3,7 +3,6 @@ import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
@@ -15,18 +14,20 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function DeveloperSettingsScreen() {
-  const {status} = useCoreStatus()
+  // const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const {replace} = useNavigationHistory()
   const [customUrlInput, setCustomUrlInput] = useState("")
-  const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false)
-  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
-  const [showNewUi, setShowNewUi] = useState(false)
-  const [powerSavingMode, setPowerSavingMode] = useState(false)
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [powerSavingMode, setPowerSavingMode] = useSetting(SETTINGS_KEYS.power_saving_mode)
+  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -34,14 +35,12 @@ export default function DeveloperSettingsScreen() {
 
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
-    await settings.set(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
-    setReconnectOnAppForeground(newSetting)
+    await setReconnectOnAppForeground(newSetting)
   }
 
   const toggleNewUi = async () => {
-    const newSetting = !showNewUi
-    await settings.set(SETTINGS_KEYS.NEW_UI, newSetting)
-    setShowNewUi(newSetting)
+    const newSetting = !newUi
+    await setNewUi(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -84,9 +83,8 @@ export default function DeveloperSettingsScreen() {
           console.log("URL Test Successful:", data)
 
           // Save the URL if the test passes
-          await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
+          await setCustomBackendUrl(urlToTest)
           await bridge.setServerUrl(urlToTest) // TODO: config: remove
-          setSavedCustomUrl(urlToTest)
 
           await showAlert(
             "Success",
@@ -135,9 +133,8 @@ export default function DeveloperSettingsScreen() {
   }
 
   const handleResetUrl = async () => {
-    await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    setCustomBackendUrl(null)
     await bridge.setServerUrl("") // TODO: config: remove
-    setSavedCustomUrl(null)
     setCustomUrlInput("")
     showAlert("Success", "Reset backend URL to default.", [
       {
@@ -170,25 +167,6 @@ export default function DeveloperSettingsScreen() {
       setCustomUrlInput("https://asiaeastapi.mentra.glass:443")
     }
   }
-
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
-
-      const reconnectOnAppForeground = await settings.get(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
-
-      const newUiSetting = await settings.get(SETTINGS_KEYS.NEW_UI)
-      setShowNewUi(newUiSetting)
-
-      const powerSavingMode = await settings.get(SETTINGS_KEYS.power_saving_mode)
-      setPowerSavingMode(powerSavingMode)
-    }
-    loadSettings()
-  }, [])
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
@@ -232,30 +210,28 @@ export default function DeveloperSettingsScreen() {
         <ToggleSetting
           label={translate("settings:newUi")}
           subtitle={translate("settings:newUiSubtitle")}
-          value={showNewUi}
+          value={newUi}
           onValueChange={toggleNewUi}
         />
 
         <Spacer height={theme.spacing.md} />
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
-        {status.core_info.default_wearable &&
-          glassesFeatures[status.core_info.default_wearable] &&
-          glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
-            <>
-              <Text style={[styles.sectionTitle, {color: theme.colors.textDim}]}>G1 Specific Settings</Text>
-              <ToggleSetting
-                label={translate("settings:powerSavingMode")}
-                subtitle={translate("settings:powerSavingModeSubtitle")}
-                value={powerSavingMode}
-                onValueChange={async value => {
-                  setPowerSavingMode(value)
-                  await bridge.sendTogglePowerSavingMode(value)
-                }}
-              />
-              <Spacer height={theme.spacing.md} />
-            </>
-          )}
+        {defaultWearable && glassesFeatures[defaultWearable] && glassesFeatures[defaultWearable].powerSavingMode && (
+          <>
+            <Text style={[styles.sectionTitle, {color: theme.colors.textDim}]}>G1 Specific Settings</Text>
+            <ToggleSetting
+              label={translate("settings:powerSavingMode")}
+              subtitle={translate("settings:powerSavingModeSubtitle")}
+              value={powerSavingMode}
+              onValueChange={async value => {
+                await setPowerSavingMode(value)
+                await bridge.sendTogglePowerSavingMode(value) // TODO: config: remove
+              }}
+            />
+            <Spacer height={theme.spacing.md} />
+          </>
+        )}
 
         <View
           style={[
@@ -270,7 +246,7 @@ export default function DeveloperSettingsScreen() {
             <Text style={[styles.label, {color: theme.colors.text}]}>Custom Backend URL</Text>
             <Text style={[styles.value, {color: theme.colors.textDim}]}>
               Override the default backend server URL. Leave blank to use default.
-              {savedCustomUrl && `\nCurrently using: ${savedCustomUrl}`}
+              {customBackendUrl && `\nCurrently using: ${customBackendUrl}`}
             </Text>
             <TextInput
               style={[

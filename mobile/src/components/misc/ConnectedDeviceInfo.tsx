@@ -1,5 +1,5 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle, TextStyle} from "react-native"
+import React, {useCallback, useRef, useState} from "react"
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
@@ -10,31 +10,29 @@ import {
   getGlassesOpenImage,
   getEvenRealitiesG1Image,
 } from "@/utils/getGlassesImage"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {colors, spacing, ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/component/ChevronRight"
-import {Circle} from "react-native-svg"
-import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/component/SunIcon"
 import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSetting, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS} from "@/stores/settings"
 
 export const ConnectDeviceButton = () => {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
   const {push} = useNavigationHistory()
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   const connectGlasses = async () => {
-    if (!status.core_info.default_wearable) {
+    if (!defaultWearable) {
       push("/pairing/select-glasses-model")
       return
     }
@@ -81,8 +79,8 @@ export const ConnectDeviceButton = () => {
       }
 
       // Connectivity check passed, proceed with connection
-      const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
-      const deviceName = await settings.get(SETTINGS_KEYS.device_name)
+      const defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
+      const deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
       console.log("Connecting to glasses:", defaultWearable, deviceName)
       if (defaultWearable && defaultWearable != "") {
         await bridge.sendConnectWearable(defaultWearable, deviceName, "")
@@ -113,11 +111,15 @@ export const ConnectDeviceButton = () => {
   }
 
   // if we have simulated glasses, show nothing:
-  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+  if (defaultWearable && defaultWearable.toLowerCase().includes("simulated")) {
     return null
   }
 
-  if (!status.core_info.default_wearable) {
+  // Debug the conditional logic
+  const defaultWearableNull = defaultWearable == null
+  const defaultWearableStringNull = defaultWearable == "null"
+
+  if (defaultWearableNull || defaultWearableStringNull) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
@@ -170,6 +172,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const {themed, theme} = useAppTheme()
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   useFocusEffect(
     useCallback(() => {
@@ -177,30 +180,29 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
 
-      // Start animations if device is connected
-      if (status.core_info.puck_connected) {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ]).start()
-      }
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ]).start()
       // Cleanup function
       return () => {
         fadeAnim.stopAnimation()
       }
-    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim]),
+    }, [defaultWearable, fadeAnim]),
   )
 
   // Calculate glasses image on every render to prevent flashing
   const getCurrentGlassesImage = () => {
-    const wearable = status.core_info.default_wearable
-    let image = getGlassesImage(wearable)
+    let image = getGlassesImage(defaultWearable)
 
     // For Even Realities G1, use dynamic image based on style and color
-    if (wearable && (wearable === "Even Realities G1" || wearable === "evenrealities_g1" || wearable === "g1")) {
+    if (
+      defaultWearable &&
+      (defaultWearable === "Even Realities G1" || defaultWearable === "evenrealities_g1" || defaultWearable === "g1")
+    ) {
       const style = status.glasses_info?.glasses_style
       const color = status.glasses_info?.glasses_color
 
@@ -220,9 +222,9 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
     // For other glasses, use the existing logic
     if (!status.glasses_info?.case_removed) {
       if (status.glasses_info?.case_open) {
-        image = getGlassesOpenImage(wearable)
+        image = getGlassesOpenImage(defaultWearable)
       } else {
-        image = getGlassesClosedImage(wearable)
+        image = getGlassesClosedImage(defaultWearable)
       }
     }
 
@@ -230,11 +232,11 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   }
 
   // no glasses paired
-  if (!status.core_info.default_wearable) {
+  if (!defaultWearable || defaultWearable === "null") {
     return null
   }
 
-  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+  if (defaultWearable && defaultWearable.toLowerCase().includes("simulated")) {
     return <ConnectedSimulatedGlassesInfo />
   }
 
@@ -249,19 +251,22 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 export function SplitDeviceInfo() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   // Show image if we have either connected glasses or a default wearable
-  const wearable = status.glasses_info?.model_name || status.core_info.default_wearable
 
-  if (!wearable) {
+  if (!defaultWearable) {
     return null
   }
 
-  let glassesImage = getGlassesImage(wearable)
+  let glassesImage = getGlassesImage(defaultWearable)
   let caseImage = null
 
   // For Even Realities G1, use dynamic image based on style and color
-  if (wearable && (wearable === "Even Realities G1" || wearable === "evenrealities_g1" || wearable === "g1")) {
+  if (
+    defaultWearable &&
+    (defaultWearable === "Even Realities G1" || defaultWearable === "evenrealities_g1" || defaultWearable === "g1")
+  ) {
     const style = status.glasses_info?.glasses_style
     const color = status.glasses_info?.glasses_color
 
@@ -287,9 +292,9 @@ export function SplitDeviceInfo() {
     // Only show case image if glasses are actually connected (not just paired)
     if (status.glasses_info?.model_name && !status.glasses_info?.case_removed) {
       if (status.glasses_info?.case_open) {
-        caseImage = getGlassesOpenImage(wearable)
+        caseImage = getGlassesOpenImage(defaultWearable)
       } else {
-        caseImage = getGlassesClosedImage(wearable)
+        caseImage = getGlassesClosedImage(defaultWearable)
       }
     }
   }
@@ -308,13 +313,13 @@ export function DeviceToolbar() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
-
-  if (!status.glasses_info?.model_name) {
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  if (!defaultWearable) {
     return null
   }
 
   // don't show if simulated glasses
-  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
+  if (status.glasses_info?.model_name?.toLowerCase().includes("simulated")) {
     return null
   }
 

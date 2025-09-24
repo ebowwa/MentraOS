@@ -177,9 +177,8 @@ class G1: NSObject, SGCManager {
 
     func stopVideoRecording(requestId _: String) {}
 
-    let type = "g1"
+    let type = "Even Realities G1"
     let hasMic = true
-    var onConnectionStateChanged: ((Bool) -> Void)?
 
     // TODO: we probably don't need this
     @objc static func requiresMainQueueSetup() -> Bool { return true }
@@ -559,8 +558,6 @@ class G1: NSObject, SGCManager {
         }
 
         Bridge.log("G1: found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan")
-        // setReadiness(left: true, right: true)
-        //    startHeartbeatTimer();
         RN_stopScan()
 
         // get battery status:
@@ -736,6 +733,7 @@ class G1: NSObject, SGCManager {
         quickNotes.removeAll()
     }
 
+    // only set to true when we receive init_ack response from the glasses
     func setReadiness(left: Bool?, right: Bool?) {
         let prevLeftReady = leftReady
         let prevRightReady = rightReady
@@ -1039,12 +1037,12 @@ class G1: NSObject, SGCManager {
             continuation = pendingAckCompletions.removeValue(forKey: key)
         }
 
-        if peripheral == leftPeripheral {
-            setReadiness(left: true, right: nil)
-        }
-        if peripheral == rightPeripheral {
-            setReadiness(left: nil, right: true)
-        }
+        // if peripheral == leftPeripheral {
+        //     setReadiness(left: true, right: nil)
+        // }
+        // if peripheral == rightPeripheral {
+        //     setReadiness(left: nil, right: true)
+        // }
 
         if let continuation = continuation {
             continuation.resume(returning: true)
@@ -2128,24 +2126,6 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
         // Update the last connection timestamp
         lastConnectionTimestamp = Date()
         Bridge.log("G1: Connected to peripheral: \(peripheral.name ?? "Unknown")")
-
-        // Emit connection event
-        let isLeft = peripheral == leftPeripheral
-        let eventBody: [String: Any] = [
-            "side": isLeft ? "L" : "R",
-            "name": peripheral.name ?? "Unknown",
-            "id": peripheral.identifier.uuidString,
-        ]
-
-        // tell iOS to reconnect to this, even from the background
-        //    central.connect(peripheral, options: [
-        //        CBConnectPeripheralOptionNotifyOnConnectionKey: true,
-        //        CBConnectPeripheralOptionNotifyOnDisconnectionKey: true,
-        //        CBConnectPeripheralOptionNotifyOnNotificationKey: true
-        //    ])
-
-        // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
-        //    CoreCommsService.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
     }
 
     func centralManager(_: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error _: (any Error)?) {
@@ -2306,14 +2286,14 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
                 }
             }
 
-            // Mark the services as ready
-            if peripheral == leftPeripheral {
-                Bridge.log("G1: Left glass services discovered and ready")
-                setReadiness(left: true, right: nil)
-            } else if peripheral == rightPeripheral {
-                Bridge.log("G1: Right glass services discovered and ready")
-                setReadiness(left: nil, right: true)
-            }
+            // // Mark the services as ready
+            // if peripheral == leftPeripheral {
+            //     Bridge.log("G1: Left glass services discovered and ready")
+            //     setReadiness(left: true, right: nil)
+            // } else if peripheral == rightPeripheral {
+            //     Bridge.log("G1: Right glass services discovered and ready")
+            //     setReadiness(left: nil, right: true)
+            // }
         }
     }
 

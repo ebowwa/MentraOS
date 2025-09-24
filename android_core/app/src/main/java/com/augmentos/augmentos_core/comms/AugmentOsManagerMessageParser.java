@@ -92,6 +92,11 @@ public class AugmentOsManagerMessageParser {
                 callback.setBypassVadForDebugging(bypassVadForDebugging);
                 break;
 
+            case "enable_offline_mode":
+                boolean offlineModeEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                callback.onEnableOfflineMode(offlineModeEnabled);
+                break;
+
             case "bypass_audio_encoding_for_debugging":
                 boolean bypassAudioEncodingForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
                 callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
@@ -322,6 +327,11 @@ public class AugmentOsManagerMessageParser {
             case "set_lc3_audio_enabled": {
                 boolean enabled = commandObject.getBoolean("enabled");
                 callback.setLc3AudioEnabled(enabled);
+            }
+            break;
+            case "update_settings": {
+                JSONObject newSettings = commandObject.getJSONObject("params");
+                callback.updateSettings(newSettings);
             }
             break;
 

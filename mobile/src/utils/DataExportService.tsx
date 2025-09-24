@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS} from "@/stores/settings"
 import {storage} from "@/utils/storage"
 
 export interface UserDataExport {
@@ -206,6 +206,7 @@ export class DataExportService {
           }
         } catch (error) {
           // Key doesn't exist, skip
+          console.warn(`DataExportService: Key ${key} does not exist in local storage`)
         }
       }
 

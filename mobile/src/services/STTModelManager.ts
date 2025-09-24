@@ -1,10 +1,9 @@
 import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
-import {TarBz2Extractor} from "./TarBz2Extractor"
 import bridge from "@/bridge/MantleBridge"
 
-const {BridgeModule, FileProviderModule} = NativeModules
+const {FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -48,22 +47,22 @@ class STTModelManager {
   private models: Record<string, ModelConfig> = {
     "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile": {
       id: "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile",
-      displayName: "English (Accurate)",
+      displayName: "English",
       fileName: "sherpa-onnx-streaming-zipformer-en-2023-06-21-mobile",
       size: 349 * 1024 * 1024, // 349MB
       type: "transducer",
       requiredFiles: ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"],
       languageCode: "en-US",
     },
-    "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8": {
-      id: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
-      displayName: "English (Faster)",
-      fileName: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
-      size: 95 * 1024 * 1024, // 95MB
-      type: "ctc",
-      requiredFiles: ["model.int8.onnx", "tokens.txt"],
-      languageCode: "en-US",
-    },
+    // "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8": {
+    //   id: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
+    //   displayName: "English (Faster)",
+    //   fileName: "sherpa-onnx-nemo-streaming-fast-conformer-ctc-en-80ms-int8",
+    //   size: 95 * 1024 * 1024, // 95MB
+    //   type: "ctc",
+    //   requiredFiles: ["model.int8.onnx", "tokens.txt"],
+    //   languageCode: "en-US",
+    // },
     "sherpa-onnx-streaming-zipformer-zh-2025-06-30": {
       id: "sherpa-onnx-streaming-zipformer-zh-2025-06-30",
       displayName: "Chinese",

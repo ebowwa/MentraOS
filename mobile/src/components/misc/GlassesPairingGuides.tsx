@@ -493,7 +493,7 @@ export function MentraLivePairingGuide() {
                 },
                 {
                   text: "Continue",
-                  onPress: () => Linking.openURL("https://mentra.glass/live"),
+                  onPress: () => Linking.openURL("https://mentra.glass"),
                 },
               ])
             }}>

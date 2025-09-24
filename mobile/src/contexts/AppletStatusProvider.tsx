@@ -1,13 +1,12 @@
 import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export type AppPermissionType =
   | "ALL"
@@ -76,6 +75,7 @@ interface AppStatusContextType {
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
+  stopAllApps: () => Promise<void>
   clearPendingOperation: (packageName: string) => void
 }
 
@@ -170,7 +170,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
     setAppStatus(currentStatus => {
       // Then update the target app to be running
@@ -185,7 +185,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await settings.set(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -216,6 +216,21 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 2000)
   }
 
+  // Stop all running apps
+  const stopAllApps = async () => {
+    try {
+      const runningApps = appStatus.filter(app => app.is_running)
+      for (const app of runningApps) {
+        await restComms.stopApp(app.packageName)
+      }
+      // Update local state to reflect all apps are stopped
+      setAppStatus(currentStatus => currentStatus.map(app => (app.is_running ? {...app, is_running: false} : app)))
+    } catch (error) {
+      console.error("Error stopping all apps:", error)
+      throw error
+    }
+  }
+
   // Optimistically update app status when stopping an app
   const optimisticallyStopApp = async (packageName: string) => {
     // optimistically stop the app:
@@ -230,7 +245,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+      const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
       if (!usingNewUI) {
         setAppStatus(currentStatus =>
@@ -309,6 +324,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,
+        stopAllApps,
         clearPendingOperation,
       }}>
       {children}
