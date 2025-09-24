@@ -3,7 +3,7 @@ import {View, ScrollView, TouchableOpacity, ActivityIndicator} from "react-nativ
 import {useRouter} from "expo-router"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
-import {Header, Screen, Text} from "@/components/ignite"
+import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
@@ -81,23 +81,25 @@ export default function NewUiBackgroundAppsScreen() {
   }
 
   const renderAppItem = (app: AppletInterface, index: number, isLast: boolean) => {
+    const handleRowPress = () => {
+      if (app.is_running) {
+        openAppSettings(app)
+      }
+    }
+
     return (
       <React.Fragment key={app.packageName}>
         <TouchableOpacity
           style={themed($appRow)}
-          onPress={() => toggleApp(app)}
-          activeOpacity={0.7}
-          disabled={isLoading}>
+          onPress={handleRowPress}
+          activeOpacity={app.is_running ? 0.7 : 1}
+          disabled={!app.is_running}>
           <View style={themed($appContent)}>
             <AppIcon app={app as any} style={themed($appIcon)} />
             <View style={themed($appInfo)}>
               <Text
                 text={app.name}
-                style={[
-                  themed($appName),
-                  app.is_running && themed($activeAppName),
-                  app.isOnline === false && themed($offlineApp),
-                ]}
+                style={[themed($appName), app.isOnline === false && themed($offlineApp)]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               />
@@ -107,21 +109,34 @@ export default function NewUiBackgroundAppsScreen() {
                   <Text text="Offline" style={themed($offlineText)} />
                 </View>
               )}
-              {app.is_running && (
-                <View style={themed($activeTag)}>
-                  <Text text="Active" style={themed($tagText)} />
-                </View>
-              )}
             </View>
           </View>
-          {app.is_running && (
+          <View style={themed($rightControls)}>
+            {app.is_running && (
+              <TouchableOpacity
+                onPress={e => {
+                  e.stopPropagation()
+                  openAppSettings(app)
+                }}
+                style={themed($gearButton)}
+                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+                <MaterialCommunityIcons name="cog" size={22} color={theme.colors.textDim} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              onPress={() => openAppSettings(app)}
-              style={themed($gearButton)}
-              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-              <MaterialCommunityIcons name="cog" size={22} color={theme.colors.textDim} />
+              onPress={e => {
+                e.stopPropagation()
+                toggleApp(app)
+              }}
+              activeOpacity={1}>
+              <Switch
+                value={app.is_running}
+                onValueChange={() => toggleApp(app)}
+                disabled={isLoading}
+                pointerEvents="none"
+              />
             </TouchableOpacity>
-          )}
+          </View>
         </TouchableOpacity>
         {!isLast && <Divider />}
       </React.Fragment>
@@ -147,11 +162,26 @@ export default function NewUiBackgroundAppsScreen() {
         ) : (
           <>
             {/* Active Background Apps Section */}
-            {activeApps.length > 0 && (
+            {activeApps.length > 0 ? (
               <>
                 <Text style={themed($sectionHeader)}>Active Background Apps</Text>
                 <View style={themed($sectionContent)}>
                   {activeApps.map((app, index) => renderAppItem(app, index, index === activeApps.length - 1))}
+                </View>
+                <Spacer height={theme.spacing.lg} />
+              </>
+            ) : (
+              <>
+                <Text style={themed($sectionHeader)}>Active Background Apps</Text>
+                <View style={themed($tipContainer)}>
+                  <View style={themed($tipContent)}>
+                    <Text style={themed($tipText)}>Activate an App</Text>
+                    <Text style={themed($tipSubtext)}>Tap an app's switch to activate it</Text>
+                  </View>
+                  <View style={themed($animatedToggle)}>
+                    <View style={themed($toggleBar)} />
+                    <View style={themed($toggleCircle)} />
+                  </View>
                 </View>
                 <Spacer height={theme.spacing.lg} />
               </>
@@ -238,7 +268,7 @@ const $appRow = theme => ({
   alignItems: "center",
   justifyContent: "space-between",
   paddingVertical: theme.spacing.sm,
-  minHeight: 72,
+  minHeight: 80,
 })
 
 const $appContent = theme => ({
@@ -249,13 +279,15 @@ const $appContent = theme => ({
 })
 
 const $appIcon = theme => ({
-  width: 48,
-  height: 48,
+  width: 56,
+  height: 56,
 })
 
 const $appInfo = theme => ({
   flex: 1,
   justifyContent: "center",
+  marginRight: theme.spacing.lg,
+  paddingRight: theme.spacing.sm,
 })
 
 const $appName = theme => ({
@@ -264,8 +296,10 @@ const $appName = theme => ({
   marginBottom: 2,
 })
 
-const $activeAppName = theme => ({
-  fontWeight: "500",
+const $rightControls = theme => ({
+  flexDirection: "row",
+  alignItems: "center",
+  gap: theme.spacing.sm,
 })
 
 const $offlineApp = theme => ({
@@ -285,14 +319,61 @@ const $offlineText = theme => ({
   color: theme.colors.error,
 })
 
-const $activeTag = theme => ({
-  marginTop: 2,
+const $tipContainer = theme => ({
+  marginHorizontal: theme.spacing.md,
+  paddingVertical: theme.spacing.md,
+  paddingHorizontal: theme.spacing.md,
+  backgroundColor: theme.colors.palette.neutral100,
+  borderRadius: theme.spacing.sm,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  borderWidth: 1,
+  borderColor: theme.colors.border,
 })
 
-const $tagText = theme => ({
-  fontSize: 12,
-  color: theme.colors.success,
+const $tipContent = theme => ({
+  flex: 1,
+  gap: 4,
+})
+
+const $tipText = theme => ({
+  fontSize: 15,
   fontWeight: "500",
+  color: theme.colors.text,
+})
+
+const $tipSubtext = theme => ({
+  fontSize: 13,
+  color: theme.colors.textDim,
+})
+
+const $animatedToggle = theme => ({
+  width: 32,
+  height: 16,
+  position: "relative",
+})
+
+const $toggleBar = theme => ({
+  height: 16,
+  width: 32,
+  borderRadius: 16,
+  backgroundColor: theme.colors.switchTrackOff,
+  borderColor: theme.colors.switchBorder,
+  borderWidth: theme.colors.switchBorderWidth,
+  position: "absolute",
+})
+
+const $toggleCircle = theme => ({
+  width: 24,
+  height: 24,
+  top: -4,
+  left: -4,
+  borderRadius: 12,
+  backgroundColor: theme.colors.switchThumbOff,
+  position: "absolute",
+  borderColor: theme.colors.switchBorder,
+  borderWidth: theme.colors.switchBorderWidth,
 })
 
 const $gearButton = theme => ({
