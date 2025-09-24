@@ -22,7 +22,6 @@ import {
   ToolCall,
 } from "../../types";
 
-
 import { Logger } from "pino";
 import { logger as rootLogger } from "../../logging/logger";
 import axios from "axios";
@@ -257,53 +256,59 @@ export class AppServer {
           );
         }
 
-      // 🔑 Grab SDK version
-      try {
-        // Look for the actual installed @mentra/sdk package.json in node_modules
-        const sdkPkgPath = path.resolve(process.cwd(), "node_modules/@mentra/sdk/package.json");
-        
-        let currentVersion = "unknown";
-        
-        if (fs.existsSync(sdkPkgPath)) {
-          const sdkPkg = JSON.parse(fs.readFileSync(sdkPkgPath, "utf-8"));
-          
-          // Get the actual installed version
-          currentVersion = sdkPkg.version || "not-found"; // located in the node module
-          
-        } else {
-          this.logger.debug({ sdkPkgPath }, "No @mentra/sdk package.json found at path");
-        }
-
-        // this.logger.debug(`Developer is using SDK version: ${currentVersion}`);
-
-        // Fetch latest SDK version from the API endpoint
-        let latest = "2.1.20"; // fallback version
+        // 🔑 Grab SDK version
         try {
-          const cloudHost = process.env.CLOUD_PUBLIC_HOST_NAME || 'mentra-cloud-server.ngrok.app';
-          const response = await axios.get(`https://${cloudHost}/api/sdk`);
-          if (response.data && response.data.success && response.data.data) {
-            latest = response.data.data.latest; // Changed from "recommended" to "latest"
-            this.logger.debug(`Latest SDK version from API: ${latest}`);
-            this.logger.debug(`Current SDK version: ${currentVersion}`);
+          // Look for the actual installed @mentra/sdk package.json in node_modules
+          const sdkPkgPath = path.resolve(
+            process.cwd(),
+            "node_modules/@mentra/sdk/package.json",
+          );
 
+          let currentVersion = "unknown";
+
+          if (fs.existsSync(sdkPkgPath)) {
+            const sdkPkg = JSON.parse(fs.readFileSync(sdkPkgPath, "utf-8"));
+
+            // Get the actual installed version
+            currentVersion = sdkPkg.version || "not-found"; // located in the node module
+          } else {
+            this.logger.debug(
+              { sdkPkgPath },
+              "No @mentra/sdk package.json found at path",
+            );
           }
-        } catch (fetchError) {
-          this.logger.debug({ fetchError }, "Failed to fetch latest SDK version from API, using fallback");
-        }
 
+          // this.logger.debug(`Developer is using SDK version: ${currentVersion}`);
 
-        if (currentVersion === "not-found") {
-          this.logger.warn(
-            `⚠️ @mentra/sdk not found in your project dependencies. Please install it with: npm install @mentra/sdk`
-          );
-        } else if (latest && latest !== currentVersion) {
-          this.logger.warn(
-            newSDKUpdate(latest)
-          );
+          // Fetch latest SDK version from the API endpoint
+          let latest = "2.1.20"; // fallback version
+          try {
+            const cloudHost =
+              process.env.CLOUD_PUBLIC_HOST_NAME ||
+              "mentra-cloud-server.ngrok.app";
+            const response = await axios.get(`https://${cloudHost}/api/sdk`);
+            if (response.data && response.data.success && response.data.data) {
+              latest = response.data.data.latest; // Changed from "recommended" to "latest"
+              this.logger.debug(`Latest SDK version from API: ${latest}`);
+              this.logger.debug(`Current SDK version: ${currentVersion}`);
+            }
+          } catch (fetchError) {
+            this.logger.debug(
+              { fetchError },
+              "Failed to fetch latest SDK version from API, using fallback",
+            );
+          }
+
+          if (currentVersion === "not-found") {
+            this.logger.warn(
+              `⚠️ @mentra/sdk not found in your project dependencies. Please install it with: npm install @mentra/sdk`,
+            );
+          } else if (latest && latest !== currentVersion) {
+            this.logger.warn(newSDKUpdate(latest));
+          }
+        } catch (err) {
+          this.logger.debug({ err }, "Version check failed");
         }
-      } catch (err) {
-        this.logger.debug({ err }, "Version check failed");
-      }
 
         resolve();
       });
@@ -405,7 +410,6 @@ export class AppServer {
   private setupToolCallEndpoint(): void {
     this.app.post("/tool", async (req, res) => {
       try {
-        
         const toolCall = req.body as ToolCall;
         if (this.activeSessionsByUserId.has(toolCall.userId)) {
           toolCall.activeSession =
@@ -434,7 +438,6 @@ export class AppServer {
             error instanceof Error
               ? error.message
               : "Unknown error occurred calling tool",
-              
         });
       }
     });

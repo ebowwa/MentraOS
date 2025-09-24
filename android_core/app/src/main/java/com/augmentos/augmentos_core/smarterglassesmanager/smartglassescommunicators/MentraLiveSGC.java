@@ -2431,7 +2431,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
 
     @Override
-    public void connectToSmartGlasses() {
+    public void connectToSmartGlasses(SmartGlassesDevice smartDevice) {
         Log.d(TAG, "Connecting to Mentra Live glasses");
         connectionEvent(SmartGlassesConnectionState.CONNECTING);
 
@@ -2895,6 +2895,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void displayCustomContent(String json) {
         Log.d(TAG, "[STUB] Device has no display. Cannot display custom content");
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.w(TAG, "MentraLiveSGC does not support clearDisplay");
     }
 
     @Override
@@ -3714,15 +3723,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error saving BLE photo locally", e);
         }
 
-        // Get core token for authentication
-        String coreToken = getCoreToken();
+        // Use the per-request auth token if available, otherwise empty string
+        // Do NOT use core token - that's for MentraOS cloud authentication only
+        String authToken = transfer.authToken != null ? transfer.authToken : "";
 
         // Use BlePhotoUploadService to handle decoding and upload
         BlePhotoUploadService.processAndUploadPhoto(
             imageData,
             transfer.requestId,
             transfer.webhookUrl,
-            coreToken,
+            authToken,
             new BlePhotoUploadService.UploadCallback() {
                 @Override
                 public void onSuccess(String requestId) {

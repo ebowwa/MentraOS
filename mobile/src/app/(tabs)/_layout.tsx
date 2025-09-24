@@ -13,26 +13,24 @@ import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/stores/settings"
 import {router, usePathname} from "expo-router"
+import {useSettingsStore} from "@/stores/settings"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
 
-  const {themeScheme} = useThemeProvider()
+  const isNewUi = useSettingsStore(state => state.settings[SETTINGS_KEYS.NEW_UI])
+  const setSetting = useSettingsStore(state => state.setSetting)
   const {theme, themed} = useAppTheme()
-  const {push, replace} = useNavigationHistory()
+  const {replace} = useNavigationHistory()
 
-  const showLabel = false
   const iconFocusedColor = theme.colors.primary
   const iconInactiveColor = theme.colors.textDim
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
   const pressTimeout = useRef<NodeJS.Timeout | null>(null)
-
-  const pathname = usePathname()
 
   const handleQuickPress = () => {
     replace("/settings")
@@ -61,7 +59,7 @@ export default function Layout() {
     if (pressCount.current === maxPressCount) {
       // Show alert on 8th press
       showAlert("Developer Mode", "You are now a developer!", [{text: translate("common:ok")}])
-      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      useSettingsStore.getState().setSetting(SETTINGS_KEYS.DEV_MODE, true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -84,8 +82,7 @@ export default function Layout() {
   // enable new home ui if you tap and hold
   const handleHomeLongPress = async () => {
     replace("/home")
-    const isNewUi = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-    saveSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    await setSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
     Toast.show({
       type: "info",
       text1: isNewUi ? "New UI disabled" : "New UI enabled",
@@ -222,7 +219,7 @@ export default function Layout() {
   )
 }
 
-const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   borderTopColor: colors.separator,
   borderTopWidth: 1,
@@ -230,12 +227,12 @@ const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   height: 90,
 })
 
-const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBarItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingTop: spacing.sm,
   paddingBottom: spacing.xs,
 })
 
-const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({
+const $tabBarLabel: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 12,
   fontFamily: typography.primary.medium,
   lineHeight: 16,

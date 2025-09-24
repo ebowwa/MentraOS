@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from "react"
 import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -12,15 +11,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
-import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function TranscriptionSettingsScreen() {
-  const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack} = useNavigationHistory()
 
-  const [isEnforceLocalTranscriptionEnabled, setIsEnforceLocalTranscriptionEnabled] = useState(false)
   const [selectedModelId, setSelectedModelId] = useState(STTModelManager.getCurrentModelId())
   const [modelInfo, setModelInfo] = useState<any>(null)
   const [allModels, setAllModels] = useState<any[]>([])
@@ -28,16 +24,12 @@ export default function TranscriptionSettingsScreen() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(false)
-  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000; // 8 seconds
+  const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
+  const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
+    SETTINGS_KEYS.enforce_local_transcription,
+  )
+  const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
-
-
-  // load settings:
-  useEffect(() => {
-    loadSetting(SETTINGS_KEYS.enforce_local_transcription).then(setIsEnforceLocalTranscriptionEnabled)
-    loadSetting(SETTINGS_KEYS.bypass_vad_for_debugging).then(setIsBypassVADForDebuggingEnabled)
-  }, [])
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -97,16 +89,9 @@ export default function TranscriptionSettingsScreen() {
     }
   }
 
-  const toggleEnforceLocalTranscription = async () => {
-    if (!modelInfo?.downloaded) {
-      showAlert("Model Required", "You need to download the speech recognition model first.", [{text: "OK"}])
-      return
-    }
-
-    const newSetting = !isEnforceLocalTranscriptionEnabled
-    await bridge.sendToggleEnforceLocalTranscription(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.enforce_local_transcription, newSetting)
-    setIsEnforceLocalTranscriptionEnabled(newSetting)
+  const enableEnforceLocalTranscription = async () => {
+    await bridge.sendToggleEnforceLocalTranscription(true)
+    await setEnforceLocalTranscription(true)
   }
 
   const timeRemainingTillRestart = () => {
@@ -122,12 +107,30 @@ export default function TranscriptionSettingsScreen() {
     await bridge.restartTranscription()
   }
 
-
   const handleModelChange = async (modelId: string) => {
     const timeRemaining = timeRemainingTillRestart()
 
+    if (isDownloading) {
+      // Also add cancel download button
+      showAlert(
+        "Download in Progress",
+        "A model is currently downloading. Please wait before switching to another model",
+        [
+          {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
+          {text: "OK", style: "cancel"},
+        ],
+      )
+      return
+    }
+
     if (timeRemaining > 0) {
-      showAlert("Restart already in progress", "A model change is in progress. Please wait " + Math.ceil(timeRemaining/1000) + " seconds before switching to another model", [{text: "OK"}])
+      showAlert(
+        "Restart already in progress",
+        "A model change is in progress. Please wait " +
+          Math.ceil(timeRemaining / 1000) +
+          " seconds before switching to another model",
+        [{text: "OK"}],
+      )
       return
     }
     const info = await STTModelManager.getModelInfo(modelId)
@@ -167,6 +170,8 @@ export default function TranscriptionSettingsScreen() {
 
       await activateModelandRestartTranscription(targetModelId)
 
+      await enableEnforceLocalTranscription()
+
       showAlert("Success", "Speech recognition model downloaded successfully!", [{text: "OK"}])
     } catch (error: any) {
       showAlert("Download Failed", error.message || "Failed to download the model. Please try again.", [{text: "OK"}])
@@ -193,9 +198,9 @@ export default function TranscriptionSettingsScreen() {
               await checkModelStatus()
 
               // If local transcription is enabled, disable it
-              if (isEnforceLocalTranscriptionEnabled) {
+              if (enforceLocalTranscription) {
                 await bridge.sendToggleEnforceLocalTranscription(false)
-                setIsEnforceLocalTranscriptionEnabled(false)
+                await setEnforceLocalTranscription(false)
               }
             } catch (error: any) {
               showAlert("Error", error.message || "Failed to delete model", [{text: "OK"}])
@@ -229,10 +234,9 @@ export default function TranscriptionSettingsScreen() {
   }
 
   const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
+    const newSetting = !bypassVadForDebugging
+    await setBypassVadForDebugging(newSetting)
     await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
-    await saveSetting(SETTINGS_KEYS.bypass_vad_for_debugging, newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   useEffect(() => {
@@ -249,7 +253,7 @@ export default function TranscriptionSettingsScreen() {
         <ToggleSetting
           label={translate("settings:bypassVAD")}
           subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
+          value={bypassVadForDebugging}
           onValueChange={toggleBypassVadForDebugging}
         />
 
@@ -278,28 +282,7 @@ export default function TranscriptionSettingsScreen() {
                   currentModelInfo={modelInfo}
                 />
 
-                <Spacer height={theme.spacing.lg} />
-
-                {/* Local Transcription Toggle */}
-                <ToggleSetting
-                  label={translate("settings:enforceLocalTranscription")}
-                  subtitle={translate("settings:enforceLocalTranscriptionSubtitle")}
-                  value={isEnforceLocalTranscriptionEnabled}
-                  onValueChange={toggleEnforceLocalTranscription}
-                  disabled={!modelInfo?.downloaded || isDownloading}
-                />
-
-                {(!modelInfo?.downloaded || isDownloading) && (
-                  <Text
-                    size="xs"
-                    style={{
-                      color: theme.colors.textDim,
-                      marginTop: theme.spacing.xs,
-                      paddingHorizontal: theme.spacing.sm,
-                    }}>
-                    Download a model to enable local transcription
-                  </Text>
-                )}
+                <Spacer height={theme.spacing.md} />
               </>
             )}
           </>

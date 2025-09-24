@@ -17,53 +17,45 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
+import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
+import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
+import bridge from "@/bridge/MantleBridge"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function Homepage() {
-  const {refreshAppStatus} = useAppStatus()
+  const {refreshAppStatus, stopAllApps} = useAppStatus()
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [hasLoaded, setHasLoaded] = useState(false)
+  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+    SETTINGS_KEYS.offline_captions_app_running,
+  )
 
-  const [showNewUi, setShowNewUi] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-      setShowNewUi(newUiSetting)
-      setHasLoaded(true)
-    }
-    check()
-  }, [])
+  const handleToggleOfflineMode = useCallback(
+    async (newIsOfflineMode: boolean) => {
+      if (newIsOfflineMode) {
+        // If enabling offline mode, stop all running apps
+        await stopAllApps()
+      } else {
+        setOfflineCaptionsAppRunning(false)
+        bridge.toggleOfflineApps(false)
+      }
+      setIsOfflineMode(newIsOfflineMode)
+    },
+    [stopAllApps],
+  )
 
   useFocusEffect(
     useCallback(() => {
       refreshAppStatus()
     }, []),
   )
-
-  if (!hasLoaded) {
-    return (
-      <Screen preset="fixed" style={themed($screen)}>
-        <Header
-          leftTx="home:title"
-          RightActionComponent={
-            <View style={themed($headerRight)}>
-              <PermissionsWarning />
-              <MicIcon width={24} height={24} />
-              <NonProdWarning />
-            </View>
-          }
-        />
-      </Screen>
-    )
-  }
 
   if (showNewUi) {
     return (
@@ -90,7 +82,8 @@ export default function Homepage() {
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.md} />
-        <AppsCombinedGridView />
+
+        {isOfflineMode ? <AppsOfflineList /> : <AppsCombinedGridView />}
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
@@ -113,6 +106,7 @@ export default function Homepage() {
         RightActionComponent={
           <View style={themed($headerRight)}>
             <PermissionsWarning />
+            <OfflineModeButton isOfflineMode={isOfflineMode} onToggle={handleToggleOfflineMode} />
             <MicIcon width={24} height={24} />
             <NonProdWarning />
           </View>
@@ -132,15 +126,22 @@ export default function Homepage() {
           <ConnectDeviceButton />
         </View>
         <Spacer height={theme.spacing.lg} />
+
         <Divider variant="full" />
         <Spacer height={theme.spacing.md} />
 
-        <AppsActiveList />
-        <Spacer height={spacing.xl} />
-        <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
-        <Spacer height={spacing.md} />
-        <AppsIncompatibleListOld />
-        <Spacer height={spacing.xl} />
+        {isOfflineMode ? (
+          <AppsOfflineList />
+        ) : (
+          <>
+            <AppsActiveList />
+            <Spacer height={spacing.xl} />
+            <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
+            <Spacer height={spacing.md} />
+            <AppsIncompatibleListOld />
+            <Spacer height={spacing.xl} />
+          </>
+        )}
       </ScrollView>
 
       <Reconnect />

@@ -91,6 +91,18 @@ export class UserSession {
 
   // Heartbeat for glasses connection
   private glassesHeartbeatInterval?: NodeJS.Timeout;
+  private lastPongTime?: number;
+  private pongTimeoutTimer?: NodeJS.Timeout;
+  private readonly PONG_TIMEOUT_MS = 30000; // 30 seconds - 3x heartbeat interval
+
+  // SAFETY FLAG: Set to false to disable pong timeout behavior entirely
+  private static readonly PONG_TIMEOUT_ENABLED = false; // TODO: Set to true when ready to enable connection tracking
+
+  // Connection state tracking
+  public phoneConnected: boolean = false;
+  public glassesConnected: boolean = false;
+  public glassesModel?: string;
+  public lastGlassesStatusUpdate?: Date;
 
   // Audio play request tracking - maps requestId to packageName
   public audioPlayRequestMapping: Map<string, string> = new Map();
@@ -164,15 +176,32 @@ export class UserSession {
       }
     }, HEARTBEAT_INTERVAL);
 
-    // Set up pong handler
+    // Set up pong handler with timeout detection
     this.websocket.on("pong", () => {
+      this.lastPongTime = Date.now();
+      this.phoneConnected = true; // Phone is alive if we got pong
+
       if (LOG_PING_PONG) {
         this.logger.debug(
           { pong: true },
           `[UserSession:heartbeat:pong] Received pong from glasses for user ${this.userId}`,
         );
       }
+
+      // Reset the timeout timer only if enabled
+      if (UserSession.PONG_TIMEOUT_ENABLED) {
+        this.resetPongTimeout();
+      }
     });
+
+    // Initialize pong tracking
+    this.lastPongTime = Date.now();
+    this.phoneConnected = true;
+
+    // Only start timeout tracking if enabled
+    if (UserSession.PONG_TIMEOUT_ENABLED) {
+      this.resetPongTimeout();
+    }
 
     this.logger.debug(
       `[UserSession:setupGlassesHeartbeat] Heartbeat established for glasses connection`,
@@ -190,6 +219,66 @@ export class UserSession {
         `[UserSession:clearGlassesHeartbeat] Heartbeat cleared for glasses connection`,
       );
     }
+
+    // Clear pong timeout as well
+    if (this.pongTimeoutTimer) {
+      clearTimeout(this.pongTimeoutTimer);
+      this.pongTimeoutTimer = undefined;
+    }
+  }
+
+  /**
+   * Reset the pong timeout timer
+   */
+  private resetPongTimeout(): void {
+    // Skip if pong timeout is disabled
+    if (!UserSession.PONG_TIMEOUT_ENABLED) {
+      this.logger.debug(
+        "[UserSession:resetPongTimeout] Pong timeout disabled by PONG_TIMEOUT_ENABLED=false",
+      );
+      return;
+    }
+
+    // Clear existing timer
+    if (this.pongTimeoutTimer) {
+      clearTimeout(this.pongTimeoutTimer);
+    }
+
+    // Set new timeout
+    this.pongTimeoutTimer = setTimeout(() => {
+      const timeSinceLastPong = this.lastPongTime
+        ? Date.now() - this.lastPongTime
+        : this.PONG_TIMEOUT_MS;
+
+      this.logger.error(
+        `[UserSession:pongTimeout] Phone connection timeout - no pong for ${timeSinceLastPong}ms from user ${this.userId}`,
+      );
+
+      // Mark connections as dead
+      this.phoneConnected = false;
+      this.glassesConnected = false; // If phone is dead, glasses are unreachable
+
+      // Close the zombie WebSocket connection
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.logger.info(
+          `[UserSession:pongTimeout] Closing zombie WebSocket connection for user ${this.userId}`,
+        );
+        this.websocket.close(1001, "Ping timeout - no pong received");
+      }
+
+      // Clear the heartbeat since connection is dead
+      this.clearGlassesHeartbeat();
+
+      // Log the disconnection for debugging
+      this.logger.warn(
+        {
+          userId: this.userId,
+          phoneConnected: this.phoneConnected,
+          glassesConnected: this.glassesConnected,
+        },
+        `[UserSession:pongTimeout] Connection state updated after timeout`,
+      );
+    }, this.PONG_TIMEOUT_MS);
   }
 
   /**

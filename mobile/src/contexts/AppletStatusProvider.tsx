@@ -2,13 +2,12 @@ import React, {createContext, useContext, useState, ReactNode, useCallback, useE
 import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl, loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export type AppPermissionType =
   | "ALL"
@@ -77,8 +76,8 @@ interface AppStatusContextType {
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
+  stopAllApps: () => Promise<void>
   clearPendingOperation: (packageName: string) => void
-  checkAppHealthStatus: (packageName: string) => Promise<boolean>
 }
 
 const AppStatusContext = createContext<AppStatusContextType | undefined>(undefined)
@@ -172,7 +171,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
     setAppStatus(currentStatus => {
       // Then update the target app to be running
@@ -187,7 +186,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -218,6 +217,21 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 2000)
   }
 
+  // Stop all running apps
+  const stopAllApps = async () => {
+    try {
+      const runningApps = appStatus.filter(app => app.is_running)
+      for (const app of runningApps) {
+        await restComms.stopApp(app.packageName)
+      }
+      // Update local state to reflect all apps are stopped
+      setAppStatus(currentStatus => currentStatus.map(app => (app.is_running ? {...app, is_running: false} : app)))
+    } catch (error) {
+      console.error("Error stopping all apps:", error)
+      throw error
+    }
+  }
+
   // Optimistically update app status when stopping an app
   const optimisticallyStopApp = async (packageName: string) => {
     // optimistically stop the app:
@@ -232,7 +246,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
+      const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
 
       if (!usingNewUI) {
         setAppStatus(currentStatus =>
@@ -265,31 +279,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // When an app start/stop operation succeeds, clear the pending operation
   const clearPendingOperation = (packageName: string) => {
     delete pendingOperations.current[packageName]
-  }
-
-  const checkAppHealthStatus = async (packageName: string): Promise<boolean> => {
-    // GET the app's /health endpoint
-    try {
-      const app = appStatus.find(app => app.packageName === packageName)
-      if (!app) {
-        return false
-      }
-      const baseUrl = await getRestUrl()
-      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
-      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
-      const healthResponse = await fetch(healthUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({packageName}),
-      })
-      const healthData = await healthResponse.json()
-      return healthData.success
-    } catch (error) {
-      console.error("AppStatusProvider: Error checking app health status:", error)
-      return false
-    }
   }
 
   const onCoreTokenSet = () => {
@@ -336,8 +325,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,
+        stopAllApps,
         clearPendingOperation,
-        checkAppHealthStatus,
       }}>
       {children}
     </AppStatusContext.Provider>

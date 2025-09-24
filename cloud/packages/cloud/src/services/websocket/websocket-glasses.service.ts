@@ -42,6 +42,9 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 // Constants
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
 
+// SAFETY FLAG: Set to false to disable grace period cleanup entirely
+const GRACE_PERIOD_CLEANUP_ENABLED = false; // TODO: Set to true when ready to enable auto-cleanup
+
 const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
   contextualDashboard: true,
@@ -762,9 +765,31 @@ export class GlassesWebSocketService {
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === "CONNECTED";
 
+    // Update connection state tracking in UserSession
+    const wasConnected = userSession.glassesConnected;
+    userSession.glassesConnected = isConnected;
+    userSession.glassesModel = modelName;
+    userSession.lastGlassesStatusUpdate = new Date();
+
     // Update glasses model in session when connected and model name is available
     if (isConnected && modelName) {
       await userSession.updateGlassesModel(modelName);
+    }
+
+    // Log connection state change if state changed
+    if (wasConnected !== isConnected) {
+      userSession.logger.info(
+        {
+          previousState: wasConnected,
+          newState: isConnected,
+          model: modelName,
+          userId: userSession.userId,
+        },
+        `Glasses connection state changed from ${wasConnected} to ${isConnected} for user ${userSession.userId}`,
+      );
+
+      // The existing relayMessageToApps call below will notify subscribed apps
+      // No need for additional broadcasting
     }
 
     try {
@@ -976,8 +1001,13 @@ export class GlassesWebSocketService {
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
 
-    // Set cleanup timer if not already set
-    if (!userSession.cleanupTimerId) {
+    // Set cleanup timer if not already set (and if cleanup is enabled)
+    if (!GRACE_PERIOD_CLEANUP_ENABLED) {
+      userSession.logger.debug(
+        { service: SERVICE_NAME },
+        `Grace period cleanup disabled by GRACE_PERIOD_CLEANUP_ENABLED=false for user: ${userSession.userId}`,
+      );
+    } else if (!userSession.cleanupTimerId) {
       userSession.cleanupTimerId = setTimeout(() => {
         userSession.logger.debug(
           { service: SERVICE_NAME },

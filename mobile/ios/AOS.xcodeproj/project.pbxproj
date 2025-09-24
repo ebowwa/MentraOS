@@ -133,21 +133,29 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C5033C232E56654E006A0718 /* sgcs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = sgcs;
 			sourceTree = "<group>";
 		};
-		C5033C242E56657F006A0718 /* subs */ = {
+		C5033C242E56657F006A0718 /* services */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = subs;
+			exceptions = (
+			);
+			path = services;
 			sourceTree = "<group>";
 		};
 		C5033C332E5665D4006A0718 /* utils */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = utils;
 			sourceTree = "<group>";
 		};
 		C5033C3A2E56664B006A0718 /* stt */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = stt;
 			sourceTree = "<group>";
 		};
@@ -259,7 +267,7 @@
 			children = (
 				C5033C3A2E56664B006A0718 /* stt */,
 				C5033C332E5665D4006A0718 /* utils */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C232E56654E006A0718 /* sgcs */,
 				C5DE98952DE267CD0032FC99 /* Bridge.m */,
 				C5DE98962DE267CD0032FC99 /* Bridge.swift */,
@@ -424,7 +432,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				C5033C232E56654E006A0718 /* sgcs */,
-				C5033C242E56657F006A0718 /* subs */,
+				C5033C242E56657F006A0718 /* services */,
 				C5033C332E5665D4006A0718 /* utils */,
 				C5033C3A2E56664B006A0718 /* stt */,
 			);
@@ -537,13 +545,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -577,13 +581,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-AOS/Pods-AOS-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1029,7 +1029,10 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -1086,7 +1089,10 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

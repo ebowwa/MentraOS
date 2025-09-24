@@ -78,7 +78,7 @@ export function openInApp(packageName?: string): void {
  * Opens the appropriate app store for downloading MentraOS
  * - iOS devices (iPhone, iPad) → App Store
  * - Android devices → Play Store
- * - All desktop/laptop devices → mentra.glass/install
+ * - All desktop/laptop devices → mentra.glass/os
  */
 export function openAppStore(): void {
   if (isIOS()) {
@@ -95,6 +95,6 @@ export function openAppStore(): void {
     );
   } else {
     // All desktop/laptop devices (macOS, Windows, Linux, etc.)
-    window.open("https://mentra.glass/install", "_blank");
+    window.open("https://mentra.glass/os", "_blank");
   }
 }
