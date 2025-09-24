@@ -99,6 +99,20 @@ export default function DeviceSettings() {
 
   const {push} = useNavigationHistory()
 
+  // Check if we have any advanced settings to show
+  const hasMicrophoneSelector =
+    defaultWearable &&
+    hasCustomMic(defaultWearable) &&
+    (defaultWearable !== "Mentra Live" ||
+      (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900"))
+
+  const hasDeviceInfo =
+    status.glasses_info?.bluetooth_name ||
+    status.glasses_info?.glasses_build_number ||
+    status.glasses_info?.glasses_wifi_local_ip
+
+  const hasAdvancedSettingsContent = hasMicrophoneSelector || hasDeviceInfo
+
   // Animate advanced settings dropdown
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -457,8 +471,8 @@ export default function DeviceSettings() {
         />
       )}
 
-      {/* Advanced Settings Dropdown */}
-      {defaultWearable && (
+      {/* Advanced Settings Dropdown - Only show if there's content */}
+      {defaultWearable && hasAdvancedSettingsContent && (
         <>
           <TouchableOpacity
             style={themed($advancedSettingsButton)}
