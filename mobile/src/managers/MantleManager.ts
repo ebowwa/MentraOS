@@ -69,8 +69,8 @@ class MantleManager {
       60 * 60 * 1000,
     ) // 1 hour
     try {
-      let locationAccuracy = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.location_tier)
-      let properAccuracy = this.getLocationAccuracy(locationAccuracy)
+      const locationAccuracy = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.location_tier)
+      const properAccuracy = this.getLocationAccuracy(locationAccuracy)
       Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: properAccuracy,
       })
@@ -152,10 +152,7 @@ class MantleManager {
     const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
       this.transcriptProcessor.changeLanguage(data.transcribeLanguage)
-      const processedText = this.transcriptProcessor.processString(
-        data.text,
-        data.isFinal ?? false
-      )
+      const processedText = this.transcriptProcessor.processString(data.text, data.isFinal ?? false)
 
       // Scheduling timeout to clear text from wall. In case of online STT online dashboard manager will handle it.
       if (data.isFinal) {
