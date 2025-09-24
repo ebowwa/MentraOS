@@ -1192,6 +1192,13 @@ class DisplayManager {
     }
 
     try {
+      if (!webSocket) {
+        this.logger.error(
+          {},
+          `[${this.getUserId()}] ❌ No WebSocket available to send display request`,
+        );
+        return false;
+      }
       webSocket.send(JSON.stringify(displayRequest));
       return true;
     } catch (error) {

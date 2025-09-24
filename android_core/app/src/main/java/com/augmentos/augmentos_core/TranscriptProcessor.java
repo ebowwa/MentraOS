@@ -175,7 +175,7 @@ public class TranscriptProcessor {
     }
 
     public void modifyLanguage(String language) {
-        var languageIsChinese = language.equals("zh-CN");
+        boolean languageIsChinese = language.equals("zh-CN");
         if (languageIsChinese != this.isChinese) {
             this.isChinese = languageIsChinese;
             if (languageIsChinese) {
