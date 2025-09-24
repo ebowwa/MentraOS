@@ -50,6 +50,7 @@ import {
 } from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
 import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
@@ -267,7 +268,7 @@ export default function AppSettings() {
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         // Get cached settings to preserve user values for existing settings
-        const cached = await useSettingsStore.getState().loadSetting(SETTINGS_CACHE_KEY(packageName))
+        const cached = JSON.parse((await AsyncStorage.getItem(SETTINGS_CACHE_KEY(packageName))) ?? "{}")
         const cachedState = cached?.settingsState || {}
 
         const initialState: {[key: string]: any} = {}
@@ -280,10 +281,13 @@ export default function AppSettings() {
         })
         setSettingsState(initialState)
         // Cache the settings
-        useSettingsStore.getState().setSetting(SETTINGS_CACHE_KEY(packageName), {
-          serverAppInfo: data,
-          settingsState: initialState,
-        })
+        AsyncStorage.setItem(
+          SETTINGS_CACHE_KEY(packageName),
+          JSON.stringify({
+            serverAppInfo: data,
+            settingsState: initialState,
+          }),
+        )
         setHasCachedSettings(data.settings.length > 0)
       } else {
         setHasCachedSettings(false)
