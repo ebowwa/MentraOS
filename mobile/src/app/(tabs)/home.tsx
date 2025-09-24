@@ -1,9 +1,10 @@
-import {useRef, useCallback, useState} from "react"
-import {View, ViewStyle, ScrollView} from "react-native"
+import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
+import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
+import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import CloudConnection from "@/components/misc/CloudConnection"
@@ -12,6 +13,7 @@ import NonProdWarning from "@/components/misc/NonProdWarning"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
+import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
@@ -31,9 +33,9 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
   const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
-  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
     SETTINGS_KEYS.offline_captions_app_running,
   )
 

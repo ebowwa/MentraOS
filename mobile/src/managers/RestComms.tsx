@@ -1,6 +1,11 @@
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
-import {useSettingsStore} from "@/stores/settings"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+
+interface Callback {
+  onSuccess: (data: any) => void
+  onFailure: (errorCode: number) => void
+}
 
 interface ApiResponse<T = any> {
   success?: boolean

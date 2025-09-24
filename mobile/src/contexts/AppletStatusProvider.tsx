@@ -1,4 +1,5 @@
-import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
+import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
+import RestComms from "@/managers/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {deepCompare} from "@/utils/debugging"
@@ -289,7 +290,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }, 1500)
   }
 
-  const onAppStateChange = () => {
+  const onAppStateChange = (msg: any) => {
     // console.log("APP_STATE_CHANGE event received, forcing app refresh")
     refreshAppStatus()
   }

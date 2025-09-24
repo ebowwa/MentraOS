@@ -1,5 +1,6 @@
+import {router} from "expo-router"
 import {supabase} from "@/supabase/supabaseClient"
-import {NavObject} from "@/contexts/NavigationHistoryContext"
+import {NavigationHistoryPush, NavigationHistoryReplace, NavObject} from "@/contexts/NavigationHistoryContext"
 import {Platform} from "react-native"
 import * as WebBrowser from "expo-web-browser"
 
@@ -116,7 +117,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/store",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      const {packageName} = params
+      const {packageName, preloaded, authed} = params
       navObject.replace(`/store?packageName=${packageName}`)
     },
     requiresAuth: true,
@@ -251,7 +252,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
       if (authParams && authParams.access_token && authParams.refresh_token && authParams.type === "recovery") {
         try {
           // Set the recovery session
-          const {error} = await supabase.auth.setSession({
+          const {data, error} = await supabase.auth.setSession({
             access_token: authParams.access_token,
             refresh_token: authParams.refresh_token,
           })

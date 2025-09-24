@@ -1,6 +1,6 @@
 import {View} from "react-native"
 
-export const DebugHitSlop = ({children, hitSlop, style}) => {
+export const DebugHitSlop = ({children, hitSlop, style, ...props}) => {
   if (!__DEV__ || !hitSlop) return children
 
   const hitSlopStyle = {
@@ -125,7 +125,7 @@ function deepCompare(obj1: any, obj2: any, path: string = ""): DiffResult[] {
  * Pretty prints the differences between two objects
  */
 function prettyPrintDiff(obj1: any, obj2: any, options: PrintOptions = {}): void {
-  const {colorize = true, compact = false} = options
+  const {showEqual = false, colorize = true, compact = false} = options
 
   const differences = deepCompare(obj1, obj2)
 
@@ -211,7 +211,7 @@ function prettyPrintDiff(obj1: any, obj2: any, options: PrintOptions = {}): void
 /**
  * Returns differences as a formatted string
  */
-function getDiffString(obj1: any, obj2: any, _options: PrintOptions = {}): string {
+function getDiffString(obj1: any, obj2: any, options: PrintOptions = {}): string {
   const differences = deepCompare(obj1, obj2)
 
   if (differences.length === 0) {
