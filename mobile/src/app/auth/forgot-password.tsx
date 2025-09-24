@@ -1,4 +1,4 @@
-import React, {useState} from "react"
+import {useState} from "react"
 import {View, TextInput, ActivityIndicator, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import {Button, Header, Screen, Text} from "@/components/ignite"
@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendResetEmail = async () => {
     if (!isEmailValid) {
-      showAlert(translate("common:error"), translate("login:invalidEmail"))
+      showAlert(translate("common:error"), translate("login:invalidEmail"), [{text: "OK"}])
       return
     }
 
@@ -59,8 +59,8 @@ export default function ForgotPasswordScreen() {
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title={translate("login:forgotPasswordTitle")} leftIcon="caretLeft" onLeftPress={goBack} />
-      <ScrollView 
-        contentContainerStyle={themed($scrollContent)} 
+      <ScrollView
+        contentContainerStyle={themed($scrollContent)}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
         <View style={themed($card)}>

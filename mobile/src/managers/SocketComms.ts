@@ -1,6 +1,6 @@
 import bridge from "@/bridge/MantleBridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
+import wsManager from "@/managers/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
 import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
@@ -421,12 +421,12 @@ class SocketComms {
     })
   }
 
-  private handle_start_buffer_recording(msg: any) {
+  private handle_start_buffer_recording() {
     console.log("SocketCommsTS: Received START_BUFFER_RECORDING")
     bridge.sendCommand("start_buffer_recording")
   }
 
-  private handle_stop_buffer_recording(msg: any) {
+  private handle_stop_buffer_recording() {
     console.log("SocketCommsTS: Received STOP_BUFFER_RECORDING")
     bridge.sendCommand("stop_buffer_recording")
   }

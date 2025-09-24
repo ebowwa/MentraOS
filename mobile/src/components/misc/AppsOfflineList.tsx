@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from "react"
+import {useCallback, useEffect} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"

@@ -1,7 +1,6 @@
-import React, {createContext, useContext, useEffect, useRef, useState} from "react"
+import {createContext, useContext, useEffect, useRef, useState} from "react"
 import {WebView} from "react-native-webview"
 import Constants from "expo-constants"
-import RestComms from "@/managers/RestComms"
 import {View} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"

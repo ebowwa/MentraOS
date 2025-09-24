@@ -68,7 +68,9 @@ export function save(key: string, value: unknown): boolean {
 export function remove(key: string): void {
   try {
     storage.delete(key)
-  } catch {}
+  } catch {
+    console.error("Error removing key from storage:", key)
+  }
 }
 
 /**
@@ -77,5 +79,7 @@ export function remove(key: string): void {
 export function clear(): void {
   try {
     storage.clearAll()
-  } catch {}
+  } catch {
+    console.error("Error clearing storage")
+  }
 }

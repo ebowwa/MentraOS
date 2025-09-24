@@ -9,7 +9,7 @@ jest.doMock("react-native", () => {
     {
       Image: {
         ...ReactNative.Image,
-        resolveAssetSource: jest.fn(_source => mockFile), // eslint-disable-line @typescript-eslint/no-unused-vars
+        resolveAssetSource: jest.fn(_source => mockFile),
         getSize: jest.fn(
           (
             uri: string,

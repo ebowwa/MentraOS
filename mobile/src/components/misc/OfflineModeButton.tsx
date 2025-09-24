@@ -1,5 +1,5 @@
-import React, {useState} from "react"
-import {View, TouchableOpacity, StyleSheet, Modal, ViewStyle} from "react-native"
+import {useState} from "react"
+import {View, TouchableOpacity, StyleSheet, Modal} from "react-native"
 import {Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing} from "@/theme"

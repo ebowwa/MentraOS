@@ -1,4 +1,4 @@
-import React, {useRef, useCallback, useState, useEffect} from "react"
+import {useRef, useCallback, useState} from "react"
 import {View, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -31,9 +31,9 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
   const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
-  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
     SETTINGS_KEYS.offline_captions_app_running,
   )
 

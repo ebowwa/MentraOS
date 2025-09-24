@@ -1,4 +1,4 @@
-import {useEffect, useState, ReactNode} from "react"
+import {useEffect, useState} from "react"
 import {useRouter} from "expo-router"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
@@ -10,7 +10,6 @@ export function OtaUpdateChecker() {
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)
-  const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
   useEffect(() => {
     const checkForOtaUpdate = async () => {
@@ -52,7 +51,6 @@ export function OtaUpdateChecker() {
         const versionJson = await fetchVersionInfo(otaVersionUrl)
         if (isUpdateAvailable(currentBuildNumber, versionJson)) {
           const latestVersionInfo = getLatestVersionInfo(versionJson)
-          setLatestVersion(latestVersionInfo?.versionName || null)
 
           showAlert(
             "Update Available",
@@ -101,8 +99,8 @@ export function Reconnect() {
         if (!reconnectOnAppForeground) {
           return
         }
-        let defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
-        let deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
+        const defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
+        const deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
         console.log("Attempt reconnect to glasses", defaultWearable, deviceName)
         await bridge.sendConnectWearable(defaultWearable, deviceName)
       }
