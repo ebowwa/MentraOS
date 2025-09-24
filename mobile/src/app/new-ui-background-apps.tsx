@@ -254,21 +254,21 @@ const $sectionHeader = theme => ({
   fontWeight: "600",
   color: theme.colors.textDim,
   marginBottom: theme.spacing.xs,
-  paddingHorizontal: theme.spacing.md,
+  paddingHorizontal: theme.spacing.lg,
   textTransform: "uppercase",
   letterSpacing: 0.5,
 })
 
 const $sectionContent = theme => ({
-  paddingHorizontal: theme.spacing.md,
+  paddingHorizontal: theme.spacing.lg,
 })
 
 const $appRow = theme => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  paddingVertical: theme.spacing.sm,
-  minHeight: 80,
+  paddingVertical: theme.spacing.md,
+  minHeight: 72,
 })
 
 const $appContent = theme => ({
@@ -279,8 +279,8 @@ const $appContent = theme => ({
 })
 
 const $appIcon = theme => ({
-  width: 56,
-  height: 56,
+  width: 48,
+  height: 48,
 })
 
 const $appInfo = theme => ({
@@ -320,7 +320,7 @@ const $offlineText = theme => ({
 })
 
 const $tipContainer = theme => ({
-  marginHorizontal: theme.spacing.md,
+  marginHorizontal: theme.spacing.lg,
   paddingVertical: theme.spacing.md,
   paddingHorizontal: theme.spacing.md,
   backgroundColor: theme.colors.palette.neutral100,

@@ -68,6 +68,7 @@ export default function Homepage() {
           RightActionComponent={
             <View style={themed($headerRight)}>
               <PermissionsWarning />
+              <OfflineModeButton isOfflineMode={isOfflineMode} onToggle={handleToggleOfflineMode} />
               <MicIcon width={24} height={24} />
               <NonProdWarning />
             </View>
