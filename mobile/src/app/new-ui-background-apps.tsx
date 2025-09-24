@@ -17,6 +17,7 @@ import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
 import {showAlert} from "@/utils/AlertUtils"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
 
 export default function NewUiBackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
@@ -48,6 +49,17 @@ export default function NewUiBackgroundAppsScreen() {
     const app = backgroundApps.find(a => a.packageName === packageName)
     if (!app) {
       console.error("App not found:", packageName)
+      return
+    }
+
+    // First check permissions for the app
+    const permissionResult = await askPermissionsUI(app, theme)
+    if (permissionResult === -1) {
+      // User cancelled
+      return
+    } else if (permissionResult === 0) {
+      // Permissions failed, retry
+      await startApp(packageName)
       return
     }
 

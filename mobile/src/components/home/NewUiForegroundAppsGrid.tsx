@@ -14,6 +14,7 @@ import restComms from "@/managers/RestComms"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import showAlert from "@/utils/AlertUtils"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
 
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
@@ -51,6 +52,17 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
           refreshAppStatus()
           console.error("Start app error:", error)
         }
+        return
+      }
+
+      // First check permissions for the app
+      const permissionResult = await askPermissionsUI(app, theme)
+      if (permissionResult === -1) {
+        // User cancelled
+        return
+      } else if (permissionResult === 0) {
+        // Permissions failed, retry
+        await startApp(packageName)
         return
       }
 
@@ -107,7 +119,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         })
       }
     },
-    [foregroundApps, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus],
+    [foregroundApps, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus, theme],
   )
 
   const stopApp = useCallback(
