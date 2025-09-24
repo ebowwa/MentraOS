@@ -420,6 +420,14 @@ export class AppWebSocketService {
                 "Camera is currently busy with live streaming. Please stop the stream before taking photos.",
               );
               break;
+            } else {
+              // Delegate to PhotoManager
+              const requestId =
+                await userSession.photoManager.requestPhoto(photoRequestMsg);
+              this.logger.info(
+                { requestId, packageName: photoRequestMsg.packageName },
+                "Photo request processed by PhotoManager.",
+              );
             }
 
             // Delegate to PhotoManager
