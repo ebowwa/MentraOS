@@ -304,12 +304,12 @@ export function GalleryScreen() {
         },
       )
 
-      const glassesModel = status.glasses_info?.model_name || undefined
+      const glassesModel = status.glasses_info?.model_name
 
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
-          photoInfo.filePath,
+          photoInfo.filePath || "",
           photoInfo.thumbnailPath,
           glassesModel,
         )
@@ -521,6 +521,100 @@ export function GalleryScreen() {
             await loadDownloadedPhotos()
           } catch (err) {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
+          }
+        },
+      },
+    ])
+  }
+
+  // Handle delete all photos
+  const handleDeleteAll = async () => {
+    const totalServerPhotos = totalServerCount
+    const totalLocalPhotos = downloadedPhotos.length
+    const totalPhotos = totalServerPhotos + totalLocalPhotos
+
+    if (totalPhotos === 0) {
+      showAlert("No Photos", "There are no photos to delete", [{text: translate("common:ok")}])
+      return
+    }
+
+    const itemText = totalPhotos === 1 ? "item" : "items"
+    let message = `This will permanently delete all ${totalPhotos} ${itemText}`
+
+    if (totalServerPhotos > 0 && totalLocalPhotos > 0) {
+      message += ` (${totalServerPhotos} from glasses, ${totalLocalPhotos} from local storage)`
+    } else if (totalServerPhotos > 0) {
+      message += ` from your glasses`
+    } else {
+      message += ` from local storage`
+    }
+
+    message += ". This action cannot be undone."
+
+    showAlert("Delete All Photos", message, [
+      {text: translate("common:cancel"), style: "cancel"},
+      {
+        text: "Delete All",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            let deleteErrors: string[] = []
+
+            // Delete all server photos if connected
+            if (totalServerPhotos > 0 && isHotspotEnabled && hotspotGatewayIp) {
+              try {
+                // Get all server photo names
+                const serverPhotoNames: string[] = []
+                for (let i = 0; i < totalServerCount; i++) {
+                  const photo = loadedServerPhotos.get(i)
+                  if (photo) {
+                    serverPhotoNames.push(photo.name)
+                  }
+                }
+
+                if (serverPhotoNames.length > 0) {
+                  const deleteResult = await asgCameraApi.deleteFilesFromServer(serverPhotoNames)
+                  if (deleteResult.failed.length > 0) {
+                    deleteErrors.push(`Failed to delete ${deleteResult.failed.length} photos from glasses`)
+                  }
+                  console.log(`[GalleryScreen] Deleted ${deleteResult.deleted.length} photos from server`)
+                }
+              } catch (err) {
+                console.error("Error deleting server photos:", err)
+                deleteErrors.push("Failed to delete photos from glasses")
+              }
+            }
+
+            // Delete all local photos
+            if (totalLocalPhotos > 0) {
+              try {
+                await localStorageService.clearAllFiles()
+                console.log(`[GalleryScreen] Cleared all local photos`)
+              } catch (err) {
+                console.error("Error deleting local photos:", err)
+                deleteErrors.push("Failed to delete local photos")
+              }
+            }
+
+            // Refresh the gallery
+            setLoadedServerPhotos(new Map())
+            setTotalServerCount(0)
+            loadedRanges.current.clear()
+            loadingRanges.current.clear()
+            await loadDownloadedPhotos()
+
+            // Refresh server photos if connected
+            if (isHotspotEnabled && hotspotGatewayIp) {
+              loadInitialPhotos()
+            }
+
+            if (deleteErrors.length > 0) {
+              showAlert("Partial Success", deleteErrors.join(". "), [{text: translate("common:ok")}])
+            } else {
+              showAlert("Success", "All photos deleted successfully!", [{text: translate("common:ok")}])
+            }
+          } catch (err) {
+            showAlert("Error", "Failed to delete photos", [{text: translate("common:ok")}])
           }
         },
       },
@@ -889,16 +983,16 @@ export function GalleryScreen() {
                   style={{marginRight: spacing.xs}}
                 />
                 <Text style={themed($syncButtonText)}>
-                  Sync {glassesGalleryStatus?.total}{" "}
-                  {glassesGalleryStatus?.photos > 0 && glassesGalleryStatus?.videos > 0
-                    ? glassesGalleryStatus?.total === 1
+                  Sync {glassesGalleryStatus?.total || 0}{" "}
+                  {(glassesGalleryStatus?.photos || 0) > 0 && (glassesGalleryStatus?.videos || 0) > 0
+                    ? (glassesGalleryStatus?.total || 0) === 1
                       ? "item"
                       : "items"
-                    : glassesGalleryStatus?.photos > 0
-                      ? glassesGalleryStatus?.photos === 1
+                    : (glassesGalleryStatus?.photos || 0) > 0
+                      ? (glassesGalleryStatus?.photos || 0) === 1
                         ? "photo"
                         : "photos"
-                      : glassesGalleryStatus?.videos === 1
+                      : (glassesGalleryStatus?.videos || 0) === 1
                         ? "video"
                         : "videos"}
                 </Text>
@@ -996,8 +1090,16 @@ export function GalleryScreen() {
       <TouchableOpacity
         style={[themed($photoItem), {width: itemWidth}]}
         onPress={() => handlePhotoPress(item)}
-        onLongPress={() => (item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo))}>
-        <PhotoImage photo={item.photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+        onLongPress={() => {
+          if (item.photo) {
+            if (item.isOnServer) {
+              handleDeletePhoto(item.photo)
+            } else {
+              handleDeleteDownloadedPhoto(item.photo)
+            }
+          }
+        }}>
+        <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
         {item.isOnServer && (
           <View style={themed($serverBadge)}>
             <MaterialCommunityIcons name="glasses" size={14} color="white" />
@@ -1018,13 +1120,11 @@ export function GalleryScreen() {
         title="Glasses Gallery"
         leftIcon="caretLeft"
         onLeftPress={() => goBack()}
-        // RightActionComponent={
-        //   <TouchableOpacity onPress={handleSync} style={themed($syncButton)}>
-        //     {/* number of photos to sync */}
-        //     <MaterialCommunityIcons name="download" size={20} color={theme.colors.text} />
-        //     <Text style={themed($syncButtonText)}>{totalServerCount}</Text>
-        //   </TouchableOpacity>
-        // }
+        RightActionComponent={
+          <TouchableOpacity onPress={handleDeleteAll} style={themed($deleteAllButton)}>
+            <MaterialCommunityIcons name="delete-sweep" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+        }
       />
       <View style={themed($screenContainer)}>
         <View style={themed($galleryContainer)}>
@@ -1236,4 +1336,14 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   shadowOpacity: 0.3,
   shadowRadius: 2,
   elevation: 3,
+})
+
+const $deleteAllButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.sm,
+  paddingVertical: spacing.xs,
+  borderRadius: spacing.sm,
+  justifyContent: "center",
+  alignItems: "center",
+  minWidth: 44,
+  minHeight: 44,
 })

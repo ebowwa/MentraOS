@@ -656,7 +656,7 @@ export class AsgCameraApiClient {
   }
 
   /**
-   * Delete files from server after successful sync
+   * Delete files from server
    */
   async deleteFilesFromServer(fileNames: string[]): Promise<{
     deleted: string[]
