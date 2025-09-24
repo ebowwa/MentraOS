@@ -15,6 +15,8 @@ import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
 import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
+import {showAlert} from "@/utils/AlertUtils"
+import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 
 export default function NewUiBackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
@@ -44,18 +46,46 @@ export default function NewUiBackgroundAppsScreen() {
   }
 
   const startApp = async (packageName: string) => {
-    setIsLoading(true)
-    optimisticallyStartApp(packageName)
-
-    try {
-      await restComms.startApp(packageName)
-      clearPendingOperation(packageName)
-    } catch (error) {
-      refreshAppStatus()
-      console.error("Start app error:", error)
-    } finally {
-      setIsLoading(false)
+    const app = backgroundApps.find(a => a.packageName === packageName)
+    if (!app) {
+      console.error("App not found:", packageName)
+      return
     }
+
+    setIsLoading(true)
+
+    // Perform health check flow
+    const shouldStart = await performHealthCheckFlow({
+      app,
+      onStartApp: async () => {
+        optimisticallyStartApp(packageName)
+        try {
+          await restComms.startApp(packageName)
+          clearPendingOperation(packageName)
+        } catch (error) {
+          refreshAppStatus()
+          console.error("Start app error:", error)
+        }
+      },
+      onAppUninstalled: async () => {
+        await refreshAppStatus()
+      },
+      optimisticallyStopApp,
+      clearPendingOperation,
+    })
+
+    if (shouldStart) {
+      optimisticallyStartApp(packageName)
+      try {
+        await restComms.startApp(packageName)
+        clearPendingOperation(packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Start app error:", error)
+      }
+    }
+
+    setIsLoading(false)
   }
 
   const stopApp = async (packageName: string) => {
@@ -74,10 +104,19 @@ export default function NewUiBackgroundAppsScreen() {
   }
 
   const openAppSettings = (app: AppletInterface) => {
-    push("/applet/settings", {
-      packageName: app.packageName,
-      appName: app.name,
-    })
+    // Check if app has webviewURL and navigate directly to it
+    if (app.webviewURL && app.isOnline !== false) {
+      push("/applet/webview", {
+        webviewURL: app.webviewURL,
+        appName: app.name,
+        packageName: app.packageName,
+      })
+    } else {
+      push("/applet/settings", {
+        packageName: app.packageName,
+        appName: app.name,
+      })
+    }
   }
 
   const renderAppItem = (app: AppletInterface, index: number, isLast: boolean) => {
@@ -178,10 +217,7 @@ export default function NewUiBackgroundAppsScreen() {
                     <Text style={themed($tipText)}>Activate an App</Text>
                     <Text style={themed($tipSubtext)}>Tap an app's switch to activate it</Text>
                   </View>
-                  <View style={themed($animatedToggle)}>
-                    <View style={themed($toggleBar)} />
-                    <View style={themed($toggleCircle)} />
-                  </View>
+                  <Switch value={false} onValueChange={() => {}} disabled={false} pointerEvents="none" />
                 </View>
                 <Spacer height={theme.spacing.lg} />
               </>
@@ -346,34 +382,6 @@ const $tipText = theme => ({
 const $tipSubtext = theme => ({
   fontSize: 13,
   color: theme.colors.textDim,
-})
-
-const $animatedToggle = theme => ({
-  width: 32,
-  height: 16,
-  position: "relative",
-})
-
-const $toggleBar = theme => ({
-  height: 16,
-  width: 32,
-  borderRadius: 16,
-  backgroundColor: theme.colors.switchTrackOff,
-  borderColor: theme.colors.switchBorder,
-  borderWidth: theme.colors.switchBorderWidth,
-  position: "absolute",
-})
-
-const $toggleCircle = theme => ({
-  width: 24,
-  height: 24,
-  top: -4,
-  left: -4,
-  borderRadius: 12,
-  backgroundColor: theme.colors.switchThumbOff,
-  position: "absolute",
-  borderColor: theme.colors.switchBorder,
-  borderWidth: theme.colors.switchBorderWidth,
 })
 
 const $gearButton = theme => ({

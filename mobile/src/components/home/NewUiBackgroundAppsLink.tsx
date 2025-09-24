@@ -1,18 +1,18 @@
 import React from "react"
 import {TouchableOpacity, View, Text} from "react-native"
-import {useRouter} from "expo-router"
 
 import {useNewUiActiveBackgroundAppsCount} from "@/hooks/useNewUiFilteredApps"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export const NewUiBackgroundAppsLink: React.FC = () => {
   const {themed, theme} = useAppTheme()
-  const router = useRouter()
+  const {push} = useNavigationHistory()
   const activeCount = useNewUiActiveBackgroundAppsCount()
 
   const handlePress = () => {
-    router.push("/new-ui-background-apps")
+    push("/new-ui-background-apps")
   }
 
   return (

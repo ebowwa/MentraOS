@@ -106,14 +106,14 @@ export default function AppSettings() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        replace("/(tabs)/home")
+        goBack()
         return true
       }
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
       return () => {
         BackHandler.removeEventListener("hardwareBackPress", onBackPress)
       }
-    }, []),
+    }, [goBack]),
   )
 
   // Handle app start/stop actions with debouncing

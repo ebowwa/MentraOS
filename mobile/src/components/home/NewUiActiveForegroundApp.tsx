@@ -9,6 +9,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import restComms from "@/managers/RestComms"
 import {showAlert} from "@/utils/AlertUtils"
+import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 
 export const NewUiActiveForegroundApp: React.FC = () => {
   const {themed, theme} = useAppTheme()
@@ -19,10 +20,19 @@ export const NewUiActiveForegroundApp: React.FC = () => {
 
   const handlePress = () => {
     if (activeForegroundApp) {
-      push("/applet/settings", {
-        packageName: activeForegroundApp.packageName,
-        appName: activeForegroundApp.name,
-      })
+      // Check if app has webviewURL and navigate directly to it
+      if (activeForegroundApp.webviewURL && activeForegroundApp.isOnline !== false) {
+        push("/applet/webview", {
+          webviewURL: activeForegroundApp.webviewURL,
+          appName: activeForegroundApp.name,
+          packageName: activeForegroundApp.packageName,
+        })
+      } else {
+        push("/applet/settings", {
+          packageName: activeForegroundApp.packageName,
+          appName: activeForegroundApp.name,
+        })
+      }
     }
   }
 

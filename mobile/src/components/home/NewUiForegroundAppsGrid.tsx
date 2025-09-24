@@ -13,6 +13,7 @@ import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import showAlert from "@/utils/AlertUtils"
+import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 
 const GRID_COLUMNS = 4
 const SCREEN_WIDTH = Dimensions.get("window").width
@@ -76,24 +77,6 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         return
       }
 
-      // Check if app is offline
-      if (app.isOnline === false) {
-        const developerName = (" " + (app.developerName || "") + " ").replace("  ", " ")
-        Alert.alert(
-          "App is down for maintenance",
-          `${app.name} appears to be offline. You can try anyway.\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
-          [
-            {text: "Cancel", style: "cancel"},
-            {
-              text: "Try Anyway",
-              onPress: () => startApp(app.packageName),
-            },
-          ],
-          {cancelable: true},
-        )
-        return
-      }
-
       // Check if there's already an active foreground app
       if (activeForegroundApp) {
         showAlert(
@@ -120,18 +103,62 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
   )
 
   const startApp = async (packageName: string) => {
-    setIsLoading(true)
-    optimisticallyStartApp(packageName)
+    // When switching apps, the app might not be in the current filtered list
+    // So we need to check both foregroundApps and pass the app through from handleAppPress
+    let app = foregroundApps.find(a => a.packageName === packageName)
 
-    try {
-      await restComms.startApp(packageName)
-      clearPendingOperation(packageName)
-    } catch (error) {
-      refreshAppStatus()
-      console.error("Start app error:", error)
-    } finally {
-      setIsLoading(false)
+    // If not found in foregroundApps, it might be passed as a parameter (when switching)
+    // For now, we'll create a minimal app object if not found
+    if (!app) {
+      console.log("App not in current foreground list, starting without health check:", packageName)
+      setIsLoading(true)
+      optimisticallyStartApp(packageName)
+      try {
+        await restComms.startApp(packageName)
+        clearPendingOperation(packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Start app error:", error)
+      } finally {
+        setIsLoading(false)
+      }
+      return
     }
+
+    setIsLoading(true)
+
+    // Perform health check flow
+    const shouldStart = await performHealthCheckFlow({
+      app,
+      onStartApp: async () => {
+        optimisticallyStartApp(packageName)
+        try {
+          await restComms.startApp(packageName)
+          clearPendingOperation(packageName)
+        } catch (error) {
+          refreshAppStatus()
+          console.error("Start app error:", error)
+        }
+      },
+      onAppUninstalled: async () => {
+        await refreshAppStatus()
+      },
+      optimisticallyStopApp,
+      clearPendingOperation,
+    })
+
+    if (shouldStart) {
+      optimisticallyStartApp(packageName)
+      try {
+        await restComms.startApp(packageName)
+        clearPendingOperation(packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Start app error:", error)
+      }
+    }
+
+    setIsLoading(false)
   }
 
   const stopApp = async (packageName: string) => {
