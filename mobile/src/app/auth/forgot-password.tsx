@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendResetEmail = async () => {
     if (!isEmailValid) {
-      showAlert(translate("common:error"), translate("login:invalidEmail"))
+      showAlert(translate("common:error"), translate("login:invalidEmail"), [{text: "OK"}])
       return
     }
 
