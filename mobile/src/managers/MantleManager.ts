@@ -69,8 +69,8 @@ class MantleManager {
       60 * 60 * 1000,
     ) // 1 hour
     try {
-      const locationAccuracy = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.location_tier)
-      const properAccuracy = this.getLocationAccuracy(locationAccuracy)
+      let locationAccuracy = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.location_tier)
+      let properAccuracy = this.getLocationAccuracy(locationAccuracy)
       Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: properAccuracy,
       })

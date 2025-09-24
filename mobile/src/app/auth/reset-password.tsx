@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react"
+import React, {useState, useEffect} from "react"
 import {View, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import {Button, Header, Screen, Text} from "@/components/ignite"

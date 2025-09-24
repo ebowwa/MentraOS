@@ -1,4 +1,4 @@
-import {useState} from "react"
+import React, {useState} from "react"
 import {View, TextInput, ActivityIndicator, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import {Button, Header, Screen, Text} from "@/components/ignite"
@@ -22,7 +22,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendResetEmail = async () => {
     if (!isEmailValid) {
-      showAlert(translate("common:error"), translate("login:invalidEmail"), [{text: "OK"}])
+      showAlert(translate("common:error"), translate("login:invalidEmail"))
       return
     }
 

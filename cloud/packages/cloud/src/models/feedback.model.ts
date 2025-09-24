@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // cloud/src/models/user-feedback.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 

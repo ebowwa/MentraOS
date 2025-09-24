@@ -1,6 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {Alert, Platform, Linking} from "react-native"
-import {request, check, PERMISSIONS, RESULTS} from "react-native-permissions"
+import {
+  request,
+  check,
+  PERMISSIONS,
+  Permission,
+  RESULTS,
+  requestNotifications,
+  checkNotifications,
+} from "react-native-permissions"
 import {PermissionsAndroid} from "react-native"
 import {
   checkAndRequestNotificationAccessSpecialPermission,
@@ -414,7 +422,7 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
       let allDenied = true
       let anyNeverAskAgain = false
 
-      Object.entries(results).forEach(([_permission, result]) => {
+      Object.entries(results).forEach(([permission, result]) => {
         if (result === PermissionsAndroid.RESULTS.GRANTED) {
           hasGranted = true
           allDenied = false
@@ -471,7 +479,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
           allGranted = false
         } else if (result === RESULTS.BLOCKED) {
           // Permission is blocked at the system level
-          // eslint-disable-next-line
           previouslyDenied = true
           allGranted = false
 

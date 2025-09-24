@@ -13,7 +13,7 @@ import fr from "./fr"
 import ja from "./ja"
 import hi from "./hi"
 
-// const fallbackLocale = "en-US"
+const fallbackLocale = "en-US"
 
 const systemLocales = Localization.getLocales()
 

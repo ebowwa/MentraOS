@@ -1,3 +1,4 @@
+import React from "react"
 import {View} from "react-native"
 import {
   AudioWearablePairingGuide,
@@ -9,6 +10,7 @@ import {
   VirtualWearablePairingGuide,
   VuzixZ100PairingGuide,
 } from "@/components/misc/GlassesPairingGuides"
+import {useAppTheme} from "./useAppTheme"
 
 /**
  * Returns the appropriate pairing guide component based on the glasses model name
