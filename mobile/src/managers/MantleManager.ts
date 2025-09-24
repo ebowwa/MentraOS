@@ -152,10 +152,7 @@ class MantleManager {
     const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
       this.transcriptProcessor.changeLanguage(data.transcribeLanguage)
-      const processedText = this.transcriptProcessor.processString(
-        data.text,
-        data.isFinal ?? false
-      )
+      const processedText = this.transcriptProcessor.processString(data.text, data.isFinal ?? false)
 
       // Scheduling timeout to clear text from wall. In case of online STT online dashboard manager will handle it.
       if (data.isFinal) {

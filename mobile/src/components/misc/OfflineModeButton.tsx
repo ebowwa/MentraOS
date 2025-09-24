@@ -1,25 +1,27 @@
 import React from "react"
-import {View, TouchableOpacity, StyleSheet, ViewStyle} from "react-native"
+import {View, TouchableOpacity, ViewStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {spacing} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import showAlert from "@/utils/AlertUtils"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import bridge from "@/bridge/MantleBridge"
 
-interface OfflineModeButtonProps {
-  isOfflineMode: boolean
-  onToggle: (isOffline: boolean) => void
-}
-
-export const OfflineModeButton: React.FC<OfflineModeButtonProps> = ({isOfflineMode, onToggle}) => {
-  const {theme} = useAppTheme()
-  const styles = getStyles(theme)
+export const OfflineModeButton: React.FC = () => {
+  const {theme, themed} = useAppTheme()
+  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+    SETTINGS_KEYS.offline_captions_app_running,
+  )
+  const {stopAllApps} = useAppStatus()
 
   const handlePress = () => {
-    const title = isOfflineMode ? "Disable Offline Mode?" : "Enable Offline Mode?"
-    const message = isOfflineMode
+    const title = offlineMode ? "Disable Offline Mode?" : "Enable Offline Mode?"
+    const message = offlineMode
       ? "Switching to online mode will close all offline-only apps and allow you to use all online apps."
       : "Enabling offline mode will close all running online apps. You'll only be able to use apps that work without an internet connection, and all other apps will be shut down."
-    const confirmText = isOfflineMode ? "Go Online" : "Go Offline"
+    const confirmText = offlineMode ? "Go Online" : "Go Offline"
 
     showAlert(
       title,
@@ -28,39 +30,47 @@ export const OfflineModeButton: React.FC<OfflineModeButtonProps> = ({isOfflineMo
         {text: "Cancel", style: "cancel"},
         {
           text: confirmText,
-          onPress: () => onToggle(!isOfflineMode),
+          onPress: async () => {
+            if (!offlineMode) {
+              // If enabling offline mode, stop all running apps
+              await stopAllApps()
+            } else {
+              // If disabling offline mode, turn off offline captions
+              setOfflineCaptionsAppRunning(false)
+              bridge.toggleOfflineApps(false)
+            }
+            setOfflineMode(!offlineMode)
+          },
         },
       ],
       {
-        iconName: isOfflineMode ? "wifi" : "wifi-off",
+        iconName: offlineMode ? "wifi" : "wifi-off",
         iconColor: theme.colors.tint,
       },
     )
   }
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={handlePress} style={styles.button}>
+    <View style={themed($container)}>
+      <TouchableOpacity onPress={handlePress} style={themed($button)}>
         <MaterialCommunityIcons
-          name={isOfflineMode ? "wifi-off" : "wifi"}
+          name={offlineMode ? "wifi-off" : "wifi"}
           size={24}
-          color={isOfflineMode ? theme.colors.text : theme.colors.tint}
+          color={offlineMode ? theme.colors.text : theme.colors.tint}
         />
       </TouchableOpacity>
     </View>
   )
 }
 
-const getStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {
-      marginLeft: spacing.xs,
-      marginRight: spacing.xs,
-    },
-    button: {
-      padding: spacing.xs,
-      borderRadius: 20,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-  })
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginLeft: spacing.xs,
+  marginRight: spacing.xs,
+})
+
+const $button: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+})

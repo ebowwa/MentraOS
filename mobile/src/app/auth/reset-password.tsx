@@ -31,7 +31,9 @@ export default function ResetPasswordScreen() {
   }, [])
 
   const checkSession = async () => {
-    const {data: {session}} = await supabase.auth.getSession()
+    const {
+      data: {session},
+    } = await supabase.auth.getSession()
     if (session) {
       setIsValidToken(true)
       // Get the user's email from the session
@@ -69,7 +71,7 @@ export default function ResetPasswordScreen() {
       } else {
         // Try to automatically log the user in with the new password
         if (email) {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          const {data: signInData, error: signInError} = await supabase.auth.signInWithPassword({
             email,
             password: newPassword,
           })
@@ -81,7 +83,7 @@ export default function ResetPasswordScreen() {
               text2: translate("login:loggingYouIn"),
               position: "bottom",
             })
-            
+
             setTimeout(() => {
               router.replace("/")
             }, 1000)
@@ -93,9 +95,9 @@ export default function ResetPasswordScreen() {
               text2: translate("login:redirectingToLogin"),
               position: "bottom",
             })
-            
+
             await supabase.auth.signOut()
-            
+
             setTimeout(() => {
               router.replace("/auth/login")
             }, 2000)
@@ -108,9 +110,9 @@ export default function ResetPasswordScreen() {
             text2: translate("login:redirectingToLogin"),
             position: "bottom",
           })
-          
+
           await supabase.auth.signOut()
-          
+
           setTimeout(() => {
             router.replace("/auth/login")
           }, 2000)
@@ -138,13 +140,13 @@ export default function ResetPasswordScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header 
-        title={translate("login:resetPasswordTitle")} 
-        leftIcon="caretLeft" 
-        onLeftPress={() => router.replace("/auth/login")} 
+      <Header
+        title={translate("login:resetPasswordTitle")}
+        leftIcon="caretLeft"
+        onLeftPress={() => router.replace("/auth/login")}
       />
-      <ScrollView 
-        contentContainerStyle={themed($scrollContent)} 
+      <ScrollView
+        contentContainerStyle={themed($scrollContent)}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
         <View style={themed($card)}>

@@ -380,6 +380,15 @@ const en = {
     giveFeedback: "Give Feedback",
     errorSendingFeedback: "There was an error sending your feedback. Please try again.",
   },
+  offlineMode: {
+    enableOfflineMode: "Enable Offline Mode?",
+    disableOfflineMode: "Disable Offline Mode?",
+    goOnline: "Go Online",
+    goOffline: "Go Offline",
+    goOnlineMessage: "Switching to online mode will close all offline-only apps and allow you to use all online apps.",
+    goOfflineMessage:
+      "Enabling offline mode will close all running online apps. You'll only be able to use apps that work without an internet connection, and all other apps will be shut down.",
+  },
 }
 
 export default en

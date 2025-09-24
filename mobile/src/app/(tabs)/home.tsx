@@ -1,10 +1,9 @@
-import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
+import React, {useRef, useCallback, useState} from "react"
+import {View, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
-import AppsIncompatibleList from "@/components/misc/AppsIncompatibleList"
 import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import CloudConnection from "@/components/misc/CloudConnection"
@@ -13,7 +12,6 @@ import NonProdWarning from "@/components/misc/NonProdWarning"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
-import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
@@ -24,35 +22,18 @@ import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
 import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
-import bridge from "@/bridge/MantleBridge"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {NewUiHomeContainer} from "@/components/home/NewUiHomeContainer"
+import {NewUiCompactDeviceStatus} from "@/components/home/NewUiCompactDeviceStatus"
 
 export default function Homepage() {
-  const {refreshAppStatus, stopAllApps} = useAppStatus()
+  const {refreshAppStatus} = useAppStatus()
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
   const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
   const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
-  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
-    SETTINGS_KEYS.offline_captions_app_running,
-  )
-
-  const handleToggleOfflineMode = useCallback(
-    async (newIsOfflineMode: boolean) => {
-      if (newIsOfflineMode) {
-        // If enabling offline mode, stop all running apps
-        await stopAllApps()
-      } else {
-        setOfflineCaptionsAppRunning(false)
-        bridge.toggleOfflineApps(false)
-      }
-      setIsOfflineMode(newIsOfflineMode)
-    },
-    [stopAllApps],
-  )
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +49,7 @@ export default function Homepage() {
           RightActionComponent={
             <View style={themed($headerRight)}>
               <PermissionsWarning />
-              <OfflineModeButton isOfflineMode={isOfflineMode} onToggle={handleToggleOfflineMode} />
+              <OfflineModeButton />
               <MicIcon width={24} height={24} />
               <NonProdWarning />
             </View>
@@ -79,7 +60,15 @@ export default function Homepage() {
           <CloudConnection />
           <SensingDisabledWarning />
 
-          {isOfflineMode ? <AppsOfflineList /> : <NewUiHomeContainer />}
+          {isOfflineMode ? (
+            <>
+              <NewUiCompactDeviceStatus />
+              <Divider variant="full" />
+              <AppsOfflineList />
+            </>
+          ) : (
+            <NewUiHomeContainer />
+          )}
         </ScrollView>
 
         <OnboardingSpotlight
@@ -103,7 +92,7 @@ export default function Homepage() {
         RightActionComponent={
           <View style={themed($headerRight)}>
             <PermissionsWarning />
-            <OfflineModeButton isOfflineMode={isOfflineMode} onToggle={handleToggleOfflineMode} />
+            <OfflineModeButton />
             <MicIcon width={24} height={24} />
             <NonProdWarning />
           </View>

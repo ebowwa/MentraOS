@@ -31,8 +31,6 @@ export default function TranscriptionSettingsScreen() {
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-
-
   // Cancel download function
   const handleCancelDownload = async () => {
     try {
@@ -114,10 +112,14 @@ export default function TranscriptionSettingsScreen() {
 
     if (isDownloading) {
       // Also add cancel download button
-      showAlert("Download in Progress", "A model is currently downloading. Please wait before switching to another model", [
-        {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
-        {text: "OK", style: "cancel"},
-      ])
+      showAlert(
+        "Download in Progress",
+        "A model is currently downloading. Please wait before switching to another model",
+        [
+          {text: "Cancel Download", style: "destructive", onPress: handleCancelDownload},
+          {text: "OK", style: "cancel"},
+        ],
+      )
       return
     }
 
