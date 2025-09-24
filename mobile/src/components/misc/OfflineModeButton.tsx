@@ -1,25 +1,21 @@
-import React, {useState} from "react"
-import {View, TouchableOpacity, StyleSheet, Modal, ViewStyle} from "react-native"
+import {useState} from "react"
+import {View, TouchableOpacity, Modal, ViewStyle, TextStyle} from "react-native"
 import {Text, Button} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {spacing} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
-interface OfflineModeButtonProps {
-  isOfflineMode: boolean
-  onToggle: (isOffline: boolean) => void
-}
-
-export const OfflineModeButton: React.FC<OfflineModeButtonProps> = ({isOfflineMode, onToggle}) => {
+export const OfflineModeButton: React.FC = () => {
   const [visible, setVisible] = useState(false)
-  const {theme} = useAppTheme()
-  const styles = getStyles(theme)
+  const {theme, themed} = useAppTheme()
+  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
 
   const showModal = () => setVisible(true)
   const hideModal = () => setVisible(false)
 
   const handleConfirm = () => {
-    onToggle(!isOfflineMode)
+    setOfflineMode(!offlineMode)
     hideModal()
   }
 
@@ -29,40 +25,40 @@ export const OfflineModeButton: React.FC<OfflineModeButtonProps> = ({isOfflineMo
   }
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={handlePress} style={styles.button}>
+    <View style={themed($container)}>
+      <TouchableOpacity onPress={handlePress} style={themed($button)}>
         <MaterialCommunityIcons
-          name={isOfflineMode ? "wifi-off" : "wifi"}
+          name={offlineMode ? "wifi-off" : "wifi"}
           size={24}
-          color={isOfflineMode ? theme.colors.text : theme.colors.tint}
+          color={offlineMode ? theme.colors.text : theme.colors.tint}
         />
       </TouchableOpacity>
 
       <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={hideModal}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modal, {backgroundColor: theme.colors.background}]}>
-            <Text style={[styles.modalTitle, {color: theme.colors.text}]}>
-              {isOfflineMode ? "Disable Offline Mode?" : "Enable Offline Mode?"}
-            </Text>
-            <Text style={[styles.modalText, {color: theme.colors.textDim}]}>
-              {isOfflineMode
-                ? "Switching to online mode will close all offline-only apps and allow you to use all online apps."
-                : "Enabling offline mode will close all running online apps. You'll only be able to use apps that work without an internet connection, and all other apps will be shut down."}
-            </Text>
-            <View style={styles.buttonRow}>
+        <View style={themed($modalOverlay)}>
+          <View style={themed($modal)}>
+            <Text
+              style={themed($modalTitle)}
+              tx={offlineMode ? "offlineMode:disableOfflineMode" : "offlineMode:enableOfflineMode"}
+            />
+            <Text
+              style={themed($modalText)}
+              tx={offlineMode ? "offlineMode:goOnlineMessage" : "offlineMode:goOfflineMessage"}
+            />
+            <View style={themed($buttonRow)}>
               <Button
                 preset="outlined"
                 onPress={hideModal}
-                text="Cancel"
-                style={[styles.modalButton, styles.outlinedButton]}
-                textStyle={styles.modalButtonText}
+                tx="common:cancel"
+                style={[themed($modalButton), themed($outlinedButton)]}
+                textStyle={themed($modalButtonText)}
               />
               <Button
                 preset="default"
                 onPress={handleConfirm}
-                text={isOfflineMode ? "Go Online" : "Go Offline"}
-                style={styles.modalButton}
-                textStyle={[styles.modalButtonText, styles.modalButtonTextPrimary]}
+                tx={offlineMode ? "offlineMode:goOnline" : "offlineMode:goOffline"}
+                style={themed($modalButton)}
+                textStyle={[themed($modalButtonText), themed($modalButtonTextPrimary)]}
               />
             </View>
           </View>
@@ -72,76 +68,77 @@ export const OfflineModeButton: React.FC<OfflineModeButtonProps> = ({isOfflineMo
   )
 }
 
-const getStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {
-      marginLeft: spacing.md,
-      marginRight: spacing.sm,
-    },
-    // Header button style
-    button: {
-      padding: spacing.sm,
-      borderRadius: 20,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    // Modal button container
-    modalButton: {
-      minWidth: 120,
-      margin: 0,
-      paddingVertical: spacing.sm,
-      backgroundColor: theme.colors.tint,
-    },
-    // For the outlined Cancel button
-    outlinedButton: {
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: "transparent",
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "center",
-      padding: spacing.lg,
-    },
-    modal: {
-      backgroundColor: "white",
-      borderRadius: 8,
-      padding: spacing.lg,
-      shadowColor: "#000",
-      shadowOffset: {width: 0, height: 2},
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-      elevation: 5,
-    },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      marginBottom: spacing.md,
-    },
-    modalText: {
-      fontSize: 16,
-      marginBottom: spacing.lg,
-      lineHeight: 24,
-    },
-    buttonRow: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      marginTop: spacing.lg,
-      gap: spacing.md,
-    },
-    modalButtonText: {
-      fontSize: 16,
-      fontWeight: "600",
-      textAlign: "center",
-      color: theme.colors.text,
-    },
-    modalButtonTextPrimary: {
-      color: theme.colors.background,
-    },
-    modalTitle: {
-      fontSize: 20,
-      fontWeight: "bold",
-      marginBottom: spacing.md,
-    },
-  })
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginLeft: spacing.md,
+  marginRight: spacing.sm,
+})
+
+const $button: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.sm,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $modalButton: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  minWidth: 120,
+  margin: 0,
+  paddingVertical: spacing.sm,
+  backgroundColor: colors.tint,
+})
+
+const $outlinedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  borderWidth: 1,
+  borderColor: colors.border,
+  backgroundColor: "transparent",
+})
+
+const $modalOverlay: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  justifyContent: "center",
+  padding: spacing.lg,
+})
+
+const $modal: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  borderRadius: 8,
+  padding: spacing.lg,
+  shadowColor: "#000",
+  shadowOffset: {width: 0, height: 2},
+  shadowOpacity: 0.25,
+  shadowRadius: 4,
+  elevation: 5,
+})
+
+const $modalTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 20,
+  fontWeight: "bold",
+  marginBottom: spacing.md,
+  color: colors.text,
+})
+
+const $modalText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  marginBottom: spacing.lg,
+  lineHeight: 24,
+  color: colors.textDim,
+})
+
+const $buttonRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "flex-end",
+  marginTop: spacing.lg,
+  gap: spacing.md,
+})
+
+const $modalButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  fontWeight: "600",
+  textAlign: "center",
+  color: colors.text,
+})
+
+const $modalButtonTextPrimary: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.background,
+})
