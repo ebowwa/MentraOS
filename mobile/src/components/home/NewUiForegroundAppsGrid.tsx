@@ -30,9 +30,101 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
   const foregroundApps = useNewUiForegroundApps()
   const activeForegroundApp = useNewUiActiveForegroundApp()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const [isLoading, setIsLoading] = useState(false)
 
   // Prepare grid data with placeholders and "Get More Apps"
+  const startApp = useCallback(
+    async (packageName: string) => {
+      console.log("startApp called for:", packageName)
+      // When switching apps, the app might not be in the current filtered list
+      // So we need to check both foregroundApps and pass the app through from handleAppPress
+      let app = foregroundApps.find(a => a.packageName === packageName)
+
+      // If not found in foregroundApps, it might be passed as a parameter (when switching)
+      // For now, we'll create a minimal app object if not found
+      if (!app) {
+        console.log("App not in current foreground list, starting without health check:", packageName)
+        optimisticallyStartApp(packageName)
+        try {
+          await restComms.startApp(packageName)
+          clearPendingOperation(packageName)
+        } catch (error) {
+          refreshAppStatus()
+          console.error("Start app error:", error)
+        }
+        return
+      }
+
+      // If app is marked as online by backend, start optimistically immediately
+      // We'll do health check in background to verify
+      if (app.isOnline !== false) {
+        console.log("App is online, starting optimistically:", packageName)
+        optimisticallyStartApp(packageName)
+
+        // Do health check in background
+        performHealthCheckFlow({
+          app,
+          onStartApp: async () => {
+            // App already started optimistically, just make the server call
+            try {
+              await restComms.startApp(packageName)
+              clearPendingOperation(packageName)
+            } catch (error) {
+              refreshAppStatus()
+              console.error("Start app error:", error)
+            }
+          },
+          onAppUninstalled: async () => {
+            await refreshAppStatus()
+          },
+          onHealthCheckFailed: async () => {
+            // Health check failed, move app back to inactive
+            console.log("Health check failed, reverting app to inactive:", packageName)
+            optimisticallyStopApp(packageName)
+            refreshAppStatus()
+          },
+          optimisticallyStopApp,
+          clearPendingOperation,
+        })
+      } else {
+        // App is explicitly offline, use normal flow with health check first
+        const shouldStart = await performHealthCheckFlow({
+          app,
+          onStartApp: async () => {
+            optimisticallyStartApp(packageName)
+            try {
+              await restComms.startApp(packageName)
+              clearPendingOperation(packageName)
+            } catch (error) {
+              refreshAppStatus()
+              console.error("Start app error:", error)
+            }
+          },
+          onAppUninstalled: async () => {
+            await refreshAppStatus()
+          },
+          optimisticallyStopApp,
+          clearPendingOperation,
+        })
+      }
+    },
+    [foregroundApps, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus],
+  )
+
+  const stopApp = useCallback(
+    async (packageName: string) => {
+      optimisticallyStopApp(packageName)
+
+      try {
+        await restComms.stopApp(packageName)
+        clearPendingOperation(packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Stop app error:", error)
+      }
+    },
+    [optimisticallyStopApp, clearPendingOperation, refreshAppStatus],
+  )
+
   const gridData = useMemo(() => {
     const inactiveApps = foregroundApps.filter(app => !app.is_running)
 
@@ -71,6 +163,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
 
   const handleAppPress = useCallback(
     async (app: GridItem) => {
+      console.log("App pressed:", app.packageName, "isGetMoreApps:", app.isGetMoreApps)
       // Handle "Get More Apps" specially
       if (app.isGetMoreApps) {
         router.push("/store")
@@ -96,85 +189,12 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         )
       } else {
         // No active app, just start this one
+        console.log("Starting app directly:", app.packageName)
         await startApp(app.packageName)
       }
     },
-    [activeForegroundApp, router],
+    [activeForegroundApp, router, startApp, stopApp],
   )
-
-  const startApp = async (packageName: string) => {
-    // When switching apps, the app might not be in the current filtered list
-    // So we need to check both foregroundApps and pass the app through from handleAppPress
-    let app = foregroundApps.find(a => a.packageName === packageName)
-
-    // If not found in foregroundApps, it might be passed as a parameter (when switching)
-    // For now, we'll create a minimal app object if not found
-    if (!app) {
-      console.log("App not in current foreground list, starting without health check:", packageName)
-      setIsLoading(true)
-      optimisticallyStartApp(packageName)
-      try {
-        await restComms.startApp(packageName)
-        clearPendingOperation(packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Start app error:", error)
-      } finally {
-        setIsLoading(false)
-      }
-      return
-    }
-
-    setIsLoading(true)
-
-    // Perform health check flow
-    const shouldStart = await performHealthCheckFlow({
-      app,
-      onStartApp: async () => {
-        optimisticallyStartApp(packageName)
-        try {
-          await restComms.startApp(packageName)
-          clearPendingOperation(packageName)
-        } catch (error) {
-          refreshAppStatus()
-          console.error("Start app error:", error)
-        }
-      },
-      onAppUninstalled: async () => {
-        await refreshAppStatus()
-      },
-      optimisticallyStopApp,
-      clearPendingOperation,
-    })
-
-    if (shouldStart) {
-      optimisticallyStartApp(packageName)
-      try {
-        await restComms.startApp(packageName)
-        clearPendingOperation(packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Start app error:", error)
-      }
-    }
-
-    setIsLoading(false)
-  }
-
-  const stopApp = async (packageName: string) => {
-    setIsLoading(true)
-    optimisticallyStopApp(packageName)
-
-    try {
-      await restComms.stopApp(packageName)
-      clearPendingOperation(packageName)
-    } catch (error) {
-      refreshAppStatus()
-      console.error("Stop app error:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const renderItem = useCallback(
     ({item}: {item: GridItem}) => {
@@ -196,11 +216,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
       const isOffline = item.isOnline === false
 
       return (
-        <TouchableOpacity
-          style={themed($gridItem)}
-          onPress={() => handleAppPress(item)}
-          activeOpacity={0.7}
-          disabled={isLoading}>
+        <TouchableOpacity style={themed($gridItem)} onPress={() => handleAppPress(item)} activeOpacity={0.7}>
           <View style={themed($appContainer)}>
             <AppIcon app={item as any} style={themed($appIcon)} />
             {isOffline && (
@@ -217,7 +233,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         </TouchableOpacity>
       )
     },
-    [themed, theme, handleAppPress, isLoading],
+    [themed, theme, handleAppPress],
   )
 
   if (foregroundApps.length === 0) {
@@ -229,14 +245,6 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
           <GetMoreAppsIcon size="large" style={{marginBottom: theme.spacing.xs}} />
           <Text text="Get More Apps" style={themed($appName)} />
         </TouchableOpacity>
-      </View>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <View style={themed($loadingContainer)}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     )
   }
@@ -328,11 +336,4 @@ const $emptyText = theme => ({
 const $getMoreAppsButton = theme => ({
   alignItems: "center",
   marginTop: theme.spacing.md,
-})
-
-const $loadingContainer = theme => ({
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  paddingVertical: theme.spacing.xxl,
 })

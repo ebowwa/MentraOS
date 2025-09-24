@@ -16,7 +16,6 @@ export const NewUiActiveForegroundApp: React.FC = () => {
   const {push} = useNavigationHistory()
   const activeForegroundApp = useNewUiActiveForegroundApp()
   const {optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const [isLoading, setIsLoading] = useState(false)
 
   const handlePress = () => {
     if (activeForegroundApp) {
@@ -44,7 +43,6 @@ export const NewUiActiveForegroundApp: React.FC = () => {
           text: "Stop",
           style: "destructive",
           onPress: async () => {
-            setIsLoading(true)
             optimisticallyStopApp(activeForegroundApp.packageName)
 
             try {
@@ -53,8 +51,6 @@ export const NewUiActiveForegroundApp: React.FC = () => {
             } catch (error) {
               refreshAppStatus()
               console.error("Stop app error:", error)
-            } finally {
-              setIsLoading(false)
             }
           },
         },
@@ -78,10 +74,9 @@ export const NewUiActiveForegroundApp: React.FC = () => {
       style={themed($container)}
       onPress={handlePress}
       onLongPress={handleLongPress}
-      activeOpacity={0.7}
-      disabled={isLoading}>
+      activeOpacity={0.7}>
       <View style={themed($rowContent)}>
-        <AppIcon app={activeForegroundApp as any} style={themed($appIcon)} />
+        <AppIcon app={activeForegroundApp as any} style={themed($appIcon)} hideLoadingIndicator />
         <View style={themed($appInfo)}>
           <Text style={themed($appName)} numberOfLines={1} ellipsizeMode="tail">
             {activeForegroundApp.name}

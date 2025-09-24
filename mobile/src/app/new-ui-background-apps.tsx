@@ -24,7 +24,6 @@ export default function NewUiBackgroundAppsScreen() {
   const {push} = useNavigationHistory()
   const backgroundApps = useNewUiBackgroundApps()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const [isLoading, setIsLoading] = useState(false)
 
   // Separate active and inactive apps
   const {activeApps, inactiveApps} = useMemo(() => {
@@ -52,44 +51,60 @@ export default function NewUiBackgroundAppsScreen() {
       return
     }
 
-    setIsLoading(true)
-
-    // Perform health check flow
-    const shouldStart = await performHealthCheckFlow({
-      app,
-      onStartApp: async () => {
-        optimisticallyStartApp(packageName)
-        try {
-          await restComms.startApp(packageName)
-          clearPendingOperation(packageName)
-        } catch (error) {
-          refreshAppStatus()
-          console.error("Start app error:", error)
-        }
-      },
-      onAppUninstalled: async () => {
-        await refreshAppStatus()
-      },
-      optimisticallyStopApp,
-      clearPendingOperation,
-    })
-
-    if (shouldStart) {
+    // If app is marked as online by backend, start optimistically immediately
+    if (app.isOnline !== false) {
+      console.log("Background app is online, starting optimistically:", packageName)
       optimisticallyStartApp(packageName)
-      try {
-        await restComms.startApp(packageName)
-        clearPendingOperation(packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Start app error:", error)
-      }
-    }
 
-    setIsLoading(false)
+      // Do health check in background
+      performHealthCheckFlow({
+        app,
+        onStartApp: async () => {
+          // App already started optimistically, just make the server call
+          try {
+            await restComms.startApp(packageName)
+            clearPendingOperation(packageName)
+          } catch (error) {
+            refreshAppStatus()
+            console.error("Start app error:", error)
+          }
+        },
+        onAppUninstalled: async () => {
+          await refreshAppStatus()
+        },
+        onHealthCheckFailed: async () => {
+          // Health check failed, revert the switch
+          console.log("Health check failed, reverting background app to inactive:", packageName)
+          optimisticallyStopApp(packageName)
+          refreshAppStatus()
+        },
+        optimisticallyStopApp,
+        clearPendingOperation,
+      })
+    } else {
+      // App is explicitly offline, use normal flow with health check first
+      const shouldStart = await performHealthCheckFlow({
+        app,
+        onStartApp: async () => {
+          optimisticallyStartApp(packageName)
+          try {
+            await restComms.startApp(packageName)
+            clearPendingOperation(packageName)
+          } catch (error) {
+            refreshAppStatus()
+            console.error("Start app error:", error)
+          }
+        },
+        onAppUninstalled: async () => {
+          await refreshAppStatus()
+        },
+        optimisticallyStopApp,
+        clearPendingOperation,
+      })
+    }
   }
 
   const stopApp = async (packageName: string) => {
-    setIsLoading(true)
     optimisticallyStopApp(packageName)
 
     try {
@@ -98,8 +113,6 @@ export default function NewUiBackgroundAppsScreen() {
     } catch (error) {
       refreshAppStatus()
       console.error("Stop app error:", error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -134,7 +147,7 @@ export default function NewUiBackgroundAppsScreen() {
           activeOpacity={app.is_running ? 0.7 : 1}
           disabled={!app.is_running}>
           <View style={themed($appContent)}>
-            <AppIcon app={app as any} style={themed($appIcon)} />
+            <AppIcon app={app as any} style={themed($appIcon)} hideLoadingIndicator={app.is_running} />
             <View style={themed($appInfo)}>
               <Text
                 text={app.name}
@@ -171,7 +184,7 @@ export default function NewUiBackgroundAppsScreen() {
               <Switch
                 value={app.is_running}
                 onValueChange={() => toggleApp(app)}
-                disabled={isLoading}
+                disabled={false}
                 pointerEvents="none"
               />
             </TouchableOpacity>
@@ -248,12 +261,6 @@ export default function NewUiBackgroundAppsScreen() {
 
         <Spacer height={theme.spacing.xxl} />
       </ScrollView>
-
-      {isLoading && (
-        <View style={themed($loadingOverlay)}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      )}
     </Screen>
   )
 }

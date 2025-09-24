@@ -7,6 +7,7 @@ interface HealthCheckFlowOptions {
   app: AppletInterface
   onStartApp: () => Promise<void>
   onAppUninstalled?: () => Promise<void>
+  onHealthCheckFailed?: () => Promise<void>
   optimisticallyStopApp?: (packageName: string) => void
   clearPendingOperation?: (packageName: string) => void
 }
@@ -16,20 +17,31 @@ interface HealthCheckFlowOptions {
  * Returns true if the app should be started, false otherwise
  */
 export async function performHealthCheckFlow(options: HealthCheckFlowOptions): Promise<boolean> {
-  const {app, onAppUninstalled, optimisticallyStopApp, clearPendingOperation} = options
+  const {app, onAppUninstalled, onHealthCheckFailed, optimisticallyStopApp, clearPendingOperation} = options
 
   // Check if app is marked as offline by developer
   if (app.isOnline === false) {
-    return handleOfflineApp(app)
+    const shouldStart = await handleOfflineApp(app)
+    if (shouldStart) {
+      await options.onStartApp()
+    }
+    return shouldStart
   }
 
   // Perform initial health check
   const isHealthy = await restComms.checkAppHealthStatus(app.packageName)
   if (isHealthy) {
+    await options.onStartApp()
     return true
   }
 
-  // First attempt failed - offer retry
+  // First attempt failed
+  if (onHealthCheckFailed) {
+    // Call the failure handler to revert optimistic changes
+    await onHealthCheckFailed()
+  }
+
+  // Show retry dialog for all cases
   const shouldRetry = await showRetryDialog(app)
   if (!shouldRetry) {
     return false
@@ -38,6 +50,7 @@ export async function performHealthCheckFlow(options: HealthCheckFlowOptions): P
   // Retry health check
   const isHealthyOnRetry = await restComms.checkAppHealthStatus(app.packageName)
   if (isHealthyOnRetry) {
+    await options.onStartApp()
     return true
   }
 
