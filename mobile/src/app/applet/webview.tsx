@@ -190,7 +190,7 @@ export default function AppWebView() {
   // Render loading state while fetching token
   if (isLoadingToken) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
         <LoadingOverlay message={`Preparing secure access to ${appName}...`} />
       </View>
     )
@@ -199,7 +199,7 @@ export default function AppWebView() {
   // Render error state if token generation failed
   if (tokenError && !isLoadingToken) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
         <InternetConnectionFallbackComponent
           retry={() => {
             // Reset state and retry token generation
@@ -215,7 +215,7 @@ export default function AppWebView() {
   // Render error state if WebView loading failed after token success
   if (hasError) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
         <InternetConnectionFallbackComponent
           retry={() => {
             setHasError(false)
