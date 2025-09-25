@@ -34,6 +34,7 @@ const ALLOWED_API_KEY_PACKAGES = [
   "test.augmentos.mira",
   "cloud.augmentos.mira",
   "com.augmentos.mira",
+  "dev.mira.local"
 ];
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
