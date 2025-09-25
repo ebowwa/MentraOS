@@ -2,19 +2,16 @@
  * Main gallery screen component
  */
 
-import React, {useCallback, useState, useEffect, useMemo, useRef} from "react"
+import {useCallback, useState, useEffect, useMemo, useRef} from "react"
 import {
   View,
   Text,
   BackHandler,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  ScrollView,
   FlatList,
   ViewToken,
-  Clipboard,
 } from "react-native"
 import {useFocusEffect} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -79,7 +76,7 @@ export function GalleryScreen() {
   const numColumns = Math.max(2, Math.min(Math.floor((screenWidth - spacing.lg * 2) / MIN_ITEM_WIDTH), 4))
   const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
 
-  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
+  const [networkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
   // Memoize connection values
   const connectionInfo = useMemo(() => {
@@ -392,15 +389,15 @@ export function GalleryScreen() {
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      setLoadedServerPhotos(new Map())
-      setTotalServerCount(0)
-      loadedRanges.current.clear()
-      loadingRanges.current.clear()
-      setPhotoSyncStates(new Map())
-
+      // Load downloaded photos first to ensure smooth transition
       await loadDownloadedPhotos()
-      transitionToState(GalleryState.SYNC_COMPLETE)
+
+      // Clear sync progress states (progress rings no longer needed)
+      setPhotoSyncStates(new Map())
       setSyncProgress(null)
+
+      // Show brief success state
+      transitionToState(GalleryState.SYNC_COMPLETE)
 
       // Stop hotspot if gallery opened it
       if (galleryOpenedHotspot) {
@@ -413,8 +410,14 @@ export function GalleryScreen() {
         }
       }
 
-      // Transition to final state after hotspot is closed
-      transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+      // Gradually clear server state after downloads are loaded
+      setTimeout(() => {
+        setLoadedServerPhotos(new Map())
+        setTotalServerCount(0)
+        loadedRanges.current.clear()
+        loadingRanges.current.clear()
+        transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+      }, 1000) // Give user time to see "Sync complete!" message
     } catch (err) {
       let errorMsg = "Sync failed"
       if (err instanceof Error) {
@@ -583,7 +586,7 @@ export function GalleryScreen() {
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
             await loadDownloadedPhotos()
-          } catch (err) {
+          } catch {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
         },
@@ -678,7 +681,7 @@ export function GalleryScreen() {
             } else {
               showAlert("Success", "All photos deleted successfully!", [{text: translate("common:ok")}])
             }
-          } catch (err) {
+          } catch {
             showAlert("Error", "Failed to delete photos", [{text: translate("common:ok")}])
           }
         },
@@ -1260,7 +1263,7 @@ export function GalleryScreen() {
 }
 
 // Styles remain the same
-const $screenContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $screenContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   // backgroundColor: colors.background,
   marginHorizontal: -spacing.lg,
@@ -1345,17 +1348,6 @@ const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $syncButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  gap: spacing.sm,
-  backgroundColor: colors.palette.primary500,
-  borderRadius: spacing.md,
-  paddingVertical: spacing.sm,
-  paddingHorizontal: spacing.md,
-  color: colors.text,
-})
-
 const $syncButtonFixed: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   position: "absolute",
   bottom: spacing.xl,
@@ -1395,13 +1387,6 @@ const $syncButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "600",
   color: colors.text,
   // marginBottom: 2,
-})
-
-const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 13,
-  color: colors.textDim,
-  opacity: 0.9,
-  marginBottom: spacing.xs,
 })
 
 const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
