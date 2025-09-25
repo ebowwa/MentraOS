@@ -39,15 +39,15 @@ export default function AppWebView() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // Always go back to home when back is pressed
-        clearHistoryAndGoHome()
+        // Go back to previous screen
+        goBack()
         return true
       }
 
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
       return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
-    }, []),
+    }, [goBack]),
   )
 
   // Set up the header with settings button if we came from app settings
@@ -249,7 +249,7 @@ export default function AppWebView() {
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        onLeftPress={() => clearHistoryAndGoHome()}
+        onLeftPress={() => goBack()}
         rightIcon="settings"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {

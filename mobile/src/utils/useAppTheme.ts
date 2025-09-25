@@ -3,8 +3,7 @@ import {Platform, StyleProp, useColorScheme} from "react-native"
 import {DarkTheme, DefaultTheme, useTheme as useNavTheme} from "@react-navigation/native"
 import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray, lightTheme, darkTheme} from "@/theme"
 import * as SystemUI from "expo-system-ui"
-import * as NavigationBar from "expo-navigation-bar"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSetting, SETTINGS_KEYS} from "@/stores/settings"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts
@@ -37,6 +36,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   const colorScheme = useColorScheme()
   const [overrideTheme, setTheme] = useState<ThemeContexts>(initialTheme)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [savedTheme, setSavedTheme] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
 
   const setThemeContextOverride = useCallback((newTheme: ThemeContexts) => {
     setTheme(newTheme)
@@ -46,7 +46,6 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
-        const savedTheme = (await settings.get(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as ThemeType
         if (savedTheme === "system") {
           setTheme(undefined)
         } else {
@@ -60,7 +59,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
     }
 
     loadThemePreference()
-  }, [])
+  }, [savedTheme])
 
   const themeScheme = overrideTheme || colorScheme || "light"
   const navigationTheme = themeScheme === "dark" ? DarkTheme : DefaultTheme

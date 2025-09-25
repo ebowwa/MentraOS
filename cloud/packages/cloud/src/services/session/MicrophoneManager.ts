@@ -249,20 +249,10 @@ export class MicrophoneManager {
     const requiredData: Array<
       "pcm" | "transcription" | "pcm_or_transcription"
     > = [];
-    const isCloudSttDown = this.session.transcriptionManager.isCloudSTTDown();
-    if (hasPCM) {
+    // NOTE: For now online apps always need PCM data
+    if (hasPCM || hasTranscription) {
       requiredData.push("pcm");
-      if (hasTranscription && isCloudSttDown) {
-        requiredData.push("transcription");
-      }
-    } else {
-      if (hasTranscription && isCloudSttDown) {
-        requiredData.push("transcription");
-      } else {
-        requiredData.push("pcm_or_transcription");
-      }
     }
-
     return requiredData;
   }
 

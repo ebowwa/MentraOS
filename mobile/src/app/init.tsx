@@ -9,7 +9,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSettingsStore, SETTINGS_KEYS, initializeSettings, useSetting} from "@/stores/settings"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
@@ -52,6 +52,9 @@ export default function InitScreen() {
   const [canSkipUpdate, setCanSkipUpdate] = useState(false)
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
   const [isRetrying, setIsRetrying] = useState(false)
+  // Zustand store hooks
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [onboardingCompleted, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -64,9 +67,8 @@ export default function InitScreen() {
   }
 
   const checkCustomUrl = async (): Promise<boolean> => {
-    const customUrl = await settings.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    const defaultUrl = await settings.getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-    const isCustom = customUrl !== defaultUrl
+    const defaultUrl = useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const isCustom = customBackendUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
   }
@@ -78,7 +80,6 @@ export default function InitScreen() {
     }
 
     // Check onboarding status
-    const onboardingCompleted = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
     if (!onboardingCompleted) {
       replace("/onboarding/welcome")
       return
@@ -109,42 +110,42 @@ export default function InitScreen() {
     setState("loading")
     setLoadingStatus(translate("versionCheck:connectingToServer"))
 
-    try {
-      const supabaseToken = session?.access_token
-      if (!supabaseToken) {
-        setErrorType("auth")
-        setState("error")
-        return
-      }
-
-      const coreToken = await restComms.exchangeToken(supabaseToken)
-      const uid = user?.email || user?.id
-
-      if (useNewWsManager) {
-        bridge.setup()
-        socketComms.setAuthCreds(coreToken, uid)
-
-        try {
-          const loadedSettings = await restComms.loadUserSettings() // get settings from server
-          await settings.setManyLocally(loadedSettings) // write settings to local storage
-          await settings.initUserSettings() // initialize user settings
-          await mantle.init()
-        } catch (error) {
-          console.error("Failed to load user settings from server:", error)
-        }
-
-        bridge.updateSettings(await settings.getCoreSettings()) // send settings to core
-      } else {
-        bridge.setAuthCreds(coreToken, uid)
-      }
-
-      await navigateToDestination()
-    } catch (error) {
-      console.error("Token exchange failed:", error)
-      await checkCustomUrl()
-      setErrorType("connection")
+    // try {
+    const supabaseToken = session?.access_token
+    if (!supabaseToken) {
+      setErrorType("auth")
       setState("error")
+      return
     }
+
+    const coreToken = await restComms.exchangeToken(supabaseToken)
+    const uid = user?.email || user?.id
+
+    if (useNewWsManager) {
+      bridge.setup()
+      socketComms.setAuthCreds(coreToken, uid)
+
+      try {
+        const loadedSettings = await restComms.loadUserSettings() // get settings from server
+        await useSettingsStore.getState().setManyLocally(loadedSettings) // write settings to local storage
+        await useSettingsStore.getState().initUserSettings() // initialize user settings
+        await mantle.init()
+      } catch (error) {
+        console.error("Failed to load user settings from server:", error)
+      }
+
+      bridge.updateSettings(await useSettingsStore.getState().getCoreSettings()) // send settings to core
+    } else {
+      bridge.setAuthCreds(coreToken, uid)
+    }
+
+    await navigateToDestination()
+    // } catch (error) {
+    //   console.error("Token exchange failed:", error)
+    //   await checkCustomUrl()
+    //   setErrorType("connection")
+    //   setState("error")
+    // }
   }
 
   const checkCloudVersion = async (isRetry = false): Promise<void> => {
@@ -210,8 +211,8 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      const defaultUrl = (await settings.getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
-      await settings.set(SETTINGS_KEYS.CUSTOM_BACKEND_URL, defaultUrl)
+      const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      await setCustomBackendUrl(defaultUrl)
       await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash

@@ -14,6 +14,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
 import {PillButton} from "@/components/ignite"
 import {MOCK_CONNECTION} from "@/consts"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 // Nex Interface Version - Single source of truth
 export const NEX_INTERFACE_VERSION = "1.0.0"
@@ -256,6 +257,7 @@ export default function NexDeveloperSettings() {
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   // Mentra Nex BLE test state variables
   const [text, setText] = useState("Hello World")
@@ -413,7 +415,7 @@ export default function NexDeveloperSettings() {
         </View>
 
         {/* Screen Settings for binocular glasses */}
-        {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.binocular && (
+        {defaultWearable && glassesFeatures[defaultWearable]?.binocular && (
           <View style={themed($settingsGroup)}>
             <Text style={themed($sectionTitle)}>Display Settings</Text>
             <RouteButton

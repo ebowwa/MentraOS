@@ -14,25 +14,23 @@ import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS} from "@/stores/settings"
 import {router, usePathname} from "expo-router"
+import {useSettingsStore} from "@/stores/settings"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
 
-  const {themeScheme} = useThemeProvider()
+  const isNewUi = useSettingsStore(state => state.settings[SETTINGS_KEYS.NEW_UI])
+  const setSetting = useSettingsStore(state => state.setSetting)
   const {theme, themed} = useAppTheme()
-  const {push, replace} = useNavigationHistory()
+  const {replace} = useNavigationHistory()
 
-  const showLabel = false
   const iconFocusedColor = theme.colors.tabBarIconActive
-  const whiteColor = "#fff"
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
   const pressTimeout = useRef<NodeJS.Timeout | null>(null)
-
-  const pathname = usePathname()
 
   const handleQuickPress = () => {
     replace("/settings")
@@ -61,7 +59,7 @@ export default function Layout() {
     if (pressCount.current === maxPressCount) {
       // Show alert on 8th press
       showAlert("Developer Mode", "You are now a developer!", [{text: translate("common:ok")}])
-      settings.set(SETTINGS_KEYS.DEV_MODE, true)
+      useSettingsStore.getState().setSetting(SETTINGS_KEYS.DEV_MODE, true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -84,8 +82,7 @@ export default function Layout() {
   // enable new home ui if you tap and hold
   const handleHomeLongPress = async () => {
     replace("/home")
-    const isNewUi = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-    settings.set(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    await setSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
     Toast.show({
       type: "info",
       text1: isNewUi ? "New UI disabled" : "New UI enabled",
@@ -155,7 +152,7 @@ export default function Layout() {
           // tabBarIcon: ({focused, color}) => (
           //   <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
           // ),
-          tabBarIcon: ({focused, color}) => {
+          tabBarIcon: ({focused}) => {
             return (
               <TouchableOpacity onLongPress={handleHomeLongPress} onPress={() => replace("/home")}>
                 <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
@@ -170,7 +167,7 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
+          tabBarIcon: ({focused}) => (
             <SolarLineIconsSet4 size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
           ),
           tabBarLabel: translate("navigation:glasses"),
@@ -192,7 +189,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
+          tabBarIcon: ({focused}) => (
             <StoreIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
           ),
           tabBarLabel: translate("navigation:store"),
@@ -203,7 +200,7 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => {
+          tabBarIcon: ({focused}) => {
             return (
               <TouchableOpacity onPress={handleQuickPress}>
                 <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
@@ -218,7 +215,7 @@ export default function Layout() {
   )
 }
 
-const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   borderTopColor: colors.separator,
   borderTopWidth: 1,
@@ -226,12 +223,12 @@ const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   height: 90,
 })
 
-const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBarItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingTop: spacing.sm,
   paddingBottom: spacing.xs,
 })
 
-const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({
+const $tabBarLabel: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 12,
   fontFamily: typography.primary.medium,
   lineHeight: 16,

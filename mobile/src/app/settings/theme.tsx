@@ -4,26 +4,19 @@ import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
   const {replace} = useNavigationHistory()
 
-  useEffect(() => {
-    // Load saved theme preference
-    settings.get(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
-      setSelectedTheme(savedTheme as ThemeType)
-    })
-  }, [])
+  const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
 
   const handleThemeChange = async (newTheme: ThemeType) => {
-    setSelectedTheme(newTheme)
-    await settings.set(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
+    await setThemePreference(newTheme)
 
     // Apply theme immediately
     if (newTheme === "system") {
@@ -45,7 +38,9 @@ export default function ThemeSettingsPage() {
         <MaterialCommunityIcons
           name="check"
           size={24}
-          color={selectedTheme === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"}
+          color={
+            themePreference === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"
+          }
         />
       </TouchableOpacity>
       {/* @ts-ignore */}

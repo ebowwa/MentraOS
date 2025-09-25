@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useCallback} from "react"
+import {useEffect, useMemo, useRef, useCallback, useState} from "react"
 import {Animated, Image, ImageStyle, Platform, StyleProp, TextStyle, View, ViewStyle} from "react-native"
 
 import {$styles} from "@/theme"
@@ -7,6 +7,7 @@ import {isRTL} from "@/i18n"
 import {$inputOuterBase, BaseToggleInputProps, Toggle, ToggleProps} from "./Toggle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import type {ThemedStyle} from "@/theme"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export interface SwitchToggleProps extends Omit<ToggleProps<SwitchInputProps>, "ToggleInput"> {
   /**
@@ -31,9 +32,16 @@ interface SwitchInputProps extends BaseToggleInputProps<SwitchToggleProps> {
  */
 export function Switch(props: SwitchToggleProps) {
   const {accessibilityMode, ...rest} = props
+  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+
   const switchInput = useCallback(
-    (toggleProps: SwitchInputProps) => <SwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />,
-    [accessibilityMode],
+    (toggleProps: SwitchInputProps) => {
+      if (showNewUi) {
+        return <ModernSwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />
+      }
+      return <SwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />
+    },
+    [accessibilityMode, showNewUi],
   )
   return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={rest.hitSlop || 16} />
 }
@@ -169,21 +177,7 @@ function SwitchInput(props: SwitchInputProps) {
             borderWidth: spacing.xxxs,
           },
           $outerStyleOverride,
-          // {transform: [{translateX: -12}]},
-        ]}>
-        {/* <Animated.View
-          style={[
-            $themedSwitchInner,
-            {backgroundColor: onBackgroundColor},
-            $innerStyleOverride,
-            {opacity: opacity.current},
-            // {transform: [{translateX: -12}]},
-          ]}
-        /> */}
-
-        {/* <SwitchAccessibilityLabel {...props} role="on" /> */}
-        {/* <SwitchAccessibilityLabel {...props} role="off" /> */}
-      </Animated.View>
+        ]}></Animated.View>
       <Animated.View
         style={[
           $switchDetail,
@@ -197,6 +191,115 @@ function SwitchInput(props: SwitchInputProps) {
           },
         ]}
       />
+    </View>
+  )
+}
+
+/**
+ * Modern iOS-style switch for NEW UI
+ */
+function ModernSwitchInput(props: SwitchInputProps) {
+  const {
+    on,
+    status,
+    disabled,
+    outerStyle: $outerStyleOverride,
+    innerStyle: $innerStyleOverride,
+    detailStyle: $detailStyleOverride,
+  } = props
+
+  const {themed, theme} = useAppTheme()
+  const {colors, spacing} = theme
+
+  // Use state for simplicity - no native driver conflicts!
+  const [animValue] = useState(() => new Animated.Value(on ? 1 : 0))
+
+  useEffect(() => {
+    Animated.timing(animValue, {
+      toValue: on ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false, // Use JS driver for everything to avoid conflicts
+    }).start()
+  }, [on, animValue])
+
+  // iOS-style dimensions (slightly smaller)
+  const trackWidth = 46
+  const trackHeight = 28
+  const knobSize = 24
+  const knobMargin = 2
+
+  const offBackgroundColor = [
+    disabled && colors.palette.neutral400,
+    status === "error" && colors.errorBackground,
+    colors.switchTrackOff,
+  ].filter(Boolean)[0]
+
+  const onBackgroundColor = [
+    disabled && colors.palette.neutral700,
+    status === "error" && colors.errorBackground,
+    colors.switchTrackOn,
+  ].filter(Boolean)[0]
+
+  const offKnobColor = [
+    disabled && colors.palette.neutral300,
+    status === "error" && colors.error,
+    colors.switchThumbOff,
+  ].filter(Boolean)[0]
+
+  const onKnobColor = [
+    disabled && colors.palette.neutral300,
+    status === "error" && colors.error,
+    colors.switchThumbOn,
+  ].filter(Boolean)[0]
+
+  // Calculate all interpolations from single animated value
+  const translateX = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [knobMargin, trackWidth - knobSize - knobMargin],
+  })
+
+  const animatedTrackColor = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [offBackgroundColor, onBackgroundColor],
+  })
+
+  const animatedKnobColor = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [offKnobColor, onKnobColor],
+  })
+
+  return (
+    <View style={{alignItems: "center", justifyContent: "center"}}>
+      <Animated.View
+        style={[
+          {
+            width: trackWidth,
+            height: trackHeight,
+            borderRadius: trackHeight / 2,
+            backgroundColor: animatedTrackColor,
+            justifyContent: "center",
+          },
+          $outerStyleOverride,
+        ]}>
+        <Animated.View
+          style={[
+            {
+              width: knobSize,
+              height: knobSize,
+              borderRadius: knobSize / 2,
+              backgroundColor: animatedKnobColor,
+              position: "absolute",
+              transform: [{translateX}],
+              shadowColor: "#000",
+              shadowOffset: {width: 0, height: 2},
+              shadowOpacity: 0.15,
+              shadowRadius: 3,
+              elevation: 2,
+            },
+            $detailStyleOverride,
+          ]}
+        />
+      </Animated.View>
     </View>
   )
 }

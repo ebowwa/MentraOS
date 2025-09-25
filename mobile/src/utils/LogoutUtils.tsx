@@ -3,8 +3,8 @@ import {supabase} from "@/supabase/supabaseClient"
 import bridge from "@/bridge/MantleBridge"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {SETTINGS_KEYS} from "@/managers/Settings"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS} from "@/stores/settings"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"

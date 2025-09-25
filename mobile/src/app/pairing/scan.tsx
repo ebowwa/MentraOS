@@ -33,7 +33,7 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useCoreStatus()
@@ -246,8 +246,8 @@ export default function SelectGlassesBluetoothScreen() {
     }
 
     // update the preferredmic to be the phone mic:
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, "phone")
     bridge.sendSetPreferredMic("phone") // TODO: config: remove
-    settings.set(SETTINGS_KEYS.preferred_mic, "phone")
 
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {

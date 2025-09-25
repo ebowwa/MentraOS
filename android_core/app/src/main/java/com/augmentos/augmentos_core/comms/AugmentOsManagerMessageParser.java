@@ -92,6 +92,11 @@ public class AugmentOsManagerMessageParser {
                 callback.setBypassVadForDebugging(bypassVadForDebugging);
                 break;
 
+            case "enable_offline_mode":
+                boolean offlineModeEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                callback.onEnableOfflineMode(offlineModeEnabled);
+                break;
+
             case "bypass_audio_encoding_for_debugging":
                 boolean bypassAudioEncodingForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
                 callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
