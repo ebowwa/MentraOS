@@ -14,9 +14,10 @@ interface AppIconProps {
   onClick?: () => void
   style?: ViewStyle
   showLabel?: boolean
+  hideLoadingIndicator?: boolean
 }
 
-const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false}) => {
+const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false, hideLoadingIndicator = false}) => {
   const {themed, theme} = useAppTheme()
 
   const WrapperComponent = onClick ? TouchableOpacity : View
@@ -42,9 +43,9 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
             height: style?.height ?? 56,
             borderRadius: style?.borderRadius ?? theme.spacing.md,
           }}>
-          {app.loading && (
+          {app.loading && !hideLoadingIndicator && (
             <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.palette.white} />
+              <ActivityIndicator size="small" color={theme.colors.palette.white} />
             </View>
           )}
           <Image
@@ -57,9 +58,9 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
         </SquircleView>
       ) : (
         <>
-          {app.loading && newUi && (
+          {app.loading && newUi && !hideLoadingIndicator && (
             <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.tint} />
+              <ActivityIndicator size="small" color={theme.colors.tint} />
             </View>
           )}
           <Image
@@ -89,7 +90,7 @@ const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
   alignItems: "center",
   zIndex: 10,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backgroundColor: "rgba(0, 0, 0, 0.2)", // Much more subtle overlay
 })
 
 const $icon: ThemedStyle<ImageStyle> = () => ({

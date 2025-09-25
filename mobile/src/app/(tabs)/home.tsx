@@ -1,4 +1,4 @@
-import {useRef, useCallback, useState} from "react"
+import React, {useRef, useCallback, useState} from "react"
 import {View, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -23,6 +23,8 @@ import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {NewUiHomeContainer} from "@/components/home/NewUiHomeContainer"
+import {NewUiCompactDeviceStatus} from "@/components/home/NewUiCompactDeviceStatus"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -30,8 +32,8 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
 
   useFocusEffect(
     useCallback(() => {
@@ -41,31 +43,33 @@ export default function Homepage() {
 
   if (showNewUi) {
     return (
-      <Screen preset="fixed" style={themed($screen)}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header
           leftTx="home:title"
           RightActionComponent={
             <View style={themed($headerRight)}>
               <PermissionsWarning />
+              <OfflineModeButton />
               <MicIcon width={24} height={24} />
               <NonProdWarning />
             </View>
           }
         />
 
-        <CloudConnection />
-        <SensingDisabledWarning />
-        <View>
-          <ConnectedGlasses showTitle={false} />
-          <DeviceToolbar />
-        </View>
-        <Spacer height={theme.spacing.lg} />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.md} />
+        <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
+          <CloudConnection />
+          <SensingDisabledWarning />
 
-        {isOfflineMode ? <AppsOfflineList /> : <AppsCombinedGridView />}
+          {isOfflineMode ? (
+            <>
+              <NewUiCompactDeviceStatus />
+              <Divider variant="full" />
+              <AppsOfflineList />
+            </>
+          ) : (
+            <NewUiHomeContainer />
+          )}
+        </ScrollView>
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
