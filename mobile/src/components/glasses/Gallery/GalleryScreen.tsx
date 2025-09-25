@@ -27,6 +27,7 @@ import {asgCameraApi} from "../../../services/asg/asgCameraApi"
 import {localStorageService} from "../../../services/asg/localStorageService"
 import {PhotoImage} from "./PhotoImage"
 import {MediaViewer} from "./MediaViewer"
+import {ProgressRing} from "./ProgressRing"
 import {createShimmerPlaceholder} from "react-native-shimmer-placeholder"
 import LinearGradient from "expo-linear-gradient"
 
@@ -115,6 +116,15 @@ export function GalleryScreen() {
     message: string
     fileProgress?: number
   } | null>(null)
+  const [photoSyncStates, setPhotoSyncStates] = useState<
+    Map<
+      string,
+      {
+        status: "pending" | "downloading" | "completed" | "failed"
+        progress: number
+      }
+    >
+  >(new Map())
   const [glassesGalleryStatus, setGlassesGalleryStatus] = useState<{
     photos: number
     videos: number
@@ -285,6 +295,16 @@ export function GalleryScreen() {
         return
       }
 
+      // Initialize photo sync states
+      const initialSyncStates = new Map()
+      syncData.changed_files.forEach(photo => {
+        initialSyncStates.set(photo.name, {
+          status: "pending" as const,
+          progress: 0,
+        })
+      })
+      setPhotoSyncStates(initialSyncStates)
+
       setSyncProgress({
         current: 0,
         total: syncData.changed_files.length,
@@ -295,6 +315,16 @@ export function GalleryScreen() {
         syncData.changed_files,
         true,
         (current, total, fileName, fileProgress) => {
+          // Update individual photo progress
+          setPhotoSyncStates(prev => {
+            const newStates = new Map(prev)
+            newStates.set(fileName, {
+              status: "downloading",
+              progress: fileProgress || 0,
+            })
+            return newStates
+          })
+
           setSyncProgress({
             current,
             total,
@@ -306,6 +336,7 @@ export function GalleryScreen() {
 
       const glassesModel = status.glasses_info?.model_name
 
+      // Remove completed photos from sync states immediately
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
@@ -314,6 +345,38 @@ export function GalleryScreen() {
           glassesModel,
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
+
+        // Remove from sync states immediately since sync is complete
+        setPhotoSyncStates(prev => {
+          const newStates = new Map(prev)
+          newStates.delete(photoInfo.name)
+          return newStates
+        })
+      }
+
+      // Mark failed photos
+      for (const failedFileName of downloadResult.failed) {
+        setPhotoSyncStates(prev => {
+          const newStates = new Map(prev)
+          newStates.set(failedFileName, {
+            status: "failed",
+            progress: 0,
+          })
+          return newStates
+        })
+      }
+
+      // Remove failed progress rings after a delay to show error state
+      if (downloadResult.failed.length > 0) {
+        setTimeout(() => {
+          setPhotoSyncStates(prev => {
+            const newStates = new Map(prev)
+            for (const failedFileName of downloadResult.failed) {
+              newStates.delete(failedFileName)
+            }
+            return newStates
+          })
+        }, 3000) // Show error for 3 seconds
       }
 
       // Files are now deleted immediately after each successful download in batchSyncFiles
@@ -333,6 +396,7 @@ export function GalleryScreen() {
       setTotalServerCount(0)
       loadedRanges.current.clear()
       loadingRanges.current.clear()
+      setPhotoSyncStates(new Map())
 
       await loadDownloadedPhotos()
       transitionToState(GalleryState.SYNC_COMPLETE)
@@ -601,6 +665,7 @@ export function GalleryScreen() {
             setTotalServerCount(0)
             loadedRanges.current.clear()
             loadingRanges.current.clear()
+            setPhotoSyncStates(new Map())
             await loadDownloadedPhotos()
 
             // Refresh server photos if connected
@@ -1018,25 +1083,12 @@ export function GalleryScreen() {
             )
           }
           return (
-            <>
+            <View style={themed($syncButtonRow)}>
+              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
               <Text style={themed($syncButtonText)}>
                 Syncing {syncProgress.current} of {syncProgress.total} items
               </Text>
-              <View style={themed($syncButtonProgressBar)}>
-                <View style={[themed($syncButtonProgressFill), {width: `${syncProgress.fileProgress || 0}%`}]} />
-              </View>
-              <View style={[themed($syncButtonProgressBar), {marginTop: 4, height: 4, opacity: 0.6}]}>
-                <View
-                  style={[
-                    themed($syncButtonProgressFill),
-                    {
-                      width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
-                      opacity: 0.8,
-                    },
-                  ]}
-                />
-              </View>
-            </>
+            </View>
           )
 
         case GalleryState.SYNC_COMPLETE:
@@ -1110,6 +1162,40 @@ export function GalleryScreen() {
             <MaterialCommunityIcons name="video" size={14} color="white" />
           </View>
         )}
+        {(() => {
+          const syncState = photoSyncStates.get(item.photo.name)
+          if (
+            syncState &&
+            (syncState.status === "pending" || syncState.status === "downloading" || syncState.status === "failed")
+          ) {
+            const isFailed = syncState.status === "failed"
+
+            return (
+              <View style={themed($progressRingOverlay)}>
+                <ProgressRing
+                  progress={Math.max(0, Math.min(100, syncState.progress || 0))}
+                  size={50}
+                  strokeWidth={4}
+                  showPercentage={!isFailed}
+                  progressColor={isFailed ? theme.colors.error : theme.colors.tint}
+                />
+                {isFailed && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: 50,
+                      height: 50,
+                    }}>
+                    <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
+                  </View>
+                )}
+              </View>
+            )
+          }
+          return null
+        })()}
       </TouchableOpacity>
     )
   }
@@ -1243,6 +1329,18 @@ const $videoIndicator: ThemedStyle<ViewStyle> = ({spacing}) => ({
   elevation: 3,
 })
 
+const $progressRingOverlay: ThemedStyle<ViewStyle> = () => ({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0,0,0,0.5)",
+  borderRadius: 8,
+})
+
 const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
@@ -1304,21 +1402,6 @@ const $syncButtonSubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   color: colors.textDim,
   opacity: 0.9,
   marginBottom: spacing.xs,
-})
-
-const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  height: 6,
-  backgroundColor: colors.border,
-  borderRadius: 3,
-  overflow: "hidden",
-  marginTop: spacing.xs,
-  width: "100%",
-})
-
-const $syncButtonProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: "100%",
-  backgroundColor: colors.palette.primary500,
-  borderRadius: 2,
 })
 
 const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({

@@ -757,7 +757,16 @@ export class AsgCameraApiClient {
           console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
         },
         progress: res => {
-          const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+          // Validate progress data to prevent negative percentages
+          const contentLength = res.contentLength || 0
+          const bytesWritten = res.bytesWritten || 0
+
+          let percentage = 0
+          if (contentLength > 0 && bytesWritten >= 0) {
+            percentage = Math.round((bytesWritten / contentLength) * 100)
+            // Clamp percentage between 0 and 100
+            percentage = Math.max(0, Math.min(100, percentage))
+          }
 
           // Call the progress callback if provided - now reports all progress
           if (onProgress) {
