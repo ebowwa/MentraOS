@@ -32,7 +32,7 @@ export function useNewUiBackgroundApps(): AppletInterface[] {
 /**
  * Hook to get the currently active foreground app
  */
-export function useNewUiActiveForegroundApp(): AppletInterface | null {
+export function useActiveForegroundApp(): AppletInterface | null {
   const {appStatus} = useAppStatus()
 
   return useMemo(() => {

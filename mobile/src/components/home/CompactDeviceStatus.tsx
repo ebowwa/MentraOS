@@ -1,5 +1,15 @@
-import React, {useCallback, useRef, useState} from "react"
-import {View, Text, Animated, Image, ActivityIndicator, TouchableOpacity} from "react-native"
+import {useCallback, useRef, useState} from "react"
+import {
+  View,
+  Text,
+  Animated,
+  Image,
+  ActivityIndicator,
+  TouchableOpacity,
+  ViewStyle,
+  ImageStyle,
+  TextStyle,
+} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
@@ -20,11 +30,10 @@ import bridge from "@/bridge/MantleBridge"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/component/ChevronRight"
-import {spacing} from "@/theme"
-import {translate} from "@/i18n"
+import {spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 
-export const NewUiCompactDeviceStatus: React.FC = () => {
+export const CompactDeviceStatus: React.FC = () => {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
@@ -117,7 +126,9 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
     console.log("Disconnecting wearable")
     try {
       await bridge.sendDisconnectWearable()
-    } catch (error) {}
+    } catch (error) {
+      console.error("disconnect wearable error:", error)
+    }
   }
 
   const handleConnectOrDisconnect = async () => {
@@ -271,57 +282,57 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
   )
 }
 
-const $container = theme => ({
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  paddingVertical: theme.spacing.sm,
-  gap: theme.spacing.sm,
+  paddingVertical: spacing.sm,
+  gap: spacing.sm,
 })
 
-const $imageContainer = theme => ({
+const $imageContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 2,
   alignItems: "center",
   justifyContent: "center",
 })
 
-const $glassesImage = theme => ({
+const $glassesImage: ThemedStyle<ImageStyle> = () => ({
   width: "100%",
   height: 100,
   resizeMode: "contain",
 })
 
-const $statusContainer = theme => ({
+const $statusContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
-  gap: theme.spacing.xs,
+  gap: spacing.xs,
 })
 
-const $statusRow = theme => ({
+const $statusRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  gap: theme.spacing.xxs,
+  gap: spacing.xxs,
 })
 
-const $statusText = theme => ({
-  color: theme.colors.statusText,
+const $statusText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.statusText,
   fontSize: 14,
   fontFamily: "Inter-Regular",
   flex: 1,
 })
 
-const $disconnectedContainer = theme => ({
+const $disconnectedContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
-  marginTop: -theme.spacing.md,
-  paddingBottom: theme.spacing.sm,
-  gap: theme.spacing.xs,
+  marginTop: -spacing.md,
+  paddingBottom: spacing.sm,
+  gap: spacing.xs,
 })
 
-const $disconnectedImageContainer = theme => ({
+const $disconnectedImageContainer: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
   alignItems: "center",
 })
 
-const $disconnectedGlassesImage = theme => ({
+const $disconnectedGlassesImage: ThemedStyle<ImageStyle> = () => ({
   width: "80%",
   height: 160,
   resizeMode: "contain",

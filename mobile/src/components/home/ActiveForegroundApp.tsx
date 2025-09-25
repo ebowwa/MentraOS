@@ -1,20 +1,19 @@
-import React, {useState} from "react"
-import {View, TouchableOpacity, Text} from "react-native"
+import {View, TouchableOpacity, Text, ViewStyle, ImageStyle, TextStyle} from "react-native"
 
 import AppIcon from "@/components/misc/AppIcon"
-import {useNewUiActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
+import {useActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import restComms from "@/managers/RestComms"
 import {showAlert} from "@/utils/AlertUtils"
-import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
+import {ThemedStyle} from "@/theme"
 
-export const NewUiActiveForegroundApp: React.FC = () => {
+export const ActiveForegroundApp: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
-  const activeForegroundApp = useNewUiActiveForegroundApp()
+  const activeForegroundApp = useActiveForegroundApp()
   const {optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
 
   const handlePress = () => {
@@ -93,63 +92,63 @@ export const NewUiActiveForegroundApp: React.FC = () => {
   )
 }
 
-const $container = theme => ({
-  borderRadius: theme.spacing.sm,
-  marginVertical: theme.spacing.xs,
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  borderRadius: spacing.sm,
+  marginVertical: spacing.xs,
   minHeight: 72,
 })
 
-const $rowContent = theme => ({
+const $rowContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  paddingHorizontal: theme.spacing.xs,
-  paddingVertical: theme.spacing.sm,
-  gap: theme.spacing.sm,
+  paddingHorizontal: spacing.xs,
+  paddingVertical: spacing.sm,
+  gap: spacing.sm,
 })
 
-const $appIcon = theme => ({
+const $appIcon: ThemedStyle<ImageStyle> = () => ({
   width: 64,
   height: 64,
 })
 
-const $appInfo = theme => ({
+const $appInfo: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
   justifyContent: "center",
 })
 
-const $appName = theme => ({
+const $appName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 16,
   fontWeight: "500",
-  color: theme.colors.text,
-  marginBottom: theme.spacing.xxs,
+  color: colors.text,
+  marginBottom: spacing.xxs,
 })
 
-const $tagContainer = theme => ({
+const $tagContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
-  gap: theme.spacing.xs,
+  gap: spacing.xs,
 })
 
-const $activeTag = theme => ({
-  paddingHorizontal: theme.spacing.xs,
+const $activeTag: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  paddingHorizontal: spacing.xs,
   paddingVertical: 2,
-  backgroundColor: theme.colors.success + "20",
-  borderRadius: theme.spacing.xxs,
+  backgroundColor: colors.success + "20",
+  borderRadius: spacing.xxs,
 })
 
-const $tagText = theme => ({
+const $tagText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 11,
-  color: theme.colors.foregroundTagText,
+  color: colors.foregroundTagText,
   fontWeight: "500",
 })
 
-const $placeholderContent = theme => ({
-  padding: theme.spacing.lg,
+const $placeholderContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.lg,
   alignItems: "center",
   justifyContent: "center",
 })
 
-const $placeholderText = theme => ({
+const $placeholderText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
 })

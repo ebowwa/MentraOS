@@ -135,6 +135,8 @@ const en = {
     incompatible: "Incompatible",
     noAppsInstalled: "No apps installed",
     swipeToView: "Swipe to view {{target}}",
+    backgroundApps: "Background Apps",
+    backgroundAppsActive: "active",
   },
   glasses: {
     title: "Glasses",

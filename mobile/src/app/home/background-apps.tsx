@@ -1,5 +1,5 @@
-import React, {useState, useCallback, useMemo} from "react"
-import {View, ScrollView, TouchableOpacity, ActivityIndicator} from "react-native"
+import {Fragment, useMemo} from "react"
+import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {useRouter} from "expo-router"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
@@ -8,16 +8,15 @@ import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
 import {useNewUiBackgroundApps} from "@/hooks/useNewUiFilteredApps"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
 import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
-import {showAlert} from "@/utils/AlertUtils"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {ThemedStyle} from "@/theme"
 
 export default function NewUiBackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
@@ -95,7 +94,7 @@ export default function NewUiBackgroundAppsScreen() {
       })
     } else {
       // App is explicitly offline, use normal flow with health check first
-      const shouldStart = await performHealthCheckFlow({
+      await performHealthCheckFlow({
         app,
         onStartApp: async () => {
           optimisticallyStartApp(packageName)
@@ -152,7 +151,7 @@ export default function NewUiBackgroundAppsScreen() {
     }
 
     return (
-      <React.Fragment key={app.packageName}>
+      <Fragment key={app.packageName}>
         <TouchableOpacity
           style={themed($appRow)}
           onPress={handleRowPress}
@@ -203,7 +202,7 @@ export default function NewUiBackgroundAppsScreen() {
           </View>
         </TouchableOpacity>
         {!isLast && <Divider />}
-      </React.Fragment>
+      </Fragment>
     )
   }
 
@@ -240,7 +239,7 @@ export default function NewUiBackgroundAppsScreen() {
                 <View style={themed($tipContainer)}>
                   <View style={themed($tipContent)}>
                     <Text style={themed($tipText)}>Activate an App</Text>
-                    <Text style={themed($tipSubtext)}>Tap an app's switch to activate it</Text>
+                    <Text style={themed($tipSubtext)}>Tap an app&apos;s switch to activate it</Text>
                   </View>
                   <Switch value={false} onValueChange={() => {}} disabled={false} pointerEvents="none" />
                 </View>
@@ -277,162 +276,151 @@ export default function NewUiBackgroundAppsScreen() {
   )
 }
 
-const $screen = theme => ({
+const $screen: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
-  backgroundColor: theme.colors.background,
+  backgroundColor: colors.background,
 })
 
-const $headerInfo = theme => ({
-  paddingHorizontal: theme.spacing.md,
-  paddingVertical: theme.spacing.sm,
-  backgroundColor: theme.colors.surface,
+const $headerInfo: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
+  // backgroundColor: colors.surface,
   borderBottomWidth: 1,
-  borderBottomColor: theme.colors.border,
+  borderBottomColor: colors.border,
 })
 
-const $headerText = theme => ({
+const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 14,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
 })
 
-const $scrollView = theme => ({
+const $scrollView: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $scrollViewContent = theme => ({
-  paddingTop: theme.spacing.md,
+const $scrollViewContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingTop: spacing.md,
 })
 
-const $sectionHeader = theme => ({
+const $sectionHeader: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 14,
   fontWeight: "600",
-  color: theme.colors.textDim,
-  marginBottom: theme.spacing.xs,
-  paddingHorizontal: theme.spacing.lg,
+  color: colors.textDim,
+  marginBottom: spacing.xs,
+  paddingHorizontal: spacing.lg,
   textTransform: "uppercase",
   letterSpacing: 0.5,
 })
 
-const $sectionContent = theme => ({
-  paddingHorizontal: theme.spacing.lg,
+const $sectionContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.lg,
 })
 
-const $appRow = theme => ({
+const $appRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  paddingVertical: theme.spacing.md,
+  paddingVertical: spacing.md,
   minHeight: 72,
 })
 
-const $appContent = theme => ({
+const $appContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   flex: 1,
-  gap: theme.spacing.sm,
+  gap: spacing.sm,
 })
 
-const $appIcon = theme => ({
+const $appIcon: ThemedStyle<ViewStyle> = () => ({
   width: 48,
   height: 48,
 })
 
-const $appInfo = theme => ({
+const $appInfo: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
-  marginRight: theme.spacing.lg,
-  paddingRight: theme.spacing.sm,
+  marginRight: spacing.lg,
+  paddingRight: spacing.sm,
 })
 
-const $appName = theme => ({
+const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
-  color: theme.colors.text,
+  color: colors.text,
   marginBottom: 2,
 })
 
-const $rightControls = theme => ({
+const $rightControls: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  gap: theme.spacing.sm,
+  gap: spacing.sm,
 })
 
-const $offlineApp = theme => ({
+const $offlineApp: ThemedStyle<TextStyle> = ({colors}) => ({
   textDecorationLine: "line-through",
-  color: theme.colors.textDim,
+  color: colors.textDim,
 })
 
-const $offlineRow = theme => ({
+const $offlineRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  gap: 4,
+  gap: spacing.xs,
   marginTop: 2,
 })
 
-const $offlineText = theme => ({
+const $offlineText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
-  color: theme.colors.error,
+  color: colors.error,
 })
 
-const $tipContainer = theme => ({
-  marginHorizontal: theme.spacing.lg,
-  paddingVertical: theme.spacing.md,
-  paddingHorizontal: theme.spacing.md,
-  backgroundColor: theme.colors.palette.neutral100,
-  borderRadius: theme.spacing.sm,
+const $tipContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  marginHorizontal: spacing.lg,
+  paddingVertical: spacing.md,
+  paddingHorizontal: spacing.md,
+  backgroundColor: colors.palette.neutral100,
+  borderRadius: spacing.sm,
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
   borderWidth: 1,
-  borderColor: theme.colors.border,
+  borderColor: colors.border,
 })
 
-const $tipContent = theme => ({
+const $tipContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  gap: 4,
+  gap: spacing.xs,
 })
 
-const $tipText = theme => ({
+const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   fontWeight: "500",
-  color: theme.colors.text,
+  color: colors.text,
 })
 
-const $tipSubtext = theme => ({
+const $tipSubtext: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 13,
-  color: theme.colors.textDim,
+  color: colors.textDim,
 })
 
-const $gearButton = theme => ({
-  padding: theme.spacing.xs,
+const $gearButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
 })
 
-const $emptyContainer = theme => ({
+const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   alignItems: "center",
   justifyContent: "center",
-  paddingVertical: theme.spacing.xxxl,
+  paddingVertical: spacing.xxxl,
 })
 
-const $emptyText = theme => ({
+const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
 })
 
-const $loadingOverlay = theme => ({
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.3)",
-  alignItems: "center",
-  justifyContent: "center",
-})
-
-const $getMoreAppsSubtext = theme => ({
+const $getMoreAppsSubtext: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   marginTop: 2,
 })
