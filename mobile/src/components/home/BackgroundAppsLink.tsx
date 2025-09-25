@@ -5,6 +5,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ThemedStyle} from "@/theme"
+import {translate} from "@/i18n"
 
 export const BackgroundAppsLink: React.FC = () => {
   const {themed, theme} = useAppTheme()
@@ -12,14 +13,17 @@ export const BackgroundAppsLink: React.FC = () => {
   const activeCount = useNewUiActiveBackgroundAppsCount()
 
   const handlePress = () => {
-    push("/new-ui-background-apps")
+    push("/home/background-apps")
   }
 
   return (
     <TouchableOpacity style={themed($container)} onPress={handlePress} activeOpacity={0.7}>
       <View style={themed($content)}>
         <Text style={themed($label)}>
-          Background Apps <Text style={themed($count)}>({activeCount} active)</Text>
+          {translate("home:backgroundApps")}{" "}
+          <Text style={themed($count)}>
+            ({activeCount} {translate("home:backgroundAppsActive")})
+          </Text>
         </Text>
         <ChevronRight color={theme.colors.text} />
       </View>

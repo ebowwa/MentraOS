@@ -1,5 +1,4 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import RestComms from "@/managers/RestComms"
+import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {deepCompare} from "@/utils/debugging"
@@ -280,8 +279,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
-
       setAppStatus(currentStatus =>
         currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false, loading: false} : app)),
       )
@@ -318,16 +315,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }
 
-  const onCoreTokenSet = () => {
-    console.log("CORE_TOKEN_SET event received, forcing app refresh with 1.5 second delay")
-    // Add a delay to let the token become valid on the server side
-    setTimeout(() => {
-      console.log("CORE_TOKEN_SET: Delayed refresh executing now")
-      refreshAppStatus()
-    }, 1500)
-  }
-
-  const onAppStateChange = (msg: any) => {
+  const onAppStateChange = () => {
     // console.log("APP_STATE_CHANGE event received, forcing app refresh")
     refreshAppStatus()
   }
@@ -335,11 +323,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
-    GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
     GlobalEventEmitter.on("APP_STATE_CHANGE", onAppStateChange)
     return () => {
       // @ts-ignore
-      GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
       GlobalEventEmitter.off("APP_STATE_CHANGE", onAppStateChange)
     }
   }, [])
