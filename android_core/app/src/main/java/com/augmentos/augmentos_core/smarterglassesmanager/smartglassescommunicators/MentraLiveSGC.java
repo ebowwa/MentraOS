@@ -1564,22 +1564,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void processJsonMessage(JSONObject json) {
         Log.d(TAG, "Got some JSON from glasses: " + json.toString());
 
-        // Check for message ID that needs ACK (glasses → phone)
-        if (json.has("mId")) {
-            long messageId = json.optLong("mId", -1);
-            if (messageId != -1) {
-                // Send ACK back to glasses
-                sendAckToGlasses(messageId);
-            }
-        }
-
-        // Check if this is an ACK response (for our phone → glasses messages)
+        // Check if this is an ACK response first (for our phone → glasses messages)
         String type = json.optString("type", "");
         if ("msg_ack".equals(type)) {
             long messageId = json.optLong("mId", -1);
             if (messageId != -1) {
                 processAckResponse(messageId);
-                return;
+                return; // Don't send ACK for ACKs!
+            }
+        }
+
+        // Check for message ID that needs ACK (glasses → phone)
+        // But only if it's NOT an ACK message
+        if (json.has("mId")) {
+            long messageId = json.optLong("mId", -1);
+            if (messageId != -1) {
+                // Send ACK back to glasses
+                sendAckToGlasses(messageId);
             }
         }
 

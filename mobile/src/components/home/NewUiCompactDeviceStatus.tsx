@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useState} from "react"
+import {useCallback, useRef, useState} from "react"
 import {View, Text, Animated, Image, ActivityIndicator, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
@@ -21,7 +21,6 @@ import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAl
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {spacing} from "@/theme"
-import {translate} from "@/i18n"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 
 export const NewUiCompactDeviceStatus: React.FC = () => {
@@ -128,7 +127,7 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
     console.log("Disconnecting wearable")
     try {
       await bridge.sendDisconnectWearable()
-    } catch (error) {}
+    } catch (_error) {}
   }
 
   const handleConnectOrDisconnect = async () => {
@@ -218,6 +217,7 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
   const modelName = status.glasses_info?.model_name || ""
   const hasDisplay = glassesFeatures[modelName]?.display ?? true
   const hasWifi = glassesFeatures[modelName]?.wifi ?? false
+  const wifiConnected = status.glasses_info?.glasses_wifi_connected ?? false
   const wifiSsid = status.glasses_info?.glasses_wifi_ssid
   const autoBrightness = status.glasses_settings?.auto_brightness
   const batteryLevel = status.glasses_info?.battery_level
@@ -263,7 +263,11 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
                   deviceModel: status.glasses_info?.model_name || "Glasses",
                 })
               }}>
-              <MaterialCommunityIcons name="wifi" size={16} color={theme.colors.statusIcon} />
+              <MaterialCommunityIcons
+                name={wifiConnected ? "wifi" : "wifi-off"}
+                size={16}
+                color={theme.colors.statusIcon}
+              />
               <Text style={themed($statusText)} numberOfLines={1}>
                 {truncateText(wifiSsid || "No WiFi", 12)}
               </Text>
@@ -289,13 +293,13 @@ const $container = theme => ({
   gap: theme.spacing.sm,
 })
 
-const $imageContainer = theme => ({
+const $imageContainer = () => ({
   flex: 2,
   alignItems: "center",
   justifyContent: "center",
 })
 
-const $glassesImage = theme => ({
+const $glassesImage = () => ({
   width: "100%",
   height: 100,
   resizeMode: "contain",
@@ -327,12 +331,12 @@ const $disconnectedContainer = theme => ({
   gap: theme.spacing.xs,
 })
 
-const $disconnectedImageContainer = theme => ({
+const $disconnectedImageContainer = () => ({
   width: "100%",
   alignItems: "center",
 })
 
-const $disconnectedGlassesImage = theme => ({
+const $disconnectedGlassesImage = () => ({
   width: "80%",
   height: 160,
   resizeMode: "contain",

@@ -69,10 +69,7 @@ public class CommunicationManager implements ICommunicationManager {
             try {
                 JSONObject wifiStatus = new JSONObject();
                 // Use proper type for reliable sending
-                String messageType = isConnected ? "wifi_connected" : "wifi_disconnected";
-                wifiStatus.put("type", messageType);
-                wifiStatus.put("connected", isConnected);
-
+                wifiStatus.put("type", "wifi_status");
                 if (isConnected && serviceManager.getNetworkManager() != null) {
                     String ssid = serviceManager.getNetworkManager().getCurrentWifiSsid();
                     String localIp = serviceManager.getNetworkManager().getLocalIpAddress();
@@ -88,12 +85,8 @@ public class CommunicationManager implements ICommunicationManager {
                     wifiStatus.put("local_ip", "");
                 }
 
-                wifiStatus.put("timestamp", System.currentTimeMillis());
-
-                // Use reliable sending for WiFi status changes
                 boolean sent = reliableManager.sendMessage(wifiStatus);
-                Log.d(TAG, "🔄 📤 Sent WiFi status: " + messageType + " (sent: " + sent + ")");
-                
+                Log.d(TAG, "🔄 📤 Sent WiFi status: (sent: " + sent + ")");
             } catch (JSONException e) {
                 Log.e(TAG, "🔄 💥 Error creating WiFi status JSON", e);
             }
