@@ -279,13 +279,11 @@ export default function NewUiBackgroundAppsScreen() {
 
 const $screen = theme => ({
   flex: 1,
-  backgroundColor: theme.colors.background,
 })
 
 const $headerInfo = theme => ({
   paddingHorizontal: theme.spacing.md,
   paddingVertical: theme.spacing.sm,
-  backgroundColor: theme.colors.surface,
   borderBottomWidth: 1,
   borderBottomColor: theme.colors.border,
 })
@@ -378,7 +376,7 @@ const $tipContainer = theme => ({
   marginHorizontal: theme.spacing.lg,
   paddingVertical: theme.spacing.md,
   paddingHorizontal: theme.spacing.md,
-  backgroundColor: theme.colors.palette.neutral100,
+  backgroundColor: theme.colors.background,
   borderRadius: theme.spacing.sm,
   flexDirection: "row",
   alignItems: "center",

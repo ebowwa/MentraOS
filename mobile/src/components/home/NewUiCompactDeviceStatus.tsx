@@ -46,9 +46,20 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
     }, [defaultWearable, fadeAnim]),
   )
 
-  // If no glasses paired, don't show this section
+  // If no glasses paired, show Pair Glasses button
   if (!defaultWearable || defaultWearable === "null") {
-    return null
+    return (
+      <View style={themed($disconnectedContainer)}>
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
+          RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
+          onPress={() => push("/pairing/select-glasses-model")}
+          tx="home:pairGlasses"
+        />
+      </View>
+    )
   }
 
   // Show simulated glasses view for simulated glasses
