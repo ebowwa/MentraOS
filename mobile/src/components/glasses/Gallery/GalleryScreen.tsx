@@ -312,28 +312,68 @@ export function GalleryScreen() {
         syncData.changed_files,
         true,
         (current, total, fileName, fileProgress) => {
-          // Update individual photo progress
-          setPhotoSyncStates(prev => {
-            const newStates = new Map(prev)
-            newStates.set(fileName, {
-              status: "downloading",
-              progress: fileProgress || 0,
-            })
-            return newStates
-          })
+          console.log(`[GalleryScreen] Progress callback: ${fileName} - ${fileProgress}% (${current}/${total})`)
 
-          setSyncProgress({
-            current,
-            total,
-            message: `Downloading ${fileName}...`,
-            fileProgress,
+          // Use requestAnimationFrame to ensure immediate UI updates
+          requestAnimationFrame(() => {
+            // Update individual photo progress
+            setPhotoSyncStates(prev => {
+              const newStates = new Map(prev)
+
+              // Update the current file being downloaded
+              newStates.set(fileName, {
+                status: "downloading",
+                progress: fileProgress || 0,
+              })
+
+              // Mark previously completed files as completed (if not already marked)
+              for (let i = 0; i < current - 1; i++) {
+                const completedFileName = syncData.changed_files[i]?.name
+                if (completedFileName && !newStates.has(completedFileName)) {
+                  newStates.set(completedFileName, {
+                    status: "completed",
+                    progress: 100,
+                  })
+                }
+              }
+
+              // If this is the last file and progress is 100%, mark it as completed
+              if (current === total && fileProgress === 100) {
+                newStates.set(fileName, {
+                  status: "completed",
+                  progress: 100,
+                })
+              }
+
+              // Mark previous files as completed when moving to next file
+              if (fileProgress === 0 && current > 1) {
+                // Mark the previous file as completed
+                const previousFileName = syncData.changed_files[current - 2]?.name
+                if (previousFileName) {
+                  newStates.set(previousFileName, {
+                    status: "completed",
+                    progress: 100,
+                  })
+                }
+              }
+
+              console.log(`[GalleryScreen] Updated sync states:`, Array.from(newStates.entries()))
+              return newStates
+            })
+
+            setSyncProgress({
+              current,
+              total,
+              message: `Downloading ${fileName}...`,
+              fileProgress,
+            })
           })
         },
       )
 
       const glassesModel = status.glasses_info?.model_name
 
-      // Remove completed photos from sync states immediately
+      // Save downloaded files but keep progress states visible
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
@@ -342,14 +382,12 @@ export function GalleryScreen() {
           glassesModel,
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
-
-        // Remove from sync states immediately since sync is complete
-        setPhotoSyncStates(prev => {
-          const newStates = new Map(prev)
-          newStates.delete(photoInfo.name)
-          return newStates
-        })
       }
+
+      // Keep all progress states visible for a moment to show completion
+      setTimeout(() => {
+        setPhotoSyncStates(new Map())
+      }, 3000) // Show completion states for 3 seconds
 
       // Mark failed photos
       for (const failedFileName of downloadResult.failed) {
@@ -442,6 +480,16 @@ export function GalleryScreen() {
   // Handle photo selection
   const handlePhotoPress = (item: GalleryItem) => {
     if (!item.photo) return
+
+    // Prevent opening photos that are currently being synced
+    const syncState = photoSyncStates.get(item.photo.name)
+    if (
+      syncState &&
+      (syncState.status === "downloading" || syncState.status === "pending" || syncState.status === "completed")
+    ) {
+      console.log(`[GalleryScreen] Photo ${item.photo.name} is being synced, preventing open`)
+      return
+    }
 
     if (item.photo.is_video && item.isOnServer) {
       showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
@@ -826,8 +874,17 @@ export function GalleryScreen() {
         return
       }
 
+      // Handle different gallery states
       if (galleryState === GalleryState.QUERYING_GLASSES) {
         console.log("[GalleryScreen] Media available, requesting hotspot")
+        transitionToState(GalleryState.MEDIA_AVAILABLE)
+      } else if (
+        galleryState === GalleryState.SYNC_COMPLETE ||
+        galleryState === GalleryState.READY_TO_SYNC ||
+        galleryState === GalleryState.NO_MEDIA_ON_GLASSES
+      ) {
+        // This is likely a gallery status update after photo capture
+        console.log("[GalleryScreen] 📸 Gallery status update after photo capture, showing sync option")
         transitionToState(GalleryState.MEDIA_AVAILABLE)
       }
     }
@@ -1086,12 +1143,21 @@ export function GalleryScreen() {
             )
           }
           return (
-            <View style={themed($syncButtonRow)}>
-              <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.xs}} />
+            <>
               <Text style={themed($syncButtonText)}>
                 Syncing {syncProgress.current} of {syncProgress.total} items
               </Text>
-            </View>
+              <View style={themed($syncButtonProgressBar)}>
+                <View
+                  style={[
+                    themed($syncButtonProgressFill),
+                    {
+                      width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%`,
+                    },
+                  ]}
+                />
+              </View>
+            </>
           )
 
         case GalleryState.SYNC_COMPLETE:
@@ -1141,9 +1207,14 @@ export function GalleryScreen() {
       )
     }
 
+    const syncState = photoSyncStates.get(item.photo.name)
+    const isDownloading =
+      syncState &&
+      (syncState.status === "downloading" || syncState.status === "pending" || syncState.status === "completed")
+
     return (
       <TouchableOpacity
-        style={[themed($photoItem), {width: itemWidth}]}
+        style={[themed($photoItem), {width: itemWidth}, isDownloading && themed($photoItemDisabled)]}
         onPress={() => handlePhotoPress(item)}
         onLongPress={() => {
           if (item.photo) {
@@ -1153,7 +1224,9 @@ export function GalleryScreen() {
               handleDeleteDownloadedPhoto(item.photo)
             }
           }
-        }}>
+        }}
+        disabled={isDownloading}
+        activeOpacity={isDownloading ? 1 : 0.8}>
         <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
         {item.isOnServer && (
           <View style={themed($serverBadge)}>
@@ -1167,11 +1240,18 @@ export function GalleryScreen() {
         )}
         {(() => {
           const syncState = photoSyncStates.get(item.photo.name)
+          if (syncState) {
+            console.log(`[GalleryScreen] Rendering progress for ${item.photo.name}:`, syncState)
+          }
           if (
             syncState &&
-            (syncState.status === "pending" || syncState.status === "downloading" || syncState.status === "failed")
+            (syncState.status === "pending" ||
+              syncState.status === "downloading" ||
+              syncState.status === "failed" ||
+              syncState.status === "completed")
           ) {
             const isFailed = syncState.status === "failed"
+            const isCompleted = syncState.status === "completed"
 
             return (
               <View style={themed($progressRingOverlay)}>
@@ -1179,8 +1259,8 @@ export function GalleryScreen() {
                   progress={Math.max(0, Math.min(100, syncState.progress || 0))}
                   size={50}
                   strokeWidth={4}
-                  showPercentage={!isFailed}
-                  progressColor={isFailed ? theme.colors.error : theme.colors.tint}
+                  showPercentage={!isFailed && !isCompleted}
+                  progressColor={isFailed ? theme.colors.error : isCompleted ? theme.colors.tint : theme.colors.tint}
                 />
                 {isFailed && (
                   <View
@@ -1192,6 +1272,18 @@ export function GalleryScreen() {
                       height: 50,
                     }}>
                     <MaterialCommunityIcons name="alert-circle" size={20} color={theme.colors.error} />
+                  </View>
+                )}
+                {isCompleted && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: 50,
+                      height: 50,
+                    }}>
+                    <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.tint} />
                   </View>
                 )}
               </View>
@@ -1431,4 +1523,23 @@ const $deleteAllButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   minWidth: 44,
   minHeight: 44,
+})
+
+const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  height: 6,
+  backgroundColor: colors.border,
+  borderRadius: 3,
+  overflow: "hidden",
+  marginTop: spacing.xs,
+  width: "100%",
+})
+
+const $syncButtonProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
+  height: "100%",
+  backgroundColor: colors.palette.primary500,
+  borderRadius: 2,
+})
+
+const $photoItemDisabled: ThemedStyle<ViewStyle> = () => ({
+  opacity: 0.5,
 })
