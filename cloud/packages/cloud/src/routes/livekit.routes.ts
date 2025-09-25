@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { logger } from "../services/logging/pino-logger";
-import { sessionService } from "../services/session/session.service";
 import { liveKitTokenService } from "../services/session/LiveKitTokenService";
+import UserSession from "../services/session/UserSession";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ async function getLiveKitInfo(req: Request, res: Response) {
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
     }
-    const userSession = sessionService.getSession(userId);
+    const userSession = UserSession.getById(userId);
     if (!userSession) {
       return res.status(404).json({ error: "session_not_found" });
     }
