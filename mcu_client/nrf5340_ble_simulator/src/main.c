@@ -334,7 +334,7 @@ static int uart_init(void)
 	err = uart_callback_set(uart, uart_cb, NULL);
 	if (err) {
 		k_free(rx);
-		LOG_ERR("Cannot initialize UART callback");
+		LOG_ERR("Cannot initialize UART callback err %d", err);
 		return err;
 	}
 

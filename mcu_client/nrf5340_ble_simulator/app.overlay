@@ -6,7 +6,7 @@
 
 / {
 	chosen {
-		nordic,nus-uart = &uart0;
+		nordic,nus-uart = &uart1;
 		/* Use HLS12VGA projector display */
 		zephyr,display = &hls12vga;
 	};
@@ -106,6 +106,25 @@
 			low-power-enable;
 		};
 	};
+	uart1_default: uart1_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 27)>;
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 26)>;
+			bias-pull-up;
+		};
+	};
+	uart1_sleep: uart1_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 27)>;
+			low-power-enable;
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 26)>;
+			low-power-enable;
+		};
+	};
 };
 
 &pwm1 {
@@ -131,3 +150,19 @@ dmic_dev: &pdm0 {
 	// clock-source = "ACLK";
 };
 
+&uart1 {
+	status = "okay";
+	compatible = "nordic,nrf-uarte";
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+
+
+&gpio_fwd {
+	status = "disabled";
+};
+&i2c1 {
+	status = "disabled";
+};
