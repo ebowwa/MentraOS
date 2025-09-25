@@ -1434,6 +1434,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     /**
+     * Send ACK to glasses for their messages that have mId
+     */
+    private void sendAckToGlasses(long messageId) {
+        try {
+            JSONObject ack = new JSONObject();
+            ack.put("type", "msg_ack");
+            ack.put("mId", messageId);
+            ack.put("timestamp", System.currentTimeMillis());
+
+            String ackStr = ack.toString();
+            Log.d(TAG, "📤 Sending ACK to glasses for message: " + messageId);
+
+            // Send without retry (ACKs are never retried)
+            sendDataToGlasses(ackStr, false);
+
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating ACK for glasses", e);
+        }
+    }
+
+    /**
      * Process data received from the glasses
      */
     private void processReceivedData(byte[] data, int size) {
@@ -1543,7 +1564,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void processJsonMessage(JSONObject json) {
         Log.d(TAG, "Got some JSON from glasses: " + json.toString());
 
-        // Check if this is an ACK response
+        // Check for message ID that needs ACK (glasses → phone)
+        if (json.has("mId")) {
+            long messageId = json.optLong("mId", -1);
+            if (messageId != -1) {
+                // Send ACK back to glasses
+                sendAckToGlasses(messageId);
+            }
+        }
+
+        // Check if this is an ACK response (for our phone → glasses messages)
         String type = json.optString("type", "");
         if ("msg_ack".equals(type)) {
             long messageId = json.optLong("mId", -1);

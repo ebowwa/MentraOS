@@ -134,6 +134,18 @@ public class CommandProcessor {
         // processJsonCommand() started
 
         try {
+            // Check for ACK first (from phone acknowledging our sent messages)
+            String type = json.optString("type", "");
+            if ("msg_ack".equals(type)) {
+                long messageId = json.optLong("mId", -1);
+                if (messageId != -1) {
+                    // Handle ACK for our sent message
+                    responseSender.getReliableManager().handleAck(messageId);
+                    Log.d(TAG, "✅ Received ACK for message: " + messageId);
+                    return; // Don't process ACKs further
+                }
+            }
+
             // Extract command data
             // Extracting command data from JSON
             CommandData commandData = extractCommandData(json);

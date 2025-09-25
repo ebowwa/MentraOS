@@ -4,6 +4,7 @@ import android.util.Log;
 
 
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
+import com.augmentos.asg_client.service.communication.reliability.ReliableMessageManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.io.network.models.NetworkInfo;
 
@@ -20,11 +21,34 @@ import java.util.List;
 public class CommunicationManager implements ICommunicationManager {
     
     private static final String TAG = "CommunicationManager";
-    
+
     private AsgClientServiceManager serviceManager;
-    
+    private ReliableMessageManager reliableManager;
+
     public CommunicationManager(AsgClientServiceManager serviceManager) {
         this.serviceManager = serviceManager;
+
+        // Initialize reliability manager - use 'this.serviceManager' to always get current reference
+        this.reliableManager = new ReliableMessageManager(
+            data -> {
+                if (this.serviceManager != null &&
+                    this.serviceManager.getBluetoothManager() != null) {
+                    return this.serviceManager.getBluetoothManager().sendData(data);
+                }
+                return false;
+            }
+        );
+
+        // Enable by default - worst case with old phones is just some extra retries
+        this.reliableManager.setEnabled(true, 1);
+    }
+
+    /**
+     * Get the reliable message manager (for CommandProcessor ACK handling).
+     * @return The ReliableMessageManager instance
+     */
+    public ReliableMessageManager getReliableManager() {
+        return reliableManager;
     }
     
     public void setServiceManager(AsgClientServiceManager serviceManager) {
@@ -44,7 +68,9 @@ public class CommunicationManager implements ICommunicationManager {
             
             try {
                 JSONObject wifiStatus = new JSONObject();
-                wifiStatus.put("type", "wifi_status");
+                // Use proper type for reliable sending
+                String messageType = isConnected ? "wifi_connected" : "wifi_disconnected";
+                wifiStatus.put("type", messageType);
                 wifiStatus.put("connected", isConnected);
 
                 if (isConnected && serviceManager.getNetworkManager() != null) {
@@ -62,11 +88,11 @@ public class CommunicationManager implements ICommunicationManager {
                     wifiStatus.put("local_ip", "");
                 }
 
-                String jsonString = wifiStatus.toString();
-                Log.d(TAG, "🔄 📤 Sending WiFi status JSON: " + jsonString);
-                
-                boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
-                Log.d(TAG, "🔄 " + (sent ? "✅ WiFi status sent successfully" : "❌ Failed to send WiFi status"));
+                wifiStatus.put("timestamp", System.currentTimeMillis());
+
+                // Use reliable sending for WiFi status changes
+                boolean sent = reliableManager.sendMessage(wifiStatus);
+                Log.d(TAG, "🔄 📤 Sent WiFi status: " + messageType + " (sent: " + sent + ")");
                 
             } catch (JSONException e) {
                 Log.e(TAG, "🔄 💥 Error creating WiFi status JSON", e);
@@ -99,11 +125,9 @@ public class CommunicationManager implements ICommunicationManager {
                 response.put("level", -1); // Placeholder
                 response.put("charging", false); // Placeholder
 
-                String jsonString = response.toString();
-                Log.d(TAG, "🔋 📤 Sending battery status: " + jsonString);
-                
-                boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "🔋 " + (sent ? "✅ Battery status sent successfully" : "❌ Failed to send battery status"));
+                // Battery status doesn't need reliability (periodic updates)
+                boolean sent = reliableManager.sendMessage(response);
+                Log.d(TAG, "🔋 📤 Sent battery status (sent: " + sent + ")");
 
             } catch (JSONException e) {
                 Log.e(TAG, "🔋 💥 Error creating battery status response", e);
