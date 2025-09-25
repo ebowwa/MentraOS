@@ -150,6 +150,8 @@ const en = {
     noPhotos: "No photos yet",
     takeFirstPhoto: "Take your first photo to get started!",
     loadingPhotos: "Loading photos...",
+    loadingVideos: "Loading videos...",
+    loadingItems: "Loading items...",
     success: "Success",
     photoTaken: "Photo taken! Refreshing gallery...",
     error: "Error",
