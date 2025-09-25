@@ -1,8 +1,7 @@
 import {View, TouchableOpacity, Text, ViewStyle, ImageStyle, TextStyle} from "react-native"
 
 import AppIcon from "@/components/misc/AppIcon"
-import {useActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {useActiveForegroundApp, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
