@@ -1,6 +1,5 @@
 import {Fragment} from "react"
 import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
-import {useRouter} from "expo-router"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 import {Header, Screen, Text, Switch} from "@/components/ignite"
@@ -17,16 +16,11 @@ import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {ThemedStyle} from "@/theme"
 
-export default function NewUiBackgroundAppsScreen() {
+export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
-  const router = useRouter()
-  const {push} = useNavigationHistory()
+  const {push, goBack} = useNavigationHistory()
   const {active: activeApps, inactive: inactiveApps} = useBackgroundApps()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-
-  const handleBack = () => {
-    router.back()
-  }
 
   const toggleApp = async (app: AppletInterface) => {
     if (app.is_running) {
@@ -200,7 +194,7 @@ export default function NewUiBackgroundAppsScreen() {
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
-      <Header leftIcon="back" onLeftPress={handleBack} title="Background Apps" />
+      <Header leftIcon="back" onLeftPress={goBack} title="Background Apps" />
 
       <View style={themed($headerInfo)}>
         <Text style={themed($headerText)}>Multiple background apps can be active at once.</Text>
@@ -246,7 +240,7 @@ export default function NewUiBackgroundAppsScreen() {
                 <View style={themed($sectionContent)}>
                   {inactiveApps.map((app, index) => renderAppItem(app, index, false))}
                   {/* Get More Apps item */}
-                  <TouchableOpacity style={themed($appRow)} onPress={() => router.push("/store")} activeOpacity={0.7}>
+                  <TouchableOpacity style={themed($appRow)} onPress={() => push("/store")} activeOpacity={0.7}>
                     <View style={themed($appContent)}>
                       <GetMoreAppsIcon size="medium" />
                       <View style={themed($appInfo)}>
