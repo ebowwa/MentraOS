@@ -95,8 +95,32 @@ export default function DeviceSettings() {
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
   const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
 
   const {push} = useNavigationHistory()
+
+  // Check if we have any advanced settings to show
+  const hasMicrophoneSelector =
+    defaultWearable &&
+    hasCustomMic(defaultWearable) &&
+    (defaultWearable !== "Mentra Live" ||
+      (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900"))
+
+  const hasDeviceInfo =
+    status.glasses_info?.bluetooth_name ||
+    status.glasses_info?.glasses_build_number ||
+    status.glasses_info?.glasses_wifi_local_ip
+
+  const hasAdvancedSettingsContent = hasMicrophoneSelector || hasDeviceInfo
+
+  // Animate advanced settings dropdown
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: showAdvancedSettings ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [showAdvancedSettings, fadeAnim])
 
   useFocusEffect(
     useCallback(() => {
@@ -328,51 +352,7 @@ export default function DeviceSettings() {
           onPress={() => push("/glasses/nex-developer-settings")}
         />
       )}
-      {/* Only show mic selector if glasses have both SCO and custom mic types */}
-      {hasCustomMic(defaultWearable) &&
-        (defaultWearable !== "Mentra Live" ||
-          (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900")) && (
-          <View style={themed($settingsGroup)}>
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingBottom: theme.spacing.xs,
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-            {/* divider */}
-            <View
-              style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
-            />
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("glasses")}>
-              <View style={{flexDirection: "column", gap: 4}}>
-                <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-                {/* {!status.glasses_info?.model_name && (
-                <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
-              )} */}
-              </View>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+      {/* Mic selector has been moved to Advanced Settings section below */}
 
       {/* Only show button mode selector if glasses support configurable button */}
       {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
@@ -460,17 +440,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      {/* Show device info for glasses */}
-      {defaultWearable && (
-        <InfoSection
-          title="Device Information"
-          items={[
-            {label: "Bluetooth Name", value: status.glasses_info?.bluetooth_name},
-            {label: "Build Number", value: status.glasses_info?.glasses_build_number},
-            {label: "Local IP Address", value: status.glasses_info?.glasses_wifi_local_ip},
-          ]}
-        />
-      )}
+      {/* Device info has been moved to Advanced Settings section below */}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
       {defaultWearable && defaultWearable.toLowerCase().includes("live") && (
@@ -499,6 +469,90 @@ export default function DeviceSettings() {
           variant="destructive"
           onPress={confirmForgetGlasses}
         />
+      )}
+
+      {/* Advanced Settings Dropdown - Only show if there's content */}
+      {defaultWearable && hasAdvancedSettingsContent && (
+        <>
+          <TouchableOpacity
+            style={themed($advancedSettingsButton)}
+            onPress={() => setShowAdvancedSettings(!showAdvancedSettings)}
+            activeOpacity={0.7}>
+            <View style={themed($advancedSettingsContent)}>
+              <Text style={themed($advancedSettingsLabel)}>Advanced Settings</Text>
+              <MaterialCommunityIcons
+                name={showAdvancedSettings ? "chevron-up" : "chevron-down"}
+                size={24}
+                color={theme.colors.textDim}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {showAdvancedSettings && (
+            <Animated.View style={{opacity: fadeAnim}}>
+              {/* Microphone Selector - moved from above */}
+              {hasCustomMic(defaultWearable) &&
+                (defaultWearable !== "Mentra Live" ||
+                  (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900")) && (
+                  <View style={themed($settingsGroup)}>
+                    <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>Microphone Selection</Text>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingBottom: theme.spacing.xs,
+                        paddingTop: theme.spacing.xs,
+                      }}
+                      onPress={() => setMic("phone")}>
+                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={24}
+                        color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+                      />
+                    </TouchableOpacity>
+                    {/* divider */}
+                    <View
+                      style={{
+                        height: StyleSheet.hairlineWidth,
+                        backgroundColor: theme.colors.separator,
+                        marginVertical: 4,
+                      }}
+                    />
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingTop: theme.spacing.xs,
+                      }}
+                      onPress={() => setMic("glasses")}>
+                      <View style={{flexDirection: "column", gap: 4}}>
+                        <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                      </View>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={24}
+                        color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+              {/* Spacer between sections */}
+              <View style={{height: 16}} />
+
+              {/* Device Information - moved from above */}
+              <InfoSection
+                title="Device Information"
+                items={[
+                  {label: "Bluetooth Name", value: status.glasses_info?.bluetooth_name},
+                  {label: "Build Number", value: status.glasses_info?.glasses_build_number},
+                  {label: "Local IP Address", value: status.glasses_info?.glasses_wifi_local_ip},
+                ]}
+              />
+            </Animated.View>
+          )}
+        </>
       )}
 
       <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
@@ -547,6 +601,27 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 14,
   textAlign: "center",
+})
+
+const $advancedSettingsButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
+})
+
+const $advancedSettingsContent: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+})
+
+const $advancedSettingsLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  fontWeight: "600",
 })
 
 const $emptyStateContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

@@ -8,10 +8,10 @@ import bridge from "@/bridge/MantleBridge"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {router} from "expo-router"
 import EmptyAppsView from "@/components/home/EmptyAppsView"
-import {useFocusEffect} from "@react-navigation/native";
+import {useFocusEffect} from "@react-navigation/native"
 import showAlert from "@/utils/AlertUtils"
 import socketComms from "@/managers/SocketComms"
-import { STTModelManager } from "@/services/STTModelManager"
+import {STTModelManager} from "@/services/STTModelManager"
 
 interface AppModel {
   packageName: string
@@ -33,7 +33,9 @@ interface AppsOfflineListProps {
 export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = false}) => {
   const {themed} = useAppTheme()
 
-  const [isLocalTranscriptionEnforced, setIsLocalTranscriptionEnforced] = useSetting(SETTINGS_KEYS.enforce_local_transcription)
+  const [isLocalTranscriptionEnforced, setIsLocalTranscriptionEnforced] = useSetting(
+    SETTINGS_KEYS.enforce_local_transcription,
+  )
   const [isOfflineCaptionsEnabled, setIsOfflineCaptionsEnabled] = useSetting(SETTINGS_KEYS.offline_captions_app_running)
 
   // Load saved states on mount and when screen comes into focus
@@ -43,11 +45,11 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
       const models = await STTModelManager.getInstance().getAllModelsInfo()
       const hasModels = models.some(model => model.downloaded)
       if (hasModels) {
-        console.log('AppsOfflineList: Models downloaded but local transcription not enforced')
-        console.log('AppsOfflineList: Enforcing local transcription')
+        console.log("AppsOfflineList: Models downloaded but local transcription not enforced")
+        console.log("AppsOfflineList: Enforcing local transcription")
         await setIsLocalTranscriptionEnforced(true)
         await bridge.sendToggleEnforceLocalTranscription(true)
-        console.log('AppsOfflineList: Local transcription enforced')
+        console.log("AppsOfflineList: Local transcription enforced")
       }
     }
   }, [])
@@ -61,7 +63,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
   useFocusEffect(
     useCallback(() => {
       loadState()
-    }, [loadState])
+    }, [loadState]),
   )
 
   // Mock data for offline captions app
@@ -74,8 +76,8 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     isOnline: true,
     compatibility: {
       isCompatible: true,
-      message: ""
-    }
+      message: "",
+    },
   }
 
   const displayAppStartingMessage = useCallback(() => {
@@ -103,9 +105,11 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
 
   const handleToggleOfflineCaptions = useCallback(async () => {
     if (!isLocalTranscriptionEnforced) {
-      showAlert("Download and enable local transcription", "Please download and enable local transcription to use offline apps", [
-        {text: "Go to settings", onPress: () => router.push('/settings/transcription')}
-      ])
+      showAlert(
+        "Download and enable local transcription",
+        "Please download and enable local transcription to use offline apps",
+        [{text: "Go to settings", onPress: () => router.push("/settings/transcription")}],
+      )
       return
     }
 
@@ -116,7 +120,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
     } else {
       clearDisplayOnAppStop()
     }
-    
+
     // Update the bridge with the new offline mode
     // Update the local state
     // TODO: Later remove this during android refactor
@@ -138,24 +142,19 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
       {!isLocalTranscriptionEnforced && (
         <View style={themed($noteContainer)}>
           <Text style={themed($noteText)}>
-            Note: To use offline apps, please ensure you have downloaded the local transcription models 
-            and enabled them in the{' '}
-            <Text 
-              style={themed($linkText)}
-              onPress={() => router.push('/settings/transcription')}
-            >
+            Note: To use offline apps, please ensure you have downloaded the local transcription models and enabled them
+            in the{" "}
+            <Text style={themed($linkText)} onPress={() => router.push("/settings/transcription")}>
               app settings
-            </Text>.
+            </Text>
+            .
           </Text>
         </View>
       )}
 
       {/* Empty State */}
       {activeApps.length === 0 && (
-        <EmptyAppsView
-          statusMessageKey="home:noActiveApps"
-          activeAppsMessageKey="home:emptyActiveAppListInfo"
-        />
+        <EmptyAppsView statusMessageKey="home:noActiveApps" activeAppsMessageKey="home:emptyActiveAppListInfo" />
       )}
 
       {/* Active Apps Section */}
@@ -164,7 +163,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
           <View style={themed($headerContainer)}>
             <Text preset="subheading" text="Active" style={themed($sectionTitle)} />
           </View>
-          {activeApps.map((app) => (
+          {activeApps.map(app => (
             <AppListItem
               key={app.packageName}
               app={app}
@@ -183,7 +182,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
           <View style={themed($headerContainer)}>
             <Text preset="subheading" text="Available" style={themed($sectionTitle)} />
           </View>
-          {inactiveApps.map((app) => (
+          {inactiveApps.map(app => (
             <AppListItem
               key={app.packageName}
               app={app}
@@ -195,23 +194,21 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
           ))}
         </View>
       )}
-
-
     </View>
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = (theme) => ({
+const $container: ThemedStyle<ViewStyle> = theme => ({
   width: "100%",
   marginBottom: theme.spacing.lg,
   flex: 1,
 })
 
-const $section: ThemedStyle<ViewStyle> = (theme) => ({
+const $section: ThemedStyle<ViewStyle> = theme => ({
   marginBottom: theme.spacing.xl,
 })
 
-const $noteContainer: ThemedStyle<ViewStyle> = (theme) => ({
+const $noteContainer: ThemedStyle<ViewStyle> = theme => ({
   backgroundColor: theme.colors.foregroundTagBackground,
   borderRadius: 8,
   padding: theme.spacing.md,
@@ -221,30 +218,30 @@ const $noteContainer: ThemedStyle<ViewStyle> = (theme) => ({
   borderLeftColor: theme.colors.tint,
 })
 
-const $noteText: ThemedStyle<TextStyle> = (theme) => ({
+const $noteText: ThemedStyle<TextStyle> = theme => ({
   color: theme.colors.text,
   fontSize: 14,
   lineHeight: 20,
 })
 
-const $linkText: ThemedStyle<TextStyle> = (theme) => ({
+const $linkText: ThemedStyle<TextStyle> = theme => ({
   color: theme.colors.tint,
-  fontWeight: '500',
+  fontWeight: "500",
   marginLeft: 2,
   fontSize: 14,
   lineHeight: 20,
 })
 
-const $headerContainer: ThemedStyle<ViewStyle> = (theme) => ({
+const $headerContainer: ThemedStyle<ViewStyle> = theme => ({
   marginBottom: theme.spacing.sm,
   paddingHorizontal: theme.spacing.md,
 })
 
-const $sectionTitle: ThemedStyle<TextStyle> = (theme) => ({
+const $sectionTitle: ThemedStyle<TextStyle> = theme => ({
   fontSize: 14,
-  fontWeight: '600',
+  fontWeight: "600",
   color: theme.colors.textDim,
   marginBottom: theme.spacing.sm,
-  textTransform: 'uppercase',
+  textTransform: "uppercase",
   letterSpacing: 0.5,
 })

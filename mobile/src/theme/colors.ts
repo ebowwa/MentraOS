@@ -35,7 +35,7 @@ const palette = {
   // Angry/Error
   angry100: "#F2D6CD",
   angry500: "#C03403",
-  angry600: "#FE98EB",
+  angry600: "#FC7DE3",
 
   // Blues
   blue100: "#E3F2FD",

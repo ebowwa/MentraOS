@@ -50,6 +50,7 @@ export const SETTINGS_KEYS = {
   time_zone_override: "time_zone_override",
   location_tier: "location_tier",
   offline_captions_app_running: "offline_captions_app_running",
+  SHOW_ADVANCED_SETTINGS: "SHOW_ADVANCED_SETTINGS",
 } as const
 
 type SettingsKeys = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS]

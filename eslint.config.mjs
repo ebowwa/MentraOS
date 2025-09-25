@@ -2,49 +2,127 @@ import js from "@eslint/js"
 import globals from "globals"
 import tseslint from "typescript-eslint"
 import pluginReact from "eslint-plugin-react"
-import json from "@eslint/json"
-import markdown from "@eslint/markdown"
-import css from "@eslint/css"
-import {defineConfig} from "eslint/config"
+import pluginReactNative from "eslint-plugin-react-native"
+import pluginReactotron from "eslint-plugin-reactotron"
+import pluginPrettier from "eslint-plugin-prettier"
+import prettierConfig from "eslint-config-prettier"
 
-export default defineConfig([
-  {files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"], plugins: {js}, extends: ["js/recommended"]},
-  {files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"], languageOptions: {globals: globals.node}},
-  tseslint.configs.recommended,
-  pluginReact.configs.flat.recommended,
-  // {files: ["**/*.json"], plugins: {json}, language: "json/json", extends: ["json/recommended"]},
-  // {files: ["**/*.css"], plugins: {css}, language: "css/css", extends: ["css/recommended"]},
+export default [
+  // Base config for all JS/TS files
   {
-    // Apply to all files
-    rules: {
-      // Override all rules to be warnings
-      ...Object.fromEntries(
-        Object.keys(js.configs.recommended.rules || {}).map(key => [key, "warn"])
-      ),
-      ...Object.fromEntries(
-        Object.keys(tseslint.configs.recommended.rules || {}).map(key => [key, "warn"])
-      ),
-      ...Object.fromEntries(
-        Object.keys(pluginReact.configs.flat.recommended.rules || {}).map(key => [key, "warn"])
-      ),
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": "warn",
-      "@typescript-eslint/ban-ts-comment": "warn",
-      "@typescript-eslint/no-empty-object-type": "warn",
-      "@typescript-eslint/no-require-imports": "warn",
-      "prefer-const": "warn",
-      // "@typescript-eslint/naming-convention": [
-      //   "error",
-      //   {selector: "default", format: ["camelCase"]},
-      //   {selector: "variableLike", format: ["camelCase"]},
-      //   {selector: "variable", format: ["camelCase", "UPPER_CASE"]},
-      //   {selector: "parameter", format: ["camelCase"], leadingUnderscore: "allow"},
-      //   {selector: "memberLike", format: ["camelCase"]},
-      //   // {selector: "memberLike", modifiers: ["private"], format: ["camelCase"], leadingUnderscore: "require"},
-      //   {selector: "typeLike", format: ["PascalCase"]},
-      //   {selector: "typeParameter", format: ["PascalCase"], prefix: ["T"]},
-      //   {selector: "interface", format: ["PascalCase"], custom: {regex: "^I[A-Z]", match: false}},
-      // ],
+    files: ["**/*.{js,mjs,cjs,ts,jsx,tsx}"],
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+      "react": pluginReact,
+      "react-native": pluginReactNative,
+      "reactotron": pluginReactotron,
+      "prettier": pluginPrettier,
+    },
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        __DEV__: "readonly", // React Native global
+      },
+    },
+    settings: {
+      react: {
+        version: "detect", // Automatically detect the React version
+      },
     },
   },
-])
+
+  // Recommended configs
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  pluginReact.configs.flat.recommended,
+  pluginReact.configs.flat["jsx-runtime"],
+  prettierConfig,
+
+  // All rule overrides in one place
+  {
+    rules: {
+      // Prettier
+      "prettier/prettier": "error",
+
+      // TypeScript
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-var-requires": "off",
+      "@typescript-eslint/array-type": "off",
+
+      // React
+      "react/prop-types": "off",
+
+      // React Native - these rules are smart enough to only apply to RN code
+      "react-native/no-unused-styles": "error",
+      "react-native/split-platform-components": "warn",
+      "react-native/no-inline-styles": "warn",
+      "react-native/no-color-literals": "off",
+      "react-native/no-raw-text": "off",
+
+      // Reactotron
+      "reactotron/no-tron-in-production": "error",
+
+      // Core ESLint
+      "prefer-const": "off",
+      "no-use-before-define": "off",
+      "comma-dangle": "off",
+      "no-global-assign": "off",
+      "quotes": "off",
+      "space-before-function-paren": "off",
+      "no-case-declarations": "warn",
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "react",
+              importNames: ["default"],
+              message: "Import named exports from 'react' instead.",
+            },
+            {
+              name: "react-native",
+              importNames: ["StyleSheet"],
+              message: "Do not import StyleSheet from 'react-native'. Use themed styles instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // Ignore patterns
+  {
+    ignores: [
+      // Global ignores
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/.vscode/**",
+
+      // Mobile-specific ignores
+      "mobile/ios/**",
+      "mobile/android/**",
+      "mobile/.expo/**",
+      "mobile/ignite/ignite.json",
+      "mobile/package.json",
+
+      // You might also want to add these common RN ignores
+      "mobile/**/*.gradle",
+      "mobile/**/*.ipa",
+      "mobile/**/*.apk",
+      "mobile/**/*.aab",
+    ],
+  },
+]
