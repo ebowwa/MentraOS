@@ -1,4 +1,4 @@
-import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
+import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef, useMemo} from "react"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {deepCompare} from "@/utils/debugging"
@@ -362,4 +362,56 @@ export const useAppStatus = () => {
     throw new Error("useAppStatus must be used within an AppStatusProvider")
   }
   return context
+}
+
+/**
+ * Hook to get only foreground apps (type === "standard")
+ */
+export function useNewUiForegroundApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    // appStatus is an array, not an object with registered_applets
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(
+      app => app.type === "standard" || !app.type, // default to standard if type is missing
+    )
+  }, [appStatus])
+}
+
+/**
+ * Hook to get only background apps (type === "background")
+ */
+export function useBackgroundApps(): {active: AppletInterface[]; inactive: AppletInterface[]} {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    const active = appStatus.filter(app => app.type === "background" && app.is_running)
+    const inactive = appStatus.filter(app => app.type === "background" && !app.is_running)
+    return {active, inactive}
+  }, [appStatus])
+}
+
+/**
+ * Hook to get the currently active foreground app
+ */
+export function useActiveForegroundApp(): AppletInterface | null {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return null
+    return appStatus.find(app => (app.type === "standard" || !app.type) && app.is_running) || null
+  }, [appStatus])
+}
+
+/**
+ * Hook to get count of active background apps
+ */
+export function useNewUiActiveBackgroundAppsCount(): number {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return 0
+    return appStatus.filter(app => app.type === "background" && app.is_running).length
+  }, [appStatus])
 }

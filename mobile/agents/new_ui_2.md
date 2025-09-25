@@ -142,7 +142,7 @@ export default function HomePage() {
     return apps.filter(app => app.type === "foreground")
   }
 
-  export function useNewUiBackgroundApps() {
+  export function useBackgroundApps() {
     const apps = useApps()
     return apps.filter(app => app.type === "background")
   }

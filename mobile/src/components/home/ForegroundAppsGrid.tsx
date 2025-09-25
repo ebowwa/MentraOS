@@ -5,8 +5,12 @@ import {useRouter} from "expo-router"
 import {Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useNewUiForegroundApps, useActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
-import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
+import {
+  AppletInterface,
+  useActiveForegroundApp,
+  useAppStatus,
+  useNewUiForegroundApps,
+} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"

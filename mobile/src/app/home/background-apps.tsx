@@ -1,4 +1,4 @@
-import {Fragment, useMemo} from "react"
+import {Fragment} from "react"
 import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {useRouter} from "expo-router"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
@@ -7,8 +7,7 @@ import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useNewUiBackgroundApps} from "@/hooks/useNewUiFilteredApps"
-import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
@@ -22,15 +21,8 @@ export default function NewUiBackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const router = useRouter()
   const {push} = useNavigationHistory()
-  const backgroundApps = useNewUiBackgroundApps()
+  const {active: activeApps, inactive: inactiveApps} = useBackgroundApps()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-
-  // Separate active and inactive apps
-  const {activeApps, inactiveApps} = useMemo(() => {
-    const active = backgroundApps.filter(app => app.is_running)
-    const inactive = backgroundApps.filter(app => !app.is_running)
-    return {activeApps: active, inactiveApps: inactive}
-  }, [backgroundApps])
 
   const handleBack = () => {
     router.back()
@@ -45,7 +37,7 @@ export default function NewUiBackgroundAppsScreen() {
   }
 
   const startApp = async (packageName: string) => {
-    const app = backgroundApps.find(a => a.packageName === packageName)
+    const app = inactiveApps.find(a => a.packageName === packageName)
     if (!app) {
       console.error("App not found:", packageName)
       return
@@ -218,7 +210,7 @@ export default function NewUiBackgroundAppsScreen() {
         style={themed($scrollView)}
         contentContainerStyle={themed($scrollViewContent)}
         showsVerticalScrollIndicator={false}>
-        {backgroundApps.length === 0 ? (
+        {inactiveApps.length === 0 ? (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No background apps available</Text>
           </View>
