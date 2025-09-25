@@ -1223,7 +1223,16 @@ export function GalleryScreen() {
             </View>
           ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
             <View style={themed($emptyContainer)}>
-              <Text style={themed($emptyText)}>No photos</Text>
+              <MaterialCommunityIcons
+                name="image-outline"
+                size={64}
+                color={theme.colors.textDim}
+                style={{marginBottom: spacing.lg}}
+              />
+              <Text style={themed($emptyText)}>Gallery is empty</Text>
+              <Text style={themed($emptySubtext)}>
+                Take photos with your glasses or sync existing photos to see them here.
+              </Text>
             </View>
           ) : (
             <FlatList
@@ -1304,6 +1313,14 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 18,
   color: colors.text,
   marginBottom: spacing.xs,
+})
+
+const $emptySubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 14,
+  color: colors.textDim,
+  textAlign: "center",
+  lineHeight: 20,
+  paddingHorizontal: spacing.lg,
 })
 
 const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
