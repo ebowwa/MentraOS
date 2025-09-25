@@ -407,7 +407,7 @@ export function useActiveForegroundApp(): AppletInterface | null {
 /**
  * Hook to get count of active background apps
  */
-export function useNewUiActiveBackgroundAppsCount(): number {
+export function useActiveBackgroundAppsCount(): number {
   const {appStatus} = useAppStatus()
 
   return useMemo(() => {

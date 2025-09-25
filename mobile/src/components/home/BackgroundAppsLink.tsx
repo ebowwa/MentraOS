@@ -1,16 +1,16 @@
 import {TouchableOpacity, View, Text, ViewStyle, TextStyle} from "react-native"
 
-import {useNewUiActiveBackgroundAppsCount} from "@/hooks/useNewUiFilteredApps"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
+import {useActiveBackgroundAppsCount} from "@/contexts/AppletStatusProvider"
 
 export const BackgroundAppsLink: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
-  const activeCount = useNewUiActiveBackgroundAppsCount()
+  const activeCount = useActiveBackgroundAppsCount()
 
   const handlePress = () => {
     push("/home/background-apps")
