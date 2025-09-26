@@ -27,26 +27,29 @@ export class SimpleStorage {
   // Convert WebSocket URL to HTTP for API calls
   private getBaseUrl(): string {
     const serverUrl = this.appSession.getServerUrl();
-    if (!serverUrl) return 'http://localhost:8002';
-    return serverUrl.replace(/\/app-ws$/, '').replace(/^ws/, 'http');
+    if (!serverUrl) return "http://localhost:8002";
+    return serverUrl.replace(/\/app-ws$/, "").replace(/^ws/, "http");
   }
 
   // Generate auth headers for API requests
   private getAuthHeaders() {
-    const apiKey = (this.appSession as any).config?.apiKey || 'unknown-api-key';
+    const apiKey = (this.appSession as any).config?.apiKey || "unknown-api-key";
     return {
-      'Authorization': `Bearer ${this.packageName}:${apiKey}`,
-      'Content-Type': 'application/json'
+      Authorization: `Bearer ${this.packageName}:${apiKey}`,
+      "Content-Type": "application/json",
     };
   }
 
   // Fetch all data from cloud and cache locally
   private async fetchStorageFromCloud(): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/simple-storage/getSimpleStorage?userId=${encodeURIComponent(this.userId)}&packageName=${encodeURIComponent(this.packageName)}`, {
-        headers: this.getAuthHeaders()
-      });
-      
+      const response = await fetch(
+        `${this.baseUrl}/api/sdk/simple-storage/${encodeURIComponent(this.userId)}`,
+        {
+          headers: this.getAuthHeaders(),
+        },
+      );
+
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
@@ -55,11 +58,14 @@ export class SimpleStorage {
           this.storage = {};
         }
       } else {
-        console.error('Failed to fetch storage from cloud:', await response.text());
+        console.error(
+          "Failed to fetch storage from cloud:",
+          await response.text(),
+        );
         this.storage = {};
       }
     } catch (error) {
-      console.error('Error fetching storage from cloud:', error);
+      console.error("Error fetching storage from cloud:", error);
       this.storage = {};
     }
   }
@@ -70,18 +76,13 @@ export class SimpleStorage {
       if (this.storage !== null && this.storage !== undefined) {
         return this.storage[key];
       }
-      
+
       await this.fetchStorageFromCloud();
       return this.storage?.[key];
     } catch (error) {
-      console.error('Error getting item:', error);
+      console.error("Error getting item:", error);
       return undefined;
     }
-  }
-
-  // Legacy method for backwards compatibility
-  public async getItem(key: string): Promise<string | undefined> {
-    return this.get(key);
   }
 
   // Set item with optimistic update and cloud sync
@@ -90,70 +91,64 @@ export class SimpleStorage {
       if (this.storage === null || this.storage === undefined) {
         await this.fetchStorageFromCloud();
       }
-      
+
       // Update cache immediately (optimistic update)
       if (this.storage) {
         this.storage[key] = value;
       }
-      
+
       // Sync to cloud
-      const response = await fetch(`${this.baseUrl}/api/simple-storage/setItem`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          userId: this.userId,
-          packageName: this.packageName,
-          key,
-          value
-        })
-      });
+      const response = await fetch(
+        `${this.baseUrl}/api/sdk/simple-storage/${encodeURIComponent(this.userId)}/${encodeURIComponent(key)}`,
+        {
+          method: "PUT",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ value }),
+        },
+      );
 
       if (!response.ok) {
-        console.error('Failed to sync item to cloud:', await response.text());
+        console.error("Failed to sync item to cloud:", await response.text());
       }
     } catch (error) {
-      console.error('Error setting item:', error);
+      console.error("Error setting item:", error);
       throw error;
     }
   }
 
-  // Legacy method for backwards compatibility
-  public async setItem(key: string, value: string): Promise<void> {
-    return this.set(key, value);
-  }
-
-  // Remove item from cache and cloud
-  public async removeItem(key: string): Promise<boolean> {
+  // Delete item from cache and cloud
+  public async delete(key: string): Promise<boolean> {
     try {
       if (this.storage === null || this.storage === undefined) {
         await this.fetchStorageFromCloud();
       }
-      
+
       // Remove from cache
       if (this.storage) {
         delete this.storage[key];
       }
-      
+
       // Sync to cloud
-      const response = await fetch(`${this.baseUrl}/api/simple-storage/deleteItem`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          userId: this.userId,
-          packageName: this.packageName,
-          key
-        })
-      });
+      const response = await fetch(
+        `${this.baseUrl}/api/sdk/simple-storage/${encodeURIComponent(this.userId)}/${encodeURIComponent(key)}`,
+        {
+          method: "DELETE",
+          headers: this.getAuthHeaders(),
+        },
+      );
 
       if (response.ok) {
         const result = await response.json();
         return result.success;
       } else {
-        console.error('Failed to delete item from cloud:', await response.text());
+        console.error(
+          "Failed to delete item from cloud:",
+          await response.text(),
+        );
         return false;
       }
     } catch (error) {
-      console.error('Error removing item:', error);
+      console.error("Error deleting item:", error);
       return false;
     }
   }
@@ -162,25 +157,27 @@ export class SimpleStorage {
   public async clear(): Promise<boolean> {
     try {
       this.storage = {};
-      
-      const response = await fetch(`${this.baseUrl}/api/simple-storage/clear`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          userId: this.userId,
-          packageName: this.packageName
-        })
-      });
+
+      const response = await fetch(
+        `${this.baseUrl}/api/sdk/simple-storage/${encodeURIComponent(this.userId)}`,
+        {
+          method: "DELETE",
+          headers: this.getAuthHeaders(),
+        },
+      );
 
       if (response.ok) {
         const result = await response.json();
         return result.success;
       } else {
-        console.error('Failed to clear storage from cloud:', await response.text());
+        console.error(
+          "Failed to clear storage from cloud:",
+          await response.text(),
+        );
         return false;
       }
     } catch (error) {
-      console.error('Error clearing storage:', error);
+      console.error("Error clearing storage:", error);
       return false;
     }
   }
@@ -193,7 +190,7 @@ export class SimpleStorage {
       }
       return Object.keys(this.storage || {});
     } catch (error) {
-      console.error('Error getting keys:', error);
+      console.error("Error getting keys:", error);
       return [];
     }
   }
@@ -206,7 +203,7 @@ export class SimpleStorage {
       }
       return Object.keys(this.storage || {}).length;
     } catch (error) {
-      console.error('Error getting storage size:', error);
+      console.error("Error getting storage size:", error);
       return 0;
     }
   }
@@ -219,7 +216,7 @@ export class SimpleStorage {
       }
       return key in (this.storage || {});
     } catch (error) {
-      console.error('Error checking key:', error);
+      console.error("Error checking key:", error);
       return false;
     }
   }
@@ -232,7 +229,7 @@ export class SimpleStorage {
       }
       return { ...(this.storage || {}) };
     } catch (error) {
-      console.error('Error getting all data:', error);
+      console.error("Error getting all data:", error);
       return {};
     }
   }
@@ -243,20 +240,30 @@ export class SimpleStorage {
       if (this.storage === null || this.storage === undefined) {
         await this.fetchStorageFromCloud();
       }
-      
+
       // Update cache
       if (this.storage) {
         Object.assign(this.storage, data);
       }
-      
-      // Sync to cloud individually
-      const promises = Object.entries(data).map(([key, value]) => 
-        this.setItem(key, value)
+
+      // Bulk upsert to cloud
+      const response = await fetch(
+        `${this.baseUrl}/api/sdk/simple-storage/${encodeURIComponent(this.userId)}`,
+        {
+          method: "PUT",
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ data }),
+        },
       );
-      
-      await Promise.all(promises);
+
+      if (!response.ok) {
+        console.error(
+          "Failed to upsert multiple items to cloud:",
+          await response.text(),
+        );
+      }
     } catch (error) {
-      console.error('Error setting multiple items:', error);
+      console.error("Error setting multiple items:", error);
       throw error;
     }
   }
