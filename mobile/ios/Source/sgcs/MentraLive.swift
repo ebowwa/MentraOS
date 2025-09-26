@@ -1992,18 +1992,7 @@ class MentraLive: NSObject, SGCManager {
             "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
         ]
 
-        // Send without wake up and without adding mId (to avoid infinite ACK loops)
-        // We need to send this directly without adding another mId
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: json)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                // Send directly to BLE without message tracking
-                send(jsonString)
-                Bridge.log("📤 Sent ACK to glasses for message: \(messageId)")
-            }
-        } catch {
-            Bridge.log("Error creating ACK for glasses: \(error)")
-        }
+        sendJson(json, requireAck: false)
     }
 
     private func sendTransferCompleteConfirmation(fileName: String, success: Bool) {
@@ -2026,11 +2015,11 @@ class MentraLive: NSObject, SGCManager {
         }
     }
 
-    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool = false) {
+    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool = false, requireAck: Bool = true) {
         do {
             var json = jsonOriginal
             var messageId: Int64 = -1
-            if isNewVersion {
+            if isNewVersion, requireAck {
                 messageId = Int64(globalMessageId)
                 json["mId"] = globalMessageId
                 globalMessageId += 1

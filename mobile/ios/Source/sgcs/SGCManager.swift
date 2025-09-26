@@ -41,7 +41,7 @@ protocol SGCManager {
 
     // MARK: - Messaging
 
-    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool)
+    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool, requireAck: Bool)
 
     // MARK: - Camera & Media
 
@@ -96,6 +96,12 @@ protocol SGCManager {
     // MARK: - Gallery
 
     func queryGalleryStatus()
+}
+
+extension SGCManager {
+    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool) {
+        sendJson(jsonOriginal, wakeUp: wakeUp, requireAck: true)
+    }
 }
 
 //// template:
