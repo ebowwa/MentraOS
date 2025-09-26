@@ -39,6 +39,7 @@
 #include <string.h>
 
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <nrfx_clock.h>
 
 
@@ -811,10 +812,20 @@ static void configure_gpio(void)
 	}
 }
 
+// External BSP log control
+extern void bsp_log_init(void);
+extern int bsp_log_runtime_level;
+
 int main(void)
 {
 	int blink_status = 0;
 	int err = 0;
+
+	// Initialize BSP logging with disabled defaults (level 0 = DISABLED)
+	bsp_log_init();
+	
+	// Set Zephyr log level to ERROR only for very clean startup  
+	// Note: Use built-in 'log' shell commands for runtime control instead
 
 	LOG_INF("🚀🚀🚀 MAIN FUNCTION STARTED - v2.2.0-DISPLAY_OPEN_FIX 🚀🚀🚀");
 	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
@@ -896,9 +907,9 @@ int main(void)
 	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
 	
 	// Start the LVGL display thread first!
-	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	LOG_INF("🧵 Starting LVGL display thread...");
 	lvgl_display_thread();
-	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
+	LOG_INF("✅ LVGL display thread started!");
 #if 0
         // Give the thread a moment to initialize
         k_msleep(100);
@@ -906,7 +917,7 @@ int main(void)
         // Send LCD_CMD_OPEN to start the LVGL display system
         printk("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
         display_open();
-        printk("✅✅✅ display_open() call completed! ✅✅✅\n");
+        LOG_INF("✅ display_open() call completed!");
         
         // Add direct HLS12VGA test from main thread
         LOG_INF("🖥️ Testing HLS12VGA display from main thread...");

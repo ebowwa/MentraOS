@@ -18,7 +18,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
-#define LOG_LOCAL_LEVEL 3
+
+// Runtime log level control (replaces compile-time LOG_LOCAL_LEVEL)
+extern int bsp_log_runtime_level;
+#define LOG_LOCAL_LEVEL 3  // Fallback for compatibility
 typedef enum
 {
     BSP_LOG_NONE,   /*!< No log output */
@@ -65,7 +68,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_LEVEL_LOCAL(level, tag, format, ...)          \
     do                                                        \
     {                                                         \
-        if (LOG_LOCAL_LEVEL >= level)                         \
+        if (bsp_log_runtime_level >= level)                  \
             BSP_LOG_LEVEL(level, tag, format, ##__VA_ARGS__); \
     } while (0)
 #define BSP_LOGE(tag, format, ...) BSP_LOG_LEVEL_LOCAL(BSP_LOG_ERROR, tag, format, ##__VA_ARGS__)
@@ -86,7 +89,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_BUFFER_HEX_LEVEL(tag, buffer, buff_len, level)         \
     do                                                                 \
     {                                                                  \
-        if (LOG_LOCAL_LEVEL >= level)                                  \
+        if (bsp_log_runtime_level >= level)                           \
         {                                                              \
             bsp_log_buffer_hex_internal(tag, buffer, buff_len, level); \
         }                                                              \
@@ -104,7 +107,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_BUFFER_CHAR_LEVEL(tag, buffer, buff_len, level)         \
     do                                                                  \
     {                                                                   \
-        if (LOG_LOCAL_LEVEL >= level)                                   \
+        if (bsp_log_runtime_level >= level)                            \
         {                                                               \
             bsp_log_buffer_char_internal(tag, buffer, buff_len, level); \
         }                                                               \
@@ -129,7 +132,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_BUFFER_HEXDUMP(tag, buffer, buff_len, level)               \
     do                                                                     \
     {                                                                      \
-        if (LOG_LOCAL_LEVEL >= level)                                      \
+        if (bsp_log_runtime_level >= level)                               \
         {                                                                  \
             bsp_log_buffer_hexdump_internal(tag, buffer, buff_len, level); \
         }                                                                  \
@@ -148,7 +151,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_BUFFER_HEX(tag, buffer, buff_len)                          \
     do                                                                     \
     {                                                                      \
-        if (LOG_LOCAL_LEVEL >= BSP_LOG_INFO)                               \
+        if (bsp_log_runtime_level >= BSP_LOG_INFO)                        \
         {                                                                  \
             BSP_LOG_BUFFER_HEX_LEVEL(tag, buffer, buff_len, BSP_LOG_INFO); \
         }                                                                  \
@@ -167,7 +170,7 @@ void bsp_log_buffer_hexdump_internal(const char *tag, const void *buffer, uint16
 #define BSP_LOG_BUFFER_CHAR(tag, buffer, buff_len)                          \
     do                                                                      \
     {                                                                       \
-        if (LOG_LOCAL_LEVEL >= BSP_LOG_INFO)                                \
+        if (bsp_log_runtime_level >= BSP_LOG_INFO)                         \
         {                                                                   \
             BSP_LOG_BUFFER_CHAR_LEVEL(tag, buffer, buff_len, BSP_LOG_INFO); \
         }                                                                   \

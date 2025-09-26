@@ -377,11 +377,11 @@ static void show_test_pattern(int pattern_id);
 
 static void show_default_ui(void)
 {
-    BSP_LOGI(TAG, "🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
+    LOG_INF("🖼️ Starting with scrolling 'Welcome to MentraOS NExFirmware!' text...");
     // Start with pattern 3 (scrolling welcome text) - advanced text animation
     show_test_pattern(4);
 
-    BSP_LOGI(TAG, "🖼️ Scrolling welcome message complete - should see animated text");
+    LOG_INF("🖼️ Scrolling welcome message complete - should see animated text");
 }
 
 // Test pattern functions
@@ -395,7 +395,7 @@ static void create_chess_pattern(lv_obj_t *screen)
     const int chess_cols = config->width / chess_size;
     const int chess_rows = config->height / chess_size;
 
-    BSP_LOGI(TAG, "🏁 Creating adaptive chess pattern: %dx%d squares (%d cols x %d rows) for %s", 
+    LOG_DBG("🏁 Creating adaptive chess pattern: %dx%d squares (%d cols x %d rows) for %s", 
              chess_size, chess_size, chess_cols, chess_rows, config->name);
 
     for (int row = 0; row < chess_rows; row++)
@@ -426,7 +426,7 @@ static void create_horizontal_zebra_pattern(lv_obj_t *screen)
     const int stripe_height = config->patterns.bar_thickness;
     const int num_stripes   = config->height / stripe_height;
 
-    BSP_LOGI(TAG, "🦓 Creating adaptive horizontal zebra: %d stripes (%dpx height) for %s", 
+    LOG_DBG("🦓 Creating adaptive horizontal zebra: %d stripes (%dpx height) for %s", 
              num_stripes, stripe_height, config->name);
 
     for (int i = 0; i < num_stripes; i++)
@@ -542,7 +542,7 @@ static void create_center_rectangle_pattern(lv_obj_t *screen)
 
     lv_anim_start(&welcome_scroll_anim);
 
-    BSP_LOGI(TAG, "🔄 Started infinite smooth horizontal scrolling animation for welcome text");
+    LOG_DBG("🔄 Started infinite smooth horizontal scrolling animation for welcome text");
 }
 
 static void anim_set_x_cb(void *obj, int32_t v) 
@@ -890,7 +890,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     }
     
     const display_config_t *config = display_get_config();
-    BSP_LOGI(TAG, "🖼️ Display configuration loaded: %s (%dx%d)", 
+    LOG_INF("🖼️ Display configuration loaded: %s (%dx%d)", 
              config->name, config->width, config->height);
     // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
     // {
@@ -924,7 +924,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     // state_type = LCD_STATE_OFF;
                     break;
                 case LCD_CMD_OPEN:
-                    BSP_LOGI(TAG, "LCD_CMD_OPEN");
+                    LOG_INF("LCD_CMD_OPEN");
                     // hls12vga_power_on();
                     // set_display_onoff(true);
                     // hls12vga_set_brightness(9);  // 设置亮度
@@ -937,9 +937,9 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     // hls12vga_clear_screen(false);  // 清屏
                     state_type = LCD_STATE_ON;
 
-                    BSP_LOGI(TAG, "🚀 About to call show_default_ui()...");
+                    LOG_INF("🚀 About to call show_default_ui()...");
                     show_default_ui();  // 显示默认图像
-                    BSP_LOGI(TAG, "✅ show_default_ui() completed");
+                    LOG_INF("✅ show_default_ui() completed");
                     break;
                 case LCD_CMD_DATA:
                     /* 处理帧数据*/
