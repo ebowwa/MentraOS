@@ -26,11 +26,11 @@ import * as SimpleStorageService from "../../services/sdk/simple-storage.service
 const router = Router();
 
 router.get("/:email", authenticateSDK, getAllHandler);
-router.put("/:email", authenticateSDK, putAllHandler);
+router.put("/:email", authenticateSDK, updateManyHandler);
 router.delete("/:email", authenticateSDK, deleteAllHandler);
 
 router.get("/:email/:key", authenticateSDK, getKeyHandler);
-router.put("/:email/:key", authenticateSDK, putKeyHandler);
+router.put("/:email/:key", authenticateSDK, setKeyHandler);
 router.delete("/:email/:key", authenticateSDK, deleteKeyHandler);
 
 /**
@@ -60,22 +60,24 @@ async function getAllHandler(req: Request, res: Response) {
 
 /**
  * PUT /api/sdk/simple-storage/:email
- * Upserts multiple key/value pairs for the authenticated package and user.
+ * Upserts many key/value pairs for the authenticated package and user.
  * Body: { data: Record<string, string> }
  * Auth: Bearer <packageName>:<apiKey>
  */
-async function putAllHandler(req: Request, res: Response) {
+async function updateManyHandler(req: Request, res: Response) {
   try {
+    if (!req.sdk) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const email = String(req.params.email || "").toLowerCase();
-    const packageName = req.sdk?.packageName;
+    const packageName = req.sdk.packageName;
     const { data } = req.body || {};
 
     if (!email) {
       return res.status(400).json({ error: "Missing email parameter" });
     }
-    if (!packageName) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+
     if (!data || typeof data !== "object" || Array.isArray(data)) {
       return res.status(400).json({
         error: "Invalid body: expected { data: Record<string,string> }",
@@ -90,7 +92,7 @@ async function putAllHandler(req: Request, res: Response) {
       });
     }
 
-    await SimpleStorageService.upsertMany(
+    await SimpleStorageService.updateMany(
       email,
       packageName,
       data as Record<string, string>,
@@ -113,14 +115,15 @@ async function putAllHandler(req: Request, res: Response) {
  */
 async function deleteAllHandler(req: Request, res: Response) {
   try {
+    if (!req.sdk) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const email = String(req.params.email || "").toLowerCase();
     const packageName = req.sdk?.packageName;
 
     if (!email) {
       return res.status(400).json({ error: "Missing email parameter" });
-    }
-    if (!packageName) {
-      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const cleared = await SimpleStorageService.clearAll(email, packageName);
@@ -148,15 +151,16 @@ async function deleteAllHandler(req: Request, res: Response) {
  */
 async function getKeyHandler(req: Request, res: Response) {
   try {
+    if (!req.sdk) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const email = String(req.params.email || "").toLowerCase();
     const key = String(req.params.key || "");
     const packageName = req.sdk?.packageName;
 
     if (!email || !key) {
       return res.status(400).json({ error: "Missing email or key parameter" });
-    }
-    if (!packageName) {
-      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const value = await SimpleStorageService.getKey(email, packageName, key);
@@ -183,8 +187,12 @@ async function getKeyHandler(req: Request, res: Response) {
  * Body: { value: string }
  * Auth: Bearer <packageName>:<apiKey>
  */
-async function putKeyHandler(req: Request, res: Response) {
+async function setKeyHandler(req: Request, res: Response) {
   try {
+    if (!req.sdk) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const email = String(req.params.email || "").toLowerCase();
     const key = String(req.params.key || "");
     const packageName = req.sdk?.packageName;
@@ -193,9 +201,7 @@ async function putKeyHandler(req: Request, res: Response) {
     if (!email || !key) {
       return res.status(400).json({ error: "Missing email or key parameter" });
     }
-    if (!packageName) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+
     if (typeof value !== "string") {
       return res
         .status(400)
@@ -220,15 +226,16 @@ async function putKeyHandler(req: Request, res: Response) {
  */
 async function deleteKeyHandler(req: Request, res: Response) {
   try {
+    if (!req.sdk) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const email = String(req.params.email || "").toLowerCase();
     const key = String(req.params.key || "");
-    const packageName = req.sdk?.packageName;
+    const packageName = req.sdk.packageName;
 
     if (!email || !key) {
       return res.status(400).json({ error: "Missing email or key parameter" });
-    }
-    if (!packageName) {
-      return res.status(401).json({ error: "Unauthorized" });
     }
 
     const deleted = await SimpleStorageService.deleteKey(

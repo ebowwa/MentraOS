@@ -68,7 +68,7 @@ export async function setKey(
  * Upsert multiple key/value pairs at once.
  * No-op when data is empty.
  */
-export async function upsertMany(
+export async function updateMany(
   email: string,
   packageName: string,
   data: Record<string, string>,
