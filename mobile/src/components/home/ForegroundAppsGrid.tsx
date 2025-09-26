@@ -1,35 +1,36 @@
-import React, {useState, useCallback, useMemo} from "react"
-import {View, FlatList, TouchableOpacity, Alert, Dimensions, ActivityIndicator} from "react-native"
+import {useCallback, useMemo} from "react"
+import {View, FlatList, TouchableOpacity, ViewStyle, ImageStyle, TextStyle} from "react-native"
 import {useRouter} from "expo-router"
 
 import {Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useNewUiForegroundApps, useNewUiActiveForegroundApp} from "@/hooks/useNewUiFilteredApps"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {
+  AppletInterface,
+  useActiveForegroundApp,
+  useAppStatus,
+  useNewUiForegroundApps,
+} from "@/contexts/AppletStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import showAlert from "@/utils/AlertUtils"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {ThemedStyle} from "@/theme"
 
 const GRID_COLUMNS = 4
-const SCREEN_WIDTH = Dimensions.get("window").width
 
 // Special type for the Get More Apps item
 interface GridItem extends AppletInterface {
   isGetMoreApps?: boolean
 }
 
-export const NewUiForegroundAppsGrid: React.FC = () => {
+export const ForegroundAppsGrid: React.FC = () => {
   const {themed, theme} = useAppTheme()
-  const {push} = useNavigationHistory()
   const router = useRouter()
   const foregroundApps = useNewUiForegroundApps()
-  const activeForegroundApp = useNewUiActiveForegroundApp()
+  const activeForegroundApp = useActiveForegroundApp()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
 
   // Prepare grid data with placeholders and "Get More Apps"
@@ -99,7 +100,7 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
         })
       } else {
         // App is explicitly offline, use normal flow with health check first
-        const shouldStart = await performHealthCheckFlow({
+        await performHealthCheckFlow({
           app,
           onStartApp: async () => {
             optimisticallyStartApp(packageName)
@@ -285,76 +286,69 @@ export const NewUiForegroundAppsGrid: React.FC = () => {
   )
 }
 
-const $container = theme => ({
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  marginTop: theme.spacing.sm,
+  marginTop: spacing.sm,
 })
 
-const $gridContent = theme => ({
-  paddingBottom: theme.spacing.md,
+const $gridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingBottom: spacing.md,
 })
 
-const $gridItem = theme => ({
+const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   alignItems: "center",
-  marginVertical: theme.spacing.sm,
-  paddingHorizontal: theme.spacing.xs,
+  marginVertical: spacing.sm,
+  paddingHorizontal: spacing.xs,
 })
 
-const $appContainer = theme => ({
+const $appContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   position: "relative",
   width: 64,
   height: 64,
-  marginBottom: theme.spacing.xs,
+  marginBottom: spacing.xs,
 })
 
-const $appIcon = theme => ({
+const $appIcon: ThemedStyle<ImageStyle> = ({spacing}) => ({
   width: 64,
   height: 64,
-  borderRadius: theme.spacing.sm,
+  borderRadius: spacing.sm,
 })
 
-const $appName = theme => ({
+const $appName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 12,
-  color: theme.colors.text,
+  color: colors.text,
   textAlign: "center",
-  marginTop: theme.spacing.xxs,
+  marginTop: spacing.xxs,
   lineHeight: 14,
 })
 
-const $appNameOffline = theme => ({
+const $appNameOffline: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 12,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
-  marginTop: theme.spacing.xxs,
+  marginTop: spacing.xxs,
   textDecorationLine: "line-through",
   lineHeight: 14,
 })
 
-const $offlineBadge = theme => ({
+const $offlineBadge: ThemedStyle<ViewStyle> = ({colors}) => ({
   position: "absolute",
   top: -4,
   right: -4,
-  backgroundColor: theme.colors.background,
+  backgroundColor: colors.background,
   borderRadius: 10,
   padding: 2,
 })
 
-const $emptyContainer = theme => ({
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  paddingVertical: theme.spacing.xxl,
-})
-
-const $emptyText = theme => ({
+const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 15,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
-  marginBottom: theme.spacing.lg,
+  marginBottom: spacing.lg,
 })
 
-const $getMoreAppsButton = theme => ({
+const $getMoreAppsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
-  marginTop: theme.spacing.md,
+  marginTop: spacing.md,
 })

@@ -88,12 +88,17 @@ export default [
             {
               name: "react",
               importNames: ["default"],
-              message: "Import named exports from 'react' instead.",
+              message: "Import named exports from 'react' instead / don't import React.",
             },
             {
               name: "react-native",
               importNames: ["StyleSheet"],
-              message: "Do not import StyleSheet from 'react-native'. Use themed styles instead.",
+              message: "Do not import StyleSheet from 'react-native'. Use ThemedStyles / the useTheme() hook instead.",
+            },
+            {
+              name: "expo-router",
+              importNames: ["useRouter"],
+              message: "Do not use useRouter from expo-router. Use our useNavigationHistory hook instead.",
             },
           ],
         },

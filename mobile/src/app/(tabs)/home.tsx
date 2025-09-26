@@ -1,4 +1,4 @@
-import React, {useRef, useCallback, useState} from "react"
+import {useRef, useCallback, useState} from "react"
 import {View, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -17,14 +17,13 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
 import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
-import {NewUiHomeContainer} from "@/components/home/NewUiHomeContainer"
-import {NewUiCompactDeviceStatus} from "@/components/home/NewUiCompactDeviceStatus"
+import {HomeContainer} from "@/components/home/HomeContainer"
+import {CompactDeviceStatus} from "@/components/home/CompactDeviceStatus"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -32,8 +31,8 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [isOfflineMode, setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
 
   useFocusEffect(
     useCallback(() => {
@@ -62,12 +61,12 @@ export default function Homepage() {
 
           {isOfflineMode ? (
             <>
-              <NewUiCompactDeviceStatus />
+              <CompactDeviceStatus />
               <Divider variant="full" />
               <AppsOfflineList />
             </>
           ) : (
-            <NewUiHomeContainer />
+            <HomeContainer />
           )}
         </ScrollView>
 

@@ -74,11 +74,11 @@ src/components/home/
 ├── DeviceStatus.tsx (existing - DO NOT TOUCH)
 ├── ActiveAppsList.tsx (existing - DO NOT TOUCH)
 ├── InactiveAppsList.tsx (existing - DO NOT TOUCH)
-├── NewUiCompactDeviceStatus.tsx (NEW)
-├── NewUiActiveForegroundApp.tsx (NEW)
-├── NewUiBackgroundAppsLink.tsx (NEW)
-├── NewUiForegroundAppsGrid.tsx (NEW)
-└── NewUiHomeContainer.tsx (NEW)
+├── CompactDeviceStatus.tsx (NEW)
+├── ActiveForegroundApp.tsx (NEW)
+├── BackgroundAppsLink.tsx (NEW)
+├── ForegroundAppsGrid.tsx (NEW)
+└── HomeContainer.tsx (NEW)
 
 src/app/(tabs)/
 ├── index.tsx (MINIMAL CHANGE - one line)
@@ -88,15 +88,15 @@ src/app/(tabs)/
 #### 1.2 Create Container Component
 
 ```typescript
-// src/components/home/NewUiHomeContainer.tsx
-export function NewUiHomeContainer() {
+// src/components/home/HomeContainer.tsx
+export function HomeContainer() {
   // All new UI logic here
   return (
     <View>
-      <NewUiCompactDeviceStatus />
-      <NewUiActiveForegroundApp />
-      <NewUiBackgroundAppsLink />
-      <NewUiForegroundAppsGrid />
+      <CompactDeviceStatus />
+      <ActiveForegroundApp />
+      <BackgroundAppsLink />
+      <ForegroundAppsGrid />
     </View>
   );
 }
@@ -107,13 +107,13 @@ export function NewUiHomeContainer() {
 ```typescript
 // src/app/(tabs)/index.tsx
 // Only change needed - import and conditional render
-import { NewUiHomeContainer } from '@/components/home/NewUiHomeContainer';
+import { HomeContainer } from '@/components/home/HomeContainer';
 
 export default function HomePage() {
   const { newUi } = useSettings();
 
   if (newUi) {
-    return <NewUiHomeContainer />;
+    return <HomeContainer />;
   }
 
   // ... existing homepage code unchanged
@@ -124,10 +124,10 @@ export default function HomePage() {
 
 #### 2.1 Build New Components (Order of Implementation)
 
-1. **NewUiCompactDeviceStatus** - Compact glasses image + status items
-2. **NewUiBackgroundAppsLink** - Simple navigation row with count
-3. **NewUiActiveForegroundApp** - Modified app row without switch
-4. **NewUiForegroundAppsGrid** - Filter existing grid to show only foreground apps
+1. **CompactDeviceStatus** - Compact glasses image + status items
+2. **BackgroundAppsLink** - Simple navigation row with count
+3. **ActiveForegroundApp** - Modified app row without switch
+4. **ForegroundAppsGrid** - Filter existing grid to show only foreground apps
 5. **new-ui-background-apps.tsx** - New dedicated screen route
 
 #### 2.2 Data Management Strategy
@@ -142,12 +142,12 @@ export default function HomePage() {
     return apps.filter(app => app.type === "foreground")
   }
 
-  export function useNewUiBackgroundApps() {
+  export function useBackgroundApps() {
     const apps = useApps()
     return apps.filter(app => app.type === "background")
   }
 
-  export function useNewUiActiveForegroundApp() {
+  export function useActiveForegroundApp() {
     const apps = useApps()
     return apps.find(app => app.type === "foreground" && app.isActive)
   }
@@ -158,7 +158,7 @@ export default function HomePage() {
 #### 3.1 Route Configuration
 
 - Add new route `new-ui-background-apps.tsx`
-- Use expo-router navigation from `NewUiBackgroundAppsLink`
+- Use expo-router navigation from `BackgroundAppsLink`
 - Ensure back navigation works properly
 
 #### 3.2 State Management
@@ -195,11 +195,11 @@ export default function HomePage() {
 
 ### New Files (No Conflicts)
 
-- `src/components/home/NewUiCompactDeviceStatus.tsx`
-- `src/components/home/NewUiActiveForegroundApp.tsx`
-- `src/components/home/NewUiBackgroundAppsLink.tsx`
-- `src/components/home/NewUiForegroundAppsGrid.tsx`
-- `src/components/home/NewUiHomeContainer.tsx`
+- `src/components/home/CompactDeviceStatus.tsx`
+- `src/components/home/ActiveForegroundApp.tsx`
+- `src/components/home/BackgroundAppsLink.tsx`
+- `src/components/home/ForegroundAppsGrid.tsx`
+- `src/components/home/HomeContainer.tsx`
 - `src/app/(tabs)/new-ui-background-apps.tsx`
 - `src/hooks/useNewUiFilteredApps.ts`
 

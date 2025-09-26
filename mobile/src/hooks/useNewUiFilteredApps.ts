@@ -1,5 +1,4 @@
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import {AppletInterface} from "@/types/AppletInterface"
+import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useMemo} from "react"
 
 /**
