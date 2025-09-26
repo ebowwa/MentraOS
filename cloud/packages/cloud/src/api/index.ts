@@ -27,6 +27,7 @@ import organizationRoutes from "../routes/organization.routes";
 import onboardingRoutes from "../routes/onboarding.routes";
 import appUptimeRoutes from "../routes/app-uptime.routes";
 import streamsRoutes from "../routes/streams.routes";
+import simpleStorageRoutes from "../routes/simple-storage.routes";
 // import rtmpRelayRoutes from "../routes/rtmp-relay.routes";
 
 /**
@@ -68,6 +69,7 @@ export function registerApi(app: Application) {
   app.use("/api/onboarding", onboardingRoutes);
   app.use("/api/app-uptime", appUptimeRoutes);
   app.use("/api/streams", streamsRoutes);
+  app.use("/api/simple-storage", simpleStorageRoutes);
   // app.use("/api/rtmp-relay", rtmpRelayRoutes);
 }
 
