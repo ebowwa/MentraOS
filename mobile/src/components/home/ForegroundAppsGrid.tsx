@@ -139,7 +139,16 @@ export const ForegroundAppsGrid: React.FC = () => {
   )
 
   const gridData = useMemo(() => {
-    const inactiveApps = foregroundApps.filter(app => !app.is_running)
+    // Filter out incompatible apps and running apps
+    const inactiveApps = foregroundApps.filter(app => {
+      // Exclude running apps
+      if (app.is_running) return false
+
+      // Exclude incompatible apps
+      if (app.compatibility && !app.compatibility.isCompatible) return false
+
+      return true
+    })
 
     // Add "Get More Apps" as the last item
     const appsWithGetMore = [

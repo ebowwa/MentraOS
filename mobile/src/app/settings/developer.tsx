@@ -28,6 +28,7 @@ export default function DeveloperSettingsScreen() {
   const [powerSavingMode, setPowerSavingMode] = useSetting(SETTINGS_KEYS.power_saving_mode)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
   const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.ENABLE_SQUIRCLES)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -41,6 +42,11 @@ export default function DeveloperSettingsScreen() {
   const toggleNewUi = async () => {
     const newSetting = !newUi
     await setNewUi(newSetting)
+  }
+
+  const toggleEnableSquircles = async () => {
+    const newSetting = !enableSquircles
+    await setEnableSquircles(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -215,6 +221,18 @@ export default function DeveloperSettingsScreen() {
         />
 
         <Spacer height={theme.spacing.md} />
+
+        {Platform.OS === "ios" && (
+          <>
+            <ToggleSetting
+              label="Enable Squircles"
+              subtitle="Use iOS-style squircle app icons instead of circles"
+              value={enableSquircles}
+              onValueChange={toggleEnableSquircles}
+            />
+            <Spacer height={theme.spacing.md} />
+          </>
+        )}
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
         {defaultWearable && glassesFeatures[defaultWearable] && glassesFeatures[defaultWearable].powerSavingMode && (

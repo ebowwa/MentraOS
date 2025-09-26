@@ -315,10 +315,10 @@ const $simpleTabBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   elevation: 0,
   shadowOpacity: 0,
   borderBottomWidth: 1,
-  borderBottomColor: "rgba(0,0,0,0.05)",
+  borderBottomColor: colors.border,
 })
 
-const $headerSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $headerSection: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
@@ -327,5 +327,5 @@ const $headerSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.lg,
   height: 48,
   borderBottomWidth: 1,
-  borderBottomColor: "rgba(0,0,0,0.05)",
+  borderBottomColor: colors.border,
 })

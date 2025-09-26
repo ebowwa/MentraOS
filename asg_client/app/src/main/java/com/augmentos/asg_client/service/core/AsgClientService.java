@@ -193,6 +193,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📋 Sending initial version information");
             sendVersionInfo();
 
+            // Clean up orphaned BLE transfer files from previous sessions
+            Log.d(TAG, "🗑️ Cleaning up orphaned BLE transfer files");
+            cleanupOrphanedBleTransfers();
+
             Log.i(TAG, "✅ AsgClientServiceV2 onCreate() completed successfully");
         } catch (Exception e) {
             Log.e(TAG, "💥 Error in onCreate()", e);
@@ -943,7 +947,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     public static void openWifi(Context context, boolean bEnable) {
         Log.d(TAG, "🌐 openWifi() called - Enable: " + bEnable);
-        
+
         try {
             if (bEnable) {
                 Log.d(TAG, "📶 Enabling WiFi via ADB command");
@@ -956,6 +960,78 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         } catch (Exception e) {
             Log.e(TAG, "💥 Error executing WiFi command", e);
+        }
+    }
+
+    /**
+     * Clean up orphaned BLE transfer files from previous sessions.
+     * These are compressed AVIF files stored in the app's external files directory
+     * that were never successfully transferred and deleted.
+     * This runs on boot, so any BLE temp files are by definition orphaned.
+     */
+    private void cleanupOrphanedBleTransfers() {
+        try {
+            // App's external files directory where compressed files are stored
+            java.io.File appFilesDir = getExternalFilesDir("");
+            if (appFilesDir == null || !appFilesDir.exists()) {
+                Log.d(TAG, "🗑️ App files directory does not exist, skipping cleanup");
+                return;
+            }
+
+            Log.d(TAG, "🗑️ Checking for orphaned BLE transfer files in: " + appFilesDir.getAbsolutePath());
+
+            // Look for package directories
+            java.io.File[] packageDirs = appFilesDir.listFiles(java.io.File::isDirectory);
+            if (packageDirs == null) {
+                Log.d(TAG, "🗑️ No package directories found");
+                return;
+            }
+
+            int totalCleaned = 0;
+            long totalSpaceFreed = 0;
+
+            for (java.io.File packageDir : packageDirs) {
+                // Look for BLE image files (no extension, just bleImgId pattern)
+                java.io.File[] files = packageDir.listFiles((dir, name) ->
+                    // BLE images have pattern like "ble_1234567890" (no extension)
+                    name.startsWith("ble_") && !name.contains(".")
+                );
+
+                if (files != null && files.length > 0) {
+                    Log.d(TAG, "🗑️ Found " + files.length + " orphaned BLE files in " + packageDir.getName());
+
+                    // On boot, ALL BLE temp files are orphaned - no need for time check
+                    for (java.io.File file : files) {
+                        long fileSize = file.length();
+                        String fileName = file.getName();
+                        long ageMinutes = (System.currentTimeMillis() - file.lastModified()) / 1000 / 60;
+
+                        if (file.delete()) {
+                            totalCleaned++;
+                            totalSpaceFreed += fileSize;
+                            Log.d(TAG, "🗑️ Deleted orphaned BLE transfer: " + fileName +
+                                      " (age: " + ageMinutes + " minutes, size: " + (fileSize / 1024) + " KB)");
+                        } else {
+                            Log.w(TAG, "🗑️ Failed to delete orphaned file: " + fileName);
+                        }
+                    }
+                }
+            }
+
+            if (totalCleaned > 0) {
+                Log.i(TAG, "🗑️ Cleanup complete: Deleted " + totalCleaned + " orphaned BLE files, freed " +
+                          (totalSpaceFreed / 1024) + " KB");
+                // Optional: Show notification about cleanup
+//                if (serviceContainer != null && serviceContainer.getNotificationManager() != null) {
+//                    serviceContainer.getNotificationManager().showDebugNotification("BLE Cleanup",
+//                        "Cleaned " + totalCleaned + " orphaned transfers (" + (totalSpaceFreed / 1024) + " KB)");
+//                }
+            } else {
+                Log.d(TAG, "🗑️ No orphaned BLE transfer files found");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "🗑️ Error cleaning up orphaned BLE transfers", e);
         }
     }
 } 

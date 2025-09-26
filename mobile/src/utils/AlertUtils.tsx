@@ -1,5 +1,5 @@
 import React from "react"
-import {Alert, Platform} from "react-native"
+import {Alert, Platform, Animated} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {StyleSheet, View} from "react-native"
@@ -8,6 +8,7 @@ import {BackHandler} from "react-native"
 import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
 import {StatusBar} from "expo-status-bar"
 import * as NavigationBar from "expo-navigation-bar"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -67,6 +68,7 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 // Global component that will be rendered once at the app root
 export function ModalProvider({children}: {children: React.ReactNode}) {
   const {theme} = useAppTheme()
+  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
   const [visible, setVisible] = React.useState(false)
   const [title, setTitle] = React.useState("")
   const [message, setMessage] = React.useState("")
@@ -78,6 +80,10 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     icon?: React.ReactNode
   }>({})
   const [originalNavBarColor, setOriginalNavBarColor] = React.useState<string | null>(null)
+
+  // Animation values - start at final values if not using new UI
+  const fadeAnim = React.useRef(new Animated.Value(showNewUi ? 0 : 1)).current
+  const scaleAnim = React.useRef(new Animated.Value(showNewUi ? 0.93 : 1)).current
 
   React.useEffect(() => {
     const backHandler = () => {
@@ -126,6 +132,48 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     updateNavigationBarColor()
   }, [visible, theme, originalNavBarColor])
 
+  // Handle animations when visibility changes
+  React.useEffect(() => {
+    // Skip animations if not using new UI
+    if (!showNewUi) {
+      // Set values immediately without animation
+      fadeAnim.setValue(visible ? 1 : 0)
+      scaleAnim.setValue(1)
+      return
+    }
+
+    if (visible) {
+      // Animate in (only for new UI)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      // Animate out (only for new UI)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.93,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [visible, fadeAnim, scaleAnim, showNewUi])
+
   React.useEffect(() => {
     // Register the modal functions for global access
     setModalRef({
@@ -159,7 +207,27 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   }, [])
 
   const handleDismiss = () => {
-    setVisible(false)
+    if (!showNewUi) {
+      // No animation for old UI - hide immediately
+      setVisible(false)
+      return
+    }
+
+    // Animate out before hiding (only for new UI)
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.93,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setVisible(false)
+    })
   }
 
   return (
@@ -168,7 +236,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
       {visible && (
         <>
           <StatusBar style="light" />
-          <View
+          <Animated.View
             style={{
               ...StyleSheet.absoluteFillObject,
               zIndex: 10,
@@ -176,11 +244,14 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
               alignItems: "center",
               backgroundColor: theme.colors.modalOverlay,
               paddingHorizontal: 24,
+              opacity: fadeAnim,
             }}>
-            <View
+            <Animated.View
               style={{
                 width: "100%",
                 maxWidth: 400,
+                transform: [{scale: scaleAnim}],
+                opacity: fadeAnim,
               }}>
               <BasicDialog
                 title={title}
@@ -196,7 +267,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
                   buttons.length > 1
                     ? () => {
                         buttons[0].onPress?.()
-                        setVisible(false)
+                        handleDismiss()
                       }
                     : undefined
                 }
@@ -207,11 +278,11 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
                   } else {
                     buttons[0].onPress?.()
                   }
-                  setVisible(false)
+                  handleDismiss()
                 }}
               />
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </>
       )}
     </>
