@@ -194,13 +194,34 @@ export class PhotoManager {
    * Handles a photo response from glasses.
    * Adapts logic from photoRequestService.processPhotoResponse.
    */
-  async handlePhotoResponse(glassesResponse: PhotoResponse): Promise<void> {
-    const { requestId, success } = glassesResponse;
+  async handlePhotoResponse(
+    glassesResponse: PhotoResponse | any,
+  ): Promise<void> {
+    // Handle simplified error format from glasses/phone
+    let normalizedResponse: PhotoResponse;
+
+    if (glassesResponse.errorCode && glassesResponse.errorMessage) {
+      // Convert simplified format to expected PhotoResponse format
+      normalizedResponse = {
+        type: GlassesToCloudMessageType.PHOTO_RESPONSE,
+        requestId: glassesResponse.requestId,
+        success: glassesResponse.success || false,
+        error: {
+          code: glassesResponse.errorCode as PhotoErrorCode,
+          message: glassesResponse.errorMessage,
+        },
+      };
+    } else {
+      // Use as-is if already in expected format
+      normalizedResponse = glassesResponse as PhotoResponse;
+    }
+
+    const { requestId, success } = normalizedResponse;
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
 
     if (!pendingPhotoRequest) {
       this.logger.warn(
-        { requestId, glassesResponse },
+        { requestId, glassesResponse: normalizedResponse },
         "Received photo response for unknown, timed-out, or already processed request.",
       );
       return;
@@ -211,8 +232,8 @@ export class PhotoManager {
         requestId,
         packageName: pendingPhotoRequest.packageName,
         success,
-        hasError: !success && !!glassesResponse.error,
-        errorCode: glassesResponse.error?.code,
+        hasError: !success && !!normalizedResponse.error,
+        errorCode: normalizedResponse.error?.code,
       },
       "Photo response received from glasses.",
     );
@@ -221,10 +242,10 @@ export class PhotoManager {
 
     if (success) {
       // Handle success response
-      await this._sendPhotoResultToApp(pendingPhotoRequest, glassesResponse);
+      await this._sendPhotoResultToApp(pendingPhotoRequest, normalizedResponse);
     } else {
       // Handle error response
-      await this._sendPhotoErrorToApp(pendingPhotoRequest, glassesResponse);
+      await this._sendPhotoErrorToApp(pendingPhotoRequest, normalizedResponse);
     }
   }
 
