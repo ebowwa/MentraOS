@@ -4,7 +4,8 @@ import type { Application } from "express";
 import userSettingsApi from "./client/user-settings.api";
 import feedbackApi from "./client/feedback.api";
 import minVersionApi from "./client/min-version.api";
-import sdkVersionApi from "./sdk";
+import simpleStorageApi from "./sdk/simple-storage.api";
+import sdkVersionApi from "./sdk/sdk-version.api";
 
 // Legacy route modules (to be migrated gradually)
 import appRoutes from "../routes/apps.routes";
@@ -27,6 +28,7 @@ import organizationRoutes from "../routes/organization.routes";
 import onboardingRoutes from "../routes/onboarding.routes";
 import appUptimeRoutes from "../routes/app-uptime.routes";
 import streamsRoutes from "../routes/streams.routes";
+
 // import rtmpRelayRoutes from "../routes/rtmp-relay.routes";
 
 /**
@@ -38,7 +40,10 @@ export function registerApi(app: Application) {
   app.use("/api/client/user/settings", userSettingsApi);
   app.use("/api/client/feedback", feedbackApi);
   app.use("/api/client/min-version", minVersionApi);
+
   app.use("/api/sdk", sdkVersionApi);
+  app.use("/api/sdk/version", sdkVersionApi);
+  app.use("/api/sdk/simple-storage", simpleStorageApi);
 
   // Legacy mounts (to be migrated)
   app.use("/api/apps", appRoutes);
@@ -68,6 +73,7 @@ export function registerApi(app: Application) {
   app.use("/api/onboarding", onboardingRoutes);
   app.use("/api/app-uptime", appUptimeRoutes);
   app.use("/api/streams", streamsRoutes);
+
   // app.use("/api/rtmp-relay", rtmpRelayRoutes);
 }
 
