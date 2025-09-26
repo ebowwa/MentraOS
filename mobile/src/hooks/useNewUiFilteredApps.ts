@@ -52,3 +52,61 @@ export function useNewUiActiveBackgroundAppsCount(): number {
     return appStatus.filter(app => app.type === "background" && app.is_running).length
   }, [appStatus])
 }
+
+/**
+ * Hook to get incompatible apps (both foreground and background)
+ */
+export function useNewUiIncompatibleApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
+}
+
+/**
+ * Hook to get incompatible foreground apps
+ */
+export function useNewUiIncompatibleForegroundApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Only foreground apps
+      if (app.type !== "standard" && app.type) return false
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
+}
+
+/**
+ * Hook to get incompatible background apps
+ */
+export function useNewUiIncompatibleBackgroundApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Only background apps
+      if (app.type !== "background") return false
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
+}

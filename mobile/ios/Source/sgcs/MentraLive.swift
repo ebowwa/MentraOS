@@ -1326,17 +1326,28 @@ class MentraLive: NSObject, SGCManager {
             return
         }
 
-        if let mId = json["mId"] as? Int {
-            Bridge.log("Received message with mId: \(mId)")
-            if String(mId) == pending?.id {
-                Bridge.log("Received expected response! clearing pending")
-                pending = nil
-                // Cancel the retry timer
-                pendingMessageTimer?.invalidate()
-                pendingMessageTimer = nil
-            } else if pending?.id != nil {
-                Bridge.log("Received unexpected response! expected: \(pending!.id), received: \(mId) global: \(globalMessageId)")
+        // Check if this is an ACK response first (for our phone → glasses messages)
+        if type == "msg_ack" {
+            if let mId = json["mId"] as? Int {
+                Bridge.log("Received msg_ack for mId: \(mId)")
+                if String(mId) == pending?.id {
+                    Bridge.log("Received expected ACK! clearing pending")
+                    pending = nil
+                    // Cancel the retry timer
+                    pendingMessageTimer?.invalidate()
+                    pendingMessageTimer = nil
+                } else if pending?.id != nil {
+                    Bridge.log("Received unexpected ACK! expected: \(pending!.id), received: \(mId)")
+                }
             }
+            return // Don't send ACK for ACKs!
+        }
+
+        // Check for message ID that needs ACK (glasses → phone)
+        // But only if it's NOT an ACK message
+        if let mId = json["mId"] as? Int {
+            Bridge.log("Received message with mId: \(mId) - sending ACK back to glasses")
+            sendAckToGlasses(messageId: mId)
         }
 
         switch type {
@@ -1393,9 +1404,6 @@ class MentraLive: NSObject, SGCManager {
 
         case "keep_alive_ack":
             emitKeepAliveAck(json)
-
-        case "msg_ack":
-            Bridge.log("Received msg_ack")
 
         case "ble_photo_ready":
             processBlePhotoReady(json)
@@ -1638,11 +1646,12 @@ class MentraLive: NSObject, SGCManager {
 
         Bridge.log("BLE photo transfer complete - requestId: \(bleRequestId), bleImgId: \(bleBleImgId), success: \(bleSuccess)")
 
-        // Send completion notification back to glasses
+        // Send completion notification back to glasses using unified transfer_complete
         if bleSuccess {
-            sendBleTransferComplete(requestId: bleRequestId, bleImgId: bleBleImgId, success: true)
+            sendTransferCompleteConfirmation(fileName: bleBleImgId, success: true)
         } else {
             Bridge.log("BLE photo transfer failed for requestId: \(bleRequestId)")
+            sendTransferCompleteConfirmation(fileName: bleBleImgId, success: false)
         }
     }
 
@@ -1695,6 +1704,9 @@ class MentraLive: NSObject, SGCManager {
                         processAndUploadBlePhoto(photoTransfer, imageData: imageData)
                     }
 
+                    // Send completion confirmation to glasses
+                    sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: true)
+
                     // Clean up
                     blePhotoTransfers.removeValue(forKey: bleImgId)
                 }
@@ -1729,6 +1741,9 @@ class MentraLive: NSObject, SGCManager {
                     if let fileData = sess.assembleFile() {
                         saveReceivedFile(fileName: packetInfo.fileName, fileData: fileData, fileType: packetInfo.fileType)
                     }
+
+                    // Send completion confirmation to glasses
+                    sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: true)
 
                     // Remove from active transfers
                     activeFileTransfers.removeValue(forKey: packetInfo.fileName)
@@ -1841,16 +1856,38 @@ class MentraLive: NSObject, SGCManager {
         BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
     }
 
-    private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
+
+    private func sendAckToGlasses(messageId: Int) {
         let json: [String: Any] = [
-            "type": "ble_photo_transfer_complete",
-            "requestId": requestId,
-            "bleImgId": bleImgId,
+            "type": "msg_ack",
+            "mId": messageId,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
+        ]
+
+        // Send without wake up and without adding mId (to avoid infinite ACK loops)
+        // We need to send this directly without adding another mId
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: json)
+            if let jsonString = String(data: jsonData, encoding: .utf8) {
+                // Send directly to BLE without message tracking
+                send(jsonString)
+                Bridge.log("📤 Sent ACK to glasses for message: \(messageId)")
+            }
+        } catch {
+            Bridge.log("Error creating ACK for glasses: \(error)")
+        }
+    }
+
+    private func sendTransferCompleteConfirmation(fileName: String, success: Bool) {
+        let json: [String: Any] = [
+            "type": "transfer_complete",
+            "fileName": fileName,
             "success": success,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
         ]
 
         sendJson(json, wakeUp: true)
-        Bridge.log("Sent BLE transfer complete notification: \(json)")
+        Bridge.log("\(success ? "✅" : "❌") Sent transfer completion confirmation for: \(fileName) (success: \(success))")
     }
 
     // MARK: - Sending Data

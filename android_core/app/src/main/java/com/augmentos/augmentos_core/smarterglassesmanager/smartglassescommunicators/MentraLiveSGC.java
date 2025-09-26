@@ -1725,11 +1725,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "BLE photo transfer complete - requestId: " + bleRequestId +
                      ", bleImgId: " + bleBleImgId + ", success: " + bleSuccess);
 
-                // Send completion notification back to glasses
+                // Send completion notification back to glasses using unified transfer_complete
                 if (bleSuccess) {
-                    sendBleTransferComplete(bleRequestId, bleBleImgId, true);
+                    sendTransferCompleteConfirmation(bleBleImgId, true);
                 } else {
                     Log.e(TAG, "BLE photo transfer failed for requestId: " + bleRequestId);
+                    sendTransferCompleteConfirmation(bleBleImgId, false);
                 }
                 break;
 
@@ -4054,23 +4055,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         return prefs.getString(KEY_CORE_TOKEN, "");
     }
 
-    /**
-     * Send BLE transfer completion notification
-     */
-    private void sendBleTransferComplete(String requestId, String bleImgId, boolean success) {
-        try {
-            JSONObject json = new JSONObject();
-            json.put("type", "ble_photo_transfer_complete");
-            json.put("requestId", requestId);
-            json.put("bleImgId", bleImgId);
-            json.put("success", success);
-
-            sendJson(json, true);
-            Log.d(TAG, "Sent BLE transfer complete notification: " + json.toString());
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating BLE transfer complete message", e);
-        }
-    }
 
     /**
      * Send button mode setting to the smart glasses

@@ -7,9 +7,10 @@ import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useNewUiBackgroundApps} from "@/hooks/useNewUiFilteredApps"
+import {useNewUiBackgroundApps, useNewUiIncompatibleBackgroundApps} from "@/hooks/useNewUiFilteredApps"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
@@ -23,13 +24,32 @@ export default function NewUiBackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const router = useRouter()
   const {push} = useNavigationHistory()
+  const {status} = useCoreStatus()
   const backgroundApps = useNewUiBackgroundApps()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
 
-  // Separate active and inactive apps
+  // Get incompatible apps
+  const incompatibleApps = useNewUiIncompatibleBackgroundApps()
+
+  // Get connected glasses name
+  const glassesName = status.glasses_info?.model_name || status.core_info.default_wearable || "your glasses"
+
+  // Separate active and inactive apps (excluding incompatible ones)
   const {activeApps, inactiveApps} = useMemo(() => {
-    const active = backgroundApps.filter(app => app.is_running)
-    const inactive = backgroundApps.filter(app => !app.is_running)
+    const active = backgroundApps.filter(app => {
+      // Must be running
+      if (!app.is_running) return false
+      // Exclude incompatible apps
+      if (app.compatibility && !app.compatibility.isCompatible) return false
+      return true
+    })
+    const inactive = backgroundApps.filter(app => {
+      // Must not be running
+      if (app.is_running) return false
+      // Exclude incompatible apps
+      if (app.compatibility && !app.compatibility.isCompatible) return false
+      return true
+    })
     return {activeApps: active, inactiveApps: inactive}
   }, [backgroundApps])
 
@@ -268,6 +288,51 @@ export default function NewUiBackgroundAppsScreen() {
                 </View>
               </>
             )}
+
+            {/* Incompatible Background Apps Section */}
+            {incompatibleApps.length > 0 && (
+              <>
+                <Spacer height={theme.spacing.lg} />
+                <Text style={themed($sectionHeader)}>{`Incompatible with ${glassesName}`}</Text>
+                <View style={themed($sectionContent)}>
+                  {incompatibleApps.map((app, index) => (
+                    <React.Fragment key={app.packageName}>
+                      <TouchableOpacity
+                        style={themed($appRow)}
+                        onPress={() => {
+                          const missingHardware =
+                            app.compatibility?.missingRequired?.map(req => req.type.toLowerCase()).join(", ") ||
+                            "required features"
+                          showAlert(
+                            "Hardware Incompatible",
+                            app.compatibility?.message ||
+                              `${app.name} requires ${missingHardware} which is not available on your connected glasses`,
+                            [{text: "OK"}],
+                            {
+                              iconName: "alert-circle-outline",
+                              iconColor: theme.colors.error,
+                            },
+                          )
+                        }}
+                        activeOpacity={0.7}>
+                        <View style={themed($appContent)}>
+                          <AppIcon app={app as any} style={themed($incompatibleAppIcon)} />
+                          <View style={themed($appInfo)}>
+                            <Text
+                              text={app.name}
+                              style={themed($incompatibleAppName)}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      {index < incompatibleApps.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </View>
+              </>
+            )}
           </>
         )}
 
@@ -433,4 +498,15 @@ const $getMoreAppsSubtext = theme => ({
   fontSize: 12,
   color: theme.colors.textDim,
   marginTop: 2,
+})
+
+const $incompatibleAppIcon = theme => ({
+  width: 48,
+  height: 48,
+  opacity: 0.4,
+})
+
+const $incompatibleAppName = theme => ({
+  fontSize: 16,
+  color: theme.colors.textDim,
 })

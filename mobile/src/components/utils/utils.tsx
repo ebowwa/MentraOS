@@ -12,37 +12,33 @@ export function OtaUpdateChecker() {
   const [hasChecked, setHasChecked] = useState(false)
   const [latestVersion, setLatestVersion] = useState<string | null>(null)
 
+  // Extract only the specific values we need to watch to avoid re-renders
+  const glassesModel = status.glasses_info?.model_name
+  const otaVersionUrl = status.glasses_info?.glasses_ota_version_url
+  const currentBuildNumber = status.glasses_info?.glasses_build_number
+  const glassesWifiConnected = status.glasses_info?.glasses_wifi_connected
+
   useEffect(() => {
     const checkForOtaUpdate = async () => {
       // Only check for glasses that support WiFi self OTA updates
-      if (!status.glasses_info || hasChecked || isChecking) {
-        return
-      }
-
-      const glassesModel = status.glasses_info.model_name
-      if (!glassesModel) {
+      if (!glassesModel || hasChecked || isChecking) {
         return
       }
 
       const features = glassesFeatures[glassesModel]
       if (!features || !features.wifiSelfOtaUpdate) {
-        console.log(`Skipping OTA check for ${glassesModel} - does not support WiFi self OTA updates`)
+        // Remove console log to reduce spam
         return
       }
 
       // Skip if already connected to WiFi
-      if (status.glasses_info.glasses_wifi_connected) {
-        console.log(`Skipping ASG OTA CHECK, already on wifi`)
+      if (glassesWifiConnected) {
+        // Remove console log to reduce spam
         return
       }
 
-      const otaVersionUrl = status.glasses_info.glasses_ota_version_url
-      const currentBuildNumber = status.glasses_info.glasses_build_number
-      console.log(`OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`)
       if (!otaVersionUrl || !currentBuildNumber) {
-        console.log(
-          `Skipping wifi ota check- one is null: OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`,
-        )
+        // Remove console log to reduce spam
         return
       }
 
@@ -79,7 +75,7 @@ export function OtaUpdateChecker() {
       }
     }
     checkForOtaUpdate()
-  }, [status.glasses_info, hasChecked, isChecking, router])
+  }, [glassesModel, otaVersionUrl, currentBuildNumber, glassesWifiConnected, hasChecked, isChecking, router])
 
   return null
 }

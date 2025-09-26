@@ -5,6 +5,7 @@ import {NewUiActiveForegroundApp} from "@/components/home/NewUiActiveForegroundA
 import {NewUiBackgroundAppsLink} from "@/components/home/NewUiBackgroundAppsLink"
 import {NewUiCompactDeviceStatus} from "@/components/home/NewUiCompactDeviceStatus"
 import {NewUiForegroundAppsGrid} from "@/components/home/NewUiForegroundAppsGrid"
+import {NewUiIncompatibleApps} from "@/components/home/NewUiIncompatibleApps"
 import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -27,6 +28,8 @@ export const NewUiHomeContainer: React.FC = () => {
       <Divider variant="full" />
 
       <NewUiForegroundAppsGrid />
+
+      <NewUiIncompatibleApps />
 
       <Spacer height={theme.spacing.xl} />
     </View>

@@ -143,6 +143,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const diff = deepCompare(currentAppStatus, mapped)
         if (diff.length === 0) {
           console.log("AppStatusProvider: Applet status did not change")
+          //console.log(JSON.stringify(currentAppStatus, null, 2));
           return currentAppStatus
         }
         return mapped

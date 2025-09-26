@@ -140,19 +140,9 @@ export default function NotificationSettingsScreen() {
               fontSize: 14,
               fontWeight: "500",
               color: theme.colors.text,
-              marginBottom: 2,
             }}
             numberOfLines={1}>
             {item.appName}
-          </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              color: theme.colors.textDim,
-            }}
-            numberOfLines={1}
-            ellipsizeMode="middle">
-            {item.packageName}
           </Text>
         </View>
 

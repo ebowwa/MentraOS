@@ -217,8 +217,8 @@ export const NewUiCompactDeviceStatus: React.FC = () => {
   const modelName = status.glasses_info?.model_name || ""
   const hasDisplay = glassesFeatures[modelName]?.display ?? true
   const hasWifi = glassesFeatures[modelName]?.wifi ?? false
-  const wifiConnected = status.glasses_info?.glasses_wifi_connected ?? false
   const wifiSsid = status.glasses_info?.glasses_wifi_ssid
+  const wifiConnected = !!wifiSsid
   const autoBrightness = status.glasses_settings?.auto_brightness
   const batteryLevel = status.glasses_info?.battery_level
 
@@ -320,7 +320,6 @@ const $statusRow = theme => ({
 const $statusText = theme => ({
   color: theme.colors.statusText,
   fontSize: 14,
-  fontFamily: "Inter-Regular",
   flex: 1,
 })
 
