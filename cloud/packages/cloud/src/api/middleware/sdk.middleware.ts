@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
+import { validateApiKey } from "../../services/sdk/sdk.auth.service";
 
 // Extend Request interface to include SDK authentication data
 declare module "express-serve-static-core" {
   interface Request {
-    sdkAuth?: {
+    sdk?: {
       packageName: string;
       apiKey: string;
-      userId?: string;
     };
   }
 }
@@ -21,7 +21,7 @@ declare module "express-serve-static-core" {
  * - Apply to /api/sdk/* routes that require authentication (right now only applied to sdkAuthMiddleware)
  * - Populates req.sdkAuth with packageName and apiKey
  */
-export const authenticateSDK = (
+export const authenticateSDK = async (
   req: Request,
   res: Response,
   next: NextFunction,
@@ -68,11 +68,17 @@ export const authenticateSDK = (
       });
     }
 
-    // TODO: Add actual API key validation against database
-    // For now, we just validate the format and store the credentials
+    // Validate API key against database using SDK auth service (cached)
+    const isValid = await validateApiKey(packageName, apiKey);
+    if (!isValid) {
+      return res.status(401).json({
+        error: "Invalid API key",
+        message: "Provided API key is not valid for this packageName",
+      });
+    }
 
     // Store authentication data in request for use by route handlers
-    req.sdkAuth = {
+    req.sdk = {
       packageName,
       apiKey,
     };
@@ -88,81 +94,5 @@ export const authenticateSDK = (
   }
 };
 
-/**
- * Optional middleware to extract userId from request body/query
- * Use this after authenticateSDK when you need userId validation
- */
-export const extractUserId = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    // Get userId from body (POST/PUT/DELETE) or query (GET)
-    const userId = req.body?.userId || req.query?.userId;
-
-    if (!userId) {
-      return res.status(400).json({
-        error: "Missing userId",
-        message: "userId is required in request body or query parameters",
-      });
-    }
-
-    // Add userId to SDK auth data
-    if (req.sdkAuth) {
-      req.sdkAuth.userId = userId as string;
-    }
-
-    next();
-  } catch (error) {
-    console.error("UserId extraction error:", error);
-    return res.status(500).json({
-      error: "UserId extraction failed",
-      message: "Internal server error during userId extraction",
-    });
-  }
-};
-
-/**
- * Middleware to validate packageName matches the one in the JWT token
- * Use this when packageName is provided in request body and must match auth
- */
-export const validatePackageName = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const requestPackageName = req.body?.packageName || req.query?.packageName;
-    const authPackageName = req.sdkAuth?.packageName;
-
-    if (!requestPackageName) {
-      return res.status(400).json({
-        error: "Missing packageName",
-        message: "packageName is required in request",
-      });
-    }
-
-    if (requestPackageName !== authPackageName) {
-      return res.status(403).json({
-        error: "Package name mismatch",
-        message: "Request packageName must match authenticated packageName",
-      });
-    }
-
-    next();
-  } catch (error) {
-    console.error("Package name validation error:", error);
-    return res.status(500).json({
-      error: "Package validation failed",
-      message: "Internal server error during package name validation",
-    });
-  }
-};
-
 // Combine common middleware for SDK routes
-export const sdkAuthMiddleware = [
-  authenticateSDK,
-  extractUserId,
-  validatePackageName,
-];
+export const sdkAuthMiddleware = [authenticateSDK];

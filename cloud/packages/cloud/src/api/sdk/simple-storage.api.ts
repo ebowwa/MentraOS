@@ -34,7 +34,7 @@ const router = Router();
 router.get("/:email", authenticateSDK, async (req: Request, res: Response) => {
   try {
     const email = String(req.params.email || "").toLowerCase();
-    const packageName = req.sdkAuth?.packageName;
+    const packageName = req.sdk?.packageName;
 
     if (!email) {
       return res.status(400).json({ error: "Missing email parameter" });
@@ -58,7 +58,7 @@ router.get("/:email", authenticateSDK, async (req: Request, res: Response) => {
 router.put("/:email", authenticateSDK, async (req: Request, res: Response) => {
   try {
     const email = String(req.params.email || "").toLowerCase();
-    const packageName = req.sdkAuth?.packageName;
+    const packageName = req.sdk?.packageName;
     const { data } = req.body || {};
 
     if (!email) {
@@ -108,7 +108,7 @@ router.delete(
   async (req: Request, res: Response) => {
     try {
       const email = String(req.params.email || "").toLowerCase();
-      const packageName = req.sdkAuth?.packageName;
+      const packageName = req.sdk?.packageName;
 
       if (!email) {
         return res.status(400).json({ error: "Missing email parameter" });
@@ -147,7 +147,7 @@ router.get(
     try {
       const email = String(req.params.email || "").toLowerCase();
       const key = String(req.params.key || "");
-      const packageName = req.sdkAuth?.packageName;
+      const packageName = req.sdk?.packageName;
 
       if (!email || !key) {
         return res
@@ -188,7 +188,7 @@ router.put(
     try {
       const email = String(req.params.email || "").toLowerCase();
       const key = String(req.params.key || "");
-      const packageName = req.sdkAuth?.packageName;
+      const packageName = req.sdk?.packageName;
       const { value } = req.body || {};
 
       if (!email || !key) {
@@ -228,7 +228,7 @@ router.delete(
     try {
       const email = String(req.params.email || "").toLowerCase();
       const key = String(req.params.key || "");
-      const packageName = req.sdkAuth?.packageName;
+      const packageName = req.sdk?.packageName;
 
       if (!email || !key) {
         return res
