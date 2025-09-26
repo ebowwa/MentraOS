@@ -3,15 +3,13 @@
  * It adapts logic previously in a global photo-request.service.ts.
  */
 
-import WebSocket from "ws";
-import crypto from "crypto"; // Changed from uuidv4 to crypto.randomUUID for consistency
 import {
   CloudToGlassesMessageType,
-  CloudToAppMessageType,
   GlassesToCloudMessageType,
   PhotoResponse, // SDK type from Glasses
   PhotoRequest, // SDK type for App's request
-  CloudToAppMessage,
+  PhotoErrorCode,
+  PhotoStage,
   // Define AppPhotoResult in SDK or use a generic message structure
 } from "@mentra/sdk";
 import { Logger } from "pino";
@@ -174,6 +172,7 @@ export class PhotoManager {
         await this._sendPhotoResultToApp(requestInfo, {
           type: GlassesToCloudMessageType.PHOTO_RESPONSE,
           requestId,
+          success: true,
           photoUrl: customWebhookUrl, // Use the custom webhook URL as the photo URL
           savedToGallery: saveToGallery,
           timestamp: new Date(),
@@ -196,7 +195,7 @@ export class PhotoManager {
    * Adapts logic from photoRequestService.processPhotoResponse.
    */
   async handlePhotoResponse(glassesResponse: PhotoResponse): Promise<void> {
-    const { requestId, photoUrl, savedToGallery } = glassesResponse; // `savedToGallery` from glasses confirms actual status
+    const { requestId, success } = glassesResponse;
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
 
     if (!pendingPhotoRequest) {
@@ -211,14 +210,22 @@ export class PhotoManager {
       {
         requestId,
         packageName: pendingPhotoRequest.packageName,
-        glassesResponse,
+        success,
+        hasError: !success && !!glassesResponse.error,
+        errorCode: glassesResponse.error?.code,
       },
       "Photo response received from glasses.",
     );
     clearTimeout(pendingPhotoRequest.timeoutId);
     this.pendingPhotoRequests.delete(requestId);
 
-    await this._sendPhotoResultToApp(pendingPhotoRequest, glassesResponse);
+    if (success) {
+      // Handle success response
+      await this._sendPhotoResultToApp(pendingPhotoRequest, glassesResponse);
+    } else {
+      // Handle error response
+      await this._sendPhotoErrorToApp(pendingPhotoRequest, glassesResponse);
+    }
   }
 
   private _handlePhotoRequestTimeout(requestId: string): void {
@@ -226,17 +233,91 @@ export class PhotoManager {
     if (!requestInfo) return; // Already handled or cleared
 
     this.logger.warn(
-      { requestId, packageName: requestInfo.packageName },
-      "Photo request timed out.",
+      {
+        requestId,
+        packageName: requestInfo.packageName,
+        timeoutMs: PHOTO_REQUEST_TIMEOUT_MS_DEFAULT,
+        connectionStatus: ConnectionValidator.getConnectionStatus(
+          this.userSession,
+        ),
+      },
+      "Photo request timed out - sending error response to app",
     );
     this.pendingPhotoRequests.delete(requestId); // Remove before sending error
 
-    // this._sendPhotoResultToApp(requestInfo, {
-    //   success: false,
-    //   error: 'Photo request timed out waiting for glasses response.',
-    //   savedToGallery: requestInfo.saveToGallery // Reflect intended, though failed
-    // });
-    // Instead of sending a result, we throw an error to the App.
+    // Create timeout error response
+    const timeoutErrorResponse: PhotoResponse = {
+      type: GlassesToCloudMessageType.PHOTO_RESPONSE,
+      requestId,
+      success: false,
+      error: {
+        code: PhotoErrorCode.UPLOAD_TIMEOUT,
+        message:
+          "Photo request timed out after 30 seconds. Check glasses connection and camera status.",
+        details: {
+          stage: PhotoStage.RESPONSE_SENT,
+          retryable: true,
+          suggestedAction: "Check glasses connection and try again",
+          diagnosticInfo: {
+            timestamp: Date.now(),
+            duration: PHOTO_REQUEST_TIMEOUT_MS_DEFAULT,
+            retryCount: 0,
+          },
+        },
+      },
+      timestamp: new Date(),
+    };
+
+    // Send error response to app
+    this._sendPhotoErrorToApp(requestInfo, timeoutErrorResponse);
+  }
+
+  private async _sendPhotoErrorToApp(
+    pendingPhotoRequest: PendingPhotoRequest,
+    errorResponse: PhotoResponse,
+  ): Promise<void> {
+    const { requestId, packageName } = pendingPhotoRequest;
+
+    try {
+      // Use centralized messaging with automatic resurrection
+      const result = await this.userSession.appManager.sendMessageToApp(
+        packageName,
+        errorResponse,
+      );
+
+      if (result.sent) {
+        this.logger.info(
+          {
+            requestId,
+            packageName,
+            errorCode: errorResponse.error?.code,
+            resurrectionTriggered: result.resurrectionTriggered,
+          },
+          `Sent photo error to App ${packageName}${result.resurrectionTriggered ? " after resurrection" : ""}`,
+        );
+      } else {
+        this.logger.warn(
+          {
+            requestId,
+            packageName,
+            errorCode: errorResponse.error?.code,
+            resurrectionTriggered: result.resurrectionTriggered,
+            error: result.error,
+          },
+          `Failed to send photo error to App ${packageName}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          requestId,
+          packageName,
+          errorCode: errorResponse.error?.code,
+        },
+        `Error sending photo error to App ${packageName}`,
+      );
+    }
   }
 
   private async _sendPhotoResultToApp(
@@ -291,7 +372,7 @@ export class PhotoManager {
     this.logger.info(
       "Disposing PhotoManager, cancelling pending photo requests for this session.",
     );
-    this.pendingPhotoRequests.forEach((requestInfo, requestId) => {
+    this.pendingPhotoRequests.forEach((requestInfo, _requestId) => {
       clearTimeout(requestInfo.timeoutId);
       // TODO(isaiah): We should extend the photo result to support error, so dev's can more gracefully handle failed photo requets.
       // this._sendPhotoResultToApp(requestInfo, {
