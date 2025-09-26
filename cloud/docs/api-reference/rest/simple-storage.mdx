@@ -1,52 +1,53 @@
 ---
 title: "Simple Storage"
-description: "REST endpoints for App key-value storage with cloud synchronization"
+description: "REST endpoints for App key-value storage under /api/sdk/simple-storage"
 ---
 
 ## Overview
 
-The Simple Storage API provides a localStorage-like interface for MentraOS Apps to store and retrieve key-value data. Data is isolated by userId and packageName, ensuring each App-user combination has private storage space.
+The Simple Storage API provides a localStorage-like interface for MentraOS Apps to store and retrieve key-value data. Data is isolated by user email (`:email`) and the authenticated `packageName` from the Authorization header.
 
 <Warning>
-All Simple Storage endpoints require SDK authentication with `Authorization: Bearer <packageName>:<apiKey>` header.
+All endpoints require SDK authentication with:
+<br />
+<code>Authorization: Bearer &lt;packageName&gt;:&lt;apiKey&gt;</code>
 </Warning>
+
+- Base path: `/api/sdk/simple-storage`
+- Scope: Each storage namespace is unique per `(email, packageName)`
+- Values: All values are strings (serialize complex data as JSON)
+
+---
 
 ## Get Complete Storage
 
-Retrieve the complete storage object for a user-package combination.
+Retrieve the entire key/value object for a user and authenticated package.
 
 ### Endpoint
 
 <CodeGroup>
 ```bash Production
-GET https://api.mentra.glass/api/simple-storage/getSimpleStorage
+GET https://api.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Development
-GET https://devapi.mentra.glass/api/simple-storage/getSimpleStorage
+GET https://devapi.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Local
-GET http://localhost:8002/api/simple-storage/getSimpleStorage
+GET http://localhost:8002/api/sdk/simple-storage/:email
 ```
 </CodeGroup>
 
-### Headers
+### Path Parameters
+- `email` (string, required): User's email identifier
 
+### Headers
 ```
 Authorization: Bearer <packageName>:<apiKey>
 ```
 
-### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| userId | string | Yes | User's email identifier |
-| packageName | string | Yes | App package name |
-
-### Response
-
-Success (200):
+### Response (200)
 ```json
 {
   "success": true,
@@ -57,371 +58,252 @@ Success (200):
 }
 ```
 
-Not Found (404):
-```json
-{
-  "success": false,
-  "message": "Storage not found"
-}
-```
+---
 
-### Implementation
+## Upsert Multiple Items
 
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:291-321`
-- **Function**: `getSimpleStorage()`
-- **Middleware**: `sdkAuthMiddleware`
-
-## Get Item
-
-Retrieve a specific item from storage by key.
+Create or update multiple key/value pairs in one request.
 
 ### Endpoint
 
 <CodeGroup>
 ```bash Production
-GET https://api.mentra.glass/api/simple-storage/getItem
+PUT https://api.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Development
-GET https://devapi.mentra.glass/api/simple-storage/getItem
+PUT https://devapi.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Local
-GET http://localhost:8002/api/simple-storage/getItem
+PUT http://localhost:8002/api/sdk/simple-storage/:email
 ```
 </CodeGroup>
 
-### Query Parameters
+### Path Parameters
+- `email` (string, required)
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| userId | string | Yes | User's email identifier |
-| packageName | string | Yes | App package name |
-| key | string | Yes | Storage key to retrieve |
-
-### Response
-
-Success (200):
-```json
-{
-  "success": true,
-  "data": "stored_value"
-}
+### Headers
 ```
-
-Not Found (404):
-```json
-{
-  "success": false,
-  "message": "Item not found"
-}
+Authorization: Bearer <packageName>:<apiKey>
+Content-Type: application/json
 ```
-
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:338-369`
-- **Function**: `getItem()`
-
-## Set Item
-
-Store a single key-value pair in storage.
-
-### Endpoint
-
-<CodeGroup>
-```bash Production
-POST https://api.mentra.glass/api/simple-storage/setItem
-```
-
-```bash Development
-POST https://devapi.mentra.glass/api/simple-storage/setItem
-```
-
-```bash Local
-POST http://localhost:8002/api/simple-storage/setItem
-```
-</CodeGroup>
 
 ### Request Body
-
 ```json
 {
-  "userId": "user@example.com",
-  "packageName": "com.example.app",
-  "key": "setting1",
-  "value": "enabled"
+  "data": {
+    "setting1": "value1",
+    "setting2": "value2"
+  }
 }
 ```
 
-### Response
+- All values must be strings
+- Upsert/merge semantics (non-destructive). To clear all data, use DELETE below.
 
-Success (200):
-```json
-{
-  "success": true,
-  "message": "Item setting1 set successfully"
-}
-```
-
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:386-409`
-- **Function**: `setItemSingle()`
-- **Behavior**: Creates storage document if it doesn't exist (upsert)
-
-## Delete Item
-
-Delete a specific key from storage.
-
-### Endpoint
-
-<CodeGroup>
-```bash Production
-DELETE https://api.mentra.glass/api/simple-storage/deleteItem
-```
-
-```bash Development
-DELETE https://devapi.mentra.glass/api/simple-storage/deleteItem
-```
-
-```bash Local
-DELETE http://localhost:8002/api/simple-storage/deleteItem
-```
-</CodeGroup>
-
-### Request Body
-
-```json
-{
-  "userId": "user@example.com",
-  "packageName": "com.example.app",
-  "key": "setting1"
-}
-```
-
-### Response
-
-Success (200):
+### Response (200)
 ```json
 {
   "success": true,
-  "message": "Item setting1 deleted successfully"
+  "message": "Storage updated"
 }
 ```
 
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:426-456`
-- **Function**: `deleteItem()`
-- **MongoDB**: Uses `$unset` operation
+---
 
 ## Clear Storage
 
-Clear all stored data for a user-package combination.
+Remove all key/value pairs for the user and authenticated package.
 
 ### Endpoint
 
 <CodeGroup>
 ```bash Production
-DELETE https://api.mentra.glass/api/simple-storage/clear
+DELETE https://api.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Development
-DELETE https://devapi.mentra.glass/api/simple-storage/clear
+DELETE https://devapi.mentra.glass/api/sdk/simple-storage/:email
 ```
 
 ```bash Local
-DELETE http://localhost:8002/api/simple-storage/clear
+DELETE http://localhost:8002/api/sdk/simple-storage/:email
 ```
 </CodeGroup>
+
+### Path Parameters
+- `email` (string, required)
+
+### Headers
+```
+Authorization: Bearer <packageName>:<apiKey>
+```
+
+### Response (200)
+```json
+{
+  "success": true,
+  "message": "Storage cleared"
+}
+```
+
+---
+
+## Get Single Key
+
+Retrieve a single value by key.
+
+### Endpoint
+
+<CodeGroup>
+```bash Production
+GET https://api.mentra.glass/api/sdk/simple-storage/:email/:key
+```
+
+```bash Development
+GET https://devapi.mentra.glass/api/sdk/simple-storage/:email/:key
+```
+
+```bash Local
+GET http://localhost:8002/api/sdk/simple-storage/:email/:key
+```
+</CodeGroup>
+
+### Path Parameters
+- `email` (string, required)
+- `key` (string, required)
+
+### Headers
+```
+Authorization: Bearer <packageName>:<apiKey>
+```
+
+### Response (200)
+```json
+{
+  "success": true,
+  "data": { "value": "stored_value" }
+}
+```
+
+### Not Found (404)
+```json
+{
+  "success": false,
+  "message": "Key not found"
+}
+```
+
+---
+
+## Set Single Key
+
+Create or update a single key.
+
+### Endpoint
+
+<CodeGroup>
+```bash Production
+PUT https://api.mentra.glass/api/sdk/simple-storage/:email/:key
+```
+
+```bash Development
+PUT https://devapi.mentra.glass/api/sdk/simple-storage/:email/:key
+```
+
+```bash Local
+PUT http://localhost:8002/api/sdk/simple-storage/:email/:key
+```
+</CodeGroup>
+
+### Path Parameters
+- `email` (string, required)
+- `key` (string, required)
+
+### Headers
+```
+Authorization: Bearer <packageName>:<apiKey>
+Content-Type: application/json
+```
 
 ### Request Body
-
 ```json
 {
-  "userId": "user@example.com",
-  "packageName": "com.example.app"
+  "value": "new_value"
 }
 ```
 
-### Response
-
-Success (200):
+### Response (200)
 ```json
 {
   "success": true,
-  "message": "Storage cleared successfully"
+  "message": "Key \"<key>\" set"
 }
 ```
 
-### Implementation
+---
 
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:472-502`
-- **Function**: `clearAllStorage()`
+## Delete Single Key
 
-## Get Keys
-
-Retrieve all storage keys for a user-package combination.
+Delete a single key.
 
 ### Endpoint
 
 <CodeGroup>
 ```bash Production
-GET https://api.mentra.glass/api/simple-storage/keys
+DELETE https://api.mentra.glass/api/sdk/simple-storage/:email/:key
 ```
 
 ```bash Development
-GET https://devapi.mentra.glass/api/simple-storage/keys
+DELETE https://devapi.mentra.glass/api/sdk/simple-storage/:email/:key
 ```
 
 ```bash Local
-GET http://localhost:8002/api/simple-storage/keys
+DELETE http://localhost:8002/api/sdk/simple-storage/:email/:key
 ```
 </CodeGroup>
 
-### Query Parameters
+### Path Parameters
+- `email` (string, required)
+- `key` (string, required)
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| userId | string | Yes | User's email identifier |
-| packageName | string | Yes | App package name |
+### Headers
+```
+Authorization: Bearer <packageName>:<apiKey>
+```
 
-### Response
-
-Success (200):
+### Response (200)
 ```json
 {
   "success": true,
-  "data": ["key1", "key2", "key3"]
+  "message": "Key \"<key>\" deleted"
 }
 ```
 
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:517-540`
-- **Function**: `getKeys()`
-
-## Get Storage Size
-
-Get the number of stored items for a user-package combination.
-
-### Endpoint
-
-<CodeGroup>
-```bash Production
-GET https://api.mentra.glass/api/simple-storage/size
-```
-
-```bash Development
-GET https://devapi.mentra.glass/api/simple-storage/size
-```
-
-```bash Local
-GET http://localhost:8002/api/simple-storage/size
-```
-</CodeGroup>
-
-### Response
-
-Success (200):
-```json
-{
-  "success": true,
-  "data": { "size": 5 }
-}
-```
-
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:555-578`
-- **Function**: `getStorageSize()`
-
-## Check Key Exists
-
-Check if a specific key exists in storage.
-
-### Endpoint
-
-<CodeGroup>
-```bash Production
-GET https://api.mentra.glass/api/simple-storage/hasKey
-```
-
-```bash Development
-GET https://devapi.mentra.glass/api/simple-storage/hasKey
-```
-
-```bash Local
-GET http://localhost:8002/api/simple-storage/hasKey
-```
-</CodeGroup>
-
-### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| userId | string | Yes | User's email identifier |
-| packageName | string | Yes | App package name |
-| key | string | Yes | Key to check for existence |
-
-### Response
-
-Success (200):
-```json
-{
-  "success": true,
-  "data": { "exists": true }
-}
-```
-
-### Implementation
-
-- **File**: `packages/cloud/src/routes/simple-storage.routes.ts:594-617`
-- **Function**: `hasKey()`
-
-## SDK Usage
-
-Apps can use the Simple Storage SDK for convenient access:
-
-```javascript
-import { AppSession } from '@mentra/sdk';
-
-const session = new AppSession({
-  packageName: 'com.example.app',
-  apiKey: 'your-api-key',
-  userId: 'user@example.com'
-});
-
-// Get/set items
-await session.simpleStorage.set('theme', 'dark');
-const theme = await session.simpleStorage.get('theme');
-
-// Check existence and get all keys
-const exists = await session.simpleStorage.hasKey('theme');
-const allKeys = await session.simpleStorage.keys();
-
-// Clear storage
-await session.simpleStorage.clear();
-```
+---
 
 ## Error Codes
 
 | Code | Description |
 |------|-------------|
-| 400 | Missing required parameters |
-| 404 | Storage or item not found |
-| 500 | Internal server error |
+| 400  | Missing or invalid parameters |
+| 401  | Unauthorized (missing/invalid Authorization) |
+| 404  | Storage or key not found |
+| 500  | Internal server error |
+
+---
 
 ## Data Model
 
-Storage is organized in MongoDB with this structure:
+Storage documents are scoped per `(email, packageName)`.
 
 ```json
 {
   "_id": "ObjectId",
   "email": "user@example.com",
   "packageName": "com.example.app",
-  "simpleStorage": {
+  "data": {
     "key1": "value1",
     "key2": "value2"
   },
@@ -430,13 +312,15 @@ Storage is organized in MongoDB with this structure:
 }
 ```
 
-## Performance Notes
-
-- **Local Caching**: SDK caches data locally for improved performance
-- **Optimistic Updates**: SDK updates cache immediately before syncing to cloud
-- **Upsert Operations**: Storage documents are created automatically when needed
-- **Dot Notation**: MongoDB dot notation is used for efficient single-key updates
-
 <Note>
-The Simple Storage API is designed for configuration data and small datasets. For large data storage, consider using dedicated file storage or database solutions.
+- The `data` field is a record of string keys to string values.
+- For complex data, JSON-serialize the value before storing.
 </Note>
+
+---
+
+## Notes
+
+- Prefer bulk updates with PUT `/:email` when setting multiple keys at once.
+- The SDK provides convenience methods (`get`, `set`, `delete`, `clear`, `setMultiple`) that call these endpoints.
+- Keys, size, and existence checks can be derived client-side by fetching the full dataset when needed.
