@@ -912,6 +912,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
             boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID) && supportsLC3Audio;
             boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID) && supportsLC3Audio;
+            boolean isFileReadCharacteristic = uuid.equals(FILE_READ_UUID);
 
             if (isRxCharacteristic) {
                 Log.d(TAG, "Received data on RX characteristic");
@@ -926,6 +927,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
             } else if (isLc3WriteCharacteristic) {
                 Log.d(TAG, "Received data on LC3_WRITE characteristic");
+            } else if (isFileReadCharacteristic) {
+                Log.d(TAG, "Received data on FILE_READ characteristic");
             } else {
                 Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
