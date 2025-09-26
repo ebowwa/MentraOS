@@ -7,18 +7,16 @@
  * Storage is organized by userId (email) and packageName, creating isolated storage spaces
  * for each App-user combination. Data is persisted in MongoDB using the SimpleStorage model.
  *
- * @author MentraOS Team
- */
-
-/**../../models/simple-storage.model
  * Base: /api/sdk/simple-storage
- * Endpoints:../../middleware/sdk.middleware
+ * Endpoints:
  * - GET    /:email           -> get all key/value data for a user+package
  * - PUT    /:email           -> upsert multiple key/value pairs (body: { data: Record<string,string> })
  * - DELETE /:email           -> clear all data for a user+package
  * - GET    /:email/:key      -> get single key
  * - PUT    /:email/:key      -> set single key (body: { value: string })
  * - DELETE /:email/:key      -> delete single key
+ *
+ * @author MentraOS Team
  */
 
 import { Router, Request, Response } from "express";
@@ -27,11 +25,20 @@ import * as SimpleStorageService from "../../services/sdk/simple-storage.service
 
 const router = Router();
 
+router.get("/:email", authenticateSDK, getAllHandler);
+router.put("/:email", authenticateSDK, putAllHandler);
+router.delete("/:email", authenticateSDK, deleteAllHandler);
+
+router.get("/:email/:key", authenticateSDK, getKeyHandler);
+router.put("/:email/:key", authenticateSDK, putKeyHandler);
+router.delete("/:email/:key", authenticateSDK, deleteKeyHandler);
+
 /**
- * GET /:email
+ * `GET /api/sdk/simple-storage/:email`
  * Returns the entire key/value object for the authenticated package and the specified email.
+ * `Auth: Bearer <packageName>:<apiKey>`
  */
-router.get("/:email", authenticateSDK, async (req: Request, res: Response) => {
+async function getAllHandler(req: Request, res: Response) {
   try {
     const email = String(req.params.email || "").toLowerCase();
     const packageName = req.sdk?.packageName;
@@ -49,13 +56,15 @@ router.get("/:email", authenticateSDK, async (req: Request, res: Response) => {
     console.error("GET /api/sdk/simple-storage/:email error:", error);
     return res.status(500).json({ error: "Failed to get storage" });
   }
-});
+}
 
 /**
- * PUT /:email
- * Upsert multiple key/value pairs. Body must be: { data: Record<string,string> }
+ * PUT /api/sdk/simple-storage/:email
+ * Upserts multiple key/value pairs for the authenticated package and user.
+ * Body: { data: Record<string, string> }
+ * Auth: Bearer <packageName>:<apiKey>
  */
-router.put("/:email", authenticateSDK, async (req: Request, res: Response) => {
+async function putAllHandler(req: Request, res: Response) {
   try {
     const email = String(req.params.email || "").toLowerCase();
     const packageName = req.sdk?.packageName;
@@ -73,7 +82,6 @@ router.put("/:email", authenticateSDK, async (req: Request, res: Response) => {
       });
     }
 
-    // Validate all values are strings
     const invalid = Object.entries(data).find(([, v]) => typeof v !== "string");
     if (invalid) {
       return res.status(400).json({
@@ -96,170 +104,153 @@ router.put("/:email", authenticateSDK, async (req: Request, res: Response) => {
     console.error("PUT /api/sdk/simple-storage/:email error:", error);
     return res.status(500).json({ error: "Failed to update storage" });
   }
-});
+}
 
 /**
- * DELETE /:email
- * Clears all key/value pairs for the given user+package.
+ * DELETE /api/sdk/simple-storage/:email
+ * Clears all key/value pairs for the authenticated package and user.
+ * Auth: Bearer <packageName>:<apiKey>
  */
-router.delete(
-  "/:email",
-  authenticateSDK,
-  async (req: Request, res: Response) => {
-    try {
-      const email = String(req.params.email || "").toLowerCase();
-      const packageName = req.sdk?.packageName;
+async function deleteAllHandler(req: Request, res: Response) {
+  try {
+    const email = String(req.params.email || "").toLowerCase();
+    const packageName = req.sdk?.packageName;
 
-      if (!email) {
-        return res.status(400).json({ error: "Missing email parameter" });
-      }
-      if (!packageName) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const cleared = await SimpleStorageService.clearAll(email, packageName);
-      if (!cleared) {
-        return res.status(404).json({
-          success: false,
-          message: "Storage not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: "Storage cleared",
-      });
-    } catch (error) {
-      console.error("DELETE /api/sdk/simple-storage/:email error:", error);
-      return res.status(500).json({ error: "Failed to clear storage" });
+    if (!email) {
+      return res.status(400).json({ error: "Missing email parameter" });
     }
-  },
-);
+    if (!packageName) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const cleared = await SimpleStorageService.clearAll(email, packageName);
+    if (!cleared) {
+      return res.status(404).json({
+        success: false,
+        message: "Storage not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Storage cleared",
+    });
+  } catch (error) {
+    console.error("DELETE /api/sdk/simple-storage/:email error:", error);
+    return res.status(500).json({ error: "Failed to clear storage" });
+  }
+}
 
 /**
- * GET /:email/:key
- * Returns a single value for the given key.
+ * GET /api/sdk/simple-storage/:email/:key
+ * Returns a single string value for the specified key.
+ * Auth: Bearer <packageName>:<apiKey>
  */
-router.get(
-  "/:email/:key",
-  authenticateSDK,
-  async (req: Request, res: Response) => {
-    try {
-      const email = String(req.params.email || "").toLowerCase();
-      const key = String(req.params.key || "");
-      const packageName = req.sdk?.packageName;
+async function getKeyHandler(req: Request, res: Response) {
+  try {
+    const email = String(req.params.email || "").toLowerCase();
+    const key = String(req.params.key || "");
+    const packageName = req.sdk?.packageName;
 
-      if (!email || !key) {
-        return res
-          .status(400)
-          .json({ error: "Missing email or key parameter" });
-      }
-      if (!packageName) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const value = await SimpleStorageService.getKey(email, packageName, key);
-      if (value === undefined) {
-        return res.status(404).json({
-          success: false,
-          message: "Key not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: { value },
-      });
-    } catch (error) {
-      console.error("GET /api/sdk/simple-storage/:email/:key error:", error);
-      return res.status(500).json({ error: "Failed to get key" });
+    if (!email || !key) {
+      return res.status(400).json({ error: "Missing email or key parameter" });
     }
-  },
-);
+    if (!packageName) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const value = await SimpleStorageService.getKey(email, packageName, key);
+    if (value === undefined) {
+      return res.status(404).json({
+        success: false,
+        message: "Key not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: { value },
+    });
+  } catch (error) {
+    console.error("GET /api/sdk/simple-storage/:email/:key error:", error);
+    return res.status(500).json({ error: "Failed to get key" });
+  }
+}
 
 /**
- * PUT /:email/:key
- * Sets a single key to a string value. Body: { value: string }
+ * PUT /api/sdk/simple-storage/:email/:key
+ * Sets a single string value for the specified key.
+ * Body: { value: string }
+ * Auth: Bearer <packageName>:<apiKey>
  */
-router.put(
-  "/:email/:key",
-  authenticateSDK,
-  async (req: Request, res: Response) => {
-    try {
-      const email = String(req.params.email || "").toLowerCase();
-      const key = String(req.params.key || "");
-      const packageName = req.sdk?.packageName;
-      const { value } = req.body || {};
+async function putKeyHandler(req: Request, res: Response) {
+  try {
+    const email = String(req.params.email || "").toLowerCase();
+    const key = String(req.params.key || "");
+    const packageName = req.sdk?.packageName;
+    const { value } = req.body || {};
 
-      if (!email || !key) {
-        return res
-          .status(400)
-          .json({ error: "Missing email or key parameter" });
-      }
-      if (!packageName) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-      if (typeof value !== "string") {
-        return res
-          .status(400)
-          .json({ error: "Invalid body: expected { value: string }" });
-      }
-
-      await SimpleStorageService.setKey(email, packageName, key, value);
-      return res.status(200).json({
-        success: true,
-        message: `Key "${key}" set`,
-      });
-    } catch (error) {
-      console.error("PUT /api/sdk/simple-storage/:email/:key error:", error);
-      return res.status(500).json({ error: "Failed to set key" });
+    if (!email || !key) {
+      return res.status(400).json({ error: "Missing email or key parameter" });
     }
-  },
-);
+    if (!packageName) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (typeof value !== "string") {
+      return res
+        .status(400)
+        .json({ error: "Invalid body: expected { value: string }" });
+    }
+
+    await SimpleStorageService.setKey(email, packageName, key, value);
+    return res.status(200).json({
+      success: true,
+      message: `Key "${key}" set`,
+    });
+  } catch (error) {
+    console.error("PUT /api/sdk/simple-storage/:email/:key error:", error);
+    return res.status(500).json({ error: "Failed to set key" });
+  }
+}
 
 /**
- * DELETE /:email/:key
- * Deletes a single key for the given user+package.
+ * DELETE /api/sdk/simple-storage/:email/:key
+ * Deletes the specified key for the authenticated package and user.
+ * Auth: Bearer <packageName>:<apiKey>
  */
-router.delete(
-  "/:email/:key",
-  authenticateSDK,
-  async (req: Request, res: Response) => {
-    try {
-      const email = String(req.params.email || "").toLowerCase();
-      const key = String(req.params.key || "");
-      const packageName = req.sdk?.packageName;
+async function deleteKeyHandler(req: Request, res: Response) {
+  try {
+    const email = String(req.params.email || "").toLowerCase();
+    const key = String(req.params.key || "");
+    const packageName = req.sdk?.packageName;
 
-      if (!email || !key) {
-        return res
-          .status(400)
-          .json({ error: "Missing email or key parameter" });
-      }
-      if (!packageName) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const deleted = await SimpleStorageService.deleteKey(
-        email,
-        packageName,
-        key,
-      );
-      if (!deleted) {
-        return res.status(404).json({
-          success: false,
-          message: "Storage not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message: `Key "${key}" deleted`,
-      });
-    } catch (error) {
-      console.error("DELETE /api/sdk/simple-storage/:email/:key error:", error);
-      return res.status(500).json({ error: "Failed to delete key" });
+    if (!email || !key) {
+      return res.status(400).json({ error: "Missing email or key parameter" });
     }
-  },
-);
+    if (!packageName) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const deleted = await SimpleStorageService.deleteKey(
+      email,
+      packageName,
+      key,
+    );
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Storage not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Key "${key}" deleted`,
+    });
+  } catch (error) {
+    console.error("DELETE /api/sdk/simple-storage/:email/:key error:", error);
+    return res.status(500).json({ error: "Failed to delete key" });
+  }
+}
 
 export default router;

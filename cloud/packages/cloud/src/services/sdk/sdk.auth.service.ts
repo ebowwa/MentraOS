@@ -31,7 +31,7 @@ const cache = new Map<string, CacheEntry>();
 
 // Optional: simple size guard to avoid unbounded memory growth
 // If exceeded, we'll evict the oldest entry.
-const MAX_CACHE_ENTRIES = 500;
+const MAX_CACHE_ENTRIES = 1000;
 
 /**
  * Hash an API key using SHA-256 (hex).
