@@ -14,7 +14,6 @@ import {
   RtmpStreamStatus,
   isRtmpStreamStatus,
   ManagedStreamStatus,
-  isManagedStreamStatus,
   StreamStatusCheckResponse,
 } from "../../../types";
 import {
@@ -291,6 +290,45 @@ export class CameraModule {
       this.logger.warn(
         { requestId },
         `📸 Received photo for unknown request ID: ${requestId}`,
+      );
+    }
+  }
+
+  /**
+   * ❌ Handle photo error from /photo-upload endpoint
+   *
+   * This method is called internally when a photo error response is received.
+   * It rejects the corresponding pending promise with the error information.
+   *
+   * @param errorResponse - The error response received
+   * @internal This method is used internally by AppSession
+   */
+  handlePhotoError(errorResponse: {
+    requestId: string;
+    success: false;
+    error: {
+      code: string;
+      message: string;
+    };
+  }): void {
+    const { requestId, error } = errorResponse;
+    const pendingRequest = this.pendingPhotoRequests.get(requestId);
+
+    if (pendingRequest) {
+      this.logger.warn(
+        { requestId, errorCode: error.code, errorMessage: error.message },
+        `📸 Photo error received for request ${requestId}: ${error.code} - ${error.message}`,
+      );
+
+      // Reject the promise with the error information
+      pendingRequest.reject(`${error.code}: ${error.message}`);
+
+      // Clean up
+      this.pendingPhotoRequests.delete(requestId);
+    } else {
+      this.logger.warn(
+        { requestId, errorCode: error.code, errorMessage: error.message },
+        `📸 Received photo error for unknown request ID: ${requestId}`,
       );
     }
   }
