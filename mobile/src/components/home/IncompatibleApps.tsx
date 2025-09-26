@@ -1,28 +1,27 @@
-import React, {useCallback} from "react"
-import {View, FlatList, TouchableOpacity, Dimensions} from "react-native"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import {useCallback, useMemo} from "react"
+import {View, FlatList, TouchableOpacity, ViewStyle, TextStyle, ImageStyle} from "react-native"
 
 import {Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {AppletInterface} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, useIncompatibleApps} from "@/contexts/AppletStatusProvider"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useNewUiIncompatibleApps} from "@/hooks/useNewUiFilteredApps"
+import {ThemedStyle} from "@/theme"
 
 const GRID_COLUMNS = 4
 
-export const NewUiIncompatibleApps: React.FC = () => {
+export const IncompatibleApps: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {status} = useCoreStatus()
-  const incompatibleApps = useNewUiIncompatibleApps()
+  const incompatibleApps = useIncompatibleApps()
 
   // Get connected glasses name
   const glassesName = status.glasses_info?.model_name || status.core_info.default_wearable || "your glasses"
 
   // Prepare grid data with placeholders
-  const gridData = React.useMemo(() => {
+  const gridData = useMemo(() => {
     // Calculate how many empty placeholders we need to fill the last row
     const totalItems = incompatibleApps.length
     const remainder = totalItems % GRID_COLUMNS
@@ -109,52 +108,52 @@ export const NewUiIncompatibleApps: React.FC = () => {
   )
 }
 
-const $container = theme => ({
-  marginTop: theme.spacing.md,
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: spacing.md,
 })
 
-const $header = theme => ({
-  marginBottom: theme.spacing.sm,
-  paddingHorizontal: theme.spacing.xs,
+const $header: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.sm,
+  paddingHorizontal: spacing.xs,
 })
 
-const $headerText = theme => ({
+const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   fontWeight: "600",
-  color: theme.colors.text,
+  color: colors.text,
   flex: 1,
 })
 
-const $gridContent = theme => ({
-  paddingBottom: theme.spacing.sm,
+const $gridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingBottom: spacing.sm,
 })
 
-const $gridItem = theme => ({
+const $gridItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   alignItems: "center",
-  marginVertical: theme.spacing.sm,
-  paddingHorizontal: theme.spacing.xs,
+  marginVertical: spacing.sm,
+  paddingHorizontal: spacing.xs,
 })
 
-const $appContainer = theme => ({
+const $appContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   position: "relative",
   width: 64,
   height: 64,
-  marginBottom: theme.spacing.xs,
+  marginBottom: spacing.xs,
 })
 
-const $appIcon = theme => ({
+const $appIcon: ThemedStyle<ImageStyle> = ({spacing}) => ({
   width: 64,
   height: 64,
-  borderRadius: theme.spacing.sm,
+  borderRadius: spacing.sm,
   opacity: 0.4,
 })
 
-const $appNameIncompatible = theme => ({
+const $appNameIncompatible: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 12,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
-  marginTop: theme.spacing.xxs,
+  marginTop: spacing.xxs,
   lineHeight: 14,
   opacity: 0.6,
 })

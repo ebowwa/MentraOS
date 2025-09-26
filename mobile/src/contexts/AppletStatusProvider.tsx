@@ -416,3 +416,21 @@ export function useActiveBackgroundAppsCount(): number {
     return appStatus.filter(app => app.type === "background" && app.is_running).length
   }, [appStatus])
 }
+
+/**
+ * Hook to get incompatible apps (both foreground and background)
+ */
+export function useIncompatibleApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
+}
