@@ -77,10 +77,10 @@ if (!hasUsername) {
 }
 ```
 
-### Remove Item
+### Delete Item
 
 ```typescript
-await session.simpleStorage.removeItem('temporaryData');
+await session.simpleStorage.delete('temporaryData');
 ```
 
 ### Clear All Data
@@ -236,15 +236,15 @@ if (!features.includes('voice_commands')) {
 }
 ```
 
-## Legacy Methods
 
-For backwards compatibility, these methods are also available:
 
-```typescript
-// Legacy methods (use get/set instead)
-await session.simpleStorage.getItem('key');    // Use: get('key')
-await session.simpleStorage.setItem('key', 'value'); // Use: set('key', 'value')
-```
+
+
+
+
+
+
+
 
 ## Error Handling
 
@@ -344,7 +344,7 @@ if (value === undefined) {
 | `get(key)` | `Promise<string \| undefined>` | Get value by key |
 | `set(key, value)` | `Promise<void>` | Set key-value pair |
 | `hasKey(key)` | `Promise<boolean>` | Check if key exists |
-| `removeItem(key)` | `Promise<boolean>` | Delete key |
+| `delete(key)` | `Promise<boolean>` | Delete key |
 | `clear()` | `Promise<boolean>` | Clear all data |
 | `keys()` | `Promise<string[]>` | Get all keys |
 | `size()` | `Promise<number>` | Get number of items |
