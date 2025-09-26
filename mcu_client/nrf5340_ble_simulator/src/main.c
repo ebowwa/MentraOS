@@ -602,7 +602,7 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 	} else {
 		LOG_WRN("⚠️ No echo response generated (echo_len = %d)", echo_len);
 	}
-
+#if 0
 	// Also forward to UART for debugging
 	for (uint16_t pos = 0; pos != len;) {
 		struct uart_data_t *tx = k_malloc(sizeof(*tx));
@@ -638,6 +638,7 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 			k_fifo_put(&fifo_uart_tx_data, tx);
 		}
 	}
+#endif
 }
 
 static struct mentra_ble_cb mentra_cb = {
@@ -836,10 +837,10 @@ int main(void)
 	// Set initial brightness to 50%
 	protobuf_set_brightness_level(50);
 
-	err = uart_init();
-	if (err) {
-		error();
-	}
+	// err = uart_init();
+	// if (err) {
+	// 	error();
+	// }
 
 	if (IS_ENABLED(CONFIG_BT_NUS_SECURITY_ENABLED)) {
 		err = bt_conn_auth_cb_register(&conn_auth_callbacks);
