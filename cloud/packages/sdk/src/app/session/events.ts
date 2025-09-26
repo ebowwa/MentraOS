@@ -33,10 +33,7 @@ import {
   Capabilities,
 } from "../../types";
 import { DashboardMode } from "../../types/dashboard";
-import {
-  PermissionError,
-  PermissionErrorDetail,
-} from "../../types/messages/cloud-to-app";
+import { PermissionErrorDetail } from "../../types/messages/cloud-to-app";
 
 /** 🎯 Type-safe event handler function */
 type Handler<T> = (data: T) => void;

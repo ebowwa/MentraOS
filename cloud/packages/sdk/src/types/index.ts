@@ -75,9 +75,6 @@ export * from "./enums";
 // Core model interfaces
 export * from "./models";
 
-// Session-related interfaces
-export * from "./user-session";
-
 // Webhook interfaces
 export * from "./webhooks";
 

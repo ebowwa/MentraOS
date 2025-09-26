@@ -1,8 +1,5 @@
 import {
-  ActiveDisplay,
-  Layout,
   DisplayRequest,
-  DisplayManagerI,
   AppToCloudMessageType,
   ViewType,
   LayoutType,
@@ -10,16 +7,25 @@ import {
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
 import { Logger } from "pino";
 import { WebSocket } from "ws";
-import axios from "axios";
 import { ConnectionValidator } from "../validators/ConnectionValidator";
-
-const CLOUD_PUBLIC_HOST_NAME = "https://" + process.env.CLOUD_PUBLIC_HOST_NAME;
+// import axios from "axios";
+// const CLOUD_PUBLIC_HOST_NAME = "https://" + process.env.CLOUD_PUBLIC_HOST_NAME;
+// TODO(isaiah): Fix or remove onboarding status/instructions system.
 
 // Extend DisplayRequest to include optional priority flag
 interface DisplayRequestWithPriority extends DisplayRequest {
   priority?: boolean;
 }
 import UserSession from "../session/UserSession";
+
+/**
+ * Currently active display
+ */
+export interface ActiveDisplay {
+  displayRequest: DisplayRequest;
+  startedAt: Date;
+  expiresAt?: Date; // When to auto-clear this display
+}
 
 interface DisplayState {
   currentDisplay: ActiveDisplay | null;
@@ -181,43 +187,44 @@ class DisplayManager {
         const userEmail = this.userSession.userId; // Assuming userId is email
         if (userEmail && packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
           try {
-            const onboardingStatus = await this.getOnboardingStatus(
-              userEmail,
-              packageName,
-            );
-            // console.log('4343 onboardingStatus', onboardingStatus);
-            if (!onboardingStatus) {
-              const instructions =
-                await this.getOnboardingInstructions(packageName);
-              // console.log('4343 instructions', instructions);
-              if (instructions) {
-                // Show onboarding instructions as a display
-                const onboardingDisplay: DisplayRequest = {
-                  type: AppToCloudMessageType.DISPLAY_REQUEST,
-                  view: ViewType.MAIN,
-                  packageName,
-                  layout: {
-                    layoutType: LayoutType.TEXT_WALL,
-                    text: instructions,
-                  },
-                  timestamp: new Date(),
-                  durationMs: 15000, // Show for 10 seconds or until user action
-                };
-                this.onboardingActive = true;
-                this.onboardingEndTime = Date.now() + 5000;
-                this.sendDisplay(onboardingDisplay);
-                this.logger.info(
-                  { packageName },
-                  `[${this.getUserId()}] Showing onboarding instructions for ${packageName}`,
-                );
-                setTimeout(() => {
-                  this.onboardingActive = false;
-                }, 5000);
-                // console.log('4343 userEmail', userEmail);
-                // console.log('4343 packageName', packageName);
-                await this.completeOnboarding(userEmail, packageName);
-              }
-            }
+            // const onboardingStatus = await this.getOnboardingStatus(
+            //   userEmail,
+            //   packageName,
+            // );
+            // // console.log('4343 onboardingStatus', onboardingStatus);
+            // if (!onboardingStatus) {
+            //   const instructions = await this.getOnboardingInstructions(
+            //     packageName,
+            //   );
+            //   // console.log('4343 instructions', instructions);
+            //   if (instructions) {
+            //     // Show onboarding instructions as a display
+            //     const onboardingDisplay: DisplayRequest = {
+            //       type: AppToCloudMessageType.DISPLAY_REQUEST,
+            //       view: ViewType.MAIN,
+            //       packageName,
+            //       layout: {
+            //         layoutType: LayoutType.TEXT_WALL,
+            //         text: instructions,
+            //       },
+            //       timestamp: new Date(),
+            //       durationMs: 15000, // Show for 10 seconds or until user action
+            //     };
+            //     this.onboardingActive = true;
+            //     this.onboardingEndTime = Date.now() + 5000;
+            //     this.sendDisplay(onboardingDisplay);
+            //     this.logger.info(
+            //       { packageName },
+            //       `[${this.getUserId()}] Showing onboarding instructions for ${packageName}`,
+            //     );
+            //     setTimeout(() => {
+            //       this.onboardingActive = false;
+            //     }, 5000);
+            //     // console.log('4343 userEmail', userEmail);
+            //     // console.log('4343 packageName', packageName);
+            //     await this.completeOnboarding(userEmail, packageName);
+            //   }
+            // }
           } catch (err) {
             this.logger.error(
               { err },
@@ -232,69 +239,69 @@ class DisplayManager {
   /**
    * Helper: Get onboarding status for user and app
    */
-  private async getOnboardingStatus(
-    email: string,
-    packageName: string,
-  ): Promise<boolean> {
-    try {
-      const response = await axios.get(
-        `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/status`,
-        { params: { email, packageName } },
-      );
-      // console.log('4343 response', response);
-      return !!response.data.hasCompletedOnboarding;
-    } catch (err) {
-      this.logger.error(
-        { err },
-        `[${this.getUserId()}] Error fetching onboarding status`,
-      );
-      return false;
-    }
-  }
+  // private async getOnboardingStatus(
+  //   email: string,
+  //   packageName: string,
+  // ): Promise<boolean> {
+  //   try {
+  //     const response = await axios.get(
+  //       `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/status`,
+  //       { params: { email, packageName } },
+  //     );
+  //     // console.log('4343 response', response);
+  //     return !!response.data.hasCompletedOnboarding;
+  //   } catch (err) {
+  //     this.logger.error(
+  //       { err },
+  //       `[${this.getUserId()}] Error fetching onboarding status`,
+  //     );
+  //     return false;
+  //   }
+  // }
 
   /**
    * Helper: Get onboarding instructions for app
    */
-  private async getOnboardingInstructions(
-    packageName: string,
-  ): Promise<string | null> {
-    try {
-      const response = await axios.get(
-        `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/instructions`,
-        { params: { packageName } },
-      );
-      return response.data.instructions || null;
-    } catch (err) {
-      this.logger.info(
-        { err },
-        `[${this.getUserId()}] Error fetching onboarding instructions`,
-      );
-      return null;
-    }
-  }
+  // private async getOnboardingInstructions(
+  //   packageName: string,
+  // ): Promise<string | null> {
+  //   try {
+  //     const response = await axios.get(
+  //       `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/instructions`,
+  //       { params: { packageName } },
+  //     );
+  //     return response.data.instructions || null;
+  //   } catch (err) {
+  //     this.logger.info(
+  //       { err },
+  //       `[${this.getUserId()}] Error fetching onboarding instructions`,
+  //     );
+  //     return null;
+  //   }
+  // }
 
   /**
    * Helper: Mark onboarding as complete for user and app
    */
-  private async completeOnboarding(
-    email: string,
-    packageName: string,
-  ): Promise<boolean> {
-    try {
-      const response = await axios.post(
-        `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/complete`,
-        { email, packageName },
-      );
-      // console.log('#$%^4343 response', response);
-      return !!response.data.success;
-    } catch (err) {
-      this.logger.error(
-        { err },
-        `[${this.getUserId()}] Error completing onboarding`,
-      );
-      return false;
-    }
-  }
+  // private async completeOnboarding(
+  //   email: string,
+  //   packageName: string,
+  // ): Promise<boolean> {
+  //   try {
+  //     const response = await axios.post(
+  //       `${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/complete`,
+  //       { email, packageName },
+  //     );
+  //     // console.log('#$%^4343 response', response);
+  //     return !!response.data.success;
+  //   } catch (err) {
+  //     this.logger.error(
+  //       { err },
+  //       `[${this.getUserId()}] Error completing onboarding`,
+  //     );
+  //     return false;
+  //   }
+  // }
 
   /**
    * Process queued display requests after boot completes
@@ -302,7 +309,9 @@ class DisplayManager {
   private processBootQueue(): void {
     this.logger.info(
       { queueSize: this.bootDisplayQueue.size },
-      `[${this.getUserId()}] Processing boot queue with ${this.bootDisplayQueue.size} requests`,
+      `[${this.getUserId()}] Processing boot queue with ${
+        this.bootDisplayQueue.size
+      } requests`,
     );
 
     // If we have queued requests, process them
@@ -314,7 +323,9 @@ class DisplayManager {
         const coreAppDisplay = this.bootDisplayQueue.get(this.mainApp)!;
         this.logger.info(
           { mainApp: this.mainApp },
-          `[${this.getUserId()}] Showing queued core app ${this.mainApp} display from boot queue`,
+          `[${this.getUserId()}] Showing queued core app ${
+            this.mainApp
+          } display from boot queue`,
         );
         const success = this.sendToWebSocket(
           coreAppDisplay.displayRequest,
@@ -426,7 +437,9 @@ class DisplayManager {
           packageName:
             this.displayState.currentDisplay.displayRequest.packageName,
         },
-        `[${this.getUserId()}] 🧹 Clearing invalid current display from ${this.displayState.currentDisplay.displayRequest.packageName}`,
+        `[${this.getUserId()}] 🧹 Clearing invalid current display from ${
+          this.displayState.currentDisplay.displayRequest.packageName
+        }`,
       );
       this.displayState.currentDisplay = null;
     }
@@ -654,7 +667,9 @@ class DisplayManager {
             packageName: displayRequest.packageName,
             lockHolder: this.displayState.backgroundLock.packageName,
           },
-          `[${this.getUserId()}] 🔓 Releasing background lock as core app took display: ${this.displayState.backgroundLock.packageName}`,
+          `[${this.getUserId()}] 🔓 Releasing background lock as core app took display: ${
+            this.displayState.backgroundLock.packageName
+          }`,
         );
         this.displayState.backgroundLock = null;
       }
@@ -669,7 +684,9 @@ class DisplayManager {
 
       this.logger.info(
         { packageName: displayRequest.packageName },
-        `[${this.getUserId()}] ✅ Display sent successfully: ${displayRequest.packageName}`,
+        `[${this.getUserId()}] ✅ Display sent successfully: ${
+          displayRequest.packageName
+        }`,
       );
 
       // Set expiry timeout if duration specified
@@ -767,7 +784,9 @@ class DisplayManager {
     if (this.bootingApps.size > 0) {
       this.logger.info(
         { bootingAppsCount: this.bootingApps.size },
-        `[${this.getUserId()}] 🚀 Showing boot screen - ${this.bootingApps.size} apps booting`,
+        `[${this.getUserId()}] 🚀 Showing boot screen - ${
+          this.bootingApps.size
+        } apps booting`,
       );
       this.updateBootScreen();
       return;
@@ -1002,7 +1021,9 @@ class DisplayManager {
           packageName,
           lockHolder: this.displayState.backgroundLock.packageName,
         },
-        `[${this.getUserId()}] 🔓 Lock holder ${this.displayState.backgroundLock.packageName} is no longer running, releasing lock`,
+        `[${this.getUserId()}] 🔓 Lock holder ${
+          this.displayState.backgroundLock.packageName
+        } is no longer running, releasing lock`,
       );
       this.displayState.backgroundLock = {
         packageName,
@@ -1014,7 +1035,9 @@ class DisplayManager {
 
     this.logger.info(
       { packageName, lockHolder: this.displayState.backgroundLock.packageName },
-      `[${this.getUserId()}] ❌ ${packageName} blocked - lock held by ${this.displayState.backgroundLock.packageName}`,
+      `[${this.getUserId()}] ❌ ${packageName} blocked - lock held by ${
+        this.displayState.backgroundLock.packageName
+      }`,
     );
     return false;
   }
@@ -1038,7 +1061,9 @@ class DisplayManager {
       packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {
         layoutType: LayoutType.REFERENCE_CARD,
-        title: `// MentraOS - Starting App${this.bootingApps.size > 1 ? "s" : ""}`,
+        title: `// MentraOS - Starting App${
+          this.bootingApps.size > 1 ? "s" : ""
+        }`,
         text: bootingAppNames.join(", "),
       },
       timestamp: new Date(),
@@ -1140,7 +1165,9 @@ class DisplayManager {
       Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY
     ) {
       this.logger.info(
-        `[DisplayManager.service] - [${this.getUserId()}] ⏳ Display throttled, queuing: ${displayRequest.packageName}`,
+        `[DisplayManager.service] - [${this.getUserId()}] ⏳ Display throttled, queuing: ${
+          displayRequest.packageName
+        }`,
       );
 
       const activeDisplay = this.createActiveDisplay(displayRequest);

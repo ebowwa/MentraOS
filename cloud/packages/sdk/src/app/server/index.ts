@@ -17,8 +17,6 @@ import {
   WebhookResponse,
   SessionWebhookRequest,
   StopWebhookRequest,
-  isSessionWebhookRequest,
-  isStopWebhookRequest,
   ToolCall,
 } from "../../types";
 
@@ -137,7 +135,10 @@ export class AppServer {
     this.app.use(
       cookieParser(
         this.config.cookieSecret ||
-          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(
+            0,
+            8,
+          )}`,
       ),
     );
 
@@ -151,7 +152,10 @@ export class AppServer {
         },
         cookieSecret:
           this.config.cookieSecret ||
-          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(
+            0,
+            8,
+          )}`,
       }) as any,
     );
 
@@ -375,11 +379,11 @@ export class AppServer {
         const webhookRequest = req.body as WebhookRequest;
 
         // Handle session request
-        if (isSessionWebhookRequest(webhookRequest)) {
+        if (webhookRequest.type === WebhookRequestType.SESSION_REQUEST) {
           await this.handleSessionRequest(webhookRequest, res);
         }
         // Handle stop request
-        else if (isStopWebhookRequest(webhookRequest)) {
+        else if (webhookRequest.type === WebhookRequestType.STOP_REQUEST) {
           await this.handleStopRequest(webhookRequest, res);
         }
         // Unknown webhook type
@@ -505,7 +509,7 @@ export class AppServer {
           );
 
           // Keep track of the original session before removal
-          const session = this.activeSessions.get(sessionId);
+          // const session = this.activeSessions.get(sessionId);
 
           // Call onStop with a reconnection failure reason
           this.onStop(
@@ -612,7 +616,7 @@ export class AppServer {
         const userSessions: AppSession[] = [];
 
         // Look through all active sessions
-        this.activeSessions.forEach((session, sessionId) => {
+        this.activeSessions.forEach((session, _) => {
           // Check if the session has this userId (not directly accessible)
           // We're relying on the webhook handler to have already verified this
           if (session.userId === userIdForSettings) {
@@ -795,7 +799,9 @@ export class AppServer {
   private setupMentraAuthRedirect(): void {
     this.app.get("/mentra-auth", (req, res) => {
       // Redirect to the account.mentra.glass OAuth flow with the app's package name
-      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(this.config.packageName)}`;
+      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(
+        this.config.packageName,
+      )}`;
 
       this.logger.info(`🔐 Redirecting to MentraOS OAuth flow: ${authUrl}`);
 
@@ -809,7 +815,7 @@ export class AppServer {
   private findSessionByPhotoRequestId(
     requestId: string,
   ): AppSession | undefined {
-    for (const [sessionId, session] of this.activeSessions) {
+    for (const [_, session] of this.activeSessions) {
       if (session.camera.hasPhotoPendingRequest(requestId)) {
         return session;
       }
