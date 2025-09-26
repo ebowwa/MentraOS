@@ -83,6 +83,7 @@ import {
   isManagedStreamStatus,
   isStreamStatusCheckResponse,
 } from "../../types/messages/cloud-to-app";
+import { SimpleStorage } from "./modules/simple-storage";
 
 /**
  * ⚙️ Configuration options for App Session
@@ -206,6 +207,8 @@ export class AppSession {
   public readonly camera: CameraModule;
   /** 🔊 Audio interface for audio playback */
   public readonly audio: AudioManager;
+  /** 🔐 Simple key-value storage interface */
+  public readonly simpleStorage: SimpleStorage;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -352,6 +355,8 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: "audio" }),
     );
+
+    this.simpleStorage = new SimpleStorage(this);
 
     this.location = new LocationManager(this, this.send.bind(this));
   }
@@ -2115,3 +2120,6 @@ export {
   AudioPlayResult,
   SpeakOptions,
 } from "./modules/audio";
+export { 
+    SimpleStorage 
+  } from "./modules/simple-storage";
