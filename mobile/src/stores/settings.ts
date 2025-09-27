@@ -20,6 +20,7 @@ export const SETTINGS_KEYS = {
   THEME_PREFERENCE: "THEME_PREFERENCE",
   DEV_MODE: "DEV_MODE",
   NEW_UI: "NEW_UI",
+  ENABLE_SQUIRCLES: "ENABLE_SQUIRCLES",
   OFFLINE_MODE: "OFFLINE_MODE",
   sensing_enabled: "sensing_enabled",
   power_saving_mode: "power_saving_mode",
@@ -49,6 +50,7 @@ export const SETTINGS_KEYS = {
   time_zone_override: "time_zone_override",
   location_tier: "location_tier",
   offline_captions_app_running: "offline_captions_app_running",
+  SHOW_ADVANCED_SETTINGS: "SHOW_ADVANCED_SETTINGS",
 } as const
 
 const DEFAULT_SETTINGS: Record<string, any> = {
@@ -72,6 +74,7 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   [SETTINGS_KEYS.THEME_PREFERENCE]: "system",
   [SETTINGS_KEYS.DEV_MODE]: false,
   [SETTINGS_KEYS.NEW_UI]: false,
+  [SETTINGS_KEYS.ENABLE_SQUIRCLES]: false,
   [SETTINGS_KEYS.OFFLINE_MODE]: false,
   [SETTINGS_KEYS.sensing_enabled]: true,
   [SETTINGS_KEYS.power_saving_mode]: false,

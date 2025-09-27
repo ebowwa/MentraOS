@@ -673,11 +673,12 @@ export class AsgCameraApiClient {
       })
 
       // Parse the response format from the ASG server
-      if (response.data && response.data.results) {
+      const responseData = response as any
+      if (responseData.data && responseData.data.results) {
         const deleted: string[] = []
         const failed: string[] = []
 
-        for (const result of response.data.results) {
+        for (const result of responseData.data.results) {
           if (result.success) {
             deleted.push(result.file)
           } else {

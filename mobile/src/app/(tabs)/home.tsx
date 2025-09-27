@@ -17,12 +17,13 @@ import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
 import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
 import {translate} from "@/i18n"
-import {AppsCombinedGridView} from "@/components/misc/AppsCombinedGridView"
 import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
 import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
 import PermissionsWarning from "@/components/home/PermissionsWarning"
 import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {HomeContainer} from "@/components/home/HomeContainer"
+import {CompactDeviceStatus} from "@/components/home/CompactDeviceStatus"
 
 export default function Homepage() {
   const {refreshAppStatus} = useAppStatus()
@@ -41,31 +42,33 @@ export default function Homepage() {
 
   if (showNewUi) {
     return (
-      <Screen preset="fixed" style={themed($screen)}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header
           leftTx="home:title"
           RightActionComponent={
             <View style={themed($headerRight)}>
               <PermissionsWarning />
+              <OfflineModeButton />
               <MicIcon width={24} height={24} />
               <NonProdWarning />
             </View>
           }
         />
 
-        <CloudConnection />
-        <SensingDisabledWarning />
-        <View>
-          <ConnectedGlasses showTitle={false} />
-          <DeviceToolbar />
-        </View>
-        <Spacer height={theme.spacing.lg} />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.md} />
+        <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
+          <CloudConnection />
+          <SensingDisabledWarning />
 
-        {isOfflineMode ? <AppsOfflineList /> : <AppsCombinedGridView />}
+          {isOfflineMode ? (
+            <>
+              <CompactDeviceStatus />
+              <Divider variant="full" />
+              <AppsOfflineList />
+            </>
+          ) : (
+            <HomeContainer />
+          )}
+        </ScrollView>
 
         <OnboardingSpotlight
           targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}

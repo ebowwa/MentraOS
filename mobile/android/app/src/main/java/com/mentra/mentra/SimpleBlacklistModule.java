@@ -64,13 +64,19 @@ public class SimpleBlacklistModule extends ReactContextBaseJavaModule {
             SharedPreferences prefs = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
             for (ApplicationInfo packageInfo : packages) {
+                String packageName = packageInfo.packageName;
+
+                // Skip com.android.* apps except for Chrome
+                if (packageName.startsWith("com.android.") && !packageName.equals("com.android.chrome")) {
+                    continue;
+                }
+
                 // Skip system apps that don't typically send notifications
                 if ((packageInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0) {
-                    String packageName = packageInfo.packageName;
                     // Only include system apps that commonly send notifications
-                    if (!packageName.startsWith("com.android.") &&
-                        !packageName.startsWith("com.google.android.gms") &&
-                        !packageName.startsWith("com.google.android.gsf")) {
+                    if (!packageName.startsWith("com.google.android.gms") &&
+                        !packageName.startsWith("com.google.android.gsf") &&
+                        !packageName.equals("com.android.chrome")) {
                         continue;
                     }
                 }
@@ -154,8 +160,8 @@ public class SimpleBlacklistModule extends ReactContextBaseJavaModule {
             bitmap = Bitmap.createScaledBitmap(bitmap, 32, 32, true);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            // Use JPEG with lower quality for smaller size and faster loading
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos);
+            // Use PNG to support transparency
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
             byte[] imageBytes = baos.toByteArray();
             return Base64.encodeToString(imageBytes, Base64.NO_WRAP);
         } catch (Exception e) {

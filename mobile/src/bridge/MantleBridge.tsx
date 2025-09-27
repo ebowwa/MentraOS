@@ -13,7 +13,7 @@ import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import socketComms from "@/managers/SocketComms"
-import livekitManager from "@/managers/LivekitManager"
+// import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
@@ -180,13 +180,6 @@ export class MantleBridge extends EventEmitter {
 
     // Initialize message event listener
     this.initializeMessageEventListener()
-
-    if (Platform.OS === "android") {
-      // Set up audio play response callback
-      AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
-        this.sendAudioPlayResponse(response)
-      })
-    }
 
     // set the backend server url
     if (Platform.OS === "android") {
@@ -480,7 +473,7 @@ export class MantleBridge extends EventEmitter {
       return this.validationInProgress ?? true
     }
 
-    this.validationInProgress = new Promise<boolean>((resolve, reject) => {
+    this.validationInProgress = new Promise<boolean>((resolve, _reject) => {
       const dataReceivedListener = () => {
         resolve(true)
       }
