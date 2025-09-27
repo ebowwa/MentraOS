@@ -2,7 +2,7 @@
  * Main gallery screen component
  */
 
-import {useCallback, useState, useEffect, useMemo, useRef} from "react"
+import React, {useCallback, useState, useEffect, useMemo, useRef} from "react"
 import {
   View,
   Text,
@@ -75,7 +75,7 @@ export function GalleryScreen() {
   const numColumns = Math.max(2, Math.min(Math.floor((screenWidth - spacing.lg * 2) / MIN_ITEM_WIDTH), 4))
   const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
 
-  const [networkStatus, _setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
+  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
   // Memoize connection values
   const connectionInfo = useMemo(() => {
@@ -516,7 +516,7 @@ export function GalleryScreen() {
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
             await loadDownloadedPhotos()
-          } catch (_err) {
+          } catch (err) {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
         },
@@ -1079,7 +1079,7 @@ export function GalleryScreen() {
 }
 
 // Styles remain the same
-const $screenContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $screenContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flex: 1,
   // backgroundColor: colors.background,
   marginHorizontal: -spacing.lg,
