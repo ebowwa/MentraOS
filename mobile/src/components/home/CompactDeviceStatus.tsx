@@ -161,7 +161,9 @@ export const CompactDeviceStatus: React.FC = () => {
     }
 
     if (!status.glasses_info?.case_removed) {
-      image = status.glasses_info?.case_open ? getGlassesOpenImage(defaultWearable) : getGlassesClosedImage(defaultWearable)
+      image = status.glasses_info?.case_open
+        ? getGlassesOpenImage(defaultWearable)
+        : getGlassesClosedImage(defaultWearable)
     }
 
     return image

@@ -137,6 +137,9 @@ const en = {
     swipeToView: "Swipe to view {{target}}",
     backgroundApps: "Background Apps",
     backgroundAppsActive: "active",
+    tapAnAppSwitch: "Tap an app's switch to activate it",
+    activeBackgroundApps: "Active Background Apps",
+    inactiveBackgroundApps: "Inactive Background Apps",
   },
   glasses: {
     title: "Glasses",
