@@ -2,19 +2,16 @@
  * Main gallery screen component
  */
 
-import React, {useCallback, useState, useEffect, useMemo, useRef} from "react"
+import {useCallback, useState, useEffect, useMemo, useRef} from "react"
 import {
   View,
   Text,
   BackHandler,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  ScrollView,
   FlatList,
   ViewToken,
-  Clipboard,
 } from "react-native"
 import {useFocusEffect} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -78,7 +75,7 @@ export function GalleryScreen() {
   const numColumns = Math.max(2, Math.min(Math.floor((screenWidth - spacing.lg * 2) / MIN_ITEM_WIDTH), 4))
   const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
 
-  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
+  const [networkStatus, _setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
   // Memoize connection values
   const connectionInfo = useMemo(() => {
@@ -309,7 +306,7 @@ export function GalleryScreen() {
       for (const photoInfo of downloadResult.downloaded) {
         const downloadedFile = localStorageService.convertToDownloadedFile(
           photoInfo,
-          photoInfo.filePath,
+          photoInfo.filePath || "",
           photoInfo.thumbnailPath,
           glassesModel,
         )
@@ -519,7 +516,7 @@ export function GalleryScreen() {
           try {
             await localStorageService.deleteDownloadedFile(photo.name)
             await loadDownloadedPhotos()
-          } catch (err) {
+          } catch (_err) {
             showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
           }
         },
@@ -889,16 +886,16 @@ export function GalleryScreen() {
                   style={{marginRight: spacing.xs}}
                 />
                 <Text style={themed($syncButtonText)}>
-                  Sync {glassesGalleryStatus?.total}{" "}
-                  {glassesGalleryStatus?.photos > 0 && glassesGalleryStatus?.videos > 0
-                    ? glassesGalleryStatus?.total === 1
+                  Sync {glassesGalleryStatus?.total || 0}{" "}
+                  {(glassesGalleryStatus?.photos || 0) > 0 && (glassesGalleryStatus?.videos || 0) > 0
+                    ? (glassesGalleryStatus?.total || 0) === 1
                       ? "item"
                       : "items"
-                    : glassesGalleryStatus?.photos > 0
-                      ? glassesGalleryStatus?.photos === 1
+                    : (glassesGalleryStatus?.photos || 0) > 0
+                      ? (glassesGalleryStatus?.photos || 0) === 1
                         ? "photo"
                         : "photos"
-                      : glassesGalleryStatus?.videos === 1
+                      : (glassesGalleryStatus?.videos || 0) === 1
                         ? "video"
                         : "videos"}
                 </Text>
@@ -996,8 +993,16 @@ export function GalleryScreen() {
       <TouchableOpacity
         style={[themed($photoItem), {width: itemWidth}]}
         onPress={() => handlePhotoPress(item)}
-        onLongPress={() => (item.isOnServer ? handleDeletePhoto(item.photo) : handleDeleteDownloadedPhoto(item.photo))}>
-        <PhotoImage photo={item.photo} style={[themed($photoImage), {width: itemWidth, height: itemWidth * 0.8}]} />
+        onLongPress={() => {
+          if (item.photo) {
+            if (item.isOnServer) {
+              handleDeletePhoto(item.photo)
+            } else {
+              handleDeleteDownloadedPhoto(item.photo)
+            }
+          }
+        }}>
+        <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
         {item.isOnServer && (
           <View style={themed($serverBadge)}>
             <MaterialCommunityIcons name="glasses" size={14} color="white" />
@@ -1074,7 +1079,7 @@ export function GalleryScreen() {
 }
 
 // Styles remain the same
-const $screenContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $screenContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   // backgroundColor: colors.background,
   marginHorizontal: -spacing.lg,
