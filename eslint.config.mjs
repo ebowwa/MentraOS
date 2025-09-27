@@ -100,6 +100,11 @@ export default [
               importNames: ["useRouter"],
               message: "Do not use useRouter from expo-router. Use our useNavigationHistory hook instead.",
             },
+            {
+              name: "react-native",
+              importNames: ["Text"],
+              message: "Do not import Text from 'react-native'. Use the Ignite component with the tx prop instead.",
+            },
           ],
         },
       ],
