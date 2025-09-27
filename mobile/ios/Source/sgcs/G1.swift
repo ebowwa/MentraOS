@@ -111,6 +111,8 @@ enum GlassesError: Error {
 }
 
 class G1: NSObject, SGCManager {
+    func sendJson(_: [String: Any], wakeUp _: Bool, requireAck _: Bool) {}
+
     var caseBatteryLevel: Int?
 
     var glassesAppVersion: String?
@@ -156,8 +158,6 @@ class G1: NSObject, SGCManager {
     func showDashboard() {}
 
     func setSilentMode(_: Bool) {}
-
-    func sendJson(_: [String: Any], wakeUp _: Bool) {}
 
     func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
 

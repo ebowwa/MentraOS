@@ -13,6 +13,8 @@ import UIKit
 import UltraliteSDK
 
 class Mach1: UltraliteBaseViewController, SGCManager {
+    func sendJson(_: [String: Any], wakeUp _: Bool, requireAck _: Bool) {}
+
     var caseBatteryLevel: Int?
 
     var glassesAppVersion: String?
@@ -68,8 +70,6 @@ class Mach1: UltraliteBaseViewController, SGCManager {
     func setDashboardPosition(_: Int, _: Int) {}
 
     func setSilentMode(_: Bool) {}
-
-    func sendJson(_: [String: Any], wakeUp _: Bool) {}
 
     func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
 

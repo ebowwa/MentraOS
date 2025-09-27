@@ -45,7 +45,7 @@ export const OfflineModeButton: React.FC = () => {
       ],
       {
         iconName: offlineMode ? "wifi" : "wifi-off",
-        iconColor: theme.colors.tint,
+        iconColor: theme.colors.icon,
       },
     )
   }
@@ -56,7 +56,7 @@ export const OfflineModeButton: React.FC = () => {
         <MaterialCommunityIcons
           name={offlineMode ? "wifi-off" : "wifi"}
           size={24}
-          color={offlineMode ? theme.colors.text : theme.colors.tint}
+          color={theme.colors.icon}
         />
       </TouchableOpacity>
     </View>

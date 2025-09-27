@@ -354,7 +354,7 @@ export function DeviceToolbar() {
             ) : (
               <>
                 <Text
-                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4}}>
                   {status.glasses_settings.brightness}%
                 </Text>
               </>
@@ -374,14 +374,14 @@ export function DeviceToolbar() {
               push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
             }}>
             <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            <Text style={{color: theme.colors.statusText, fontSize: 16}}>
               {wifiSsid || "Disconnected"}
             </Text>
           </TouchableOpacity>
         ) : (
           <>
             <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>Connected</Text>
+            <Text style={{color: theme.colors.statusText, fontSize: 16}}>Connected</Text>
           </>
         )}
       </View>
