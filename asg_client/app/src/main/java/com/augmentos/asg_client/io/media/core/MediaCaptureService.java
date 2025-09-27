@@ -207,6 +207,12 @@ public class MediaCaptureService {
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
     }
+
+    private void playShutterSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset("camera_sound.mp3");
+        }
+    }
     
     /**
      * Start video recording with specific settings
@@ -641,6 +647,8 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
+        playShutterSound();
+
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
 
@@ -700,6 +708,8 @@ public class MediaCaptureService {
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
+            playShutterSound();
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -1197,6 +1207,8 @@ public class MediaCaptureService {
         }
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
+
+        playShutterSound();
 
         try {
             // Use CameraNeo for photo capture
