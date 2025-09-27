@@ -106,7 +106,7 @@ function SwitchInput(props: SwitchInputProps) {
   ].filter(Boolean)[0]
 
   const onBackgroundColor = [
-    disabled && colors.transparent,
+    disabled && colors.palette.transparent,
     status === "error" && colors.errorBackground,
     colors.switchTrackOn,
   ].filter(Boolean)[0]
@@ -187,7 +187,7 @@ function SwitchInput(props: SwitchInputProps) {
           {
             backgroundColor: knobBackgroundColor,
             borderColor: colors.switchBorder,
-            borderWidth: colors.switchBorderWidth,
+            borderWidth: theme.spacing.xxxs,
           },
         ]}
       />
@@ -358,7 +358,7 @@ function SwitchAccessibilityLabel(props: SwitchInputProps & {role: "on" | "off"}
 const $inputOuter: StyleProp<ViewStyle> = [$inputOuterBase, {height: 16, width: 32, borderRadius: 16}]
 
 const $switchInner: ThemedStyle<ViewStyle> = ({colors}) => ({
-  borderColor: colors.transparent,
+  borderColor: colors.palette.transparent,
   position: "absolute",
   paddingStart: 4,
   paddingEnd: 4,

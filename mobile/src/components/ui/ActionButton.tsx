@@ -48,9 +48,9 @@ export default function ActionButton({
   const getTextColor = () => {
     switch (variant) {
       case "warning":
-        return theme.colors.palette.accent100
+        return theme.colors.warning
       case "destructive":
-        return theme.colors.palette.angry600
+        return theme.colors.error
       case "secondary":
         return theme.colors.textDim
       default:

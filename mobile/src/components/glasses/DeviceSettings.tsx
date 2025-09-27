@@ -456,7 +456,7 @@ export default function DeviceSettings() {
       {defaultWearable && defaultWearable !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
-          variant="destructive"
+          variant="warning"
           onPress={() => {
             bridge.sendDisconnectWearable()
           }}

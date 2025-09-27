@@ -54,9 +54,9 @@ export default function AppStoreWeb() {
     textColor: theme.colors.text,
     secondaryTextColor: theme.colors.textDim,
     borderColor: theme.colors.border,
-    buttonBg: theme.colors.palette.gray200,
+    buttonBg: theme.colors.palette.neutral200,
     buttonTextColor: theme.colors.text,
-    primaryColor: theme.colors.palette.blue500,
+    primaryColor: theme.colors.primary,
   }
 
   // Handle WebView loading events

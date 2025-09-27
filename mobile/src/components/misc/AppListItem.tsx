@@ -192,7 +192,7 @@ const Tag = ({
   isIncompatible?: boolean
 }) => {
   const {themed, theme} = useAppTheme()
-  const mColor = isActive ? theme.colors.foregroundTagText : theme.colors.textDim
+  const mColor = isActive ? theme.colors.text : theme.colors.textDim
 
   if (isIncompatible) {
     return null
@@ -231,7 +231,7 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
     justifyContent: "flex-start",
     gap: 4,
     minHeight: 28,
-    backgroundColor: colors.foregroundTagBackground,
+    backgroundColor: colors.tagBackground,
     alignSelf: "flex-start",
   }
 }

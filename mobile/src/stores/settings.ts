@@ -5,7 +5,6 @@ import {getTimeZone} from "react-native-localize"
 import bridge from "@/bridge/MantleBridge"
 import restComms from "@/managers/RestComms"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {isMentraUser} from "@/utils/isMentraUser"
 
 export const SETTINGS_KEYS = {
   PREVIOUSLY_BONDED_PUCK: "PREVIOUSLY_BONDED_PUCK",
@@ -53,8 +52,6 @@ export const SETTINGS_KEYS = {
   offline_captions_app_running: "offline_captions_app_running",
   SHOW_ADVANCED_SETTINGS: "SHOW_ADVANCED_SETTINGS",
 } as const
-
-type SettingsKeys = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS]
 
 const DEFAULT_SETTINGS: Record<string, any> = {
   [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass:443",

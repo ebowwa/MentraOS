@@ -26,7 +26,7 @@ const setImperativeTheming = async (theme: Theme) => {
   if (Platform.OS === "ios") {
     SystemUI.setBackgroundColorAsync(theme.colors.background)
   } else {
-    SystemUI.setBackgroundColorAsync(theme.colors.tabBarBackground1)
+    SystemUI.setBackgroundColorAsync(theme.colors.backgroundStart)
   }
 }
 
@@ -36,7 +36,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   const colorScheme = useColorScheme()
   const [overrideTheme, setTheme] = useState<ThemeContexts>(initialTheme)
   const [isLoaded, setIsLoaded] = useState(false)
-  const [savedTheme, setSavedTheme] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
+  const [savedTheme, _setSavedTheme] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
 
   const setThemeContextOverride = useCallback((newTheme: ThemeContexts) => {
     setTheme(newTheme)

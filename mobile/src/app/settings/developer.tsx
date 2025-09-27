@@ -184,7 +184,7 @@ export default function DeveloperSettingsScreen() {
           {
             backgroundColor: theme.colors.warningBackgroundDestructive,
             borderWidth: theme.spacing.xxxs,
-            borderColor: theme.colors.warningBorderDestructive,
+            borderColor: theme.colors.palette.angry600,
           },
         ]}>
         <View style={styles.warningContent}>
@@ -293,7 +293,7 @@ export default function DeveloperSettingsScreen() {
                 buttonStyle={styles.saveButton}
               />
               <PillButton
-                text="Reset"
+                tx="common:reset"
                 variant="icon"
                 onPress={handleResetUrl}
                 disabled={isSavingUrl}
@@ -302,13 +302,13 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="Global"
+                tx="developer:global"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://api.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="Dev"
+                tx="developer:dev"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://devapi.mentra.glass:443")}
                 buttonStyle={styles.button}
@@ -316,13 +316,13 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="Debug"
+                tx="developer:debug"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="US Central"
+                tx="developer:usCentral"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
                 buttonStyle={styles.button}
@@ -330,12 +330,17 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="France"
+                tx="developer:france"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://franceapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
-              <PillButton text="Asia East" variant="icon" onPress={handleAsiaButtonPress} buttonStyle={styles.button} />
+              <PillButton
+                tx="developer:asiaEast"
+                variant="icon"
+                onPress={handleAsiaButtonPress}
+                buttonStyle={styles.button}
+              />
             </View>
           </View>
         </View>

@@ -651,7 +651,7 @@ export default function AppSettings() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: theme.spacing.xs,
-                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                backgroundColor: theme.colors.errorBackground,
                 borderRadius: 8,
                 paddingHorizontal: theme.spacing.sm,
                 paddingVertical: theme.spacing.xs,

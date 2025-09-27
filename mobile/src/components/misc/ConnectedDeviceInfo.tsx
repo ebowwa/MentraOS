@@ -329,18 +329,21 @@ export function DeviceToolbar() {
   const hasWifi = glassesFeatures[modelName]?.wifi ?? false // Default to false if model not found
   const wifiSsid = status.glasses_info?.glasses_wifi_ssid
 
+  const textColor = theme.colors.textDim
+  const iconColor = theme.colors.tint
+
   return (
     <View style={themed($deviceToolbar)}>
       {/* battery - always shown */}
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {status.glasses_info?.battery_level != -1 ? (
           <>
-            <Icon icon="battery" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText}}>{status.glasses_info?.battery_level}%</Text>
+            <Icon icon="battery" size={18} color={iconColor} />
+            <Text style={{color: textColor}}>{status.glasses_info?.battery_level}%</Text>
           </>
         ) : (
           // <Text style={{color: theme.colors.text}}>No battery</Text>
-          <ActivityIndicator size="small" color={theme.colors.statusText} />
+          <ActivityIndicator size="small" color={textColor} />
         )}
       </View>
 
@@ -348,13 +351,12 @@ export function DeviceToolbar() {
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {hasDisplay ? (
           <>
-            <SunIcon size={18} color={theme.colors.statusIcon} />
+            <SunIcon size={18} color={iconColor} />
             {autoBrightness ? (
-              <Text style={{color: theme.colors.statusText}}>Auto</Text>
+              <Text style={{color: textColor}}>Auto</Text>
             ) : (
               <>
-                <Text
-                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4}}>
+                <Text style={{color: textColor, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
                   {status.glasses_settings.brightness}%
                 </Text>
               </>
@@ -373,15 +375,15 @@ export function DeviceToolbar() {
             onPress={() => {
               push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
             }}>
-            <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16}}>
+            <MaterialCommunityIcons name="wifi" size={18} color={iconColor} />
+            <Text style={{color: textColor, fontSize: 16, fontFamily: "Inter-Regular"}}>
               {wifiSsid || "Disconnected"}
             </Text>
           </TouchableOpacity>
         ) : (
           <>
-            <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16}}>Connected</Text>
+            <MaterialCommunityIcons name="bluetooth" size={18} color={iconColor} />
+            <Text style={{color: textColor, fontSize: 16, fontFamily: "Inter-Regular"}}>Connected</Text>
           </>
         )}
       </View>

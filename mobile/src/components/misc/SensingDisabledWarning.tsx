@@ -6,17 +6,19 @@ import {router} from "expo-router"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 const SensingDisabledWarning: React.FC = () => {
   const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
+  const {theme} = useAppTheme()
 
   if (status.core_info.sensing_enabled) {
     return null
   }
 
   return (
-    <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: "#FFB74D"}]}>
+    <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: theme.colors.warning}]}>
       <View style={styles.warningContent}>
         <Icon name="microphone-off" size={22} color="#FF9800" />
         <Text style={styles.warningText}>{translate("warning:sensingDisabled")}</Text>
