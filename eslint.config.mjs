@@ -68,7 +68,7 @@ export default [
       "react-native/split-platform-components": "warn",
       "react-native/no-inline-styles": "warn",
       "react-native/no-color-literals": "off",
-      "react-native/no-raw-text": "off",
+      "react-native/no-raw-text": "error",
 
       // Reactotron
       "reactotron/no-tron-in-production": "error",
