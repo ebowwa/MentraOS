@@ -806,9 +806,25 @@ export function GalleryScreen() {
   // Initial mount
   useEffect(() => {
     console.log("[GalleryScreen] Component mounted")
+    // console.log("[GalleryScreen] Glasses connection status:", {
+    //   hasGlassesInfo: !!status.glasses_info,
+    //   glassesModel: status.glasses_info?.model_name,
+    //   isHotspotEnabled,
+    //   hotspotGatewayIp,
+    //   connectionAvailable: !!(status.glasses_info && isHotspotEnabled && hotspotGatewayIp)
+    // })
+
     loadDownloadedPhotos()
-    transitionToState(GalleryState.QUERYING_GLASSES)
-    queryGlassesGalleryStatus()
+
+    // Only query glasses if we have glasses info (meaning glasses are connected)
+    if (status.glasses_info?.model_name) {
+      console.log("[GalleryScreen] Glasses connected - querying gallery status", status.glasses_info)
+      transitionToState(GalleryState.QUERYING_GLASSES)
+      queryGlassesGalleryStatus()
+    } else {
+      console.log("[GalleryScreen] No glasses connected - showing local photos only")
+      transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+    }
   }, [])
 
   // Handle back button
@@ -1312,16 +1328,17 @@ export function GalleryScreen() {
           {(() => {
             // DEBUG: Log empty gallery condition evaluation
             const showEmpty = allPhotos.length === 0 && !isLoadingServerPhotos
-            console.log(`[GalleryScreen] EMPTY GALLERY CHECK:`, {
-              hasError: !!error,
-              allPhotosLength: allPhotos.length,
-              isLoadingServerPhotos,
-              galleryState,
-              totalServerCount,
-              downloadedPhotosCount: downloadedPhotos.length,
-              showEmptyGallery: showEmpty && !error,
-              decision: error ? "SHOW_ERROR" : showEmpty ? "SHOW_EMPTY" : "SHOW_GALLERY",
-            })
+            // console.log(`[GalleryScreen] GALLERY STATE: ${galleryState}`)
+            // console.log(`[GalleryScreen] EMPTY GALLERY CHECK:`, {
+            //   hasError: !!error,
+            //   allPhotosLength: allPhotos.length,
+            //   isLoadingServerPhotos,
+            //   galleryState,
+            //   totalServerCount,
+            //   downloadedPhotosCount: downloadedPhotos.length,
+            //   showEmptyGallery: showEmpty && !error,
+            //   decision: error ? "SHOW_ERROR" : showEmpty ? "SHOW_EMPTY" : "SHOW_GALLERY",
+            // })
 
             if (error) {
               return (

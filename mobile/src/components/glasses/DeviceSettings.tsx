@@ -225,7 +225,7 @@ export default function DeviceSettings() {
     return (
       <View style={themed($container)}>
         {/* Show gallery button if there are local photos, even without glasses */}
-        {hasLocalPhotos && (
+        {
           <View style={themed($galleryButtonContainer)}>
             <RouteButton
               label={translate("glasses:gallery")}
@@ -233,7 +233,7 @@ export default function DeviceSettings() {
               onPress={() => push("/asg/gallery")}
             />
           </View>
-        )}
+        }
 
         <View style={themed($emptyStateContainerWithGallery)}>
           <Text style={themed($emptyStateText)}>
