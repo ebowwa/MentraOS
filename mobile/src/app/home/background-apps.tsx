@@ -1,41 +1,54 @@
-import React, {useState, useCallback, useMemo} from "react"
-import {View, ScrollView, TouchableOpacity, ActivityIndicator} from "react-native"
-import {useRouter} from "expo-router"
+import {Fragment, useMemo} from "react"
+import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useNewUiBackgroundApps} from "@/hooks/useNewUiFilteredApps"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {AppletInterface} from "@/types/AppletInterface"
 import restComms from "@/managers/RestComms"
 import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
-import {showAlert} from "@/utils/AlertUtils"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {showAlert} from "@/utils/AlertUtils"
+import {ThemedStyle} from "@/theme"
 
-export default function NewUiBackgroundAppsScreen() {
+export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
-  const router = useRouter()
-  const {push} = useNavigationHistory()
-  const backgroundApps = useNewUiBackgroundApps()
-  const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const {push, goBack} = useNavigationHistory()
+  const {status} = useCoreStatus()
+  const {appStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} =
+    useAppStatus()
 
-  // Separate active and inactive apps
+  const backgroundApps = useMemo(
+    () => appStatus.filter(app => app.type === "background"),
+    [appStatus],
+  )
+
+  const incompatibleApps = useMemo(
+    () =>
+      backgroundApps.filter(
+        app => !app.is_running && app.compatibility !== undefined && app.compatibility.isCompatible === false,
+      ),
+    [backgroundApps],
+  )
+
   const {activeApps, inactiveApps} = useMemo(() => {
-    const active = backgroundApps.filter(app => app.is_running)
-    const inactive = backgroundApps.filter(app => !app.is_running)
+    const isCompatible = (app: AppletInterface) => !(app.compatibility && app.compatibility.isCompatible === false)
+
+    const active = backgroundApps.filter(app => app.is_running && isCompatible(app))
+    const inactive = backgroundApps.filter(app => !app.is_running && isCompatible(app))
+
     return {activeApps: active, inactiveApps: inactive}
   }, [backgroundApps])
 
-  const handleBack = () => {
-    router.back()
-  }
+  const glassesName =
+    status.glasses_info?.model_name || status.core_info?.default_wearable || "your glasses"
 
   const toggleApp = async (app: AppletInterface) => {
     if (app.is_running) {
@@ -52,27 +65,21 @@ export default function NewUiBackgroundAppsScreen() {
       return
     }
 
-    // First check permissions for the app
     const permissionResult = await askPermissionsUI(app, theme)
     if (permissionResult === -1) {
-      // User cancelled
       return
     } else if (permissionResult === 0) {
-      // Permissions failed, retry
       await startApp(packageName)
       return
     }
 
-    // If app is marked as online by backend, start optimistically immediately
     if (app.isOnline !== false) {
       console.log("Background app is online, starting optimistically:", packageName)
       optimisticallyStartApp(packageName)
 
-      // Do health check in background
       performHealthCheckFlow({
         app,
         onStartApp: async () => {
-          // App already started optimistically, just make the server call
           try {
             await restComms.startApp(packageName)
             clearPendingOperation(packageName)
@@ -85,7 +92,6 @@ export default function NewUiBackgroundAppsScreen() {
           await refreshAppStatus()
         },
         onHealthCheckFailed: async () => {
-          // Health check failed, revert the switch
           console.log("Health check failed, reverting background app to inactive:", packageName)
           optimisticallyStopApp(packageName)
           refreshAppStatus()
@@ -94,8 +100,7 @@ export default function NewUiBackgroundAppsScreen() {
         clearPendingOperation,
       })
     } else {
-      // App is explicitly offline, use normal flow with health check first
-      const shouldStart = await performHealthCheckFlow({
+      await performHealthCheckFlow({
         app,
         onStartApp: async () => {
           optimisticallyStartApp(packageName)
@@ -129,7 +134,6 @@ export default function NewUiBackgroundAppsScreen() {
   }
 
   const openAppSettings = (app: AppletInterface) => {
-    // Check if app has webviewURL and navigate directly to it
     if (app.webviewURL && app.isOnline !== false) {
       push("/applet/webview", {
         webviewURL: app.webviewURL,
@@ -152,7 +156,7 @@ export default function NewUiBackgroundAppsScreen() {
     }
 
     return (
-      <React.Fragment key={app.packageName}>
+      <Fragment key={app.packageName}>
         <TouchableOpacity
           style={themed($appRow)}
           onPress={handleRowPress}
@@ -203,13 +207,13 @@ export default function NewUiBackgroundAppsScreen() {
           </View>
         </TouchableOpacity>
         {!isLast && <Divider />}
-      </React.Fragment>
+      </Fragment>
     )
   }
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
-      <Header leftIcon="back" onLeftPress={handleBack} title="Background Apps" />
+      <Header leftIcon="back" onLeftPress={goBack} title="Background Apps" />
 
       <View style={themed($headerInfo)}>
         <Text style={themed($headerText)}>Multiple background apps can be active at once.</Text>
@@ -225,7 +229,6 @@ export default function NewUiBackgroundAppsScreen() {
           </View>
         ) : (
           <>
-            {/* Active Background Apps Section */}
             {activeApps.length > 0 ? (
               <>
                 <Text style={themed($sectionHeader)}>Active Background Apps</Text>
@@ -248,14 +251,12 @@ export default function NewUiBackgroundAppsScreen() {
               </>
             )}
 
-            {/* Inactive Background Apps Section */}
             {inactiveApps.length > 0 && (
               <>
                 <Text style={themed($sectionHeader)}>Inactive Background Apps</Text>
                 <View style={themed($sectionContent)}>
                   {inactiveApps.map((app, index) => renderAppItem(app, index, false))}
-                  {/* Get More Apps item */}
-                  <TouchableOpacity style={themed($appRow)} onPress={() => router.push("/store")} activeOpacity={0.7}>
+                  <TouchableOpacity style={themed($appRow)} onPress={() => push("/store")} activeOpacity={0.7}>
                     <View style={themed($appContent)}>
                       <GetMoreAppsIcon size="medium" />
                       <View style={themed($appInfo)}>
@@ -268,6 +269,50 @@ export default function NewUiBackgroundAppsScreen() {
                 </View>
               </>
             )}
+
+            {incompatibleApps.length > 0 && (
+              <>
+                <Spacer height={theme.spacing.lg} />
+                <Text style={themed($sectionHeader)}>{`Incompatible with ${glassesName}`}</Text>
+                <View style={themed($sectionContent)}>
+                  {incompatibleApps.map((app, index) => (
+                    <Fragment key={app.packageName}>
+                      <TouchableOpacity
+                        style={themed($appRow)}
+                        onPress={() => {
+                          const missingHardware =
+                            app.compatibility?.missingRequired?.map(req => req.type.toLowerCase()).join(", ") ||
+                            "required features"
+                          showAlert(
+                            "Hardware Incompatible",
+                            app.compatibility?.message ||
+                              `${app.name} requires ${missingHardware} which is not available on your connected glasses`,
+                            [{text: "OK"}],
+                            {
+                              iconName: "alert-circle-outline",
+                              iconColor: theme.colors.error,
+                            },
+                          )
+                        }}
+                        activeOpacity={0.7}>
+                        <View style={themed($appContent)}>
+                          <AppIcon app={app as any} style={themed($incompatibleAppIcon)} />
+                          <View style={themed($appInfo)}>
+                            <Text
+                              text={app.name}
+                              style={themed($incompatibleAppName)}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      {index < incompatibleApps.length - 1 && <Divider />}
+                    </Fragment>
+                  ))}
+                </View>
+              </>
+            )}
           </>
         )}
 
@@ -277,162 +322,160 @@ export default function NewUiBackgroundAppsScreen() {
   )
 }
 
-const $screen = theme => ({
+const $screen: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
-  backgroundColor: theme.colors.background,
 })
 
-const $headerInfo = theme => ({
-  paddingHorizontal: theme.spacing.md,
-  paddingVertical: theme.spacing.sm,
-  backgroundColor: theme.colors.surface,
+const $headerInfo: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  paddingHorizontal: spacing.md,
+  paddingVertical: spacing.sm,
   borderBottomWidth: 1,
-  borderBottomColor: theme.colors.border,
+  borderBottomColor: colors.border,
 })
 
-const $headerText = theme => ({
+const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 14,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
 })
 
-const $scrollView = theme => ({
+const $scrollView: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $scrollViewContent = theme => ({
-  paddingTop: theme.spacing.md,
+const $scrollViewContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingTop: spacing.md,
 })
 
-const $sectionHeader = theme => ({
+const $sectionHeader: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 14,
   fontWeight: "600",
-  color: theme.colors.textDim,
-  marginBottom: theme.spacing.xs,
-  paddingHorizontal: theme.spacing.lg,
+  color: colors.textDim,
+  marginBottom: spacing.xs,
+  paddingHorizontal: spacing.lg,
   textTransform: "uppercase",
   letterSpacing: 0.5,
 })
 
-const $sectionContent = theme => ({
-  paddingHorizontal: theme.spacing.lg,
+const $sectionContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.lg,
 })
 
-const $appRow = theme => ({
+const $appRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  paddingVertical: theme.spacing.md,
+  paddingVertical: spacing.md,
   minHeight: 72,
 })
 
-const $appContent = theme => ({
+const $appContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   flex: 1,
-  gap: theme.spacing.sm,
+  gap: spacing.sm,
 })
 
-const $appIcon = theme => ({
+const $appIcon: ThemedStyle<ViewStyle> = () => ({
   width: 48,
   height: 48,
 })
 
-const $appInfo = theme => ({
+const $appInfo: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   justifyContent: "center",
-  marginRight: theme.spacing.lg,
-  paddingRight: theme.spacing.sm,
+  marginRight: spacing.lg,
+  paddingRight: spacing.sm,
 })
 
-const $appName = theme => ({
+const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
-  color: theme.colors.text,
+  color: colors.text,
   marginBottom: 2,
 })
 
-const $rightControls = theme => ({
+const $rightControls: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  gap: theme.spacing.sm,
+  gap: spacing.sm,
 })
 
-const $offlineApp = theme => ({
+const $offlineApp: ThemedStyle<TextStyle> = ({colors}) => ({
   textDecorationLine: "line-through",
-  color: theme.colors.textDim,
+  color: colors.textDim,
 })
 
-const $offlineRow = theme => ({
+const $offlineRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
-  gap: 4,
+  gap: spacing.xs,
   marginTop: 2,
 })
 
-const $offlineText = theme => ({
+const $offlineText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
-  color: theme.colors.error,
+  color: colors.error,
 })
 
-const $tipContainer = theme => ({
-  marginHorizontal: theme.spacing.lg,
-  paddingVertical: theme.spacing.md,
-  paddingHorizontal: theme.spacing.md,
-  backgroundColor: theme.colors.palette.neutral100,
-  borderRadius: theme.spacing.sm,
+const $tipContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  marginHorizontal: spacing.lg,
+  paddingVertical: spacing.md,
+  paddingHorizontal: spacing.md,
+  backgroundColor: colors.background,
+  borderRadius: spacing.sm,
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
   borderWidth: 1,
-  borderColor: theme.colors.border,
+  borderColor: colors.border,
 })
 
-const $tipContent = theme => ({
+const $tipContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
-  gap: 4,
+  gap: spacing.xs,
 })
 
-const $tipText = theme => ({
+const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   fontWeight: "500",
-  color: theme.colors.text,
+  color: colors.text,
 })
 
-const $tipSubtext = theme => ({
+const $tipSubtext: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 13,
-  color: theme.colors.textDim,
+  color: colors.textDim,
 })
 
-const $gearButton = theme => ({
-  padding: theme.spacing.xs,
+const $gearButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
 })
 
-const $emptyContainer = theme => ({
+const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   alignItems: "center",
   justifyContent: "center",
-  paddingVertical: theme.spacing.xxxl,
+  paddingVertical: spacing.xxxl,
 })
 
-const $emptyText = theme => ({
+const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
-  color: theme.colors.textDim,
+  color: colors.textDim,
   textAlign: "center",
 })
 
-const $loadingOverlay = theme => ({
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.3)",
-  alignItems: "center",
-  justifyContent: "center",
+const $getMoreAppsSubtext: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.textDim,
+  marginTop: 2,
 })
 
-const $getMoreAppsSubtext = theme => ({
-  fontSize: 12,
-  color: theme.colors.textDim,
-  marginTop: 2,
+const $incompatibleAppIcon: ThemedStyle<ViewStyle> = () => ({
+  width: 48,
+  height: 48,
+  opacity: 0.4,
+})
+
+const $incompatibleAppName: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  color: colors.textDim,
 })

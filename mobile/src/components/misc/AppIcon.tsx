@@ -23,6 +23,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
   const WrapperComponent = onClick ? TouchableOpacity : View
 
   const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.ENABLE_SQUIRCLES)
 
   return (
     <WrapperComponent
@@ -31,7 +32,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      {Platform.OS === "ios" && newUi ? (
+      {Platform.OS === "ios" && enableSquircles ? (
         <SquircleView
           cornerSmoothing={100}
           preserveSmoothing={true}

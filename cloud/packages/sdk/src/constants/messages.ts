@@ -1,5 +1,5 @@
 /**
- * message.ts
+ * messages.ts
  *
  * This file defines constant messages that should be displayed
  * in the terminal to notify developers about new SDK releases.

@@ -1,5 +1,4 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import RestComms from "@/managers/RestComms"
+import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef, useMemo} from "react"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {deepCompare} from "@/utils/debugging"
@@ -143,6 +142,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const diff = deepCompare(currentAppStatus, mapped)
         if (diff.length === 0) {
           console.log("AppStatusProvider: Applet status did not change")
+          //console.log(JSON.stringify(currentAppStatus, null, 2));
           return currentAppStatus
         }
         return mapped
@@ -280,8 +280,6 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
-
       setAppStatus(currentStatus =>
         currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false, loading: false} : app)),
       )
@@ -318,16 +316,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }
 
-  const onCoreTokenSet = () => {
-    console.log("CORE_TOKEN_SET event received, forcing app refresh with 1.5 second delay")
-    // Add a delay to let the token become valid on the server side
-    setTimeout(() => {
-      console.log("CORE_TOKEN_SET: Delayed refresh executing now")
-      refreshAppStatus()
-    }, 1500)
-  }
-
-  const onAppStateChange = (msg: any) => {
+  const onAppStateChange = () => {
     // console.log("APP_STATE_CHANGE event received, forcing app refresh")
     refreshAppStatus()
   }
@@ -335,11 +324,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
-    GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
     GlobalEventEmitter.on("APP_STATE_CHANGE", onAppStateChange)
     return () => {
       // @ts-ignore
-      GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
       GlobalEventEmitter.off("APP_STATE_CHANGE", onAppStateChange)
     }
   }, [])
@@ -376,4 +363,74 @@ export const useAppStatus = () => {
     throw new Error("useAppStatus must be used within an AppStatusProvider")
   }
   return context
+}
+
+/**
+ * Hook to get only foreground apps (type === "standard")
+ */
+export function useNewUiForegroundApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    // appStatus is an array, not an object with registered_applets
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(
+      app => app.type === "standard" || !app.type, // default to standard if type is missing
+    )
+  }, [appStatus])
+}
+
+/**
+ * Hook to get only background apps (type === "background")
+ */
+export function useBackgroundApps(): {active: AppletInterface[]; inactive: AppletInterface[]} {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    const active = appStatus.filter(app => app.type === "background" && app.is_running)
+    const inactive = appStatus.filter(app => app.type === "background" && !app.is_running)
+    return {active, inactive}
+  }, [appStatus])
+}
+
+/**
+ * Hook to get the currently active foreground app
+ */
+export function useActiveForegroundApp(): AppletInterface | null {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return null
+    return appStatus.find(app => (app.type === "standard" || !app.type) && app.is_running) || null
+  }, [appStatus])
+}
+
+/**
+ * Hook to get count of active background apps
+ */
+export function useActiveBackgroundAppsCount(): number {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return 0
+    return appStatus.filter(app => app.type === "background" && app.is_running).length
+  }, [appStatus])
+}
+
+/**
+ * Hook to get incompatible apps (both foreground and background)
+ */
+export function useIncompatibleApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
 }
