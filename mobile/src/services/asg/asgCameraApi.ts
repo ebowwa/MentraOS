@@ -607,7 +607,7 @@ export class AsgCameraApiClient {
 
     // Process files in parallel batches for better performance
     // Use controlled concurrency to avoid overwhelming the network
-    const CONCURRENCY_LIMIT = 3 // Process 3 files simultaneously
+    const CONCURRENCY_LIMIT = 1 // Process 3 files simultaneously
     const deletePromises: Promise<void>[] = [] // Track delete operations for cleanup
 
     // Process files in batches

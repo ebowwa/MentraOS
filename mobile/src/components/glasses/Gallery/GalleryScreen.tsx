@@ -1243,7 +1243,10 @@ export function GalleryScreen() {
         }}
         disabled={isDownloading}
         activeOpacity={isDownloading ? 1 : 0.8}>
-        <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
+        <View style={{position: "relative"}}>
+          <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
+          {isDownloading && <View style={themed($photoDimmingOverlay)} />}
+        </View>
         {item.isOnServer && (
           <View style={themed($serverBadge)}>
             <MaterialCommunityIcons name="glasses" size={14} color="white" />
@@ -1487,7 +1490,6 @@ const $progressRingOverlay: ThemedStyle<ViewStyle> = () => ({
   bottom: 0,
   justifyContent: "center",
   alignItems: "center",
-  backgroundColor: "rgba(0,0,0,0.5)",
   borderRadius: 8,
 })
 
@@ -1578,6 +1580,16 @@ const $syncButtonProgressFill: ThemedStyle<ViewStyle> = ({colors}) => ({
   borderRadius: 2,
 })
 
+const $photoDimmingOverlay: ThemedStyle<ViewStyle> = () => ({
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  borderRadius: 8,
+})
+
 const $photoItemDisabled: ThemedStyle<ViewStyle> = () => ({
-  opacity: 0.5,
+  // Removed opacity to prevent greyed out appearance during sync
 })
