@@ -1309,45 +1309,66 @@ export function GalleryScreen() {
       />
       <View style={themed($screenContainer)}>
         <View style={themed($galleryContainer)}>
-          {error ? (
-            <View style={themed($errorContainer)}>
-              <Text style={themed($errorText)}>{error}</Text>
-            </View>
-          ) : allPhotos.length === 0 && !isLoadingServerPhotos ? (
-            <View style={themed($emptyContainer)}>
-              <MaterialCommunityIcons
-                name="image-outline"
-                size={64}
-                color={theme.colors.textDim}
-                style={{marginBottom: spacing.lg}}
-              />
-              <Text style={themed($emptyText)}>Gallery is empty</Text>
-              <Text style={themed($emptySubtext)}>
-                Take photos with your glasses or sync existing photos to see them here.
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={allPhotos}
-              numColumns={numColumns}
-              key={numColumns}
-              renderItem={renderPhotoItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={[
-                themed($photoGridContent),
-                {paddingBottom: shouldShowSyncButton ? 100 : spacing.lg},
-              ]}
-              columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-              ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
-              initialNumToRender={10}
-              maxToRenderPerBatch={10}
-              windowSize={10}
-              removeClippedSubviews={true}
-              updateCellsBatchingPeriod={50}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-            />
-          )}
+          {(() => {
+            // DEBUG: Log empty gallery condition evaluation
+            const showEmpty = allPhotos.length === 0 && !isLoadingServerPhotos
+            console.log(`[GalleryScreen] EMPTY GALLERY CHECK:`, {
+              hasError: !!error,
+              allPhotosLength: allPhotos.length,
+              isLoadingServerPhotos,
+              galleryState,
+              totalServerCount,
+              downloadedPhotosCount: downloadedPhotos.length,
+              showEmptyGallery: showEmpty && !error,
+              decision: error ? "SHOW_ERROR" : showEmpty ? "SHOW_EMPTY" : "SHOW_GALLERY",
+            })
+
+            if (error) {
+              return (
+                <View style={themed($errorContainer)}>
+                  <Text style={themed($errorText)}>{error}</Text>
+                </View>
+              )
+            } else if (showEmpty) {
+              return (
+                <View style={themed($emptyContainer)}>
+                  <MaterialCommunityIcons
+                    name="image-outline"
+                    size={64}
+                    color={theme.colors.textDim}
+                    style={{marginBottom: spacing.lg}}
+                  />
+                  <Text style={themed($emptyText)}>Gallery is empty</Text>
+                  <Text style={themed($emptySubtext)}>
+                    Take photos with your glasses or sync existing photos to see them here.
+                  </Text>
+                </View>
+              )
+            } else {
+              return (
+                <FlatList
+                  data={allPhotos}
+                  numColumns={numColumns}
+                  key={numColumns}
+                  renderItem={renderPhotoItem}
+                  keyExtractor={item => item.id}
+                  contentContainerStyle={[
+                    themed($photoGridContent),
+                    {paddingBottom: shouldShowSyncButton ? 100 : spacing.lg},
+                  ]}
+                  columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
+                  ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={10}
+                  windowSize={10}
+                  removeClippedSubviews={true}
+                  updateCellsBatchingPeriod={50}
+                  onViewableItemsChanged={onViewableItemsChanged}
+                  viewabilityConfig={viewabilityConfig}
+                />
+              )
+            }
+          })()}
         </View>
 
         {renderStatusBar()}
