@@ -16,7 +16,7 @@ import { Logger } from "pino";
 import UserSession from "./UserSession";
 import { ConnectionValidator } from "../validators/ConnectionValidator";
 
-const PHOTO_REQUEST_TIMEOUT_MS_DEFAULT = 30000; // Default timeout for photo requests
+// Timeout handling is managed by CameraModule in the SDK
 
 /**
  * Internal representation of a pending photo request,
@@ -29,7 +29,6 @@ interface PendingPhotoRequest {
   // origin: 'app'; // All requests via PhotoManager are App initiated for now
   packageName: string; // Renamed from appId for consistency with App messages
   saveToGallery: boolean;
-  timeoutId: NodeJS.Timeout;
 }
 
 /**
@@ -126,10 +125,6 @@ export class PhotoManager {
       timestamp: Date.now(),
       packageName,
       saveToGallery,
-      timeoutId: setTimeout(
-        () => this._handlePhotoRequestTimeout(requestId),
-        PHOTO_REQUEST_TIMEOUT_MS_DEFAULT,
-      ),
     };
     this.pendingPhotoRequests.set(requestId, requestInfo);
 
@@ -165,7 +160,6 @@ export class PhotoManager {
           { requestId },
           "Using custom webhook URL - resolving promise immediately since glasses will upload directly to custom endpoint.",
         );
-        clearTimeout(requestInfo.timeoutId);
         this.pendingPhotoRequests.delete(requestId);
 
         // Send a success response to the app immediately
@@ -183,7 +177,6 @@ export class PhotoManager {
         { error, requestId },
         "Failed to send PHOTO_REQUEST to glasses.",
       );
-      clearTimeout(requestInfo.timeoutId);
       this.pendingPhotoRequests.delete(requestId);
       throw error;
     }
@@ -219,6 +212,11 @@ export class PhotoManager {
     const { requestId, success } = normalizedResponse;
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
 
+    console.log("pendingPhotoRequest", this.pendingPhotoRequests);
+    console.log("glassesResponse", glassesResponse);
+    console.log("success", success);
+    console.log("requestId", requestId);
+
     if (!pendingPhotoRequest) {
       this.logger.warn(
         { requestId, glassesResponse: normalizedResponse },
@@ -237,7 +235,6 @@ export class PhotoManager {
       },
       "Photo response received from glasses.",
     );
-    clearTimeout(pendingPhotoRequest.timeoutId);
     this.pendingPhotoRequests.delete(requestId);
 
     if (success) {
@@ -249,49 +246,7 @@ export class PhotoManager {
     }
   }
 
-  private _handlePhotoRequestTimeout(requestId: string): void {
-    const requestInfo = this.pendingPhotoRequests.get(requestId);
-    if (!requestInfo) return; // Already handled or cleared
-
-    this.logger.warn(
-      {
-        requestId,
-        packageName: requestInfo.packageName,
-        timeoutMs: PHOTO_REQUEST_TIMEOUT_MS_DEFAULT,
-        connectionStatus: ConnectionValidator.getConnectionStatus(
-          this.userSession,
-        ),
-      },
-      "Photo request timed out - sending error response to app",
-    );
-    this.pendingPhotoRequests.delete(requestId); // Remove before sending error
-
-    // Create timeout error response
-    const timeoutErrorResponse: PhotoResponse = {
-      type: GlassesToCloudMessageType.PHOTO_RESPONSE,
-      requestId,
-      success: false,
-      error: {
-        code: PhotoErrorCode.UPLOAD_TIMEOUT,
-        message:
-          "Photo request timed out after 30 seconds. Check glasses connection and camera status.",
-        details: {
-          stage: PhotoStage.RESPONSE_SENT,
-          retryable: true,
-          suggestedAction: "Check glasses connection and try again",
-          diagnosticInfo: {
-            timestamp: Date.now(),
-            duration: PHOTO_REQUEST_TIMEOUT_MS_DEFAULT,
-            retryCount: 0,
-          },
-        },
-      },
-      timestamp: new Date(),
-    };
-
-    // Send error response to app
-    this._sendPhotoErrorToApp(requestInfo, timeoutErrorResponse);
-  }
+  // Timeout handling removed - now managed by CameraModule in the SDK
 
   private async _sendPhotoErrorToApp(
     pendingPhotoRequest: PendingPhotoRequest,
@@ -393,14 +348,7 @@ export class PhotoManager {
     this.logger.info(
       "Disposing PhotoManager, cancelling pending photo requests for this session.",
     );
-    this.pendingPhotoRequests.forEach((requestInfo, _requestId) => {
-      clearTimeout(requestInfo.timeoutId);
-      // TODO(isaiah): We should extend the photo result to support error, so dev's can more gracefully handle failed photo requets.
-      // this._sendPhotoResultToApp(requestInfo, {
-      //   error: 'User session ended; photo request cancelled.',
-      //   savedToGallery: requestInfo.saveToGallery
-      // });
-    });
+    // Timeout handling removed - CameraModule manages timeouts
     this.pendingPhotoRequests.clear();
   }
 }
