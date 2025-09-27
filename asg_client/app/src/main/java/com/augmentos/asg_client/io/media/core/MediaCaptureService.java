@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Random;
 
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -46,6 +48,140 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import com.radzivon.bartoshyk.avif.coder.HeifCoder;
 import com.radzivon.bartoshyk.avif.coder.PreciseMode;
+
+/**
+ * PHOTO CAPTURE TESTING FRAMEWORK
+ * 
+ * Master controls for testing error scenarios in real-time
+ * Set these variables to test different failure points
+ */
+class PhotoCaptureTestFramework {
+    // ===== MASTER CONTROLS =====
+    public static final boolean ENABLE_FAKE_FAILURES = false;  // Master switch
+    public static final boolean ENABLE_FAKE_DELAYS = false;    // Add artificial delays
+    
+    // ===== FAILURE TYPES =====
+    public static final String FAILURE_TYPE_CAMERA_INIT = "CAMERA_INIT_FAILED";
+    public static final String FAILURE_TYPE_CAMERA_CAPTURE = "CAMERA_CAPTURE_FAILED";
+    public static final String FAILURE_TYPE_BLE_TRANSFER = "BLE_TRANSFER_FAILED";
+    public static final String FAILURE_TYPE_UPLOAD = "UPLOAD_FAILED";
+    public static final String FAILURE_TYPE_COMPRESSION = "COMPRESSION_FAILED";
+    public static final String FAILURE_TYPE_RANDOM = "RANDOM_FAILURE";
+    
+    // ===== CURRENT TEST CONFIGURATION =====
+    public static String FAILURE_TYPE = FAILURE_TYPE_CAMERA_CAPTURE;  // Which failure to simulate
+    public static final double FAILURE_PROBABILITY = 1.0;          // 0.0 to 1.0 (100% when enabled)
+    public static final int FAKE_DELAY_MS = 5000;                  // Artificial delay in milliseconds
+    
+    // ===== STEP-SPECIFIC CONTROLS =====
+    public static final boolean FAIL_CAMERA_INIT = false;          // Camera initialization
+    public static final boolean FAIL_CAMERA_CAPTURE = false;        // Photo capture
+    public static final boolean FAIL_IMAGE_COMPRESSION = false;    // Image compression
+    public static final boolean FAIL_BLE_TRANSFER = false;         // BLE file transfer
+    public static final boolean FAIL_CLOUD_UPLOAD = false;         // Cloud upload
+    public static final boolean FAIL_RANDOM_STEP = false;          // Random failure
+    
+    private static final Random random = new Random();
+    
+    /**
+     * Check if we should simulate a failure at this step
+     */
+    public static boolean shouldFail(String step) {
+        if (!ENABLE_FAKE_FAILURES) return false;
+        
+        // Check step-specific controls first
+        switch (step) {
+            case "CAMERA_INIT":
+                return FAIL_CAMERA_INIT || FAILURE_TYPE.equals(FAILURE_TYPE_CAMERA_INIT);
+            case "CAMERA_CAPTURE":
+                return FAIL_CAMERA_CAPTURE || FAILURE_TYPE.equals(FAILURE_TYPE_CAMERA_CAPTURE);
+            case "COMPRESSION":
+                return FAIL_IMAGE_COMPRESSION || FAILURE_TYPE.equals(FAILURE_TYPE_COMPRESSION);
+            case "BLE_TRANSFER":
+                return FAIL_BLE_TRANSFER || FAILURE_TYPE.equals(FAILURE_TYPE_BLE_TRANSFER);
+            case "UPLOAD":
+                return FAIL_CLOUD_UPLOAD || FAILURE_TYPE.equals(FAILURE_TYPE_UPLOAD);
+            case "RANDOM":
+                return FAIL_RANDOM_STEP || FAILURE_TYPE.equals(FAILURE_TYPE_RANDOM);
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Get the error code for the current failure type based on which flag is enabled
+     */
+    public static String getErrorCode() {
+        if (FAIL_CAMERA_INIT) return FAILURE_TYPE_CAMERA_INIT;
+        if (FAIL_CAMERA_CAPTURE) return FAILURE_TYPE_CAMERA_CAPTURE;
+        if (FAIL_IMAGE_COMPRESSION) return FAILURE_TYPE_COMPRESSION;
+        if (FAIL_BLE_TRANSFER) return FAILURE_TYPE_BLE_TRANSFER;
+        if (FAIL_CLOUD_UPLOAD) return FAILURE_TYPE_UPLOAD;
+        if (FAIL_RANDOM_STEP) return FAILURE_TYPE_RANDOM;
+        return FAILURE_TYPE; // Fallback to manual setting
+    }
+    
+    /**
+     * Get a descriptive error message based on which flag is enabled
+     */
+    public static String getErrorMessage() {
+        if (FAIL_CAMERA_INIT) return "TESTING: Fake camera initialization failure";
+        if (FAIL_CAMERA_CAPTURE) return "TESTING: Fake photo capture failure";
+        if (FAIL_IMAGE_COMPRESSION) return "TESTING: Fake compression failure";
+        if (FAIL_BLE_TRANSFER) return "TESTING: Fake BLE transfer failure";
+        if (FAIL_CLOUD_UPLOAD) return "TESTING: Fake upload failure";
+        if (FAIL_RANDOM_STEP) return "TESTING: Random fake failure";
+        
+        // Fallback to manual setting
+        switch (FAILURE_TYPE) {
+            case FAILURE_TYPE_CAMERA_INIT:
+                return "TESTING: Fake camera initialization failure";
+            case FAILURE_TYPE_CAMERA_CAPTURE:
+                return "TESTING: Fake photo capture failure";
+            case FAILURE_TYPE_BLE_TRANSFER:
+                return "TESTING: Fake BLE transfer failure";
+            case FAILURE_TYPE_UPLOAD:
+                return "TESTING: Fake upload failure";
+            case FAILURE_TYPE_COMPRESSION:
+                return "TESTING: Fake compression failure";
+            case FAILURE_TYPE_RANDOM:
+                return "TESTING: Random fake failure";
+            default:
+                return "TESTING: Unknown fake failure";
+        }
+    }
+    
+    /**
+     * Add artificial delay for testing timeout scenarios
+     */
+    public static void addFakeDelay(String step) {
+        if (ENABLE_FAKE_DELAYS) {
+            Log.d("PhotoTest", "Adding " + FAKE_DELAY_MS + "ms delay at step: " + step);
+            try {
+                Thread.sleep(FAKE_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e("PhotoTest", "Delay interrupted", e);
+            }
+        }
+    }
+    
+    /**
+     * Log current test configuration
+     */
+    public static void logTestConfig() {
+        Log.d("PhotoTest", "=== PHOTO CAPTURE TEST CONFIG ===");
+        Log.d("PhotoTest", "ENABLE_FAKE_FAILURES: " + ENABLE_FAKE_FAILURES);
+        Log.d("PhotoTest", "ENABLE_FAKE_DELAYS: " + ENABLE_FAKE_DELAYS);
+        Log.d("PhotoTest", "FAILURE_TYPE: " + FAILURE_TYPE);
+        Log.d("PhotoTest", "FAIL_CAMERA_INIT: " + FAIL_CAMERA_INIT);
+        Log.d("PhotoTest", "FAIL_CAMERA_CAPTURE: " + FAIL_CAMERA_CAPTURE);
+        Log.d("PhotoTest", "FAIL_IMAGE_COMPRESSION: " + FAIL_IMAGE_COMPRESSION);
+        Log.d("PhotoTest", "FAIL_BLE_TRANSFER: " + FAIL_BLE_TRANSFER);
+        Log.d("PhotoTest", "FAIL_CLOUD_UPLOAD: " + FAIL_CLOUD_UPLOAD);
+        Log.d("PhotoTest", "FAIL_RANDOM_STEP: " + FAIL_RANDOM_STEP);
+        Log.d("PhotoTest", "================================");
+    }
+}
 
 /**
  * Service that handles media capturing (photo and video) and uploading functionality.
@@ -637,12 +773,37 @@ public class MediaCaptureService {
         String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
 
         Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size + ", LED: " + enableLed);
-
-        // Generate a temporary requestId
+        
+        // Log test configuration for debugging
+        PhotoCaptureTestFramework.logTestConfig();
+        
+        // Generate a temporary requestId first
         String requestId = "local_" + timeStamp;
+        
+        // TESTING: Check for fake camera initialization failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_INIT")) {
+            Log.e(TAG, "TESTING: Simulating camera initialization failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera init
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_INIT");
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
+
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         // Use the new enqueuePhotoRequest for thread-safe rapid capture
         CameraNeo.enqueuePhotoRequest(
@@ -692,12 +853,46 @@ public class MediaCaptureService {
         // Track requested size for potential fallbacks
         photoRequestedSizes.put(requestId, size);
 
+        Log.d(TAG, "Taking photo and uploading to " + webhookUrl);
+
+        // Verify internet connectivity before attempting upload
+        if (!hasInternetConnectivity()) {
+            Log.w(TAG, "⚠️ No internet connectivity detected before photo upload, attempting BLE fallback for " + requestId);
+            
+            // Check if we have BLE fallback available
+            String bleImgId = photoBleIds.get(requestId);
+            if (bleImgId != null) {
+                Log.d(TAG, "📱 Switching to BLE transfer due to no internet connectivity");
+                takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
+                return;
+            } else {
+                Log.e(TAG, "❌ No internet connectivity and no BLE fallback available for " + requestId);
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError(requestId, "No internet connectivity and no BLE fallback available", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                }
+                return;
+            }
+        }
+
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
         }
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
+
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        } else {
+            Log.d(TAG, "Camera capture failure not simulated");
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         try {
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
@@ -755,6 +950,17 @@ public class MediaCaptureService {
      * Upload photo directly to app webhook
      */
     private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken) {
+        // TESTING: Check for fake upload failure
+        if (PhotoCaptureTestFramework.shouldFail("UPLOAD")) {
+            Log.e(TAG, "TESTING: Simulating upload failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for upload
+        PhotoCaptureTestFramework.addFakeDelay("UPLOAD");
+
         // Create a new thread for the upload
         new Thread(() -> {
             try {
@@ -785,6 +991,7 @@ public class MediaCaptureService {
                         .addFormDataPart("photo", photoFile.getName(), fileBody)
                         .addFormDataPart("requestId", requestId)
                         .addFormDataPart("type", "photo_upload")
+                        .addFormDataPart("success", "true")
                         .build();
 
                 // Build request with optional Authorization header
@@ -1153,6 +1360,312 @@ public class MediaCaptureService {
     }
 
     /**
+     * Check if internet connectivity is available with comprehensive verification
+     * This method performs multiple checks to ensure actual internet access, not just WiFi association
+     */
+    private boolean hasInternetConnectivity() {
+        long startTime = System.currentTimeMillis();
+        Log.d(TAG, "🕐 Starting internet connectivity verification...");
+        
+        try {
+            ConnectivityManager cm = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) {
+                Log.w(TAG, "ConnectivityManager is null");
+                return false;
+            }
+
+            // Check 1: Basic network capabilities (Android 6+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                Network activeNetwork = cm.getActiveNetwork();
+                if (activeNetwork == null) {
+                    Log.d(TAG, "No active network");
+                    return false;
+                }
+
+                NetworkCapabilities capabilities = cm.getNetworkCapabilities(activeNetwork);
+                if (capabilities == null) {
+                    Log.d(TAG, "No network capabilities");
+                    return false;
+                }
+
+                // Check for internet capability
+                boolean hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                boolean validatedInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+                
+                Log.d(TAG, "Network capabilities - Internet: " + hasInternet + ", Validated: " + validatedInternet);
+                
+                // Always perform HTTP connectivity test, even if Android reports validated internet
+                // Android's validation can be unreliable (as seen in field testing)
+                if (hasInternet) {
+                    Log.d(TAG, "⚠️ Internet capability available, performing HTTP connectivity verification");
+                    boolean result = performInternetReachabilityTest();
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    
+                    // PROMINENT TIMING DISPLAY
+                    Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                    Log.i(TAG, "🌐 INTERNET CONNECTIVITY VERIFICATION COMPLETE");
+                    Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+                    Log.i(TAG, "✅ RESULT: " + (result ? "CONNECTED" : "NOT CONNECTED"));
+                    Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                    
+                    return result;
+                }
+            } else {
+                // Fallback for older Android versions
+                NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+                if (activeNetworkInfo == null || !activeNetworkInfo.isConnected()) {
+                    Log.d(TAG, "No active network connection (legacy check)");
+                    return false;
+                }
+                
+                Log.d(TAG, "Legacy network check passed, performing reachability test");
+                boolean result = performInternetReachabilityTest();
+                long totalTime = System.currentTimeMillis() - startTime;
+                
+                // PROMINENT TIMING DISPLAY
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                Log.i(TAG, "🌐 INTERNET CONNECTIVITY VERIFICATION COMPLETE");
+                Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+                Log.i(TAG, "✅ RESULT: " + (result ? "CONNECTED" : "NOT CONNECTED"));
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                
+                return result;
+            }
+
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // PROMINENT TIMING DISPLAY
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            Log.i(TAG, "🌐 INTERNET CONNECTIVITY VERIFICATION COMPLETE");
+            Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+            Log.i(TAG, "❌ RESULT: NOT CONNECTED (no internet capability)");
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking internet connectivity", e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // PROMINENT TIMING DISPLAY
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            Log.i(TAG, "🌐 INTERNET CONNECTIVITY VERIFICATION COMPLETE");
+            Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+            Log.i(TAG, "❌ RESULT: NOT CONNECTED (exception occurred)");
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            
+            return false;
+        }
+    }
+
+    /**
+     * Perform actual internet reachability test using DNS resolution and HTTP connectivity
+     * This catches captive portals and networks without internet access
+     */
+    private boolean performInternetReachabilityTest() {
+        long startTime = System.currentTimeMillis();
+        Log.d(TAG, "🔍 Performing comprehensive internet reachability test...");
+        
+        try {
+            // Test 1: DNS resolution test
+            Log.d(TAG, "🔍 Step 1: Testing DNS resolution...");
+            long dnsStartTime = System.currentTimeMillis();
+            boolean dnsResult = testDnsResolution();
+            long dnsTime = System.currentTimeMillis() - dnsStartTime;
+            Log.d(TAG, "🕐 DNS resolution test completed in " + dnsTime + "ms - Result: " + dnsResult);
+            
+            if (!dnsResult) {
+                Log.w(TAG, "❌ DNS resolution test failed - no internet connectivity");
+                long totalTime = System.currentTimeMillis() - startTime;
+                
+                // PROMINENT TIMING DISPLAY
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                Log.i(TAG, "🔍 INTERNET REACHABILITY TEST COMPLETE");
+                Log.i(TAG, "⏱️  DNS TEST: " + dnsTime + "ms (FAILED)");
+                Log.i(TAG, "⏱️  HTTP TEST: SKIPPED");
+                Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+                Log.i(TAG, "❌ RESULT: NO INTERNET (DNS failed)");
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                
+                return true;
+            }
+            Log.d(TAG, "✅ DNS resolution test passed");
+            
+            // Test 2: HTTP connectivity test (lightweight)
+            Log.d(TAG, "🔍 Step 2: Testing HTTP connectivity...");
+            long httpStartTime = System.currentTimeMillis();
+            boolean httpResult = testHttpConnectivity();
+            long httpTime = System.currentTimeMillis() - httpStartTime;
+            Log.d(TAG, "🕐 HTTP connectivity test completed in " + httpTime + "ms - Result: " + httpResult);
+            
+            if (!httpResult) {
+                Log.w(TAG, "❌ HTTP connectivity test failed - no internet connectivity");
+                long totalTime = System.currentTimeMillis() - startTime;
+                
+                // PROMINENT TIMING DISPLAY
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                Log.i(TAG, "🔍 INTERNET REACHABILITY TEST COMPLETE");
+                Log.i(TAG, "⏱️  DNS TEST: " + dnsTime + "ms (PASSED)");
+                Log.i(TAG, "⏱️  HTTP TEST: " + httpTime + "ms (FAILED)");
+                Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+                Log.i(TAG, "❌ RESULT: NO INTERNET (HTTP failed)");
+                Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+                
+                return true;
+            }
+            
+            long totalTime = System.currentTimeMillis() - startTime;
+            Log.d(TAG, "✅ Internet reachability test passed - verified internet connectivity");
+            Log.d(TAG, "🕐 Internet reachability test completed in " + totalTime + "ms - Result: true");
+            
+            // PROMINENT TIMING BREAKDOWN
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            Log.i(TAG, "🔍 INTERNET REACHABILITY TEST COMPLETE");
+            Log.i(TAG, "⏱️  DNS TEST: " + dnsTime + "ms");
+            Log.i(TAG, "⏱️  HTTP TEST: " + httpTime + "ms");
+            Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+            Log.i(TAG, "✅ RESULT: INTERNET CONNECTED");
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            
+            // Record timing measurements
+            InternetConnectivityTimingAnalyzer.recordMeasurement("Internet Reachability Test", totalTime, true);
+            InternetConnectivityTimingAnalyzer.recordMeasurement("Overall Internet Verification", totalTime, true);
+            
+            return true;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error during internet reachability test", e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // PROMINENT TIMING DISPLAY
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            Log.i(TAG, "🔍 INTERNET REACHABILITY TEST COMPLETE");
+            Log.i(TAG, "⏱️  TOTAL TIME: " + totalTime + "ms");
+            Log.i(TAG, "❌ RESULT: ERROR (exception occurred)");
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════");
+            
+            // Record timing measurements
+            InternetConnectivityTimingAnalyzer.recordMeasurement("Internet Reachability Test", totalTime, false);
+            InternetConnectivityTimingAnalyzer.recordMeasurement("Overall Internet Verification", totalTime, false);
+            
+            return true;
+        }
+    }
+
+    /**
+     * Test DNS resolution capability with ultra-fast optimization
+     * Uses simple DNS lookup with aggressive timeout
+     */
+    private boolean testDnsResolution() {
+        long startTime = System.currentTimeMillis();
+        try {
+            // Use simple DNS lookup with very aggressive timeout
+            // This is much faster than isReachable() and gives us better control
+            java.net.InetAddress address = java.net.InetAddress.getByName("www.google.com");
+            boolean success = address != null;
+            
+            long duration = System.currentTimeMillis() - startTime;
+            Log.d(TAG, "🕐 DNS resolution test - www.google.com resolved: " + success + " (took " + duration + "ms)");
+            
+            // PROMINENT DNS TIMING
+            Log.i(TAG, "🔍 DNS TEST: " + duration + "ms - " + (success ? "SUCCESS" : "FAILED"));
+            
+            // Record timing measurement
+            InternetConnectivityTimingAnalyzer.recordMeasurement("DNS Resolution Test", duration, success);
+            
+            return success;
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            Log.e(TAG, "DNS resolution test failed (took " + duration + "ms)", e);
+            
+            // PROMINENT DNS TIMING
+            Log.i(TAG, "🔍 DNS TEST: " + duration + "ms - FAILED (exception)");
+            
+            // Record timing measurement
+            InternetConnectivityTimingAnalyzer.recordMeasurement("DNS Resolution Test", duration, false);
+            
+            return true;
+        }
+    }
+
+    /**
+     * Test HTTP connectivity with ultra-fast optimization
+     * Uses single fast endpoint with aggressive timeouts for maximum speed
+     */
+    private boolean testHttpConnectivity() {
+        long startTime = System.currentTimeMillis();
+        
+        // Use Google's fast connectivity check endpoint (designed for speed)
+        String testUrl = "http://www.google.com/generate_204";
+        
+        // Create ultra-fast HTTP client with very aggressive timeouts
+            OkHttpClient testClient = new OkHttpClient.Builder()
+                    .connectTimeout(200, java.util.concurrent.TimeUnit.MILLISECONDS)  // 0.2s connect
+                    .readTimeout(200, java.util.concurrent.TimeUnit.MILLISECONDS)     // 0.2s read
+                    .writeTimeout(200, java.util.concurrent.TimeUnit.MILLISECONDS)    // 0.2s write
+                    .build();
+        
+        try {
+            Log.d(TAG, "🔍 Testing HTTP connectivity with: " + testUrl);
+            
+            Request testRequest = new Request.Builder()
+                    .url(testUrl)
+                    .head() // Use HEAD request to minimize data transfer
+                    .build();
+            
+            try (Response response = testClient.newCall(testRequest).execute()) {
+                boolean success = response.isSuccessful();
+                long totalDuration = System.currentTimeMillis() - startTime;
+                Log.d(TAG, "🕐 HTTP test - " + testUrl + " response: " + response.code() + " (success: " + success + ", took " + totalDuration + "ms)");
+                
+                if (success) {
+                    Log.d(TAG, "✅ HTTP connectivity verified via: " + testUrl);
+                    Log.d(TAG, "🕐 HTTP connectivity test completed in " + totalDuration + "ms - Result: true");
+                    
+                    // PROMINENT HTTP TIMING
+                    Log.i(TAG, "🌐 HTTP TEST: " + totalDuration + "ms - SUCCESS");
+                    
+                    // Record timing measurement
+                    InternetConnectivityTimingAnalyzer.recordMeasurement("HTTP Connectivity Test", totalDuration, true);
+                    
+                    return true;
+                } else {
+                    Log.w(TAG, "❌ HTTP connectivity test failed - response code: " + response.code());
+                }
+            }
+        } catch (Exception e) {
+            long totalDuration = System.currentTimeMillis() - startTime;
+            Log.w(TAG, "HTTP connectivity test failed for " + testUrl + " (took " + totalDuration + "ms): " + e.getMessage());
+        }
+        
+        long totalDuration = System.currentTimeMillis() - startTime;
+        Log.w(TAG, "❌ HTTP connectivity test failed");
+        Log.d(TAG, "🕐 HTTP connectivity test completed in " + totalDuration + "ms - Result: false");
+        
+        // PROMINENT HTTP TIMING
+        Log.i(TAG, "🌐 HTTP TEST: " + totalDuration + "ms - FAILED");
+        
+        // Record timing measurement
+        InternetConnectivityTimingAnalyzer.recordMeasurement("HTTP Connectivity Test", totalDuration, false);
+        
+        return true;
+    }
+
+    /**
+     * Log detailed performance report for internet connectivity verification
+     * This should be called periodically or when debugging performance issues
+     */
+    public static void logConnectivityPerformanceReport() {
+        InternetConnectivityTimingAnalyzer.logPerformanceReport();
+    }
+    
+    /**
+     * Get current performance statistics for internet connectivity verification
+     */
+    public static InternetConnectivityTimingAnalyzer.OverallStats getConnectivityPerformanceStats() {
+        return InternetConnectivityTimingAnalyzer.getOverallStats();
+    }
+
+    /**
      * Take a photo with auto transfer (WiFi with BLE fallback)
      * @param photoFilePath Path to save the original photo
      * @param requestId Request ID for tracking
@@ -1167,14 +1680,14 @@ public class MediaCaptureService {
         photoOriginalPaths.put(requestId, photoFilePath);
         photoRequestedSizes.put(requestId, size);
 
-        // Check WiFi connectivity
-        if (isWiFiConnected()) {
-            Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
+        // Check internet connectivity (not just WiFi association)
+        if (hasInternetConnectivity()) {
+            Log.d(TAG, "🌐 Internet connectivity verified, attempting direct upload for " + requestId);
             // Try WiFi upload (with automatic BLE fallback on failure)
             takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
         } else {
-            Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
-            // No WiFi, go straight to BLE
+            Log.d(TAG, "📵 No internet connectivity detected, using BLE transfer for " + requestId);
+            // No internet, go straight to BLE
             takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
         }
     }
@@ -1197,6 +1710,18 @@ public class MediaCaptureService {
         }
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
+
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure for BLE transfer - " + 
+                PhotoCaptureTestFramework.getErrorCode() + ": " + PhotoCaptureTestFramework.getErrorMessage());
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         try {
             // Use CameraNeo for photo capture
@@ -1225,7 +1750,7 @@ public class MediaCaptureService {
                             
                             // LED is now managed by CameraNeo and will turn off when camera closes
                             
-                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
 
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1244,7 +1769,6 @@ public class MediaCaptureService {
             }
         }
     }
-
 
     /**
      * Reuse existing photo for BLE transfer (when webhook fails)
@@ -1274,6 +1798,17 @@ public class MediaCaptureService {
         new Thread(() -> {
             long startTime = System.currentTimeMillis();
             Log.d(TAG, "🚀 BLE photo transfer started for " + bleImgId);
+
+            // TESTING: Check for fake compression failure
+            if (PhotoCaptureTestFramework.shouldFail("COMPRESSION")) {
+                Log.e(TAG, "TESTING: Simulating compression failure");
+                sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                    PhotoCaptureTestFramework.getErrorMessage());
+                return;
+            }
+            
+            // TESTING: Add fake delay for compression
+            PhotoCaptureTestFramework.addFakeDelay("COMPRESSION");
 
             try {
                 // 1. Load original image
@@ -1360,7 +1895,7 @@ public class MediaCaptureService {
                 photoSaveFlags.remove(requestId);
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
-                sendBleTransferError(requestId, e.getMessage());
+                sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED", e.getMessage());
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
@@ -1374,13 +1909,24 @@ public class MediaCaptureService {
     private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
         Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
 
+        // TESTING: Check for fake BLE transfer failure
+        if (PhotoCaptureTestFramework.shouldFail("BLE_TRANSFER")) {
+            Log.e(TAG, "TESTING: Simulating BLE transfer failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for BLE transfer
+        PhotoCaptureTestFramework.addFakeDelay("BLE_TRANSFER");
+
         boolean transferStarted = false;
         try {
             if (mServiceCallback != null) {
                 // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
                 if (mServiceCallback.isBleTransferInProgress()) {
                     Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
-                    sendBleTransferError(requestId, "BLE transfer busy - another transfer in progress");
+                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_BUSY", "BLE transfer busy - another transfer in progress");
                     return;
                 }
                 
@@ -1395,11 +1941,11 @@ public class MediaCaptureService {
                 } else {
                     // This shouldn't happen since we checked above, but handle it anyway
                     Log.e(TAG, "Failed to start BLE file transfer despite availability check");
-                    sendBleTransferError(requestId, "BLE transfer failed to start");
+                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED_TO_START", "BLE transfer failed to start");
                 }
             } else {
                 Log.e(TAG, "Service callback not available for BLE file transfer");
-                sendBleTransferError(requestId, "Service callback not available");
+                sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED", "Service callback not available");
             }
         } finally {
             // Critical: Clean up compressed file if transfer didn't start
@@ -1462,5 +2008,49 @@ public class MediaCaptureService {
         }
     }
 
-    // ========== CIRCULAR VIDEO BUFFER METHODS ==========
+    /**
+     * Send simplified photo error response with only essential fields
+     */
+    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "photo_response");
+            json.put("requestId", requestId);
+            json.put("success", false);
+            json.put("errorCode", errorCode);
+            json.put("errorMessage", errorMessage);
+
+            Log.e(TAG, "📸 SENDING PHOTO ERROR: " + errorCode + " - " + errorMessage + " for requestId: " + requestId);
+            
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
+                Log.e(TAG, "📸 SENT VIA BLE: " + json.toString());
+            } else {
+                Log.e(TAG, "❌ Service callback not available for BLE file transfer");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "❌ Error creating photo error response", e);
+        }
+    }
+
+    /**
+     * Get BLE connection state for error diagnostics
+     */
+    private JSONObject getBleConnectionState() {
+        JSONObject ble = new JSONObject();
+        try {
+            boolean transferInProgress = mServiceCallback != null && mServiceCallback.isBleTransferInProgress();
+            ble.put("connected", mServiceCallback != null); // Assume connected if callback exists
+            ble.put("transferInProgress", transferInProgress);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting BLE state", e);
+            try {
+                ble.put("connected", false);
+                ble.put("transferInProgress", false);
+            } catch (JSONException jsonE) {
+                Log.e(TAG, "Error creating fallback BLE state JSON", jsonE);
+            }
+        }
+        return ble;
+    }
 }

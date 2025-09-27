@@ -48,6 +48,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PairF
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuDataEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ImuGestureEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
+import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.MessageChunker;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BlePhotoUploadService;
@@ -189,6 +190,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
     // BLE photo transfer tracking
     private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
+    
+    // Photo request tracking for webhook URLs (for error responses)
+    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+
+    private static class PhotoRequestInfo {
+        String requestId;
+        String webhookUrl;
+        String authToken;
+        long timestamp;
+
+        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
+            this.authToken = authToken != null ? authToken : "";
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     private static class BlePhotoTransfer {
         String bleImgId;
@@ -1640,14 +1658,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String appId = json.optString("appId", "");
                 boolean photoSuccess = json.optBoolean("success", false);
 
+                Log.e(TAG, "📱 RECEIVED PHOTO RESPONSE: " + json.toString());
+
                 if (!photoSuccess) {
                     // Handle failed photo response
-                    String errorMsg = json.optString("error", "Unknown error");
-                    Log.d(TAG, "Photo request failed - requestId: " + requestId +
-                          ", appId: " + appId + ", error: " + errorMsg);
+                    String errorCode = json.optString("errorCode", "GLASSES_ERROR");
+                    String errorMsg = json.optString("errorMessage", "Unknown error");
+                    Log.e(TAG, "📱 PHOTO REQUEST FAILED - requestId: " + requestId + 
+                          ", appId: " + appId + ", errorCode: " + errorCode + ", error: " + errorMsg);
+                    
+                    // Forward error to cloud via webhook if available
+                    sendPhotoErrorResponse(requestId, errorCode, errorMsg);
                 } else {
                     // Handle successful photo (in future implementation)
-                    Log.d(TAG, "Photo request succeeded - requestId: " + requestId);
+                    Log.d(TAG, "📱 Photo request succeeded - requestId: " + requestId);
                 }
                 break;
 
@@ -2517,6 +2541,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     public void requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
         Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId + " with webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
+        // Track photo request info for potential error responses
+        if (webhookUrl != null && !webhookUrl.isEmpty()) {
+            photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
+            
+            // Set up cleanup timeout (5 minutes)
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                photoRequestInfo.remove(requestId);
+            }, 300000); // 5 minutes
+        }
+
         try {
             JSONObject json = new JSONObject();
             json.put("type", "take_photo");
@@ -2545,6 +2579,18 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 BlePhotoTransfer transfer = new BlePhotoTransfer(bleImgId, requestId, webhookUrl);
                 transfer.setAuthToken(authToken); // Store authToken for BLE transfer
                 blePhotoTransfers.put(bleImgId, transfer);
+                
+                // Set up BLE transfer timeout (60 seconds)
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (blePhotoTransfers.containsKey(bleImgId)) {
+                        Log.e(TAG, "BLE photo transfer timeout for requestId: " + requestId + ", bleImgId: " + bleImgId);
+                        blePhotoTransfers.remove(bleImgId);
+                        
+                        // Send timeout error response via webhook if available
+                        sendPhotoErrorResponse(requestId, "PHONE_TIMEOUT", 
+                            "BLE photo transfer timed out after 60 seconds");
+                    }
+                }, 60000); // 60 second timeout
             }
 
             Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
@@ -2552,6 +2598,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);
+            
+            // Send error response for JSON creation failure via webhook if available
+            sendPhotoErrorResponse(requestId, "PHONE_BLE_TRANSFER_FAILED", 
+                "Failed to create photo request JSON: " + e.getMessage());
         }
     }
 
@@ -3538,6 +3588,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             // Add packet to session
             boolean added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
+            
+            if (!added) {
+                Log.e(TAG, "Failed to add BLE packet for requestId: " + photoTransfer.requestId + 
+                      ", packet: " + packetInfo.packIndex + "/" + photoTransfer.session.totalPackets);
+                
+                // Send BLE transfer error response
+                ServerComms.getInstance().sendPhotoErrorResponse(
+                    photoTransfer.requestId, "PHONE_BLE_TRANSFER_FAILED", 
+                    "BLE packet assembly failed for packet " + packetInfo.packIndex);
+                return;
+            }
 
             if (added && photoTransfer.session.isComplete) {
                 long transferEndTime = System.currentTimeMillis();
@@ -3750,10 +3811,33 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     long uploadDuration = System.currentTimeMillis() - uploadStartTime;
                     Log.e(TAG, "❌ BLE photo upload failed for requestId: " + requestId + ", error: " + error);
                     Log.e(TAG, "⏱️ Failed after: " + uploadDuration + "ms");
-                    //sendPhotoUploadError(requestId, error);
+                    
+                    // Send detailed error response back to cloud via webhook if available
+                    sendPhotoErrorResponse(requestId, "PHONE_UPLOAD_FAILED", 
+                        "BLE photo upload failed: " + error);
                 }
             }
         );
+    }
+
+    /**
+     * Send photo error response via webhook if available, otherwise fallback to legacy method
+     */
+    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
+        if (requestInfo != null && !requestInfo.webhookUrl.isEmpty()) {
+            // Use webhook for error response
+            Log.d(TAG, "📡 Sending photo error via webhook for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorViaWebhook(
+                requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMessage);
+            
+            // Clean up tracking
+            photoRequestInfo.remove(requestId);
+        } else {
+            // Fallback to legacy WebSocket method
+            Log.d(TAG, "📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+        }
     }
 
     /**

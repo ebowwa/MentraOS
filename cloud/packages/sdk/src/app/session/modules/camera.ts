@@ -315,9 +315,9 @@ export class CameraModule {
     const pendingRequest = this.pendingPhotoRequests.get(requestId);
 
     if (pendingRequest) {
-      this.logger.warn(
+      this.logger.error(
         { requestId, errorCode: error.code, errorMessage: error.message },
-        `📸 Photo error received for request ${requestId}: ${error.code} - ${error.message}`,
+        `📸 Photo capture failed: ${error.code} - ${error.message}`,
       );
 
       // Reject the promise with the error information

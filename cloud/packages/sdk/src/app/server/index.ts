@@ -724,6 +724,8 @@ export class AppServer {
             req.body;
           const photoFile = req.file;
 
+          console.log("Received photo response: ", req.body);
+
           this.logger.info(
             { requestId, type, success, errorCode },
             `📸 Received photo response: ${requestId} (type: ${type})`,
@@ -752,11 +754,6 @@ export class AppServer {
 
           // Handle error response (no photo file, but has error info)
           if (type === "photo_error" || !success) {
-            this.logger.warn(
-              { requestId, errorCode, errorMessage },
-              `📸 Photo error received: ${errorCode} - ${errorMessage}`,
-            );
-
             // Create error response object
             const errorResponse = {
               requestId,
@@ -767,7 +764,7 @@ export class AppServer {
               },
             };
 
-            // Deliver error to the session
+            // Deliver error to the session (logging happens in camera module)
             session.camera.handlePhotoError(errorResponse);
 
             // Respond to ASG client

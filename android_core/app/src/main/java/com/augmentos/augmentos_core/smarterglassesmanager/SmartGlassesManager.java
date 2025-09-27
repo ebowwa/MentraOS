@@ -50,6 +50,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Vuzix
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.special.VirtualWearable;
 import com.augmentos.augmentos_core.smarterglassesmanager.texttospeech.TextToSpeechSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
 import com.augmentos.augmentoslib.events.DisconnectedFromCloudEvent;
 
 import org.greenrobot.eventbus.EventBus;
@@ -65,6 +66,9 @@ import androidx.preference.PreferenceManager;
 
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -107,6 +111,23 @@ public class SmartGlassesManager extends Service {
     }
 
     private SmartGlassesEventHandler eventHandler;
+    
+    // Photo request tracking for webhook URLs (for error responses)
+    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+    
+    private static class PhotoRequestInfo {
+        String requestId;
+        String webhookUrl;
+        String authToken;
+        long timestamp;
+
+        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
+            this.authToken = authToken != null ? authToken : "";
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     /**
      * Class for clients to access this service
@@ -1036,6 +1057,16 @@ public class SmartGlassesManager extends Service {
      * @return true if request was sent, false if glasses not connected
      */
     public boolean requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
+        // Track photo request info for potential error responses
+        if (webhookUrl != null && !webhookUrl.isEmpty()) {
+            photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
+            
+            // Set up cleanup timeout (5 minutes)
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                photoRequestInfo.remove(requestId);
+            }, 300000); // 5 minutes
+        }
+
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
@@ -1047,7 +1078,31 @@ public class SmartGlassesManager extends Service {
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");
+            
+            // Send detailed error response back to cloud via webhook if available
+            sendPhotoErrorResponse(requestId, "PHONE_GLASSES_NOT_CONNECTED", 
+                "Glasses not connected to phone");
             return false;
+        }
+    }
+
+    /**
+     * Send photo error response via webhook if available, otherwise fallback to legacy method
+     */
+    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
+        if (requestInfo != null && !requestInfo.webhookUrl.isEmpty()) {
+            // Use webhook for error response
+            Log.d(TAG, "📡 Sending photo error via webhook for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorViaWebhook(
+                requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMessage);
+            
+            // Clean up tracking
+            photoRequestInfo.remove(requestId);
+        } else {
+            // Fallback to legacy WebSocket method
+            Log.d(TAG, "📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorResponse(requestId, errorCode, errorMessage);
         }
     }
 

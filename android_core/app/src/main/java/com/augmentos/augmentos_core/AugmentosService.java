@@ -476,6 +476,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public ArrayList<String> notificationList = new ArrayList<String>();
     public JSONArray latestNewsArray = new JSONArray();
     private int latestNewsIndex = 0;
+    
+    // Photo request tracking for webhook URLs (for error responses)
+    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+    
+    private static class PhotoRequestInfo {
+        String requestId;
+        String webhookUrl;
+        String authToken;
+        long timestamp;
+
+        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
+            this.authToken = authToken != null ? authToken : "";
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     @Subscribe
     public void displayGlassesDashboardEvent() throws JSONException {
@@ -1910,14 +1927,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onPhotoRequest(String requestId, String appId, String webhookUrl, String authToken, String size) {
                 Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", authToken=" + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
+                // Track photo request info for potential error responses
+                if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                    photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
+                    
+                    // Set up cleanup timeout (5 minutes)
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        photoRequestInfo.remove(requestId);
+                    }, 300000); // 5 minutes
+                }
+
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl, authToken, size);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
+                        // Error response will be sent by SmartGlassesManager
                     }
                 } else {
                     Log.e(TAG, "Cannot process photo request: smartGlassesManager is null");
+                    
+                    // Send error response for service unavailable via webhook if available
+                    sendPhotoErrorResponse(requestId, "PHONE_GLASSES_NOT_CONNECTED", 
+                        "SmartGlassesManager service not available");
                 }
             }
 
@@ -2158,6 +2190,26 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         JSONObject status = generateStatusJson();
         Log.d(TAG, "Sending status to backend: " + status.toString());
         ServerComms.getInstance().sendCoreStatus(status);
+    }
+
+    /**
+     * Send photo error response via webhook if available, otherwise fallback to legacy method
+     */
+    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
+        if (requestInfo != null && !requestInfo.webhookUrl.isEmpty()) {
+            // Use webhook for error response
+            Log.d(TAG, "📡 Sending photo error via webhook for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorViaWebhook(
+                requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMessage);
+            
+            // Clean up tracking
+            photoRequestInfo.remove(requestId);
+        } else {
+            // Fallback to legacy WebSocket method
+            Log.d(TAG, "📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
+            ServerComms.getInstance().sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+        }
     }
 
     public void sendStatusToAugmentOsManager() {
