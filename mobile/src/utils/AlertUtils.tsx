@@ -8,6 +8,8 @@ import {StatusBar} from "expo-status-bar"
 import * as NavigationBar from "expo-navigation-bar"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {useEffect, useRef, useState} from "react"
+// eslint-disable-next-line
+import {StyleSheet} from "react-native"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -241,7 +243,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
               zIndex: 10,
               justifyContent: "center",
               alignItems: "center",
-              backgroundColor: theme.colors.modalOverlay,
+              backgroundColor: theme.colors.background + "60",
               paddingHorizontal: 24,
               opacity: fadeAnim,
             }}>
