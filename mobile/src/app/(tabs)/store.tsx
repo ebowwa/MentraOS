@@ -1,5 +1,5 @@
 import {useState, useCallback, useMemo} from "react"
-import {View, ViewStyle, ActivityIndicator, BackHandler} from "react-native"
+import {View, ViewStyle, ActivityIndicator, BackHandler, TextStyle} from "react-native"
 import {WebView} from "react-native-webview"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
 import {useFocusEffect} from "@react-navigation/native"
@@ -201,8 +201,8 @@ const $loadingOverlay: ThemedStyle<ViewStyle> = () => ({
   top: 0,
 })
 
-const $loadingText: ThemedStyle<ViewStyle> = ({colors, typography}) => ({
-  fontSize: typography.primary.fontSize,
+const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: spacing.md,
   marginTop: 10,
   color: colors.text,
 })
