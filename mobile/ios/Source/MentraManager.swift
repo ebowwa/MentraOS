@@ -730,10 +730,10 @@ struct ViewState {
         placeholders["$TIME12$"] = time12
         placeholders["$TIME24$"] = time24
 
-        if sgc?.batteryLevel == -1 {
+        if (sgc?.batteryLevel ?? -1) == -1 {
             placeholders["$GBATT$"] = ""
         } else {
-            placeholders["$GBATT$"] = "\(sgc?.batteryLevel)%"
+            placeholders["$GBATT$"] = "\(sgc!.batteryLevel)%"
         }
 
         //        placeholders["$CONNECTION_STATUS$"] =
