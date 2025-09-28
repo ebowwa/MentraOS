@@ -708,10 +708,10 @@ struct ViewState {
         placeholders["$TIME12$"] = time12
         placeholders["$TIME24$"] = time24
 
-        if sgc?.batteryLevel == -1 {
+        if (sgc?.batteryLevel ?? -1) == -1 {
             placeholders["$GBATT$"] = ""
         } else {
-            placeholders["$GBATT$"] = "\(sgc?.batteryLevel)%"
+            placeholders["$GBATT$"] = "\(sgc!.batteryLevel)%"
         }
 
         //        placeholders["$CONNECTION_STATUS$"] =
@@ -985,7 +985,7 @@ struct ViewState {
 
         handle_request_status() // to update the UI
     }
-    
+
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         sgc?.setHeadUpAngle(value)
@@ -1069,12 +1069,12 @@ struct ViewState {
     func enableOfflineMode(_ enabled: Bool) {
         offlineModeEnabled = enabled
 
-        var requiredData: [SpeechRequiredDataType]  = []
+        var requiredData: [SpeechRequiredDataType] = []
 
         if enabled {
             requiredData.append(.TRANSCRIPTION)
         }
-        
+
         handle_microphone_state_change(requiredData, bypassVadForPCM)
     }
 
