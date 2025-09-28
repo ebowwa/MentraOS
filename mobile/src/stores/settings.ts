@@ -319,7 +319,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
 
     loadAllSettings: async () => {
-      set(state => ({
+      set(_state => ({
         loadingKeys: new Set(Object.values(SETTINGS_KEYS)),
       }))
 

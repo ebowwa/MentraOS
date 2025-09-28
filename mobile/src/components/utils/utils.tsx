@@ -1,5 +1,4 @@
-import {useEffect, useState, ReactNode} from "react"
-import {useRouter} from "expo-router"
+import {useEffect, useState} from "react"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
 import {glassesFeatures} from "@/config/glassesFeatures"
@@ -7,10 +6,10 @@ import showAlert from "@/utils/AlertUtils"
 
 export function OtaUpdateChecker() {
   const {status} = useCoreStatus()
-  const router = useRouter()
   const [isChecking, setIsChecking] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)
-  const [latestVersion, setLatestVersion] = useState<string | null>(null)
+  const [_latestVersion, setLatestVersion] = useState<string | null>(null)
+  const {push} = useNavigationHistory()
 
   // Extract only the specific values we need to watch to avoid re-renders
   const glassesModel = status.glasses_info?.model_name
@@ -61,7 +60,7 @@ export function OtaUpdateChecker() {
               {
                 text: "Setup WiFi",
                 onPress: () => {
-                  router.push("/pairing/glasseswifisetup")
+                  push("/pairing/glasseswifisetup")
                 },
               },
             ],
@@ -83,6 +82,7 @@ export function OtaUpdateChecker() {
 import bridge from "@/bridge/MantleBridge"
 import {AppState} from "react-native"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export function Reconnect() {
   // Add a listener for app state changes to detect when the app comes back from background
