@@ -1,13 +1,12 @@
-import React from "react"
-import {Alert, Platform} from "react-native"
+import React, {useState} from "react"
+import {Alert, BackHandler, Platform, StyleSheet, View} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {StyleSheet, View} from "react-native"
 import {useAppTheme} from "./useAppTheme"
-import {BackHandler} from "react-native"
 import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
 import {StatusBar} from "expo-status-bar"
 import * as NavigationBar from "expo-navigation-bar"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -67,11 +66,12 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 // Global component that will be rendered once at the app root
 export function ModalProvider({children}: {children: React.ReactNode}) {
   const {theme} = useAppTheme()
-  const [visible, setVisible] = React.useState(false)
-  const [title, setTitle] = React.useState("")
-  const [message, setMessage] = React.useState("")
-  const [buttons, setButtons] = React.useState<ModalButton[]>([])
-  const [options, setOptions] = React.useState<{
+  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [visible, setVisible] = useState(false)
+  const [title, setTitle] = useState("")
+  const [message, setMessage] = useState("")
+  const [buttons, setButtons] = useState<ModalButton[]>([])
+  const [options, setOptions] = useState<{
     iconName?: string
     iconSize?: number
     iconColor?: string
