@@ -1,20 +1,18 @@
-import React, {useState, useEffect} from "react"
+import {useState} from "react"
 import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
 import RouteButton from "@/components/ui/RouteButton"
-import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function DeveloperSettingsScreen() {
   // const {status} = useCoreStatus()
@@ -23,7 +21,7 @@ export default function DeveloperSettingsScreen() {
   const {replace} = useNavigationHistory()
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [isSavingUrl, setIsSavingUrl] = useState(false)
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
   const [powerSavingMode, setPowerSavingMode] = useSetting(SETTINGS_KEYS.power_saving_mode)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
@@ -392,12 +390,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    marginTop: 12,
-  },
-  buttonColumnCentered: {
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "center",
     marginTop: 12,
   },
   settingTextContainer: {
