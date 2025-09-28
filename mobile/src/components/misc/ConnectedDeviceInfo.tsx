@@ -146,7 +146,7 @@ export const ConnectDeviceButton = () => {
     )
   }
 
-  if (!defaultWearable) {
+  if (!status.glasses_info?.model_name) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
@@ -315,6 +315,10 @@ export function DeviceToolbar() {
   const {push} = useNavigationHistory()
   const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   if (!defaultWearable) {
+    return null
+  }
+
+  if (!status.glasses_info?.model_name) {
     return null
   }
 

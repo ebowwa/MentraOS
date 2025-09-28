@@ -90,6 +90,7 @@ export default function DeviceSettings() {
   const slideAnim = useRef(new Animated.Value(-50)).current
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
+  const isGlassesConnected = Boolean(status.glasses_info?.model_name)
   const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   const [buttonMode, setButtonMode] = useSetting(SETTINGS_KEYS.button_mode)
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
@@ -221,53 +222,60 @@ export default function DeviceSettings() {
       )}
 
       {/* Battery Status Section */}
-      {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
-        <View style={themed($settingsGroup)}>
-          <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
-          {/* Glasses Battery */}
-          {status.glasses_info.battery_level !== -1 && (
-            <View
-              style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <GlassesIcon size={20} isDark={theme.isDark} />
-                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
-              </View>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Icon icon="battery" size={16} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
-                  {status.glasses_info.battery_level}%
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Case Battery */}
-          {status.glasses_info.case_battery_level !== undefined &&
-            status.glasses_info.case_battery_level !== -1 &&
-            !status.glasses_info.case_removed && (
+      {isGlassesConnected &&
+        status.glasses_info?.battery_level !== undefined &&
+        status.glasses_info.battery_level !== -1 && (
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
+            {/* Glasses Battery */}
+            {status.glasses_info.battery_level !== -1 && (
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  paddingVertical: theme.spacing.xs,
+                  paddingVertical: 4,
                 }}>
                 <View style={{flexDirection: "row", alignItems: "center"}}>
-                  <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
-                    Case {status.glasses_info.case_charging ? "(Charging)" : ""}
-                  </Text>
+                  <GlassesIcon size={20} isDark={theme.isDark} />
+                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
                 </View>
                 <View style={{flexDirection: "row", alignItems: "center"}}>
                   <Icon icon="battery" size={16} color={theme.colors.text} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
-                    {status.glasses_info.case_battery_level}%
+                  <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
+                    {status.glasses_info.battery_level}%
                   </Text>
                 </View>
               </View>
             )}
-        </View>
-      )}
+
+            {/* Case Battery */}
+            {status.glasses_info.case_battery_level !== undefined &&
+              status.glasses_info.case_battery_level !== -1 &&
+              !status.glasses_info.case_removed && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: theme.spacing.xs,
+                  }}>
+                  <View style={{flexDirection: "row", alignItems: "center"}}>
+                    <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
+                    <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
+                      Case {status.glasses_info.case_charging ? "(Charging)" : ""}
+                    </Text>
+                  </View>
+                  <View style={{flexDirection: "row", alignItems: "center"}}>
+                    <Icon icon="battery" size={16} color={theme.colors.text} />
+                    <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
+                      {status.glasses_info.case_battery_level}%
+                    </Text>
+                  </View>
+                </View>
+              )}
+          </View>
+        )}
 
       {hasGallery(defaultWearable) && (
         <RouteButton
@@ -277,7 +285,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      {hasBrightness(defaultWearable) && (
+      {hasBrightness(defaultWearable) && isGlassesConnected && (
         <View style={themed($settingsGroup)}>
           <ToggleSetting
             label="Auto Brightness"
@@ -461,7 +469,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Show device info for glasses */}
-      {defaultWearable && (
+      {defaultWearable && isGlassesConnected && (
         <InfoSection
           title="Device Information"
           items={[
@@ -473,7 +481,7 @@ export default function DeviceSettings() {
       )}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
-      {defaultWearable && defaultWearable.toLowerCase().includes("live") && (
+      {defaultWearable && isGlassesConnected && defaultWearable.toLowerCase().includes("live") && (
         <OtaProgressSection otaProgress={status.ota_progress} />
       )}
 
@@ -483,7 +491,7 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      {defaultWearable && defaultWearable !== "Simulated Glasses" && (
+      {defaultWearable && isGlassesConnected && defaultWearable !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
