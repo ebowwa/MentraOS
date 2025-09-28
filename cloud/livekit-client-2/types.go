@@ -15,6 +15,10 @@ type Command struct {
 	FreqHz         int             `json:"freq,omitempty"`
 	DurationMs     int             `json:"ms,omitempty"`
 	Url            string          `json:"url,omitempty"`
+	RequestID      string          `json:"requestId,omitempty"`
+	Volume         float64         `json:"volume,omitempty"`
+	SampleRate     int             `json:"sampleRate,omitempty"`
+	Reason         string          `json:"reason,omitempty"`
 	TargetIdentity string          `json:"targetIdentity,omitempty"`
 }
 

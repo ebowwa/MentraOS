@@ -88,7 +88,7 @@ export class AppWebSocketService {
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
 
-  constructor() { }
+  constructor() {}
 
   /**
    * Get the singleton instance of AppWebSocketService
@@ -445,6 +445,8 @@ export class AppWebSocketService {
               userSession.logger.debug(
                 `🔊 [AppWebSocketService] Forwarded audio request ${audioRequestMsg.requestId} to glasses`,
               );
+              // Also request server-side playback via Go bridge when enabled
+              void userSession.speakerManager.start(audioRequestMsg);
             } else {
               // Clean up mapping if we can't forward the request
               userSession.audioPlayRequestMapping.delete(
@@ -497,6 +499,8 @@ export class AppWebSocketService {
               userSession.logger.debug(
                 `🔇 [AppWebSocketService] Forwarded audio stop request from ${audioStopMsg.packageName} to glasses`,
               );
+              // Also stop server-side playback when enabled
+              void userSession.speakerManager.stop(audioStopMsg);
             } else {
               this.sendError(
                 appWebsocket,
@@ -785,7 +789,7 @@ export class AppWebSocketService {
     // Check if language subscriptions have changed
     const languageSubscriptionsChanged =
       previousLanguageSubscriptions.length !==
-      newLanguageSubscriptions.length ||
+        newLanguageSubscriptions.length ||
       !previousLanguageSubscriptions.every((sub) =>
         newLanguageSubscriptions.includes(sub),
       );

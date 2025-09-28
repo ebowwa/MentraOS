@@ -42,6 +42,9 @@ type BridgeClient struct {
 	mu        sync.Mutex
 	connected bool
 	closed    chan struct{}
+
+	// Speaker playback
+	publisher *Publisher
 }
 
 func (c *BridgeClient) Run() {
@@ -96,6 +99,20 @@ func (c *BridgeClient) handleCommand(cmd Command) {
 		c.enableSubscribe(cmd.TargetIdentity)
 	case "subscribe_disable":
 		c.disableSubscribe()
+	case "play_url":
+		if c.publisher == nil {
+			c.publisher = NewPublisher(c)
+		}
+		c.publisher.HandlePlayURL(PlayURLCmd{
+			RequestID:  cmd.RequestID,
+			Url:        cmd.Url,
+			Volume:     cmd.Volume,
+			SampleRate: cmd.SampleRate,
+		})
+	case "stop_playback":
+		if c.publisher != nil {
+			c.publisher.Stop(cmd.Reason)
+		}
 	default:
 		c.sendError(fmt.Sprintf("Unknown action: %s", cmd.Action))
 	}
@@ -405,12 +422,81 @@ func (c *BridgeClient) sendEvent(event Event) {
 	if ws == nil {
 		return
 	}
+	// Set a short write deadline for control/event frames
+	ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	if err := ws.WriteJSON(event); err != nil {
 		log.Printf("Failed to send event to user %s: %v", c.userID, err)
+		// Proactively close to force reconnect on the client side if writes stall
+		go c.Close()
 	}
 }
 
 func (c *BridgeClient) sendError(message string) { c.sendEvent(Event{Type: "error", Error: message}) }
+
+// Helpers for speaker.go
+func (c *BridgeClient) sendJSON(v interface{}) {
+	c.websocketMu.Lock()
+	defer c.websocketMu.Unlock()
+	c.mu.Lock()
+	ws := c.websocket
+	c.mu.Unlock()
+	if ws == nil {
+		return
+	}
+	// Ensure we set a fresh deadline for every JSON write to avoid stale timeouts
+	ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := ws.WriteJSON(v); err != nil {
+		log.Printf("Failed to send JSON event to user %s: %v", c.userID, err)
+		// Close on write failure to reset the connection
+		go c.Close()
+	}
+}
+
+// trySendJSON behaves like sendJSON but reports whether the write succeeded.
+// Callers can use this for early-abort decisions (e.g., before heavy decoding).
+func (c *BridgeClient) trySendJSON(v interface{}) bool {
+	c.websocketMu.Lock()
+	defer c.websocketMu.Unlock()
+	c.mu.Lock()
+	ws := c.websocket
+	c.mu.Unlock()
+	if ws == nil {
+		return false
+	}
+	ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	if err := ws.WriteJSON(v); err != nil {
+		log.Printf("Failed to send JSON event to user %s: %v", c.userID, err)
+		go c.Close()
+		return false
+	}
+	return true
+}
+
+func (c *BridgeClient) sendPlayComplete(requestId string, success bool, durationMs int, errMsg string) {
+	evt := map[string]interface{}{
+		"type":       "play_complete",
+		"requestId":  requestId,
+		"success":    success,
+		"durationMs": durationMs,
+	}
+	if errMsg != "" {
+		evt["error"] = errMsg
+	}
+	c.sendJSON(evt)
+}
+
+func (c *BridgeClient) isJoined() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.connected && c.room != nil
+}
+
+func (c *BridgeClient) writeSamples(samples []int16) error {
+	if err := c.ensurePublishTrack(); err != nil {
+		return err
+	}
+	return c.publishTrack.WriteSample(samples)
+}
 
 func (c *BridgeClient) pingLoop() {
 	ticker := time.NewTicker(30 * time.Second)

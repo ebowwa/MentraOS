@@ -173,6 +173,37 @@ export class LiveKitManager {
   }
 
   /**
+   * Mint a token for the bridge that allows both publishing and subscribing
+   * so the Go bridge can publish server-side audio and we can subscribe to streams.
+   */
+  async mintAgentBridgeToken(): Promise<string | null> {
+    if (!this.apiKey || !this.apiSecret) return null;
+    try {
+      const at = new AccessToken(this.apiKey, this.apiSecret, {
+        identity: `cloud-agent:${this.session.userId}`,
+        ttl: "600000m",
+      });
+      const grant: VideoGrant = {
+        roomJoin: true,
+        room: this.getRoomName(),
+        canPublish: true,
+        canSubscribe: true,
+        canPublishData: true,
+      } as VideoGrant;
+      at.addGrant(grant);
+      const token = await at.toJwt();
+      this.logger.info(
+        { roomName: this.getRoomName(), token },
+        "Minted agent bridge token (pub+sub)",
+      );
+      return token;
+    } catch (error) {
+      this.logger.error(error, "Failed to mint agent bridge token");
+      return null;
+    }
+  }
+
+  /**
    * Start subscriber via Go livekit-bridge and stream 16 kHz PCM to AudioManager.
    */
   private async startBridgeSubscriber(info: {
@@ -185,15 +216,15 @@ export class LiveKitManager {
     }
     const targetIdentity = this.session.userId; // client publishes as plain userId
     this.bridgeClient = new LiveKitClientTS(this.session);
-    const subscribeToken = await this.mintAgentSubscribeToken();
-    if (!subscribeToken) {
-      this.logger.warn("Failed to mint subscribe token for bridge subscriber");
+    const bridgeToken = await this.mintAgentBridgeToken();
+    if (!bridgeToken) {
+      this.logger.warn("Failed to mint bridge token for WS bridge");
       return;
     }
     await this.bridgeClient.connect({
       url: info.url,
       roomName: info.roomName,
-      token: subscribeToken,
+      token: bridgeToken,
       targetIdentity,
     });
     this.logger.info(
@@ -217,7 +248,12 @@ export class LiveKitManager {
     }
   }
 
-  private async ensureBridgeConnected(): Promise<void> {
+  /** Expose the current bridge client for server playback control. */
+  public getBridgeClient(): LiveKitClientTS | null {
+    return this.bridgeClient;
+  }
+
+  public async ensureBridgeConnected(): Promise<void> {
     if (this.bridgeClient && this.bridgeClient.isConnected()) return;
     this.logger.info(
       { feature: "livekit" },

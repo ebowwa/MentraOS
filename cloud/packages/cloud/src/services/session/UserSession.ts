@@ -33,6 +33,7 @@ import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
 import LiveKitManager from "./LiveKitManager";
+import SpeakerManager from "./SpeakerManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -83,6 +84,7 @@ export class UserSession {
   public translationManager: TranslationManager;
   public subscriptionManager: SubscriptionManager;
   public liveKitManager: LiveKitManager;
+  public speakerManager: SpeakerManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -129,6 +131,7 @@ export class UserSession {
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
     this.liveKitManager = new LiveKitManager(this);
+    this.speakerManager = new SpeakerManager(this);
 
     this._reconnectionTimers = new Map();
 

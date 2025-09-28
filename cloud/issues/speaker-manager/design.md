@@ -1,12 +1,12 @@
-# SpeakerManager & LiveKit Bridge Shadow Audio Design
+# Server Playback over LiveKit (Cloud + Go Bridge)
 
-Status: Draft (Shadow Mode Phase 1)
+Status: Draft (Phase 1)
 Owner: TBD
 Last Updated: 2025-09-22
 
 ## 1. Goals
 
-- Introduce server-side shadow audio playback without modifying existing SDK/mobile clients.
+- Introduce server-side audio playback without modifying existing SDK/mobile clients.
 - Reuse existing `AUDIO_PLAY_REQUEST` / `AUDIO_STOP_REQUEST` flow; preserve backward compatibility.
 - Leverage existing Go `livekit-client-2` bridge to publish PCM into LiveKit.
 - Prepare path for future transition to server-primary streaming (optional) without breaking legacy flows.
@@ -30,16 +30,16 @@ App SDK --> Cloud (websocket-app.service) --> Device (legacy playback)
              +---------------------------> LiveKit Room (PCM Track)
 ```
 
-Shadow mode publishes audio to LiveKit in parallel; device remains source of user-facing playback & responses. The SpeakerManager reuses the same LiveKit room/session established for the subscriber; we maintain a single BridgeClient (and LiveKit room) per user and publish the speaker track into that room.
+Cloud publishes audio to LiveKit in parallel with device playback; device remains the user-facing source in Phase 1. The SpeakerManager reuses the same LiveKit room/session established for the bridge; we maintain a single bridge connection (and LiveKit room) per user and publish the server audio track into that room.
 
 ## 3. Components
 
 ### 3.1 SpeakerManager (Cloud / TypeScript)
 
-- Instantiated per `UserSession` when `SPEAKER_ENABLED=true`.
+- Instantiated per `UserSession` when `SERVER_PLAYBACK_ENABLED=true`.
 - Observes `AUDIO_PLAY_REQUEST` & `AUDIO_STOP_REQUEST` events.
 - Sends control commands to Go bridge over WebSocket.
-- Tracks shadow jobs for metrics (not authoritative for success in Phase 1).
+- Tracks basic playback jobs for metrics (non-authoritative in Phase 1).
 - Future: Optionally synthesize `AUDIO_PLAY_RESPONSE` when in primary mode.
 
 ### 3.2 Go Bridge (`cloud/livekit-client-2`)
@@ -48,11 +48,11 @@ Shadow mode publishes audio to LiveKit in parallel; device remains source of use
 - Add: fetch & decode remote audio (MP3/WAV/TTS stream) and push frames.
 - Add: playback job lifecycle and completion events.
 
-## 4. Message & Protocol Additions
+## 4. Message & Protocol
 
 ### 4.1 Cloud → Bridge Commands
 
-Join-once semantics: The bridge connects to the user's LiveKit room on first command (or when subscriber flow connects) and reuses that connection for subsequent play/stop. Therefore, roomName/token can be omitted after initial join.
+Join-once semantics: The bridge connects to the user's LiveKit room and reuses that connection for subsequent play/stop. Therefore, roomName/token can be omitted after initial join.
 
 ```jsonc
 {
@@ -62,7 +62,7 @@ Join-once semantics: The bridge connects to the user's LiveKit room on first com
   "token": "<livekit-jwt>",        // optional if already joined
   "url": "https://.../file.mp3",
   "volume": 0.85,         // optional 0.0-1.0
-  "gain": 1.0,            // optional server multiplier
+  "gain": 1.0,            // optional server multiplier (not required)
   "stopOther": true,      // cancel prior job
   "sampleRate": 16000     // optional override
 }
@@ -73,7 +73,7 @@ Join-once semantics: The bridge connects to the user's LiveKit room on first com
 }
 ```
 
-### 4.2 Bridge → Cloud Events
+### 4.2 Bridge → Cloud Events (JSON over WS)
 
 ```jsonc
 { "type": "play_complete", "requestId": "audio_req_abc123", "success": true, "durationMs": 2317 }
@@ -86,17 +86,13 @@ Join-once semantics: The bridge connects to the user's LiveKit room on first com
 ```ts
 interface SpeakerManagerOptions {
   enable: boolean;
-  mode: "shadow" | "primary"; // 'shadow' Phase 1
-  bridgeUrl: string; // ws://livekit-bridge:8080
-  sampleRate: number; // default 16000
-  frameMs: number; // default 10
-  maxDurationMs: number; // default 180000
+  bridgeUrl: string; // ws://livekit-bridge:8080/ws
 }
 
 class SpeakerManager {
   constructor(userSession: UserSession, opts: SpeakerManagerOptions);
-  onAudioPlayRequest(msg: AudioPlayRequest): void;
-  onAudioStopRequest(msg: AudioStopRequest): void;
+  start(msg: AudioPlayRequest): Promise<void>;
+  stop(msg: AudioStopRequest): Promise<void>;
   handleBridgeEvent(evt: any): void; // play_complete, error
   dispose(): Promise<void>;
 }
@@ -116,7 +112,7 @@ interface SpeakerJob {
 }
 ```
 
-## 6. Go Bridge Additions
+## 6. Go Bridge Support
 
 ### 6.1 New Fields in `Command`
 
@@ -140,8 +136,8 @@ type Command struct {
 2. If `StopOther`, cancel current job context.
 3. Start goroutine:
    - Determine decode strategy:
-     - WAV PCM16 (match SR & mono) → direct stream
-     - Otherwise use `ffmpeg -i <url> -f s16le -ac 1 -ar <SR> pipe:1`
+     - WAV PCM16 (mono/stereo) → parse + downmix + resample in pure Go
+     - MP3 → decode with pure-Go library, downmix + resample
    - Read bytes into buffer sized to frame (e.g., 10ms = SR/100 samples \*2).
    - Convert to `[]int16`, apply volume/gain scaling & clamp.
    - `ensurePublishTrack()` then `WriteSample`.
@@ -155,7 +151,7 @@ type Command struct {
 - `stop_playback` triggers cancellation of current playback context.
 - If no requestId provided, cancel active job.
 
-## 7. File Refactor Plan (Go)
+## 7. File Layout (Go)
 
 Current: Monolithic `main.go` ( >700 lines ).
 Proposed split (no behavioral change):
@@ -172,36 +168,22 @@ Proposed split (no behavioral change):
   pacing.go              // PacingBuffer implementation
 ```
 
-Refactor sequencing:
+Already implemented: modular files (`speaker.go`, `bridge_client.go`, `pacing.go`, etc.) and `play_url`/`stop_playback` commands.
 
-1. Introduce new files copying code (type/function moves) keeping imports identical.
-2. Run build & minimal integration test (existing test-client.js / test-integration.ts).
-3. Only after stable, add new `play_url` action in `commands.go` using `speaker.go` helpers.
+## 8. Configuration
 
-## 8. Environment Variables
+- No new envs required. Server playback is used automatically when LiveKit is configured for the `UserSession` (LIVEKIT_URL/API_KEY/SECRET present) and the bridge URL is set (LIVEKIT_GO_BRIDGE_URL can reuse existing default).
+  (Bridge side already uses existing envs like `LIVEKIT_URL`; optional `PUBLISH_GAIN` may be supported.)
 
-```
-SPEAKER_ENABLED=true|false
-SPEAKER_MODE=shadow
-SPEAKER_BRIDGE_URL=ws://livekit-bridge:8080
-SPEAKER_SAMPLE_RATE=16000
-SPEAKER_FRAME_MS=10
-SPEAKER_MAX_DURATION_MS=180000
-SPEAKER_RETRY_ATTEMPTS=3
-SPEAKER_CONNECT_TIMEOUT_MS=3000
-```
+## 9. Metrics (Phase 1)
 
-(Bridge side may also accept: `PUBLISH_GAIN`, `LIVEKIT_URL` already present.)
-
-## 9. Metrics (Phase 1 Shadow)
-
-- `speaker_shadow_play_started_total`
-- `speaker_shadow_play_completed_total`
-- `speaker_shadow_play_failed_total`
-- `speaker_shadow_play_cancelled_total`
-- `speaker_shadow_play_duration_ms` (histogram)
-- `speaker_shadow_first_frame_latency_ms`
-- `speaker_shadow_bridge_error_total`
+- `server_playback_started_total`
+- `server_playback_completed_total`
+- `server_playback_failed_total`
+- `server_playback_cancelled_total`
+- `server_playback_duration_ms` (histogram)
+- `server_playback_first_frame_latency_ms`
+- `server_playback_bridge_error_total`
 
 Correlation (logged only initially):
 
@@ -212,20 +194,20 @@ Correlation (logged only initially):
 | Failure              | Handling                                           |
 | -------------------- | -------------------------------------------------- |
 | Bridge connect fails | Log & disable shadow for session (cooldown 5 min)  |
-| ffmpeg missing       | Log once, mark decode=unavailable, skip shadow     |
+| unsupported format   | Log once, skip server playback                     |
 | Track publish error  | Emit `play_complete` (error), continue legacy      |
 | Stop before start    | Cancel pending job context gracefully              |
 | Oversized/long file  | Enforce `SPEAKER_MAX_DURATION_MS`, terminate early |
 
 ## 11. Phased Rollout
 
-| Phase | Description                                                             |
-| ----- | ----------------------------------------------------------------------- |
-| P1    | Add SpeakerManager (no-op if disabled) + Go refactor (no new action)    |
-| P2    | Implement `play_url` shadow path (metrics only)                         |
-| P3    | Add stop support & duration metrics                                     |
-| P4    | Add primary mode (optional) + synthetic responses (behind feature flag) |
-| P5    | Optimize TTS path (direct PCM) & consider deprecation strategy          |
+| Phase | Description                                                                     |
+| ----- | ------------------------------------------------------------------------------- |
+| P1    | Add SpeakerManager (auto-on when LiveKit configured) + TS bridge event handling |
+| P2    | Implement `play_url` path (metrics only)                                        |
+| P3    | Add stop support & duration metrics                                             |
+| P4    | Optional primary mode + synthetic responses (feature-flagged)                   |
+| P5    | Optimize TTS path (direct PCM) & consider deprecation strategy                  |
 
 ## 12. Open Questions
 

@@ -637,7 +637,7 @@ export class GlassesWebSocketService {
         );
       }
     }
-
+    // TODO(isaiah): Think about weird edge case where it connects with livekit, then a reconnect without livekit. (should probably never happen, unless they change devices  mid-session and the new device doesn't want livekit)
     userSession.websocket.send(JSON.stringify(ackMessage));
   }
 

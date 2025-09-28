@@ -160,7 +160,7 @@ export function isValidLanguageCode(code: string): boolean {
 export function parseLanguageStream(
   subscription: ExtendedStreamType,
 ): LanguageStreamInfo | null {
-  console.log(`🎤 Parsing language stream: ${subscription}`);
+  // console.log(`🎤 Parsing language stream: ${subscription}`);
 
   if (typeof subscription !== "string") {
     return null;

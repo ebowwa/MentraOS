@@ -32,6 +32,8 @@ export class LiveKitClient {
   private readonly endianMode: "auto" | "swap" | "off";
   private endianSwapDetermined = false;
   private shouldSwapBytes = false;
+  // Optional callback for JSON events from the Go bridge (e.g., play_complete)
+  private eventHandler: ((evt: unknown) => void) | null = null;
 
   constructor(userSession: UserSession, opts?: BridgeOptions) {
     this.userSession = userSession;
@@ -114,10 +116,48 @@ export class LiveKitClient {
     let frameCount = 0; // TODO(isaiah): clean up after livekit feature implementation.
 
     // Wire message handler before sending commands
-    this.ws.on("message", (data: WebSocket.RawData) => {
+    this.ws.on("message", (data: WebSocket.RawData, isBinary: boolean) => {
       // Rest of logic.
       try {
-        // Normalize data to a Node Buffer regardless of how ws delivered it
+        // If message is text (JSON), handle as event from Go bridge
+        if (!isBinary) {
+          const str = data.toString();
+          try {
+            const evt = JSON.parse(str);
+            if (this.eventHandler) this.eventHandler(evt);
+            // Also log a compact trace for debugging
+            const t = (evt as any)?.type;
+            if (t === "play_started") {
+              this.logger.info(
+                { feature: "livekit", evt },
+                "Bridge event: play_started",
+              );
+            } else if (t === "play_complete") {
+              this.logger.info(
+                { feature: "livekit", evt },
+                "Bridge event: play_complete",
+              );
+            } else if (t === "error") {
+              this.logger.warn(
+                { feature: "livekit", evt },
+                "Bridge event: error",
+              );
+            } else {
+              this.logger.debug(
+                { feature: "livekit", evt },
+                "Bridge JSON event",
+              );
+            }
+          } catch (e) {
+            this.logger.warn(
+              { feature: "livekit", payload: str },
+              "Non-binary message not JSON",
+            );
+          }
+          return;
+        }
+
+        // Normalize data to a Node Buffer regardless of how ws delivered it (binary path)
         let buf: Buffer;
         if (Buffer.isBuffer(data)) {
           buf = data as Buffer;
@@ -336,6 +376,47 @@ export class LiveKitClient {
     // Ensure we do a full, manual-close teardown to prevent auto-reconnect
     this.disposed = true;
     void this.close();
+  }
+
+  /**
+   * Provide a handler to receive JSON events from the Go bridge (e.g., play_complete)
+   */
+  public onEvent(handler: (evt: unknown) => void): void {
+    this.eventHandler = handler;
+  }
+
+  /**
+   * Ask the Go bridge to play a URL server-side into the LiveKit room.
+   */
+  public playUrl(params: {
+    requestId: string;
+    url: string;
+    volume?: number;
+    stopOther?: boolean;
+  }): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(
+      JSON.stringify({
+        action: "play_url",
+        requestId: params.requestId,
+        url: params.url,
+        volume: params.volume,
+        stopOther: params.stopOther,
+      }),
+    );
+  }
+
+  /**
+   * Ask the Go bridge to stop playback. If requestId provided, stop that job; else stop current.
+   */
+  public stopPlayback(requestId?: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(
+      JSON.stringify({
+        action: "stop_playback",
+        requestId,
+      }),
+    );
   }
 }
 

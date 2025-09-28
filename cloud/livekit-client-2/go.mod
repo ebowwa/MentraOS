@@ -6,6 +6,8 @@ toolchain go1.24.6
 
 require (
 	github.com/gorilla/websocket v1.5.3
+	github.com/hajimehoshi/go-mp3 v0.3.4
+	github.com/livekit/mediatransportutil v0.0.0-20250519131108-fb90f5acfded
 	github.com/livekit/server-sdk-go/v2 v2.10.0
 )
 
@@ -35,7 +37,6 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.2.0 // indirect
 	github.com/livekit/mageutil v0.0.0-20250511045019-0f1ff63f7731 // indirect
 	github.com/livekit/media-sdk v0.0.0-20250518151703-b07af88637c5 // indirect
-	github.com/livekit/mediatransportutil v0.0.0-20250519131108-fb90f5acfded // indirect
 	github.com/livekit/protocol v1.39.4-0.20250807105828-ccbae8154e54 // indirect
 	github.com/livekit/psrpc v0.6.1-0.20250726180611-3915e005e741 // indirect
 	github.com/magefile/mage v1.15.0 // indirect
