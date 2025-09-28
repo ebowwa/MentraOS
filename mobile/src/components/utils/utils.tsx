@@ -74,7 +74,7 @@ export function OtaUpdateChecker() {
       }
     }
     checkForOtaUpdate()
-  }, [glassesModel, otaVersionUrl, currentBuildNumber, glassesWifiConnected, hasChecked, isChecking, router])
+  }, [glassesModel, otaVersionUrl, currentBuildNumber, glassesWifiConnected, hasChecked, isChecking])
 
   return null
 }
