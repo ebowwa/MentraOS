@@ -27,7 +27,7 @@ export default function BackgroundAppsScreen() {
   const {active, inactive} = useBackgroundApps()
 
   const incompatibleApps = useMemo(
-    () => inactive.filter(app => app.compatibility !== undefined && app.compatibility.isCompatible === false),
+    () => inactive.filter(app => app.compatibility != null && app.compatibility.isCompatible === false),
     [inactive],
   )
 
