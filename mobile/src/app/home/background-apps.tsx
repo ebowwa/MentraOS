@@ -8,7 +8,6 @@ import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
 import {AppletInterface, useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
 import Divider from "@/components/misc/Divider"
@@ -17,12 +16,13 @@ import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const {push, goBack} = useNavigationHistory()
-  const {status} = useCoreStatus()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   const {active, inactive} = useBackgroundApps()
 
@@ -30,8 +30,6 @@ export default function BackgroundAppsScreen() {
     () => inactive.filter(app => app.compatibility !== undefined && app.compatibility.isCompatible === false),
     [inactive],
   )
-
-  const glassesName = status.glasses_info?.model_name || status.core_info?.default_wearable || "your glasses"
 
   const toggleApp = async (app: AppletInterface) => {
     if (app.is_running) {
@@ -256,7 +254,7 @@ export default function BackgroundAppsScreen() {
             {incompatibleApps.length > 0 && (
               <>
                 <Spacer height={theme.spacing.lg} />
-                <Text style={themed($sectionHeader)}>{`Incompatible with ${glassesName}`}</Text>
+                <Text style={themed($sectionHeader)}>{`Incompatible with ${defaultWearable}`}</Text>
                 <View style={themed($sectionContent)}>
                   {incompatibleApps.map((app, index) => (
                     <Fragment key={app.packageName}>
