@@ -34,14 +34,14 @@ export default function OnboardingWelcome() {
   // Skip onboarding and go directly to home
   const handleSkip = () => {
     // Mark onboarding as completed when skipped
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
     replace("/(tabs)/home")
   }
 
   // Continue to glasses selection screen
   const handleContinue = async () => {
     // Mark that onboarding should be shown on Home screen
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
 
     // deactivate all running apps:
     await stopAllApps()

@@ -13,7 +13,7 @@ export default function NonProdWarning() {
   const {theme, themed} = useAppTheme()
   const [isProdBackend, setIsProdBackend] = useState(true)
   const {push} = useNavigationHistory()
-  const [customBackendUrl, _setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [customBackendUrl, _setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
 
   const checkNonProdBackend = async () => {
     let isProd = false
