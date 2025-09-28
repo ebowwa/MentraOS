@@ -42,6 +42,7 @@ export interface PhotoRequest extends BaseMessage {
   requestId: string; // SDK-generated request ID to track the request
   saveToGallery?: boolean;
   customWebhookUrl?: string; // Custom webhook URL to override TPA's default
+  authToken?: string; // Auth token for custom webhook authentication
   /** Desired photo size sent by App. Defaults to 'medium' if omitted. */
   size?: "small" | "medium" | "large";
 }

@@ -5,8 +5,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayTextEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayImageEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 
@@ -21,41 +24,52 @@ public abstract class SmartGlassesCommunicator {
     // Audio callback for direct processing (replacing EventBus)
     public AudioProcessingCallback audioProcessingCallback;
 
-    public abstract void connectToSmartGlasses();
+    public abstract void connectToSmartGlasses(SmartGlassesDevice device);
+
     public abstract void findCompatibleDeviceNames();
+
     public abstract void blankScreen();
+
     public abstract void destroy();
+
     public final String commandNaturalLanguageString = "Command: ";
     public final String finishNaturalLanguageString = "'finish command' when done";
 
-    public void setUpdatingScreen(boolean updatingScreen) {}
+    public void setUpdatingScreen(boolean updatingScreen) {
+    }
 
     //reference card
     public abstract void displayReferenceCardSimple(String title, String body);
 
     //display text wall
     public abstract void displayTextWall(String text);
+
     public abstract void displayDoubleTextWall(String textTop, String textBottom);
 
     public abstract void displayReferenceCardImage(String title, String body, String imgUrl);
-    public abstract void displayBulletList(String title, String [] bullets);
+
+    public abstract void displayBulletList(String title, String[] bullets);
+
     public abstract void displayRowsCard(String[] rowStrings);
 
     //voice command UI
     public abstract void showNaturalLanguageCommandScreen(String prompt, String naturalLanguageArgs);
+
     public abstract void updateNaturalLanguageCommandScreen(String naturalLanguageArgs);
 
     //scrolling text view
-    public void startScrollingTextViewMode(String title){
+    public void startScrollingTextViewMode(String title) {
         setMode(SmartGlassesModes.SCROLLING_TEXT_VIEW);
     }
 
     public abstract void scrollingTextViewIntermediateText(String text);
+
     public abstract void scrollingTextViewFinalText(String text);
+
     public abstract void stopScrollingTextViewMode();
 
     //prompt view card
-    public abstract void displayPromptView(String title, String [] options);
+    public abstract void displayPromptView(String title, String[] options);
 
     //display text line
     public abstract void displayTextLine(String text);
@@ -63,6 +77,8 @@ public abstract class SmartGlassesCommunicator {
     public abstract void displayBitmap(Bitmap bmp);
 
     public abstract void displayCustomContent(String json);
+
+    public abstract void clearDisplay();
 
     //home screen
     public abstract void showHomeScreen();
@@ -81,23 +97,31 @@ public abstract class SmartGlassesCommunicator {
         Log.d("SmartGlassesCommunicator", "Default implementation - button camera LED: " + enabled);
     }
 
+    public void onDisplayTextNotified(DisplayTextEvent displayTextEvent) {
+
+    }
+
+    public void onDisplayImageNotified(String imageType, String imageSize) {
+
+    }
+
     //fonts
     public int LARGE_FONT;
     public int MEDIUM_FONT;
     public int SMALL_FONT;
 
-    public SmartGlassesCommunicator(){
+    public SmartGlassesCommunicator() {
         setFontSizes();
     }
 
     //must be run and set font sizes
     protected abstract void setFontSizes();
 
-    public SmartGlassesConnectionState getConnectionState(){
+    public SmartGlassesConnectionState getConnectionState() {
         return mConnectState;
     }
 
-    protected boolean isConnected(){
+    protected boolean isConnected() {
         return (mConnectState == SmartGlassesConnectionState.CONNECTED);
     }
 
@@ -132,21 +156,32 @@ public abstract class SmartGlassesCommunicator {
             isPending = false;
         }, DEBOUNCE_DELAY_MS);
     }
-    public void tapEvent(int num){
+
+    public void tapEvent(int num) {
         EventBus.getDefault().post(new GlassesTapOutputEvent(num, false, System.currentTimeMillis()));
     }
 
-    public void setMode(SmartGlassesModes mode){
+    public void setMode(SmartGlassesModes mode) {
         currentMode = mode;
     }
 
-    public void updateGlassesBrightness(int brightness) {}
-    public void updateGlassesAutoBrightness(boolean autoBrightness) {}
-    public void updateGlassesHeadUpAngle(int headUpAngle) {}
-    public void updateGlassesDepthHeight(int depth, int height) {}
-    public void sendExitCommand() {}
+    public void updateGlassesBrightness(int brightness) {
+    }
 
-    public void changeSmartGlassesMicrophoneState(boolean isMicrophoneEnabled) {}
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+    }
+
+    public void updateGlassesHeadUpAngle(int headUpAngle) {
+    }
+
+    public void updateGlassesDepthHeight(int depth, int height) {
+    }
+
+    public void sendExitCommand() {
+    }
+
+    public void changeSmartGlassesMicrophoneState(boolean isMicrophoneEnabled) {
+    }
 
     /**
      * Registers an audio processing callback to receive audio data directly
@@ -157,7 +192,7 @@ public abstract class SmartGlassesCommunicator {
     public void registerAudioProcessingCallback(AudioProcessingCallback callback) {
         this.audioProcessingCallback = callback;
         Log.e("SmartGlassesCommunicator", "⭐⭐⭐ REGISTERED AUDIO CALLBACK: " +
-              (callback != null ? "NOT NULL" : "NULL") + " in " + this.getClass().getSimpleName());
+                (callback != null ? "NOT NULL" : "NULL") + " in " + this.getClass().getSimpleName());
     }
 
     /**
@@ -175,13 +210,15 @@ public abstract class SmartGlassesCommunicator {
     /**
      * Requests the smart glasses to take a photo
      *
-     * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param requestId  The unique ID for this photo request
+     * @param appId      The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param authToken Auth token for webhook authentication
+     * @param size Requested photo size (small|medium|large)
      */
-    public void requestPhoto(String requestId, String appId, String webhookUrl, String size) {
+    public void requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
         // Default implementation does nothing
-        Log.d("SmartGlassesCommunicator", "Photo request (with size) not implemented for this device");
+        Log.d("SmartGlassesCommunicator", "Photo request (with authToken and size) not implemented for this device");
     }
 
     /**
@@ -189,7 +226,7 @@ public abstract class SmartGlassesCommunicator {
      * Default implementation does nothing - specific communicators should override
      *
      * @param requestId The unique ID for this photo request
-     * @param appId The ID of the app requesting the photo
+     * @param appId     The ID of the app requesting the photo
      */
     public void requestPhoto(String requestId, String appId) {
         // Default implementation does nothing
@@ -240,7 +277,7 @@ public abstract class SmartGlassesCommunicator {
      * Sends WiFi credentials to the smart glasses
      * Default implementation does nothing - specific communicators should override
      *
-     * @param ssid The WiFi network name
+     * @param ssid     The WiFi network name
      * @param password The WiFi password
      */
     public void sendWifiCredentials(String ssid, String password) {
@@ -332,5 +369,17 @@ public abstract class SmartGlassesCommunicator {
     public void stopVideoRecording(String requestId) {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Stop video recording not implemented for this device");
+    }
+    
+    /**
+     * Get protobuf schema version information
+     * Default implementation returns unknown - specific communicators should override
+     *
+     * @return Protobuf schema version information
+     */
+    public String getProtobufSchemaVersionInfo() {
+        // Default implementation returns unknown
+        Log.d("SmartGlassesCommunicator", "Protobuf schema version not implemented for this device");
+        return "Schema v1 | Unknown";
     }
 }

@@ -13,6 +13,10 @@ class WebSocketManager extends EventEmitter {
   private webSocket: WebSocket | null = null
   private previousStatus: WebSocketStatus = WebSocketStatus.DISCONNECTED
   private reconnectTimeout: NodeJS.Timeout | null = null
+  private url: string | null = null
+  private coreToken: string | null = null
+  private reconnectInterval: any = null
+  private manuallyDisconnected: boolean = false
 
   private constructor() {
     super()
@@ -37,10 +41,17 @@ class WebSocketManager extends EventEmitter {
   }
 
   connect(url: string, coreToken: string) {
-    console.log(`WSManagerTS: connect: ${url}, ${coreToken}`)
+    console.log(`WSM: connect: ${url}, ${coreToken}`)
+    this.manuallyDisconnected = false
+    this.url = url
+    this.coreToken = coreToken
 
     // Disconnect existing connection if any
     if (this.webSocket) {
+      this.webSocket.onclose = null
+      this.webSocket.onerror = null
+      this.webSocket.onmessage = null
+      this.webSocket.onopen = null
       this.webSocket.close()
       this.webSocket = null
     }
@@ -53,12 +64,13 @@ class WebSocketManager extends EventEmitter {
     // Create new WebSocket with authorization header
     const wsUrl = new URL(url)
     wsUrl.searchParams.set("token", coreToken)
+    wsUrl.searchParams.set("livekit", "true")
 
     this.webSocket = new WebSocket(wsUrl.toString())
 
     // Set up event handlers
     this.webSocket.onopen = () => {
-      console.log("WSManagerTS: WebSocket connection established")
+      console.log("WSM: WebSocket connection established")
       this.updateStatus(WebSocketStatus.CONNECTED)
       store.setConnected()
     }
@@ -68,19 +80,49 @@ class WebSocketManager extends EventEmitter {
     }
 
     this.webSocket.onerror = error => {
-      console.error("WSManagerTS: WebSocket error:", error)
+      console.error("WSM: WebSocket error:", error)
       this.updateStatus(WebSocketStatus.ERROR)
       store.setError(error?.toString() || "WebSocket error")
+      this.startReconnectInterval()
     }
 
     this.webSocket.onclose = event => {
-      console.log("WSManagerTS: Connection closed with code:", event.code)
+      console.error("WSM: Connection closed with code:", event.code)
       this.updateStatus(WebSocketStatus.DISCONNECTED)
       store.setDisconnected()
+      this.startReconnectInterval()
     }
   }
 
+  startReconnectInterval() {
+    if (this.reconnectInterval) {
+      clearInterval(this.reconnectInterval)
+      this.reconnectInterval = null
+    }
+
+    // Don't start reconnect if manually disconnected
+    if (this.manuallyDisconnected) return
+
+    this.reconnectInterval = setInterval(() => {
+      console.log("WSM: Attempting reconnect")
+      const store = useConnectionStore.getState()
+      if (store.status === WebSocketStatus.DISCONNECTED) {
+        this.handleReconnect()
+      }
+      if (store.status === WebSocketStatus.CONNECTED) {
+        clearInterval(this.reconnectInterval)
+      }
+    }, 5000)
+  }
+
+  handleReconnect() {
+    console.log("WSM: Attempting reconnect")
+    this.connect(this.url!, this.coreToken!)
+  }
+
   disconnect() {
+    this.manuallyDisconnected = true
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout)
       this.reconnectTimeout = null
@@ -104,28 +146,28 @@ class WebSocketManager extends EventEmitter {
   // Send JSON message
   sendText(text: string) {
     if (!this.isConnected()) {
-      console.log("Cannot send message: WebSocket not connected")
+      console.log("WSM: Cannot send message: WebSocket not connected")
       return
     }
 
     try {
       this.webSocket?.send(text)
     } catch (error) {
-      console.error("Error sending text message:", error)
+      console.error("WSM: Error sending text message:", error)
     }
   }
 
   // Send binary data (for audio)
   sendBinary(data: ArrayBuffer | Uint8Array) {
     if (!this.isConnected()) {
-      console.log("Cannot send binary data: WebSocket not connected")
+      console.log("WSM: Cannot send binary data: WebSocket not connected")
       return
     }
 
     try {
       this.webSocket?.send(data)
     } catch (error) {
-      console.error("Error sending binary data:", error)
+      console.error("WSM: Error sending binary data:", error)
     }
   }
 
@@ -145,7 +187,7 @@ class WebSocketManager extends EventEmitter {
       // Forward message to listeners
       this.emit("message", message)
     } catch (error) {
-      console.error("Failed to parse WebSocket message:", error)
+      console.error("WSM: Failed to parse WebSocket message:", error)
     }
   }
 

@@ -29,10 +29,9 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS, useSetting, useSettings, useSettingsStore} from "@/stores/settings"
 
 export default function PrivacySettingsScreen() {
-  const [isSensingEnabled, setIsSensingEnabled] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [calendarEnabled, setCalendarEnabled] = useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = useState(false)
@@ -41,11 +40,7 @@ export default function PrivacySettingsScreen() {
   const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-
-  // load settings:
-  useEffect(() => {
-    loadSetting(SETTINGS_KEYS.sensing_enabled).then(setIsSensingEnabled)
-  }, [])
+  const [sensingEnabled, setSensingEnabled] = useSetting(SETTINGS_KEYS.sensing_enabled)
 
   // Check permissions when screen loads
   useEffect(() => {
@@ -145,9 +140,9 @@ export default function PrivacySettingsScreen() {
   }, []) // subscribe only once
 
   const toggleSensing = async () => {
-    const newSensing = !isSensingEnabled
-    await bridge.sendToggleSensing(newSensing)
-    setIsSensingEnabled(newSensing)
+    const newSensing = !sensingEnabled
+    await setSensingEnabled(newSensing)
+    await bridge.sendToggleSensing(newSensing) // TODO: config: remove
   }
 
   const handleToggleNotifications = async () => {
@@ -270,7 +265,7 @@ export default function PrivacySettingsScreen() {
         <ToggleSetting
           label={translate("settings:sensingLabel")}
           subtitle={translate("settings:sensingSubtitle")}
-          value={isSensingEnabled}
+          value={sensingEnabled}
           onValueChange={toggleSensing}
         />
       </ScrollView>

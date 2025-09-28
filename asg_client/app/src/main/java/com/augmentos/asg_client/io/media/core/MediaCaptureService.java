@@ -207,124 +207,6 @@ public class MediaCaptureService {
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
     }
-
-    /**
-     * Handles the photo button press by sending a request to the cloud server
-     * If connected, makes REST API call to server
-     * If disconnected or server error, takes photo locally
-     */
-    public void handlePhotoButtonPress() {
-        // Get core token for authentication
-        String coreToken = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getString("core_token", "");
-
-        // Get device ID for hardware identification
-        String deviceId = android.os.Build.MODEL + "_" + android.os.Build.SERIAL;
-
-        if (coreToken == null || coreToken.isEmpty()) {
-            Log.e(TAG, "No core token available, taking photo locally");
-            takePhotoLocally();
-            return;
-        }
-
-        // Prepare REST API call
-        try {
-            // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
-
-            // Create payload for button press event
-            JSONObject buttonPressPayload = new JSONObject();
-            buttonPressPayload.put("buttonId", "photo");
-            buttonPressPayload.put("pressType", "short");
-            buttonPressPayload.put("deviceId", deviceId);
-
-            Log.d(TAG, "Sending button press event to server: " + buttonPressUrl);
-
-            // Make REST API call with timeout
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .build();
-
-            RequestBody requestBody = RequestBody.create(
-                    MediaType.parse("application/json"),
-                    buttonPressPayload.toString()
-            );
-
-            Request request = new Request.Builder()
-                    .url(buttonPressUrl)
-                    .header("Authorization", "Bearer " + coreToken)
-                    .post(requestBody)
-                    .build();
-
-            // Execute request asynchronously
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send button press event", e);
-                    // Connection failed, take photo locally
-                    takePhotoLocally();
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) {
-                    try {
-                        if (!response.isSuccessful()) {
-                            Log.e(TAG, "Server returned error: " + response.code());
-                            // Server error, take photo locally
-                            takePhotoLocally();
-                            return;
-                        }
-
-                        // Parse response
-                        String responseBody = response.body().string();
-                        Log.d(TAG, "Server response: " + responseBody);
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-
-                        // Check if we need to take a photo
-                        if ("take_photo".equals(jsonResponse.optString("action"))) {
-                            String requestId = jsonResponse.optString("requestId");
-                            boolean save = jsonResponse.optBoolean("save", false);  // Default to false
-
-                            Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
-
-                            // Take photo and upload directly to server
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
-                            int randomSuffix = (int)(Math.random() * 1000);
-                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, save, "medium", false);
-                        } else {
-                            Log.d(TAG, "Button press handled by server, no photo needed");
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing server response", e);
-                        takePhotoLocally();
-                    } finally {
-                        response.close();
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error preparing button press request", e);
-            // Something went wrong, take photo locally
-            takePhotoLocally();
-        }
-    }
-
-    /**
-     * Handles the video button press by toggling video recording
-     * Simple toggle logic - no cloud communication
-     */
-    public void handleVideoButtonPress() {
-        if (isRecordingVideo) {
-            Log.d(TAG, "Stopping video recording");
-            stopVideoRecording();
-        } else {
-            Log.d(TAG, "Starting video recording");
-            startVideoRecording();
-        }
-    }
     
     /**
      * Start video recording with specific settings
@@ -801,13 +683,15 @@ public class MediaCaptureService {
      * @param photoFilePath Local path where photo will be saved
      * @param requestId Unique request ID for tracking
      * @param webhookUrl Optional webhook URL for direct upload to app
+     * @param authToken Auth token for webhook authentication
      * @param save Whether to keep the photo on device after upload
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, boolean save, String size, boolean enableLed) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for potential fallbacks
         photoRequestedSizes.put(requestId, size);
+
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -838,7 +722,7 @@ public class MediaCaptureService {
                             // Choose upload destination based on webhookUrl
                             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                                 // Upload directly to app webhook
-                                uploadPhotoToWebhook(filePath, requestId, webhookUrl);
+                                uploadPhotoToWebhook(filePath, requestId, webhookUrl, authToken);
                             }
                         }
 
@@ -870,7 +754,7 @@ public class MediaCaptureService {
     /**
      * Upload photo directly to app webhook
      */
-    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl) {
+    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken) {
         // Create a new thread for the upload
         new Thread(() -> {
             try {
@@ -883,11 +767,16 @@ public class MediaCaptureService {
                     return;
                 }
 
-                // Create multipart form request
+                Log.d(TAG, "### Sending photo request");
+
+                // Create multipart form request with smarter timeouts:
+                // - 1 second to connect (fails fast if no internet)
+                // - 10 seconds to write the photo data
+                // - 5 seconds to read the response
                 OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .connectTimeout(1, java.util.concurrent.TimeUnit.SECONDS)  // Fast fail if no internet
+                        .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)   // Time to upload photo data
+                        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)     // Time to get response
                         .build();
 
                 RequestBody fileBody = RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile);
@@ -898,10 +787,20 @@ public class MediaCaptureService {
                         .addFormDataPart("type", "photo_upload")
                         .build();
 
-                Request request = new Request.Builder()
+                // Build request with optional Authorization header
+                Request.Builder requestBuilder = new Request.Builder()
                         .url(webhookUrl)
-                        .post(requestBody)
-                        .build();
+                        .post(requestBody);
+
+                // Add Authorization header if auth token is available
+                if (authToken != null && !authToken.isEmpty()) {
+                    requestBuilder.header("Authorization", "Bearer " + authToken);
+                    Log.d(TAG, "📡 Adding Authorization header to webhook request for: " + requestId);
+                } else {
+                    Log.d(TAG, "📡 No auth token available for webhook request: " + requestId);
+                }
+
+                Request request = requestBuilder.build();
 
                 Response response = client.newCall(request).execute();
 
@@ -1035,6 +934,7 @@ public class MediaCaptureService {
                 photoBleIds.remove(requestId);
                 photoOriginalPaths.remove(requestId);
                 photoRequestedSizes.remove(requestId);
+                
 
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1101,6 +1001,7 @@ public class MediaCaptureService {
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
+    
 
                         // Notify listener about successful upload
                         if (mMediaCaptureListener != null) {
@@ -1161,6 +1062,7 @@ public class MediaCaptureService {
                         photoSaveFlags.remove(requestId);
                         photoBleIds.remove(requestId);
                         photoOriginalPaths.remove(requestId);
+    
 
                         // Notify listener about error
                         if (mMediaCaptureListener != null) {
@@ -1258,7 +1160,7 @@ public class MediaCaptureService {
      * @param bleImgId BLE image ID for fallback
      * @param save Whether to keep the photo on device
      */
-    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String bleImgId, boolean save, String size, boolean enableLed) {
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String authToken, String bleImgId, boolean save, String size, boolean enableLed) {
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
@@ -1269,7 +1171,7 @@ public class MediaCaptureService {
         if (isWiFiConnected()) {
             Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
             // Try WiFi upload (with automatic BLE fallback on failure)
-            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, save, size, enableLed);
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
         } else {
             Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
             // No WiFi, go straight to BLE
@@ -1456,15 +1358,12 @@ public class MediaCaptureService {
 
                 // Clean up the flag
                 photoSaveFlags.remove(requestId);
-                photoRequestedSizes.remove(requestId);
-
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
                 sendBleTransferError(requestId, e.getMessage());
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
-                photoRequestedSizes.remove(requestId);
             }
         }).start();
     }

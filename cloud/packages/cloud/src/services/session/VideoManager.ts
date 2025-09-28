@@ -23,7 +23,7 @@ import {
 } from "@mentra/sdk";
 import { Logger } from "pino";
 import UserSession from "./UserSession";
-import { sessionService } from "./session.service";
+// session.service no longer needed; using UserSession instance methods
 
 // Constants from the original stream-tracker.service.ts
 const KEEP_ALIVE_INTERVAL_MS = 15000; // 15 seconds keep-alive interval
@@ -182,10 +182,13 @@ export class VideoManager {
     };
 
     this.activeSessionStreams.set(streamId, streamInfo);
-    this.scheduleKeepAlive(streamId);
 
-    // Send first keep-alive immediately to establish connection
-    setTimeout(() => this.sendKeepAlive(streamId), 1000);
+    // Don't start keep-alives yet - wait for first status from glasses
+    // This prevents keep-alives from arriving before the glasses are ready
+    this.logger.debug(
+      { streamId },
+      "Stream created, waiting for first status before starting keep-alives",
+    );
 
     // Send start command to glasses
     const startMessage: StartRtmpStream = {
@@ -606,6 +609,22 @@ export class VideoManager {
     // Update last activity time
     stream.lastKeepAlive = new Date();
 
+    // Start keep-alives on first real status (not initializing)
+    if (
+      !stream.keepAliveTimer &&
+      (status === "streaming" ||
+        status === "active" ||
+        status === "reconnected")
+    ) {
+      this.logger.info(
+        { streamId, status },
+        "Received first active status, starting keep-alive timer",
+      );
+      this.scheduleKeepAlive(streamId);
+      // Send first keep-alive after a short delay
+      setTimeout(() => this.sendKeepAlive(streamId), 1000);
+    }
+
     // Map glasses status to our status types
     let mappedStatus: SessionStreamInfo["status"];
     if (!status) {
@@ -645,14 +664,28 @@ export class VideoManager {
         // Only map to timeout if it's actually a timeout from glasses
         mappedStatus = "timeout";
         break;
-      default:
-        this.logger.error(
+      case "reconnected":
+        // Successfully reconnected after disconnection - stream is active again
+        mappedStatus = "active";
+        this.logger.info(
           { streamId, status },
-          "Received unknown status from glasses",
+          "Stream reconnected successfully",
         );
-        return; // Ignore unknown statuses
         break;
-      // mappedStatus = 'timeout';
+      case "reconnect_failed":
+        // Failed to reconnect after max attempts - stream is dead
+        mappedStatus = "stopped";
+        this.logger.warn({ streamId, status }, "Stream reconnection failed");
+        break;
+      default:
+        // Unknown status - log warning but don't ignore
+        // Default to stopped to prevent state limbo
+        this.logger.warn(
+          { streamId, status },
+          "Received unknown status from glasses, defaulting to stopped",
+        );
+        mappedStatus = "stopped";
+        break;
     }
 
     // Update status based on glasses feedback
@@ -797,7 +830,7 @@ export class VideoManager {
     };
 
     // Relay to Apps who subscribed to this RTMP stream
-    sessionService.relayMessageToApps(this.userSession, broadcastPayload);
+    this.userSession.relayMessageToApps(broadcastPayload);
 
     this.logger.debug(
       { streamId, status },

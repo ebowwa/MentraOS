@@ -31,7 +31,7 @@ import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
 // import subscriptionService from "../session/subscription.service";
 import { PosthogService } from "../logging/posthog.service";
-import { sessionService } from "../session/session.service";
+// sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
 import { locationService } from "../core/location.service";
@@ -41,6 +41,9 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 
 // Constants
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
+
+// SAFETY FLAG: Set to false to disable grace period cleanup entirely
+const GRACE_PERIOD_CLEANUP_ENABLED = false; // TODO: Set to true when ready to enable auto-cleanup
 
 const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
@@ -115,7 +118,7 @@ export class GlassesWebSocketService {
       }
 
       // Create or retrieve user session
-      const { userSession, reconnection } = await sessionService.createSession(
+      const { userSession, reconnection } = await UserSession.createOrReconnect(
         ws,
         userId,
       );
@@ -251,13 +254,13 @@ export class GlassesWebSocketService {
             userSession,
             message as GlassesConnectionState,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // Looks Good.
         case GlassesToCloudMessageType.VAD:
           await this.handleVad(userSession, message as Vad);
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           // TODO(isaiah): relay to Apps
           break;
 
@@ -266,7 +269,7 @@ export class GlassesWebSocketService {
             userSession,
             message as LocalTranscription,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
@@ -285,7 +288,7 @@ export class GlassesWebSocketService {
           userSession.subscriptionManager.cacheCalendarEvent(
             message as CalendarEvent,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): verify logic
@@ -493,13 +496,13 @@ export class GlassesWebSocketService {
             `Audio play response received from glasses/core`,
           );
           // Forward audio play response to Apps - we need to find the specific app that made the request
-          sessionService.relayAudioPlayResponseToApp(userSession, message);
+          userSession.relayAudioPlayResponseToApp(message);
           break;
 
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
           // Also relay to Apps in case they want to handle head position events
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): Add other message type handlers as needed
@@ -509,7 +512,7 @@ export class GlassesWebSocketService {
           userSession.logger.debug(
             `Relaying message type ${message.type} to Apps for user: ${userId}`,
           );
-          sessionService.relayMessageToApps(userSession, message);
+          userSession.relayMessageToApps(message);
           // TODO(isaiah): Verify Implemention message relaying to Apps
           break;
       }
@@ -558,8 +561,7 @@ export class GlassesWebSocketService {
     const ackMessage: ConnectionAck = {
       type: CloudToGlassesMessageType.CONNECTION_ACK,
       sessionId: userSession.sessionId,
-      userSession:
-        await sessionService.transformUserSessionForClient(userSession),
+      userSession: await userSession.snapshotForClient(),
       timestamp: new Date(),
     };
 
@@ -674,7 +676,7 @@ export class GlassesWebSocketService {
       // We still relay the message to any apps subscribed to the raw location stream.
       // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
       // response for a poll request.
-      sessionService.relayMessageToApps(userSession, message);
+      userSession.relayMessageToApps(message);
     } catch (error) {
       userSession.logger.error(
         { error, service: SERVICE_NAME },
@@ -763,9 +765,31 @@ export class GlassesWebSocketService {
     const modelName = glassesConnectionStateMessage.modelName;
     const isConnected = glassesConnectionStateMessage.status === "CONNECTED";
 
+    // Update connection state tracking in UserSession
+    const wasConnected = userSession.glassesConnected;
+    userSession.glassesConnected = isConnected;
+    userSession.glassesModel = modelName;
+    userSession.lastGlassesStatusUpdate = new Date();
+
     // Update glasses model in session when connected and model name is available
     if (isConnected && modelName) {
       await userSession.updateGlassesModel(modelName);
+    }
+
+    // Log connection state change if state changed
+    if (wasConnected !== isConnected) {
+      userSession.logger.info(
+        {
+          previousState: wasConnected,
+          newState: isConnected,
+          model: modelName,
+          userId: userSession.userId,
+        },
+        `Glasses connection state changed from ${wasConnected} to ${isConnected} for user ${userSession.userId}`,
+      );
+
+      // The existing relayMessageToApps call below will notify subscribed apps
+      // No need for additional broadcasting
     }
 
     try {
@@ -977,8 +1001,13 @@ export class GlassesWebSocketService {
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
 
-    // Set cleanup timer if not already set
-    if (!userSession.cleanupTimerId) {
+    // Set cleanup timer if not already set (and if cleanup is enabled)
+    if (!GRACE_PERIOD_CLEANUP_ENABLED) {
+      userSession.logger.debug(
+        { service: SERVICE_NAME },
+        `Grace period cleanup disabled by GRACE_PERIOD_CLEANUP_ENABLED=false for user: ${userSession.userId}`,
+      );
+    } else if (!userSession.cleanupTimerId) {
       userSession.cleanupTimerId = setTimeout(() => {
         userSession.logger.debug(
           { service: SERVICE_NAME },

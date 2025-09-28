@@ -1,14 +1,6 @@
-import axios, {AxiosRequestConfig, AxiosResponse} from "axios"
-import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
-
-interface Callback {
-  onSuccess: (data: any) => void
-  onFailure: (errorCode: number) => void
-}
+import {useSettingsStore} from "@/stores/settings"
 
 interface ApiResponse<T = any> {
   success?: boolean
@@ -16,6 +8,14 @@ interface ApiResponse<T = any> {
   error?: string
   token?: string
   [key: string]: any
+}
+
+interface RequestConfig {
+  method: "GET" | "POST" | "DELETE"
+  url: string
+  headers?: Record<string, string>
+  data?: any
+  params?: any
 }
 
 class RestComms {
@@ -65,23 +65,55 @@ class RestComms {
     }
   }
 
-  private async makeRequest<T = any>(config: AxiosRequestConfig): Promise<T> {
-    try {
-      const response: AxiosResponse<T> = await axios(config)
+  private buildUrlWithParams(url: string, params?: any): string {
+    if (!params) return url
 
-      if (response.status !== 200) {
-        throw new Error(`Bad response: ${response.statusText}`)
+    const queryString = Object.keys(params)
+      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+      .join("&")
+
+    return `${url}?${queryString}`
+  }
+
+  private async makeRequest<T = any>(config: RequestConfig): Promise<T> {
+    const {method, url, headers, data, params} = config
+    let status = 0
+    try {
+      const fullUrl = this.buildUrlWithParams(url, params)
+
+      const fetchConfig: RequestInit = {
+        method,
+        headers: headers || {},
       }
 
-      return response.data
+      // Add body for POST and DELETE requests if data exists
+      if ((method === "POST" || method === "DELETE") && data) {
+        fetchConfig.body = JSON.stringify(data)
+      }
+
+      const response = await fetch(fullUrl, fetchConfig)
+      status = response.status
+
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage = `Bad response: ${response.statusText}`
+        try {
+          const errorData = await response.json()
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch {
+          // If we can't parse the error response, use the default message
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Parse JSON response
+      const responseData = await response.json()
+      return responseData as T
     } catch (error: any) {
       const errorMessage = error.message || error
-      console.error(`${this.TAG}: Request failed -`, errorMessage)
-
-      if (axios.isAxiosError(error) && error.response?.data?.error) {
-        throw new Error(error.response.data.error)
-      }
-
+      console.error(`${this.TAG}: ${method} to ${url} failed with status ${status}`, errorMessage)
       throw error
     }
   }
@@ -94,17 +126,17 @@ class RestComms {
   ): Promise<T> {
     this.validateToken()
 
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}${endpoint}`
 
     console.log(`${method} request to: ${url}`)
 
-    const config: AxiosRequestConfig = {
+    const config: RequestConfig = {
       method,
       url,
       headers: this.createAuthHeaders(),
-      ...(data && {data}),
-      ...(params && {params}),
+      data,
+      params,
     }
 
     return this.makeRequest<T>(config)
@@ -116,14 +148,14 @@ class RestComms {
     data?: any,
     params?: any,
   ): Promise<T> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}${endpoint}`
-    const config: AxiosRequestConfig = {
+    const config: RequestConfig = {
       method,
       url,
       headers: this.createAuthHeaders(),
-      ...(data && {data}),
-      ...(params && {params}),
+      data,
+      params,
     }
     return this.makeRequest<T>(config)
   }
@@ -133,6 +165,27 @@ class RestComms {
   public async getMinimumClientVersion(): Promise<ApiResponse<{required: string; recommended: string}>> {
     const response = await this.request("GET", "/api/client/min-version")
     return response.data
+  }
+
+  public async checkAppHealthStatus(packageName: string): Promise<boolean> {
+    // GET the app's /health endpoint
+    try {
+      const baseUrl = await useSettingsStore.getState().getRestUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
+      const healthData = await healthResponse.json()
+      return healthData.success
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return false
+    }
   }
 
   // App Management
@@ -183,12 +236,11 @@ class RestComms {
     return this.authenticatedRequest("POST", `/appsettings/${appName}`, update)
   }
 
-  // Authentication
   public async exchangeToken(supabaseToken: string): Promise<string> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}/auth/exchange-token`
 
-    const config: AxiosRequestConfig = {
+    const config: RequestConfig = {
       method: "POST",
       url,
       headers: {"Content-Type": "application/json"},
@@ -238,6 +290,12 @@ class RestComms {
     return this.authenticatedRequest("DELETE", "/api/account/confirm-deletion", {requestId, confirmationCode})
   }
 
+  public async getLivekitUrlAndToken(): Promise<{url: string; token: string}> {
+    const response = await this.authenticatedRequest("GET", "/api/client/livekit/token")
+    const {url, token} = response.data
+    return {url, token}
+  }
+
   // Data Export
   public async requestDataExport(): Promise<any> {
     return this.authenticatedRequest("POST", "/api/account/request-export", {format: "json"})
@@ -267,6 +325,17 @@ class RestComms {
   // Error Reporting
   public async sendErrorReport(reportData: any): Promise<any> {
     return this.authenticatedRequest("POST", "/app/error-report", reportData)
+  }
+
+  // Calendar
+  // { events: any[], calendars: any[] }
+  public async sendCalendarData(data: any): Promise<any> {
+    return this.authenticatedRequest("POST", "/api/client/calendar", data)
+  }
+
+  // Location
+  public async sendLocationData(data: any): Promise<any> {
+    return this.authenticatedRequest("POST", "/api/client/location", data)
   }
 }
 

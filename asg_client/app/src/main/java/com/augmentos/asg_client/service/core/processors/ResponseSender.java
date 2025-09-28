@@ -2,6 +2,7 @@ package com.augmentos.asg_client.service.core.processors;
 
 import android.util.Log;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
+import com.augmentos.asg_client.service.communication.reliability.ReliableMessageManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,10 +11,13 @@ import org.json.JSONObject;
  * Response sender component following Single Responsibility Principle.
  * <p>
  * This class is responsible for sending various types of responses
- * over Bluetooth Low Energy (BLE) communication.
+ * over Bluetooth Low Energy (BLE) communication with optional reliability.
  */
-public record ResponseSender(AsgClientServiceManager serviceManager) {
+public class ResponseSender {
     private static final String TAG = "ResponseSender";
+
+    private final AsgClientServiceManager serviceManager;
+    private final ReliableMessageManager reliableManager;
 
     /**
      * Constructor for ResponseSender.
@@ -22,7 +26,30 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
      */
     public ResponseSender(AsgClientServiceManager serviceManager) {
         this.serviceManager = serviceManager;
-        Log.d(TAG, "✅ Response sender initialized");
+
+        // Initialize reliability manager - use 'this.serviceManager' to always get current reference
+        this.reliableManager = new ReliableMessageManager(
+            data -> {
+                if (this.serviceManager != null &&
+                    this.serviceManager.getBluetoothManager() != null) {
+                    return this.serviceManager.getBluetoothManager().sendData(data);
+                }
+                return false;
+            }
+        );
+
+        // Enable by default - worst case with old phones is just some extra retries
+        this.reliableManager.setEnabled(true, 1);
+
+        Log.d(TAG, "✅ Response sender initialized with reliability support");
+    }
+
+    /**
+     * Get the reliable message manager (for CommandProcessor to handle ACKs).
+     * @return The ReliableMessageManager instance
+     */
+    public ReliableMessageManager getReliableManager() {
+        return reliableManager;
     }
 
     /**
@@ -53,9 +80,9 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
             }
             downloadProgress.put("timestamp", timestamp);
 
-            String jsonString = downloadProgress.toString();
-            sendDataOverBluetooth(jsonString.getBytes());
-            Log.d(TAG, "📥 Sent download progress via BLE: " + status + " - " + progress + "%");
+            // Use reliable sending for OTA progress
+            boolean sent = reliableManager.sendMessage(downloadProgress);
+            Log.d(TAG, "📥 Sent download progress via BLE: " + status + " - " + progress + "% (sent: " + sent + ")");
 
         } catch (JSONException e) {
             Log.e(TAG, "Error creating download progress JSON", e);
@@ -86,9 +113,9 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
             }
             installationProgress.put("timestamp", timestamp);
 
-            String jsonString = installationProgress.toString();
-            sendDataOverBluetooth(jsonString.getBytes());
-            Log.d(TAG, "🔧 Sent installation progress via BLE: " + status + " - " + apkPath);
+            // Use reliable sending for OTA installation
+            boolean sent = reliableManager.sendMessage(installationProgress);
+            Log.d(TAG, "🔧 Sent installation progress via BLE: " + status + " - " + apkPath + " (sent: " + sent + ")");
 
         } catch (JSONException e) {
             Log.e(TAG, "Error creating installation progress JSON", e);
@@ -125,11 +152,11 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
     }
 
     /**
-     * Send a generic JSON response over BLE.
+     * Send a generic JSON response over BLE with reliability support.
      *
      * @param responseType The type of response
      * @param data         The response data
-     * @param messageId    Optional message ID for acknowledgment
+     * @param messageId    Optional message ID for acknowledgment (not used with reliability)
      */
     public void sendGenericResponse(String responseType, JSONObject data, long messageId) {
         if (!isBluetoothConnected()) {
@@ -143,14 +170,11 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
             if (data != null) {
                 response.put("data", data);
             }
-            if (messageId != -1) {
-                response.put("mId", messageId);
-            }
             response.put("timestamp", System.currentTimeMillis());
 
-            String jsonString = response.toString();
-            sendDataOverBluetooth(jsonString.getBytes());
-            Log.d(TAG, "📤 Sent generic response via BLE: " + responseType);
+            // Use reliable sending (it will add mId if needed)
+            boolean sent = reliableManager.sendMessage(response);
+            Log.d(TAG, "📤 Sent " + responseType + " response via BLE (sent: " + sent + ")");
 
         } catch (JSONException e) {
             Log.e(TAG, "Error creating generic response JSON", e);
@@ -158,11 +182,11 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
     }
 
     /**
-     * Send error response over BLE.
+     * Send error response over BLE with reliability.
      *
      * @param errorCode    The error code
      * @param errorMessage The error message
-     * @param messageId    Optional message ID for acknowledgment
+     * @param messageId    Optional message ID for acknowledgment (not used with reliability)
      */
     public void sendErrorResponse(String errorCode, String errorMessage, long messageId) {
         if (!isBluetoothConnected()) {
@@ -175,14 +199,11 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
             errorResponse.put("type", "error");
             errorResponse.put("error_code", errorCode);
             errorResponse.put("error_message", errorMessage);
-            if (messageId != -1) {
-                errorResponse.put("mId", messageId);
-            }
             errorResponse.put("timestamp", System.currentTimeMillis());
 
-            String jsonString = errorResponse.toString();
-            sendDataOverBluetooth(jsonString.getBytes());
-            Log.d(TAG, "❌ Sent error response via BLE: " + errorCode + " - " + errorMessage);
+            // Use reliable sending for errors (critical messages)
+            boolean sent = reliableManager.sendMessage(errorResponse);
+            Log.d(TAG, "❌ Sent error response via BLE: " + errorCode + " - " + errorMessage + " (sent: " + sent + ")");
 
         } catch (JSONException e) {
             Log.e(TAG, "Error creating error response JSON", e);
@@ -218,8 +239,7 @@ public record ResponseSender(AsgClientServiceManager serviceManager) {
      *
      * @return The service manager
      */
-    @Override
-    public AsgClientServiceManager serviceManager() {
+    public AsgClientServiceManager getServiceManager() {
         return serviceManager;
     }
 } 

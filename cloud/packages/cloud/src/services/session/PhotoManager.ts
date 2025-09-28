@@ -16,6 +16,7 @@ import {
 } from "@mentra/sdk";
 import { Logger } from "pino";
 import UserSession from "./UserSession";
+import { ConnectionValidator } from "../validators/ConnectionValidator";
 
 const PHOTO_REQUEST_TIMEOUT_MS_DEFAULT = 30000; // Default timeout for photo requests
 
@@ -67,6 +68,7 @@ export class PhotoManager {
       requestId,
       saveToGallery = false,
       customWebhookUrl,
+      authToken,
       size = "medium",
     } = appRequest;
 
@@ -77,6 +79,7 @@ export class PhotoManager {
         saveToGallery,
         size,
         hasCustomWebhook: !!customWebhookUrl,
+        hasAuthToken: !!authToken,
       },
       "Processing App photo request.",
     );
@@ -86,7 +89,7 @@ export class PhotoManager {
     if (customWebhookUrl) {
       webhookUrl = customWebhookUrl;
       this.logger.info(
-        { requestId, customWebhookUrl },
+        { requestId, customWebhookUrl, hasAuthToken: !!authToken },
         "Using custom webhook URL for photo request.",
       );
     } else {
@@ -98,14 +101,25 @@ export class PhotoManager {
       );
     }
 
-    if (
-      !this.userSession.websocket ||
-      this.userSession.websocket.readyState !== WebSocket.OPEN
-    ) {
+    // Validate connections before processing photo request
+    const validation = ConnectionValidator.validateForHardwareRequest(
+      this.userSession,
+      "photo",
+    );
+
+    if (!validation.valid) {
       this.logger.error(
-        "Glasses WebSocket not connected, cannot send photo request to glasses.",
+        {
+          error: validation.error,
+          errorCode: validation.errorCode,
+          connectionStatus: ConnectionValidator.getConnectionStatus(
+            this.userSession,
+          ),
+        },
+        "Photo request validation failed",
       );
-      throw new Error("Glasses WebSocket not connected.");
+
+      throw new Error(validation.error || "Connection validation failed");
     }
 
     const requestInfo: PendingPhotoRequest = {
@@ -129,6 +143,7 @@ export class PhotoManager {
       requestId,
       appId: packageName, // Glasses expect `appId`
       webhookUrl, // Use custom webhookUrl if provided, otherwise default
+      authToken, // Include authToken for webhook authentication
       size, // Propagate desired size
       timestamp: new Date(),
     };
@@ -136,7 +151,13 @@ export class PhotoManager {
     try {
       this.userSession.websocket.send(JSON.stringify(messageToGlasses));
       this.logger.info(
-        { requestId, packageName, webhookUrl, isCustom: !!customWebhookUrl },
+        {
+          requestId,
+          packageName,
+          webhookUrl,
+          isCustom: !!customWebhookUrl,
+          hasAuthToken: !!authToken,
+        },
         "PHOTO_REQUEST command sent to glasses with webhook URL.",
       );
 

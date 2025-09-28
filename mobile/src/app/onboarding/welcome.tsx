@@ -1,8 +1,6 @@
 import React from "react"
 import {View, Text, StyleSheet} from "react-native"
 import {Screen} from "@/components/ignite"
-import {saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import RestComms from "@/managers/RestComms"
 import {router} from "expo-router"
@@ -12,6 +10,7 @@ import {Button} from "@/components/ignite/Button"
 import {FontAwesome} from "@expo/vector-icons"
 import {Spacer} from "@/components/misc/Spacer"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
@@ -35,14 +34,14 @@ export default function OnboardingWelcome() {
   // Skip onboarding and go directly to home
   const handleSkip = () => {
     // Mark onboarding as completed when skipped
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
     replace("/(tabs)/home")
   }
 
   // Continue to glasses selection screen
   const handleContinue = async () => {
     // Mark that onboarding should be shown on Home screen
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
 
     // deactivate all running apps:
     await stopAllApps()

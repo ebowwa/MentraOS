@@ -26,7 +26,9 @@ import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
 import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnableOfflineModeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
@@ -36,6 +38,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.Spee
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.BrilliantLabsFrame;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.EvenRealitiesG1;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraNexGlasses;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.InmoAirOne;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraMach1;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.MentraLive;
@@ -362,7 +365,7 @@ public class SmartGlassesManager extends Service {
 
         // Connect directly instead of using a handler
         Log.d(TAG, "CONNECTING TO SMART GLASSES");
-        smartGlassesRepresentative.connectToSmartGlasses();
+        smartGlassesRepresentative.connectToSmartGlasses(device);
 
         // BATTERY OPTIMIZATION: Explicitly register callback with the communicator
         // This ensures it's immediately available when audio events start coming in
@@ -444,6 +447,7 @@ public class SmartGlassesManager extends Service {
             // Save preferred wearable if connected
             if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                 savePreferredWearable(this, smartGlassesRepresentative.smartGlassesDevice.deviceModelName);
+                savePreferredWearableAddress(this, smartGlassesRepresentative.smartGlassesDevice.deviceAddress);
 
                 setFontSize(SmartGlassesFontSize.MEDIUM);
             }
@@ -468,11 +472,29 @@ public class SmartGlassesManager extends Service {
                 .edit()
                 .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE), wearableName)
                 .apply();
+
+        // Post event for React Native sync
+        EventBus.getDefault().post(new PreferenceChangedEvent("default_wearable", wearableName));
     }
 
     public static String getPreferredWearable(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context)
                 .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE), "");
+    }
+
+    public static void savePreferredWearableAddress(Context context, String deviceAddress) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), deviceAddress)
+                .apply();
+
+        // Post event for React Native sync
+        EventBus.getDefault().post(new PreferenceChangedEvent("device_address", deviceAddress));
+    }
+
+    public static String getPreferredWearableAddress(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(context.getResources().getString(R.string.PREFERRED_WEARABLE_ADDRESS), "");
     }
 
     public static ASR_FRAMEWORKS getChosenAsrFramework(Context context) {
@@ -637,6 +659,23 @@ public class SmartGlassesManager extends Service {
         }
         editor.putBoolean(context.getResources().getString(R.string.ENFORCE_LOCAL_TRANSCRIPTION), enabled);
         editor.apply();
+    }
+
+    public static void saveEnableOfflineMode(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean("is_offline_mode_enabled", enabled);
+        editor.apply();
+
+        if (context instanceof AugmentosService) {
+            AugmentosService service = (AugmentosService) context;
+            if (service.smartGlassesManager != null &&
+                service.smartGlassesManager.speechRecSwitchSystem != null) {
+                service.smartGlassesManager.speechRecSwitchSystem.setEnableOfflineMode(enabled);
+            }
+        } else {
+            EventBus.getDefault().post(new EnableOfflineModeEvent(enabled));
+        }
     }
 
     public static boolean getBypassAudioEncodingForDebugging(Context context) {
@@ -945,6 +984,15 @@ public class SmartGlassesManager extends Service {
         sendHomeScreen();
     }
 
+    public void clearDisplay() {
+        Log.d(TAG, "clearDisplay called");
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.clearDisplay();
+        } else {
+            Log.e(TAG, "Cannot clear display: smartGlassesRepresentative or communicator is null");
+        }
+    }
+
     /**
      * Getter for SmartGlassesRepresentative instance
      * Allows external access for immediate microphone switching
@@ -983,18 +1031,19 @@ public class SmartGlassesManager extends Service {
      * @param requestId The unique ID for this photo request
      * @param appId The ID of the app requesting the photo
      * @param webhookUrl The webhook URL where the photo should be uploaded directly
+     * @param authToken Auth token for webhook authentication
      * @param size Requested photo size (small|medium|large)
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String size) {
+    public boolean requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
         if (smartGlassesRepresentative != null &&
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size=" + size);
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, size);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, authToken, size);
             return true;
         } else {
             Log.e(TAG, "Cannot request photo - glasses not connected");
@@ -1081,6 +1130,7 @@ public class SmartGlassesManager extends Service {
                         new MentraMach1(),
                         new MentraLive(),
                         new EvenRealitiesG1(),
+                        new MentraNexGlasses(),
                         new VuzixShield(),
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),

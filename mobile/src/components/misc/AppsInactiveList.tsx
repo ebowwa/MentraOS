@@ -3,8 +3,6 @@ import React, {useEffect, useRef, useState} from "react"
 import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
@@ -18,6 +16,8 @@ import {ThemedStyle} from "@/theme"
 import AppsHeader from "@/components/misc/AppsHeader"
 import {AppListStoreLink} from "@/components/misc/AppListStoreLink"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -30,7 +30,7 @@ export default function InactiveAppList({
   liveCaptionsRef?: React.RefObject<any>
   onClearSearch?: () => void
 }) {
-  const {appStatus, optimisticallyStartApp, checkAppHealthStatus} = useAppStatus()
+  const {appStatus, optimisticallyStartApp} = useAppStatus()
   const {status} = useCoreStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
@@ -63,7 +63,7 @@ export default function InactiveAppList({
   useFocusEffect(
     React.useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
         setOnboardingCompleted(completed)
 
         if (!completed) {
@@ -74,7 +74,7 @@ export default function InactiveAppList({
           setShowOnboardingTip(false)
 
           // If onboarding is completed, check how many times settings have been accessed
-          const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0)
+          const settingsAccessCount = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.settings_access_count)
           // Only show hint if they've accessed settings less than 1 times
           setShowSettingsHint(settingsAccessCount < 1)
         }
@@ -87,7 +87,7 @@ export default function InactiveAppList({
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
       setOnboardingCompleted(completed)
       setShowOnboardingTip(!completed)
     }
@@ -108,7 +108,7 @@ export default function InactiveAppList({
   }, [showOnboardingTip])
 
   const completeOnboarding = () => {
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
     setOnboardingCompleted(true)
     setShowOnboardingTip(false)
     setInLiveCaptionsPhase(false) // Reset any live captions phase state
@@ -184,8 +184,8 @@ export default function InactiveAppList({
       const developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
       const shouldProceed = await new Promise<boolean>(resolve => {
         showAlert(
-          "App is down for maintenance",
-          `${appInfo.name} appears offline. Try anyway?\n\nThe developer${developerName}needs to get their server back up and running. Please contact them for more details.`,
+          `${appInfo.name} can't be reached`,
+          `This app is offline. The developer "${appInfo.developerName}" needs to bring it back online. Please contact them for details.`,
           [
             {text: translate("common:cancel"), style: "cancel", onPress: () => resolve(false)},
             {text: "Try Anyway", onPress: () => resolve(true)},
@@ -199,8 +199,8 @@ export default function InactiveAppList({
     }
 
     // Optional live health check (keep but after offline confirmation)
-    if (!(await checkAppHealthStatus(appInfo.packageName))) {
-      showAlert("App not online", "Please try again later.", [{text: translate("common:ok")}])
+    if (!(await restComms.checkAppHealthStatus(appInfo.packageName))) {
+      showAlert(`${appInfo.name} can't be reached`, "Please try again later.", [{text: translate("common:ok")}])
       return
     }
 

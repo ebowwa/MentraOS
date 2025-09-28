@@ -7,6 +7,8 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useFocusEffect} from "@react-navigation/native"
+import {useDisplayStore} from "@/stores/display"
+import socketComms from "@/managers/SocketComms"
 
 interface SimulatedGlassesControlsProps {}
 
@@ -14,24 +16,20 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   const {themed, theme} = useAppTheme()
   const insets = useSafeAreaInsets()
   const [showDashboard, setShowDashboard] = useState(false)
+  const {setView} = useDisplayStore()
 
   // when this is unmounted, set the dashboard position to down:
   useFocusEffect(
     useCallback(() => {
       return () => {
         console.log("SimulatedGlassesControls: unmounted, setting dashboard position to down")
-        setDashboardPosition(false)
+        setView("main")
       }
     }, []),
   )
 
   const setDashboardPosition = async (isHeadUp: boolean) => {
-    console.log("SimulatedGlassesControls: setting dashboard position to", isHeadUp ? "up" : "down")
-    try {
-      await bridge.simulateHeadPosition(isHeadUp ? "up" : "down")
-    } catch (error) {
-      console.error("SimulatedGlassesControls: Error details:", error)
-    }
+    setView(isHeadUp ? "dashboard" : "main")
   }
 
   const toggleDashboard = async () => {
@@ -42,7 +40,7 @@ export const SimulatedGlassesControls: React.FC<SimulatedGlassesControlsProps> =
   const handleButtonPress = async (pressType: "short" | "long") => {
     console.log(`SimulatedGlassesControls: Button ${pressType} press triggered`)
     try {
-      const result = await bridge.simulateButtonPress("camera", pressType)
+      const result = await socketComms.sendButtonPress("camera", pressType)
       console.log(`SimulatedGlassesControls: Button ${pressType} press command sent successfully, result:`, result)
     } catch (error) {
       console.error("Failed to simulate button press:", error)

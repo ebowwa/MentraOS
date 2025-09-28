@@ -177,9 +177,9 @@ class SherpaOnnxTranscriber {
             } else {
                 Bridge.log("No Sherpa ONNX model available. Transcription will be disabled.")
                 Bridge.log("Please download a model using the model downloader in settings.")
-                recognizer = nil;
-                isRunning = false;
-                return;
+                recognizer = nil
+                isRunning = false
+                return
             }
 
             if recognizer == nil {
@@ -203,9 +203,9 @@ class SherpaOnnxTranscriber {
         // Forward to delegate if set
         DispatchQueue.main.async { [weak self] in
             if isFinal {
-                MentraManager.getInstance().didReceiveFinalTranscription(text)
+                STTTools.didReceiveFinalTranscription(text)
             } else {
-                MentraManager.getInstance().didReceivePartialTranscription(text)
+                STTTools.didReceivePartialTranscription(text)
             }
         }
     }

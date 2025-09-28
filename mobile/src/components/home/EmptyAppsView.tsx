@@ -1,8 +1,7 @@
-import * as React from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {translate, TxKeyPath} from "@/i18n"
+import {TxKeyPath} from "@/i18n"
 import {Text} from "@/components/ignite"
 
 interface EmptyAppsViewProps {

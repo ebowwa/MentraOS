@@ -11,8 +11,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
@@ -22,12 +21,13 @@ export default function SettingsPage() {
   const {logout, user} = useAuth()
   const {theme, themed} = useAppTheme()
   const {push, replace} = useNavigationHistory()
-  const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
+
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = devMode
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
@@ -68,7 +68,6 @@ export default function SettingsPage() {
     // Handle different press counts
     if (pressCount.current === maxPressCount) {
       showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
-      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
       setDevMode(true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
@@ -144,6 +143,10 @@ export default function SettingsPage() {
 
           <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
+          {Platform.OS === "android" && (
+            <RouteButton label="Notification Settings" onPress={() => push("/settings/notifications")} />
+          )}
+
           <RouteButton
             label={translate("settings:transcriptionSettings")}
             onPress={() => push("/settings/transcription")}
@@ -173,6 +176,9 @@ export default function SettingsPage() {
           style={{color: theme.colors.textDim}}
         />
       </View>
+
+      {/* <Button text="Disconnect Livekit" onPress={() => livekitManager.disconnect()} />
+      <Button text="Connect Livekit" onPress={() => livekitManager.connect()} /> */}
 
       {/* Loading overlay for sign out */}
       <Modal visible={isSigningOut} transparent={true} animationType="fade">

@@ -627,6 +627,20 @@ export class AsgCameraApiClient {
         results.downloaded.push(downloadedFile)
         console.log(`[ASG Camera API] Successfully downloaded: ${file.name}`)
 
+        // Delete this single file from the glasses immediately after successful download
+        try {
+          console.log(`[ASG Camera API] Deleting ${file.name} from glasses after successful download`)
+          const deleteResult = await this.deleteFilesFromServer([file.name])
+          if (deleteResult.deleted.length > 0) {
+            console.log(`[ASG Camera API] Successfully deleted ${file.name} from glasses`)
+          } else if (deleteResult.failed.length > 0) {
+            console.warn(`[ASG Camera API] Failed to delete ${file.name} from glasses, but keeping downloaded file`)
+          }
+        } catch (deleteError) {
+          // Log the error but don't fail the sync - the file was downloaded successfully
+          console.warn(`[ASG Camera API] Error deleting ${file.name} from glasses (non-fatal):`, deleteError)
+        }
+
         // Small delay between downloads to avoid overwhelming the server
         // Shorter delay than before since we're already sequential
         if (i < files.length - 1) {
@@ -659,11 +673,12 @@ export class AsgCameraApiClient {
       })
 
       // Parse the response format from the ASG server
-      if (response.data && response.data.results) {
+      const responseData = response as any
+      if (responseData.data && responseData.data.results) {
         const deleted: string[] = []
         const failed: string[] = []
 
-        for (const result of response.data.results) {
+        for (const result of responseData.data.results) {
           if (result.success) {
             deleted.push(result.file)
           } else {

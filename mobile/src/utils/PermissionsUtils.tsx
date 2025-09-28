@@ -9,16 +9,15 @@ import {
   requestNotifications,
   checkNotifications,
 } from "react-native-permissions"
-import {Permission as RNPermission} from "react-native"
 import {PermissionsAndroid} from "react-native"
 import {
   checkAndRequestNotificationAccessSpecialPermission,
   checkNotificationAccessSpecialPermission,
-} from "../utils/NotificationServiceUtils"
-import {AppInterface, AppPermission} from "@/contexts/AppletStatusProvider"
+} from "@/utils/NotificationServiceUtils"
 import {translate} from "@/i18n"
 import showAlert from "./AlertUtils"
 import {Theme} from "@/theme"
+import {AppletInterface, AppletPermission} from "@/contexts/AppletStatusProvider"
 
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
@@ -43,7 +42,6 @@ interface PermissionConfig {
   ios: any[] // Using any to accommodate various permission types
   android: any[] // Using any to accommodate various permission types
   critical: boolean
-  specialRequestNeeded?: boolean
 }
 
 // Define permission configurations
@@ -121,7 +119,6 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     // regular location permission is enough for background location on Android
     android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
     critical: false,
-    // specialRequestNeeded: true, // This flag indicates we need special handling
   },
   [PermissionFeatures.BLUETOOTH]: {
     name: "Bluetooth",
@@ -136,7 +133,6 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
           ]
         : [], // For Android 12+, include the Bluetooth permissions in the normal flow
     critical: true, // Critical for glasses pairing
-    specialRequestNeeded: false, // iOS Bluetooth permissions work with regular flow
   },
   [PermissionFeatures.PHONE_STATE]: {
     name: "Phone State",
@@ -145,15 +141,6 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     android: [PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE],
     critical: true, // Critical for pairing with glasses
   },
-  // Battery optimization permission temporarily disabled
-  // [PermissionFeatures.BATTERY_OPTIMIZATION]: {
-  //   name: "Battery Optimization",
-  //   description: "Allow AugmentOS to run in the background without battery restrictions",
-  //   ios: [], // iOS doesn't need this
-  //   android: [], // No actual Android permission, needs special handling
-  //   critical: false,
-  //   specialRequestNeeded: true,
-  // },
 }
 
 // Initialize Android basic permissions based on device version
@@ -194,6 +181,14 @@ export const markPermissionRequested = async (featureKey: string): Promise<void>
     await AsyncStorage.setItem(`PERMISSION_REQUESTED_${featureKey}`, "true")
   } catch (e) {
     console.error("Failed to save permission requested status", e)
+  }
+}
+
+export const markPermissionNotRequested = async (featureKey: string): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(`PERMISSION_REQUESTED_${featureKey}`)
+  } catch (e) {
+    console.error("Failed to remove permission requested status", e)
   }
 }
 
@@ -348,17 +343,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
     return false
   }
 
-  // Handle special permission cases
-  if (config.specialRequestNeeded) {
-    if (featureKey === PermissionFeatures.BACKGROUND_LOCATION) {
-      return await requestBackgroundLocationPermission()
-    }
-    // Battery optimization temporarily disabled
-    else if (featureKey === PermissionFeatures.BATTERY_OPTIMIZATION) {
-      return await requestBatteryOptimizationPermission() // This now just returns true
-    }
-  }
-
   let allGranted = true
   let partiallyGranted = false
   let previouslyDenied = false
@@ -370,6 +354,22 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
         // Check current status before requesting
         const currentStatus = await check(permission)
         console.log(`Current status for ${permission}:`, currentStatus)
+
+        if (permission === PERMISSIONS.IOS.LOCATION_WHEN_IN_USE && currentStatus === RESULTS.DENIED) {
+          // reset the permission request status for background location
+          await markPermissionNotRequested(PERMISSIONS.IOS.LOCATION_ALWAYS)
+        }
+
+        if (permission === PERMISSIONS.IOS.LOCATION_ALWAYS && currentStatus === RESULTS.BLOCKED) {
+          // if we've already requested this permission before, show the dialog to direct user to Settings
+          if (await hasPermissionBeenRequested(permission)) {
+            await handlePreviouslyDeniedPermission(config.name)
+            return false
+          }
+          await markPermissionRequested(permission)
+          // ignore the fact that this reports as blocked, since that's just how the flow for this permission works
+          continue
+        }
 
         // If permission is blocked at system level, handle it differently
         if (currentStatus === RESULTS.BLOCKED) {
@@ -579,31 +579,6 @@ export const handlePreviouslyDeniedPermission = (permissionName: string): Promis
   })
 }
 
-// Request just the basic permissions needed for the app to function
-export const requestBasicPermissions = async (): Promise<boolean> => {
-  return await requestFeaturePermissions(PermissionFeatures.BASIC)
-}
-
-// Request Bluetooth permissions specifically - used before glasses pairing
-export const requestBluetoothPermissions = async (): Promise<boolean> => {
-  if (Platform.OS === "ios") {
-    try {
-      // Try to request through the normal permission system
-      return await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
-    } catch (error) {
-      console.warn("Error requesting Bluetooth permissions through standard flow:", error)
-
-      // If that fails (e.g., with older versions of the library),
-      // we'll consider permissions granted on iOS since they'll be requested
-      // when BleManager is initialized anyway
-      console.log("Falling back to automatic Bluetooth permission handling on iOS")
-      return true
-    }
-  }
-  // On Android, Bluetooth permissions are handled directly in the pairing flow
-  return true
-}
-
 // Check if a feature has the permissions it needs
 export const checkFeaturePermissions = async (featureKey: string): Promise<boolean> => {
   const config = PERMISSION_CONFIG[featureKey]
@@ -616,38 +591,6 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
   // rely on our internal flag to determine if the user has already accepted it.
   if (config.android.length === 0 && config.ios.length === 0) {
     return await hasPermissionBeenGranted(featureKey)
-  }
-
-  // For special permissions
-  if (config.specialRequestNeeded) {
-    if (featureKey === PermissionFeatures.BACKGROUND_LOCATION) {
-      if (Platform.OS === "android" && typeof Platform.Version === "number" && Platform.Version >= 29) {
-        try {
-          return await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION)
-        } catch (error) {
-          console.error("Error checking background location permission:", error)
-          return false
-        }
-      }
-      return true // No special handling needed for older Android or iOS
-    }
-
-    // Battery optimization check disabled
-    if (featureKey === PermissionFeatures.BATTERY_OPTIMIZATION) {
-      return true // Always return true for now
-
-      // if (Platform.OS === 'android') {
-      //   try {
-      //     const PowerManager = (Platform as any).NativeModules.PowerManager;
-      //     if (!PowerManager) return false;
-      //     return await PowerManager.isIgnoringBatteryOptimizations();
-      //   } catch (error) {
-      //     console.error('Error checking battery optimization:', error);
-      //     return false;
-      //   }
-      // }
-      // return true; // Not needed for iOS
-    }
   }
 
   // For Android
@@ -710,54 +653,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
   return false
 }
 
-// Required for AugmentOS Core permissions (now handled directly in React Native)
-export const requestAugmentOSPermissions = async (): Promise<boolean> => {
-  // Request basic permissions first
-  const hasBasicPermissions = await requestBasicPermissions()
-  if (!hasBasicPermissions) return false
-
-  // Request notification permissions (important for app functionality)
-  const hasNotifications = await requestFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS)
-  if (!hasNotifications) {
-    console.log("Notification permissions not granted. Some features may be limited.")
-    // We continue even if notification permissions are denied
-  }
-
-  // Background location permission temporarily disabled
-  // const hasBackgroundLocation = await requestFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION);
-
-  // Battery optimization permissions temporarily disabled
-  // const hasBatteryOptimization = await requestFeaturePermissions(PermissionFeatures.BATTERY_OPTIMIZATION);
-
-  // Return true if we have at least the basic permissions
-  return hasBasicPermissions
-}
-
-// For backwards compatibility with existing code
-export const requestGrantPermissions = async (): Promise<boolean> => {
-  return await requestBasicPermissions()
-}
-
-export const doesHaveAllPermissions = async (): Promise<boolean> => {
-  // Check if permissions have been requested before - if yes, we won't show screen again
-  const basicRequested = await hasPermissionBeenRequested(PermissionFeatures.BASIC)
-  if (basicRequested) {
-    console.log("Basic permissions have been requested before, won't show screen again")
-    return true
-  }
-
-  // Check basic permissions
-  const hasBasic = await checkFeaturePermissions(PermissionFeatures.BASIC)
-  if (!hasBasic) {
-    console.log("Missing basic permissions, need to show permission screen")
-    return false
-  }
-
-  // If we reach here, we have basic permissions or they've been requested already
-  return true
-}
-
-export const askPermissionsUI = async (app: AppInterface, theme: Theme): Promise<number> => {
+export const askPermissionsUI = async (app: AppletInterface, theme: Theme): Promise<number> => {
   const neededPermissions = await checkPermissionsUI(app)
 
   if (neededPermissions.length == 0) {
@@ -814,7 +710,7 @@ export const askPermissionsUI = async (app: AppInterface, theme: Theme): Promise
   })
 }
 
-export const checkPermissionsUI = async (app: AppInterface) => {
+export const checkPermissionsUI = async (app: AppletInterface) => {
   let permissions = app.permissions || []
   const neededPermissions: string[] = []
 
@@ -826,7 +722,7 @@ export const checkPermissionsUI = async (app: AppInterface) => {
       {type: "READ_NOTIFICATIONS", required: true},
       {type: "LOCATION", required: true},
       {type: "BACKGROUND_LOCATION", required: true},
-    ] as AppPermission[]
+    ] as AppletPermission[]
   }
 
   for (const permission of permissions) {

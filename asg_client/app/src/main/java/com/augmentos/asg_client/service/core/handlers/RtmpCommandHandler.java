@@ -149,18 +149,34 @@ public class RtmpCommandHandler implements ICommandHandler {
             String streamId = data.optString("streamId", "");
             String ackId = data.optString("ackId", "");
 
-            if (!streamId.isEmpty() && !ackId.isEmpty()) {
-                boolean streamIdValid = RtmpStreamingService.resetStreamTimeout(streamId);
-                if (streamIdValid) {
+            // Validate we have required fields
+            if (streamId.isEmpty() || ackId.isEmpty()) {
+                Log.d(TAG, "Keep-alive missing required fields (streamId or ackId) - ignoring");
+                return false;
+            }
+
+            // Now we know we have both streamId and ackId
+            boolean streamIdValid = RtmpStreamingService.resetStreamTimeout(streamId);
+            if (streamIdValid) {
+                // Stream is active and recognized
+                streamingManager.sendKeepAliveAck(streamId, ackId);
+                return true;
+            } else {
+                // Stream not recognized or not fully active yet
+                // This can happen if keep-alive arrives during initialization
+                // With the cloud fix, this should be rare
+                if (RtmpStreamingService.isStreaming()) {
+                    // We're in the process of streaming but not fully active yet
+                    Log.d(TAG, "Stream still initializing, ACKing keep-alive anyway (streamId: " + streamId + ")");
                     streamingManager.sendKeepAliveAck(streamId, ackId);
                     return true;
                 } else {
-                    Log.e(TAG, "Received keep-alive for unknown stream ID: " + streamId);
-                    RtmpStreamingService.stopStreaming(context);
+                    // Not streaming at all - this is an orphaned keep-alive
+                    Log.w(TAG, "Keep-alive for unknown stream, not currently streaming: " + streamId);
+                    // Don't forcefully stop - let cloud timeout naturally
                     return false;
                 }
             }
-            return false;
         } catch (Exception e) {
             Log.e(TAG, "Error handling RTMP keep-alive command", e);
             return false;

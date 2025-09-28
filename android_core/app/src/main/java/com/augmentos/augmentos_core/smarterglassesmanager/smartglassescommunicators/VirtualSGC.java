@@ -28,7 +28,7 @@ public class VirtualSGC extends SmartGlassesCommunicator {
     public void setFontSizes(){
     }
 
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         Log.d(TAG, "Connecting to simulated glasses - enabling audio processing");
         connectionEvent(SmartGlassesConnectionState.CONNECTED);
     }
@@ -101,6 +101,9 @@ public class VirtualSGC extends SmartGlassesCommunicator {
 
     @Override
     public void displayCustomContent(String json) {}
+
+    @Override
+    public void clearDisplay() {}
 
     @Override
     public void findCompatibleDeviceNames() {

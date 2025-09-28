@@ -1,4 +1,5 @@
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {useDisplayStore} from "@/stores/display"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React, {useState, useEffect, useRef} from "react"
@@ -6,14 +7,12 @@ import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
 import Canvas, {Image as CanvasImage, ImageData} from "react-native-canvas"
 
 interface GlassesDisplayMirrorProps {
-  layout: any
   fallbackMessage?: string
   containerStyle?: any
   fullscreen?: boolean
 }
 
 const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
-  layout,
   fallbackMessage = "No display data available",
   containerStyle,
   fullscreen = false,
@@ -24,6 +23,8 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   const containerRef = useRef<View | null>(null)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
   const {status} = useCoreStatus()
+  const {currentEvent} = useDisplayStore()
+  const layout = currentEvent.layout
 
   const processBitmap = async () => {
     if (layout?.layoutType !== "bitmap_view" || !layout.data) {
@@ -94,9 +95,10 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     // if text contains $GBATT$, replace with battery level
     if (text.includes("$GBATT$")) {
       const batteryLevel = status.glasses_info?.battery_level
-      if (batteryLevel) {
-        return text.replace("$GBATT$", batteryLevel.toString() + "%")
+      if (typeof batteryLevel === "number" && batteryLevel >= 0) {
+        return text.replace("$GBATT$", `${batteryLevel}%`)
       }
+      return text.replace("$GBATT$", "")
     }
     return text
   }
@@ -187,8 +189,6 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     )
   }
 
-  console.log("layout", layout)
-
   const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
 
   if (fullscreen) {
@@ -201,7 +201,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 140,
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
   borderRadius: 10,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,

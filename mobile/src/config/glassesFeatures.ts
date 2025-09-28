@@ -3,6 +3,7 @@
 */
 
 export type GlassesFeature =
+  | "type"
   | "camera"
   | "speakers"
   | "microphone"
@@ -17,6 +18,7 @@ export type GlassesFeature =
 export type MicType = "none" | "sco" | "custom"
 
 export interface GlassesFeatureSet {
+  type: string // The type of glasses
   camera: boolean // Do the glasses contain a camera?
   speakers: boolean // Do the glasses have onboard speakers?
   display: boolean // Do the glasses have a display?
@@ -31,7 +33,22 @@ export interface GlassesFeatureSet {
 }
 
 export const glassesFeatures: Record<string, GlassesFeatureSet> = {
+  "Mentra Nex": {
+    type: "Mentra Nex",
+    camera: false,
+    speakers: false,
+    display: true,
+    binocular: true,
+    wifi: false,
+    imu: true,
+    micTypes: ["custom"],
+    powerSavingMode: true,
+    gallery: false,
+    configurableButton: false,
+    wifiSelfOtaUpdate: false,
+  },
   "Even Realities G1": {
+    type: "Even Realities G1",
     camera: false,
     speakers: false,
     display: true,
@@ -45,6 +62,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     configurableButton: false,
   },
   "Vuzix Z100": {
+    type: "Vuzix Z100",
     camera: false,
     speakers: false,
     display: true,
@@ -58,6 +76,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     configurableButton: false,
   },
   "Mentra Live": {
+    type: "Mentra Live",
     camera: true,
     speakers: true,
     display: false,
@@ -65,12 +84,13 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     wifi: true,
     wifiSelfOtaUpdate: true,
     imu: false,
-    micTypes: ["sco"],
+    micTypes: ["custom"],
     powerSavingMode: false,
     gallery: true,
     configurableButton: true,
   },
   "Mentra Mach1": {
+    type: "Mentra Mach1",
     camera: false,
     speakers: false,
     display: true,
@@ -84,6 +104,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     configurableButton: false,
   },
   "Audio Wearable": {
+    type: "Audio Wearable",
     camera: false,
     speakers: true,
     display: false,
@@ -97,6 +118,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     configurableButton: false,
   },
   "Simulated Glasses": {
+    type: "Simulated Glasses",
     camera: true,
     speakers: true,
     display: true,
@@ -110,6 +132,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
     configurableButton: false,
   },
   "Brilliant Labs Frame": {
+    type: "Brilliant Labs Frame",
     camera: true,
     speakers: false, // Uses phone for audio output
     display: true,
@@ -125,6 +148,7 @@ export const glassesFeatures: Record<string, GlassesFeatureSet> = {
 }
 
 export const featureLabels: Record<GlassesFeature, string> = {
+  type: "Type",
   camera: "Camera",
   speakers: "Speakers",
   microphone: "Microphone",
@@ -138,14 +162,49 @@ export const featureLabels: Record<GlassesFeature, string> = {
 }
 
 // Helper functions for mic type checking
-export function hasMicrophone(featureSet: GlassesFeatureSet): boolean {
+export function hasMicrophone(wearable: string | null): boolean {
+  if (!wearable) {
+    return false
+  }
+  const featureSet = glassesFeatures[wearable]
+  if (!featureSet) {
+    return false
+  }
   return featureSet.micTypes.length > 0 && !featureSet.micTypes.includes("none")
 }
 
-export function hasCustomMic(featureSet: GlassesFeatureSet): boolean {
+export function hasCustomMic(wearable: string | null): boolean {
+  if (!wearable) {
+    return false
+  }
+  const featureSet = glassesFeatures[wearable]
+  if (!featureSet) {
+    return false
+  }
   return featureSet.micTypes.includes("custom")
 }
 
-export function hasScoMic(featureSet: GlassesFeatureSet): boolean {
-  return featureSet.micTypes.includes("sco")
+export function hasBrightness(wearable: string | null): boolean {
+  if (!wearable) {
+    return false
+  }
+  const featureSet = glassesFeatures[wearable]
+  if (!featureSet) {
+    return false
+  }
+  if (featureSet?.type === "Simulated Glasses") {
+    return false
+  }
+  return featureSet.display
+}
+
+export function hasGallery(wearable: string | null): boolean {
+  if (!wearable) {
+    return false
+  }
+  const featureSet = glassesFeatures[wearable]
+  if (!featureSet) {
+    return false
+  }
+  return featureSet.gallery
 }

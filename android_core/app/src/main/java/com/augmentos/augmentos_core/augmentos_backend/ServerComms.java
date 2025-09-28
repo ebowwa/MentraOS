@@ -208,6 +208,10 @@ public class ServerComms {
         // Clone only once to avoid unnecessary copies
         byte[] copiedData = audioData.clone();
 
+        // Log.d(TAG, "Sending audio chunk to backend");
+        // Log.d(TAG, "Audio chunk size: " + audioData.length);
+        // Log.d(TAG, "Server URL: " + getServerUrl());
+
         // Add to live queue - if full, just drop (we prioritize newest audio)
         if (!liveAudioQueue.offer(copiedData)) {
             liveAudioQueue.poll(); // Remove oldest
@@ -713,6 +717,12 @@ public class ServerComms {
                 break;
 
             case "microphone_state_change":
+                boolean offlineModeEnabled = false;
+
+                if (speechRecAugmentos != null) {
+                    offlineModeEnabled = speechRecAugmentos.getIsOfflineModeEnabled();
+                }
+
                 boolean bypassVad = msg.optBoolean("bypassVad", false);
 
                 JSONArray requiredDataJson = msg.optJSONArray("requiredData");
@@ -730,6 +740,13 @@ public class ServerComms {
                     }
                 }
 
+                Log.d(TAG, "Offline mode enabled: " + offlineModeEnabled);
+                if (offlineModeEnabled) {
+                    Log.d(TAG, "Offline mode enabled, modifying required data to have just transcription");
+                    requiredData = new ArrayList<>();
+                    requiredData.add(SpeechRequiredDataType.TRANSCRIPTION);
+                }
+
                 // Log.d(TAG, "Received microphone_state_change message. enabled=" + isMicrophoneEnabled +
                 //       " requiredData=" + requiredData + " bypassVad=" + bypassVad);
 
@@ -741,10 +758,11 @@ public class ServerComms {
                 String requestId = msg.optString("requestId");
                 String appId = msg.optString("appId");
                 String webhookUrl = msg.optString("webhookUrl", "");
+                String authToken = msg.optString("authToken", "");
                 String size = msg.optString("size", "medium");
-                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", size: " + size);
+                Log.d(TAG, "Received photo_request, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size: " + size);
                 if (serverCommsCallback != null && !requestId.isEmpty() && !appId.isEmpty()) {
-                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, size);
+                    serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, authToken, size);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
                 }

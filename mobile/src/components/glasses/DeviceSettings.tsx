@@ -10,35 +10,29 @@ import {
   ViewStyle,
   TextStyle,
   Platform,
+  ScrollView,
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Button, Icon} from "@/components/ignite"
+import {Icon} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {getGlassesImage} from "@/utils/getGlassesImage"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {Slider} from "react-native-elements"
-import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import ToggleSetting from "../settings/ToggleSetting"
-import SliderSetting from "../settings/SliderSetting"
-import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import SliderSetting from "@/components/settings/SliderSetting"
+import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasCustomMic} from "@/config/glassesFeatures"
+import {glassesFeatures, hasBrightness, hasCustomMic, hasGallery} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
-import {isMentraUser} from "@/utils/isMentraUser"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -95,29 +89,40 @@ export default function DeviceSettings() {
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
   const {theme, themed} = useAppTheme()
-  const [connectedGlasses, setConnectedGlasses] = useState("")
   const {status} = useCoreStatus()
-  const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
-  const [buttonMode, setButtonMode] = useState(status.glasses_settings?.button_mode || "photo")
+  const isGlassesConnected = Boolean(status.glasses_info?.model_name)
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [buttonMode, setButtonMode] = useSetting(SETTINGS_KEYS.button_mode)
+  const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
+  const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
+  const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
 
-  const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
-  const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
   const {push} = useNavigationHistory()
-  const {user} = useAuth()
 
-  const [devMode, setDevMode] = useState(true)
-  const [isSigningOut, setIsSigningOut] = useState(false)
+  // Check if we have any advanced settings to show
+  const hasMicrophoneSelector =
+    isGlassesConnected &&
+    defaultWearable &&
+    hasCustomMic(defaultWearable) &&
+    (defaultWearable !== "Mentra Live" ||
+      (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900"))
 
+  const hasDeviceInfo =
+    status.glasses_info?.bluetooth_name ||
+    status.glasses_info?.glasses_build_number ||
+    status.glasses_info?.glasses_wifi_local_ip
+
+  const hasAdvancedSettingsContent = hasMicrophoneSelector || hasDeviceInfo
+
+  // Animate advanced settings dropdown
   useEffect(() => {
-    const checkDevMode = async () => {
-      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
-      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
-    }
-    checkDevMode()
-  }, [])
-
-  const {model_name} = status.glasses_info ?? {}
-  const {default_wearable} = status.core_info ?? {}
+    Animated.timing(fadeAnim, {
+      toValue: showAdvancedSettings ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+  }, [showAdvancedSettings, fadeAnim])
 
   useFocusEffect(
     useCallback(() => {
@@ -126,62 +131,40 @@ export default function DeviceSettings() {
       scaleAnim.setValue(0.8)
       slideAnim.setValue(-50)
 
-      // Update connectedGlasses state when default_wearable changes
-      if (status.core_info.default_wearable) {
-        setConnectedGlasses(status.core_info.default_wearable)
-      }
-
-      // Start animations if device is connected
-      if (status.core_info.puck_connected) {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            friction: 8,
-            tension: 60,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 700,
-            useNativeDriver: true,
-          }),
-        ]).start()
-      }
-      if (status.core_info.default_wearable !== "") {
-        setDisconnectButtonDisabled(false)
-      }
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]).start()
       // Cleanup function
       return () => {
         fadeAnim.stopAnimation()
         scaleAnim.stopAnimation()
         slideAnim.stopAnimation()
       }
-    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
+    }, [fadeAnim, scaleAnim, slideAnim]),
   )
 
   const sendDisconnectWearable = async () => {
-    setDisconnectButtonDisabled(true)
-    setConnectButtonDisabled(false)
-
     console.log("Disconnecting wearable")
 
     try {
       await bridge.sendDisconnectWearable()
     } catch (error) {}
   }
-
-  const [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
-  const [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
-
-  useEffect(() => {
-    setBrightness(status?.glasses_settings?.brightness ?? 50)
-    setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
-  }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])
 
   useEffect(() => {
     if (status.glasses_settings?.button_mode) {
@@ -210,12 +193,14 @@ export default function DeviceSettings() {
     }
 
     setPreferredMic(val)
-    await bridge.sendSetPreferredMic(val)
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, val)
+    await bridge.sendSetPreferredMic(val) // TODO: config: remove
   }
 
   const setButtonModeWithSave = async (mode: string) => {
     setButtonMode(mode)
-    await bridge.sendSetButtonMode(mode)
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.button_mode, mode)
+    await bridge.sendSetButtonMode(mode) // TODO: config: remove
   }
 
   const confirmForgetGlasses = () => {
@@ -237,23 +222,8 @@ export default function DeviceSettings() {
     )
   }
 
-  let hasBrightness = true
-  if (status?.glasses_info?.model_name === "Simulated Glasses") {
-    hasBrightness = false
-  }
-  if (status?.glasses_info?.model_name?.toLowerCase().includes("live")) {
-    hasBrightness = false
-  }
-  if (!status?.glasses_info?.model_name) {
-    hasBrightness = false
-  }
-
-  // Check if we need to show any helper text
-  const needsGlassesPaired = !status.core_info.default_wearable
-  const hasDisplay = status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.display
-
   // Check if no glasses are paired at all
-  if (!status.core_info.default_wearable) {
+  if (!defaultWearable) {
     return (
       <View style={themed($container)}>
         <View style={themed($emptyStateContainer)}>
@@ -268,7 +238,7 @@ export default function DeviceSettings() {
   return (
     <View style={themed($container)}>
       {/* Show helper text if glasses are paired but not connected */}
-      {!status.glasses_info?.model_name && status.core_info.default_wearable && (
+      {!status.glasses_info?.model_name && defaultWearable && (
         <View style={themed($infoContainer)}>
           <Text style={themed($infoText)}>
             Changes to glasses settings will take effect when glasses are connected.
@@ -277,55 +247,62 @@ export default function DeviceSettings() {
       )}
 
       {/* Battery Status Section */}
-      {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
-        <View style={themed($settingsGroup)}>
-          <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
-          {/* Glasses Battery */}
-          {status.glasses_info.battery_level !== -1 && (
-            <View
-              style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <GlassesIcon size={20} isDark={theme.isDark} />
-                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
-              </View>
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Icon icon="battery" size={16} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
-                  {status.glasses_info.battery_level}%
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* Case Battery */}
-          {status.glasses_info.case_battery_level !== undefined &&
-            status.glasses_info.case_battery_level !== -1 &&
-            !status.glasses_info.case_removed && (
+      {isGlassesConnected &&
+        status.glasses_info?.battery_level !== undefined &&
+        status.glasses_info.battery_level !== -1 && (
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
+            {/* Glasses Battery */}
+            {status.glasses_info.battery_level !== -1 && (
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  paddingVertical: theme.spacing.xs,
+                  paddingVertical: 4,
                 }}>
                 <View style={{flexDirection: "row", alignItems: "center"}}>
-                  <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
-                    Case {status.glasses_info.case_charging ? "(Charging)" : ""}
-                  </Text>
+                  <GlassesIcon size={20} isDark={theme.isDark} />
+                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
                 </View>
                 <View style={{flexDirection: "row", alignItems: "center"}}>
                   <Icon icon="battery" size={16} color={theme.colors.text} />
-                  <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
-                    {status.glasses_info.case_battery_level}%
+                  <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
+                    {status.glasses_info.battery_level}%
                   </Text>
                 </View>
               </View>
             )}
-        </View>
-      )}
 
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.gallery && (
+            {/* Case Battery */}
+            {status.glasses_info.case_battery_level !== undefined &&
+              status.glasses_info.case_battery_level !== -1 &&
+              !status.glasses_info.case_removed && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: theme.spacing.xs,
+                  }}>
+                  <View style={{flexDirection: "row", alignItems: "center"}}>
+                    <CaseIcon size={20} isCharging={status.glasses_info.case_charging} isDark={theme.isDark} />
+                    <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs}}>
+                      Case {status.glasses_info.case_charging ? "(Charging)" : ""}
+                    </Text>
+                  </View>
+                  <View style={{flexDirection: "row", alignItems: "center"}}>
+                    <Icon icon="battery" size={16} color={theme.colors.text} />
+                    <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xxs, fontWeight: "500"}}>
+                      {status.glasses_info.case_battery_level}%
+                    </Text>
+                  </View>
+                </View>
+              )}
+          </View>
+        )}
+
+      {hasGallery(defaultWearable) && (
         <RouteButton
           label={translate("glasses:gallery")}
           subtitle={translate("glasses:galleryDescription")}
@@ -333,7 +310,7 @@ export default function DeviceSettings() {
         />
       )}
 
-      {hasBrightness && (
+      {hasBrightness(defaultWearable) && isGlassesConnected && (
         <View style={themed($settingsGroup)}>
           <ToggleSetting
             label="Auto Brightness"
@@ -376,54 +353,18 @@ export default function DeviceSettings() {
         </View>
       )}
 
-      {/* Only show mic selector if glasses have both SCO and custom mic types */}
-      {status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable] &&
-        hasCustomMic(glassesFeatures[status.core_info.default_wearable]) && (
-          <View style={themed($settingsGroup)}>
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingBottom: theme.spacing.xs,
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("phone")}>
-              <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-            {/* divider */}
-            <View
-              style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
-            />
-            <TouchableOpacity
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                paddingTop: theme.spacing.xs,
-              }}
-              onPress={() => setMic("glasses")}>
-              <View style={{flexDirection: "column", gap: 4}}>
-                <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-                {/* {!status.glasses_info?.model_name && (
-                <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
-              )} */}
-              </View>
-              <MaterialCommunityIcons
-                name="check"
-                size={24}
-                color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+      {/* Nex Developer Settings - Only show when connected to Mentra Nex */}
+      {defaultWearable && defaultWearable.toLowerCase().includes("nex") && (
+        <RouteButton
+          label="Nex Developer Settings"
+          subtitle="Advanced developer tools and debugging features"
+          onPress={() => push("/glasses/nex-developer-settings")}
+        />
+      )}
+      {/* Mic selector has been moved to Advanced Settings section below */}
 
       {/* Only show button mode selector if glasses support configurable button */}
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+      {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
         <View style={themed($settingsGroup)}>
           <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>
             {translate("deviceSettings:cameraButtonAction")}
@@ -489,7 +430,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Camera Settings button for glasses with configurable button */}
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.configurableButton && (
+      {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
         <RouteButton
           label={translate("settings:cameraSettings")}
           subtitle={translate("settings:cameraSettingsDescription")}
@@ -498,7 +439,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Only show WiFi settings if connected glasses support WiFi */}
-      {status.glasses_info?.model_name && glassesFeatures[status.glasses_info.model_name]?.wifi && (
+      {defaultWearable && glassesFeatures[defaultWearable]?.wifi && (
         <RouteButton
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
@@ -508,20 +449,10 @@ export default function DeviceSettings() {
         />
       )}
 
-      {/* Show device info for glasses */}
-      {status.glasses_info?.model_name && (
-        <InfoSection
-          title="Device Information"
-          items={[
-            {label: "Bluetooth Name", value: status.glasses_info.bluetooth_name},
-            {label: "Build Number", value: status.glasses_info.glasses_build_number},
-            {label: "Local IP Address", value: status.glasses_info.glasses_wifi_local_ip},
-          ]}
-        />
-      )}
+      {/* Device info is rendered within the Advanced Settings section below */}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
-      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && (
+      {defaultWearable && isGlassesConnected && defaultWearable.toLowerCase().includes("live") && (
         <OtaProgressSection otaProgress={status.ota_progress} />
       )}
 
@@ -531,17 +462,7 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      {devMode &&
-        status.core_info.default_wearable &&
-        glassesFeatures[status.core_info.default_wearable]?.binocular && (
-          <RouteButton
-            label={translate("settings:screenSettings")}
-            subtitle={translate("settings:screenDescription")}
-            onPress={() => push("/settings/screen")}
-          />
-        )}
-
-      {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
+      {defaultWearable && isGlassesConnected && defaultWearable !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
@@ -551,12 +472,96 @@ export default function DeviceSettings() {
         />
       )}
 
-      {status.core_info.default_wearable && (
+      {defaultWearable && (
         <ActionButton
           label={translate("settings:forgetGlasses")}
           variant="destructive"
           onPress={confirmForgetGlasses}
         />
+      )}
+
+      {/* Advanced Settings Dropdown - Only show if there's content */}
+      {defaultWearable && hasAdvancedSettingsContent && (
+        <>
+          <TouchableOpacity
+            style={themed($advancedSettingsButton)}
+            onPress={() => setShowAdvancedSettings(!showAdvancedSettings)}
+            activeOpacity={0.7}>
+            <View style={themed($advancedSettingsContent)}>
+              <Text style={themed($advancedSettingsLabel)}>Advanced Settings</Text>
+              <MaterialCommunityIcons
+                name={showAdvancedSettings ? "chevron-up" : "chevron-down"}
+                size={24}
+                color={theme.colors.textDim}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {showAdvancedSettings && (
+            <Animated.View style={{opacity: fadeAnim}}>
+              {/* Microphone Selector - moved from above */}
+              {hasMicrophoneSelector && (
+                <View style={themed($settingsGroup)}>
+                  <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>Microphone Selection</Text>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingBottom: theme.spacing.xs,
+                        paddingTop: theme.spacing.xs,
+                      }}
+                      onPress={() => setMic("phone")}>
+                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={24}
+                        color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+                      />
+                    </TouchableOpacity>
+                    {/* divider */}
+                    <View
+                      style={{
+                        height: StyleSheet.hairlineWidth,
+                        backgroundColor: theme.colors.separator,
+                        marginVertical: 4,
+                      }}
+                    />
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingTop: theme.spacing.xs,
+                      }}
+                      onPress={() => setMic("glasses")}>
+                      <View style={{flexDirection: "column", gap: 4}}>
+                        <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                      </View>
+                      <MaterialCommunityIcons
+                        name="check"
+                        size={24}
+                        color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+              {/* Spacer between sections */}
+              <View style={{height: 16}} />
+
+              {/* Device Information - moved from above */}
+              {isGlassesConnected && (
+                <InfoSection
+                  title="Device Information"
+                  items={[
+                    {label: "Bluetooth Name", value: status.glasses_info?.bluetooth_name},
+                    {label: "Build Number", value: status.glasses_info?.glasses_build_number},
+                    {label: "Local IP Address", value: status.glasses_info?.glasses_wifi_local_ip},
+                  ]}
+                />
+              )}
+            </Animated.View>
+          )}
+        </>
       )}
 
       <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
@@ -605,6 +610,27 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 14,
   textAlign: "center",
+})
+
+const $advancedSettingsButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.background,
+  paddingVertical: 14,
+  paddingHorizontal: 16,
+  borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
+})
+
+const $advancedSettingsContent: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+})
+
+const $advancedSettingsLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  fontWeight: "600",
 })
 
 const $emptyStateContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

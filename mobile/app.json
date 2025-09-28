@@ -153,6 +153,14 @@
           "project": "mentra-os",
           "organization": "mentra-labs"
         }
+      ],
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow MentraOS to use your location."
+        }
       ]
     ],
     "experiments": {

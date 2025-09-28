@@ -1,19 +1,11 @@
-import Config from "react-native-config"
-import coreCommunicator from "@/bridge/MantleBridge"
-import {getRestUrl, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {getWsUrl} from "@/utils/SettingsHelper"
+import bridge from "@/bridge/MantleBridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import wsManager, {WebSocketStatus} from "@/managers/WebSocketManager"
-
-// Type definitions
-interface ThirdPartyCloudApp {
-  packageName: string
-  name: string
-  description: string
-  webhookURL: string
-  logoURL: string
-  isRunning: boolean
-}
+import wsManager from "@/managers/WebSocketManager"
+import {useDisplayStore} from "@/stores/display"
+import livekitManager from "@/managers/LivekitManager"
+import mantle from "@/managers/MantleManager"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import {AudioPlayService} from "@/services/AudioPlayService"
 
 class SocketComms {
   private static instance: SocketComms | null = null
@@ -25,86 +17,26 @@ class SocketComms {
   private reconnecting = false
   private reconnectionAttempts = 0
 
-  // Timers
-  private calendarSyncTimer: NodeJS.Timeout | null = null
-  private datetimeTimer: NodeJS.Timeout | null = null
-
   private constructor() {
     // Subscribe to WebSocket messages
     this.ws.on("message", message => {
       this.handle_message(message)
     })
-
-    this.setupPeriodicTasks()
   }
 
-  // public static getInstance(): SocketComms {
-  //   if (!SocketComms.instance) {
-  //     SocketComms.instance = new SocketComms()
-  //   }
-  //   return SocketComms.instance
-  // }
-
-  public static getInstance(): any {
-    const disableNewWsManager = false
-    if (!disableNewWsManager) {
-      if (!SocketComms.instance) {
-        SocketComms.instance = new SocketComms()
-      }
-
-      return SocketComms.instance
+  public static getInstance(): SocketComms {
+    if (!SocketComms.instance) {
+      SocketComms.instance = new SocketComms()
     }
-    return {
-      restartConnection: () => {},
-      setAuthCreds: () => {},
-      sendText: () => {},
-      send_calendar_events: () => {},
-      send_location_updates: () => {},
-      send_user_datetime_to_backend: () => {},
-      send_transcription_result: () => {},
-      cleanup: () => {},
-      isWebSocketConnected: () => false,
-      send_vad_status: () => {},
-      send_battery_status: () => {},
-      send_calendar_event: () => {},
-      send_location_update: () => {},
-      send_glasses_connection_state: () => {},
-      update_asr_config: () => {},
-      send_core_status: () => {},
-      send_audio_play_response: () => {},
-      send_start_app: () => {},
-      send_stop_app: () => {},
-      send_button_press: () => {},
-      send_photo_response: () => {},
-      send_video_stream_response: () => {},
-      send_head_position: () => {},
-      parse_app_list: () => [],
-      get_current_iso_datetime: () => "",
-    } as any
-  }
 
-  private setupPeriodicTasks() {
-    // // Calendar sync every hour
-    // this.calendarSyncTimer = setInterval(
-    //   () => {
-    //     console.log("Periodic calendar sync")
-    //     this.send_calendar_events()
-    //   },
-    //   60 * 60 * 1000,
-    // ) // 1 hour
-    // // Datetime transmission every 60 seconds
-    // this.datetimeTimer = setInterval(() => {
-    //   console.log("Periodic datetime transmission")
-    //   const isoDatetime = SocketComms.get_current_iso_datetime()
-    //   this.send_user_datetime_to_backend(isoDatetime)
-    // }, 60 * 1000) // 60 seconds
+    return SocketComms.instance
   }
 
   // Connection Management
 
   private async connectWebsocket() {
     console.log("SocketCommsTS: connectWebsocket()")
-    const url = await getWsUrl()
+    const url = await useSettingsStore.getState().getWsUrl()
     if (!url) {
       console.error(`SocketCommsTS: Invalid server URL`)
       return
@@ -130,22 +62,6 @@ class SocketComms {
     }, 10000)
   }
 
-  private handleStatusChange(status: WebSocketStatus) {
-    console.log(`SocketCommsTS: handleStatusChange: ${status}`)
-
-    if (status === WebSocketStatus.DISCONNECTED || status === WebSocketStatus.ERROR) {
-      this.attemptReconnect()
-    }
-
-    if (status === WebSocketStatus.CONNECTED) {
-      // Wait a bit before sending connection_init
-      setTimeout(() => {
-        this.send_calendar_events()
-        this.send_location_updates()
-      }, 3000)
-    }
-  }
-
   isWebSocketConnected(): boolean {
     return this.ws.isConnected()
   }
@@ -162,8 +78,19 @@ class SocketComms {
     console.log(`SocketCommsTS: setAuthCreds(): ${coreToken}, ${userid}`)
     this.coreToken = coreToken
     this.userid = userid
-    saveSetting(SETTINGS_KEYS.core_token, coreToken)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.core_token, coreToken)
     this.connectWebsocket()
+  }
+
+  sendAudioPlayResponse(requestId: string, success: boolean, error: string | null, duration: number | null) {
+    const msg = {
+      type: "audio_play_response",
+      requestId: requestId,
+      success: success,
+      error: error,
+      duration: duration,
+    }
+    this.ws.sendText(JSON.stringify(msg))
   }
 
   sendText(text: string) {
@@ -208,39 +135,7 @@ class SocketComms {
     this.ws.sendText(jsonString)
   }
 
-  send_calendar_event(calendarItem: any) {
-    if (!this.ws.isConnected()) {
-      console.log("SocketCommsTS: Cannot send calendar event: not connected.")
-      return
-    }
-
-    try {
-      const event = {
-        type: "calendar_event",
-        title: calendarItem.title,
-        eventId: calendarItem.eventId,
-        dtStart: calendarItem.dtStart,
-        dtEnd: calendarItem.dtEnd,
-        timeZone: calendarItem.timeZone,
-        timestamp: Math.floor(Date.now() / 1000),
-      }
-
-      const jsonString = JSON.stringify(event)
-      this.ws.sendText(jsonString)
-    } catch (error) {
-      console.log(`SocketCommsTS: Error building calendar_event JSON: ${error}`)
-    }
-  }
-
-  async send_calendar_events() {
-    if (!this.ws.isConnected()) return
-
-    // Request calendar events from native side
-    // Native side will handle fetching and sending events
-    await coreCommunicator.sendCommand("fetch_calendar_events")
-  }
-
-  send_location_update(lat: number, lng: number, accuracy?: number, correlationId?: string) {
+  sendLocationUpdate(lat: number, lng: number, accuracy?: number, correlationId?: string) {
     try {
       const event: any = {
         type: "location_update",
@@ -271,7 +166,7 @@ class SocketComms {
     }
 
     // Request location from native side
-    coreCommunicator.sendCommand("request_location_update")
+    bridge.sendCommand("request_location_update")
   }
 
   send_glasses_connection_state(modelName: string, status: string) {
@@ -324,62 +219,8 @@ class SocketComms {
     }
   }
 
-  send_audio_play_response(requestId: string, success: boolean, error?: string, duration?: number) {
-    console.log(
-      `SocketCommsTS: Sending audio play response - requestId: ${requestId}, success: ${success}, error: ${error || "none"}`,
-    )
-
-    const message: any = {
-      type: "audio_play_response",
-      requestId: requestId,
-      success: success,
-    }
-
-    if (error) message.error = error
-    if (duration !== undefined) message.duration = duration
-
-    try {
-      const jsonString = JSON.stringify(message)
-      this.ws.sendText(jsonString)
-      console.log("SocketCommsTS: Sent audio play response to server")
-    } catch (err) {
-      console.log(`SocketCommsTS: Failed to serialize audio play response: ${err}`)
-    }
-  }
-
-  // App Lifecycle
-  send_start_app(packageName: string) {
-    try {
-      const msg = {
-        type: "start_app",
-        packageName: packageName,
-        timestamp: Date.now(),
-      }
-
-      const jsonString = JSON.stringify(msg)
-      this.ws.sendText(jsonString)
-    } catch (error) {
-      console.log(`SocketCommsTS: Error building start_app JSON: ${error}`)
-    }
-  }
-
-  send_stop_app(packageName: string) {
-    try {
-      const msg = {
-        type: "stop_app",
-        packageName: packageName,
-        timestamp: Date.now(),
-      }
-
-      const jsonString = JSON.stringify(msg)
-      this.ws.sendText(jsonString)
-    } catch (error) {
-      console.log(`SocketCommsTS: Error building stop_app JSON: ${error}`)
-    }
-  }
-
   // Hardware Events
-  send_button_press(buttonId: string, pressType: string) {
+  sendButtonPress(buttonId: string, pressType: string) {
     try {
       const event = {
         type: "button_press",
@@ -427,7 +268,7 @@ class SocketComms {
     }
   }
 
-  send_head_position(isUp: boolean) {
+  sendHeadPosition(isUp: boolean) {
     try {
       const event = {
         type: "head_position",
@@ -444,14 +285,15 @@ class SocketComms {
 
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
-    console.log("SocketCommsTS: connection ack", msg)
-    this.parse_app_list(msg)
-    // coreCommunicator.sendCommand("connection_ack")
+    console.log("SocketCommsTS: connection ack, connecting to livekit")
+    livekitManager.connect()
+    GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 
   private handle_app_state_change(msg: any) {
-    console.log("SocketCommsTS: app state change", msg)
-    this.parse_app_list(msg)
+    // console.log("SocketCommsTS: app state change", msg)
+    // this.parse_app_list(msg)
+    GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 
   private handle_connection_error(msg: any) {
@@ -466,16 +308,19 @@ class SocketComms {
     const bypassVad = msg.bypassVad || false
     const requiredDataStrings = msg.requiredData || []
     console.log(`SocketCommsTS: requiredData = ${requiredDataStrings}, bypassVad = ${bypassVad}`)
-    coreCommunicator.sendCommand("microphone_state_change", {
+    bridge.sendCommand("microphone_state_change", {
       requiredData: requiredDataStrings,
       bypassVad,
     })
   }
 
-  private handle_display_event(msg: any) {
+  public handle_display_event(msg: any) {
+    // console.log(`SocketCommsTS: Handling display event: ${JSON.stringify(msg)}`)
     if (msg.view) {
-      coreCommunicator.sendCommand("display_event", msg)
-      GlobalEventEmitter.emit("GLASSES_DISPLAY_EVENT", msg) // send to the glasses mirror
+      bridge.sendCommand("display_event", msg)
+      // Update the Zustand store with the display content
+      const displayEvent = JSON.stringify(msg)
+      useDisplayStore.getState().setDisplayEvent(displayEvent)
     }
   }
 
@@ -484,25 +329,13 @@ class SocketComms {
     const requestId = msg.requestId
     if (!requestId) return
 
-    console.log(`SocketCommsTS: Handling audio play request for requestId: ${requestId}`)
-
-    const audioUrl = msg.audioUrl || ""
-    const volume = msg.volume || 1.0
-    const stopOtherAudio = msg.stopOtherAudio !== false
-
-    // Forward to native audio handling through CoreCommunicator
-    coreCommunicator.sendCommand("audio_play_request", {
-      requestId,
-      audioUrl,
-      volume,
-      stopOtherAudio,
-    })
+    AudioPlayService.getInstance().handle_audio_play_request(msg)
   }
 
   private handle_audio_stop_request() {
     console.log("SocketCommsTS: Handling audio stop request")
     // Forward to native audio handling
-    coreCommunicator.sendCommand("audio_stop_request")
+    bridge.sendCommand("audio_stop_request")
   }
 
   private handle_set_location_tier(msg: any) {
@@ -512,16 +345,13 @@ class SocketComms {
       console.log("SocketCommsTS: No tier provided")
       return
     }
-    coreCommunicator.sendCommand("set_location_tier", {tier})
+    mantle.setLocationTier(tier)
   }
 
   private handle_request_single_location(msg: any) {
     console.log("SocketCommsTS: DEBUG request_single_location:", msg)
     if (msg.accuracy && msg.correlationId) {
-      coreCommunicator.sendCommand("request_single_location", {
-        accuracy: msg.accuracy,
-        correlationId: msg.correlationId,
-      })
+      mantle.requestSingleLocation(msg.accuracy, msg.correlationId)
     }
   }
 
@@ -532,13 +362,13 @@ class SocketComms {
       return
     }
     console.log(`SocketCommsTS: Received app_started message for package: ${msg.packageName}`)
-    coreCommunicator.sendCommand("app_started", {
+    bridge.sendCommand("app_started", {
       packageName: msg.packageName,
     })
   }
   private handle_app_stopped(msg: any) {
     console.log(`SocketCommsTS: Received app_stopped message for package: ${msg.packageName}`)
-    coreCommunicator.sendCommand("app_stopped", {
+    bridge.sendCommand("app_stopped", {
       packageName: msg.packageName,
     })
   }
@@ -555,7 +385,7 @@ class SocketComms {
       console.log("Invalid photo request: missing requestId or appId")
       return
     }
-    coreCommunicator.sendCommand("photo_request", {
+    bridge.sendCommand("photo_request", {
       requestId,
       appId,
       webhookUrl,
@@ -566,46 +396,46 @@ class SocketComms {
   private handle_start_rtmp_stream(msg: any) {
     const rtmpUrl = msg.rtmpUrl || ""
     if (rtmpUrl) {
-      coreCommunicator.sendCommand("start_rtmp_stream", msg)
+      bridge.sendCommand("start_rtmp_stream", msg)
     } else {
       console.log("Invalid RTMP stream request: missing rtmpUrl")
     }
   }
 
   private handle_stop_rtmp_stream() {
-    coreCommunicator.sendCommand("stop_rtmp_stream")
+    bridge.sendCommand("stop_rtmp_stream")
   }
 
   private handle_keep_rtmp_stream_alive(msg: any) {
     console.log(`SocketCommsTS: Received KEEP_RTMP_STREAM_ALIVE: ${JSON.stringify(msg)}`)
-    coreCommunicator.sendCommand("keep_rtmp_stream_alive", msg)
+    bridge.sendCommand("keep_rtmp_stream_alive", msg)
   }
 
   private handle_save_buffer_video(msg: any) {
     console.log(`SocketCommsTS: Received SAVE_BUFFER_VIDEO: ${JSON.stringify(msg)}`)
     const bufferRequestId = msg.requestId || `buffer_${Date.now()}`
     const durationSeconds = msg.durationSeconds || 30
-    coreCommunicator.sendCommand("save_buffer_video", {
+    bridge.sendCommand("save_buffer_video", {
       requestId: bufferRequestId,
       durationSeconds,
     })
   }
 
-  private handle_start_buffer_recording(msg: any) {
+  private handle_start_buffer_recording() {
     console.log("SocketCommsTS: Received START_BUFFER_RECORDING")
-    coreCommunicator.sendCommand("start_buffer_recording")
+    bridge.sendCommand("start_buffer_recording")
   }
 
-  private handle_stop_buffer_recording(msg: any) {
+  private handle_stop_buffer_recording() {
     console.log("SocketCommsTS: Received STOP_BUFFER_RECORDING")
-    coreCommunicator.sendCommand("stop_buffer_recording")
+    bridge.sendCommand("stop_buffer_recording")
   }
 
   private handle_start_video_recording(msg: any) {
     console.log(`SocketCommsTS: Received START_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
     const videoRequestId = msg.requestId || `video_${Date.now()}`
     const save = msg.save !== false
-    coreCommunicator.sendCommand("start_video_recording", {
+    bridge.sendCommand("start_video_recording", {
       requestId: videoRequestId,
       save,
     })
@@ -614,7 +444,7 @@ class SocketComms {
   private handle_stop_video_recording(msg: any) {
     console.log(`SocketCommsTS: Received STOP_VIDEO_RECORDING: ${JSON.stringify(msg)}`)
     const stopRequestId = msg.requestId || ""
-    coreCommunicator.sendCommand("stop_video_recording", {
+    bridge.sendCommand("stop_video_recording", {
       requestId: stopRequestId,
     })
   }
@@ -628,7 +458,7 @@ class SocketComms {
     switch (type) {
       case "connection_ack":
         this.handle_connection_ack(msg)
-        // coreCommunicator.sendCommand("connection_ack")
+        // bridge.sendCommand("connection_ack")
         break
 
       case "app_state_change":
@@ -720,58 +550,9 @@ class SocketComms {
     }
   }
 
-  parse_app_list(msg: any): ThirdPartyCloudApp[] {
-    let installedApps = msg.installedApps
-    let activeAppPackageNames = msg.activeAppPackageNames
-
-    // If not found at top level, look under userSession
-    if (!installedApps && msg.userSession) {
-      installedApps = msg.userSession.installedApps
-    }
-
-    if (!activeAppPackageNames && msg.userSession) {
-      activeAppPackageNames = msg.userSession.activeAppPackageNames
-    }
-
-    // Convert activeAppPackageNames into a Set for easy lookup
-    const runningPackageNames = new Set<string>()
-    if (activeAppPackageNames) {
-      for (const packageName of activeAppPackageNames) {
-        if (packageName) {
-          runningPackageNames.add(packageName)
-        }
-      }
-    }
-
-    // Build a list of ThirdPartyCloudApp objects from installedApps
-    const appList: ThirdPartyCloudApp[] = []
-    if (installedApps) {
-      for (const appJson of installedApps) {
-        const packageName = appJson.packageName || "unknown.package"
-        const isRunning = runningPackageNames.has(packageName)
-
-        const app: ThirdPartyCloudApp = {
-          packageName: packageName,
-          name: appJson.name || "Unknown App",
-          description: appJson.description || "No description available.",
-          webhookURL: appJson.webhookURL || "",
-          logoURL: appJson.logoURL || "",
-          isRunning: isRunning,
-        }
-        appList.push(app)
-      }
-    }
-
-    return appList
-  }
-
-  static get_current_iso_datetime(): string {
-    return new Date().toISOString()
-  }
-
-  send_transcription_result(transcription: any) {
+  sendLocalTranscription(transcription: any) {
     if (!this.ws.isConnected()) {
-      console.log("Cannot send transcription result: WebSocket not connected")
+      console.log("Cannot send local transcription: WebSocket not connected")
       return
     }
 
@@ -786,24 +567,13 @@ class SocketComms {
       this.ws.sendText(jsonString)
 
       const isFinal = transcription.isFinal || false
-      console.log(`Sent ${isFinal ? "final" : "partial"} transcription: '${text}'`)
+      console.log(`SocketCommsTS: Sent ${isFinal ? "final" : "partial"} transcription: '${text}'`)
     } catch (error) {
       console.log(`Error sending transcription result: ${error}`)
     }
   }
 
   cleanup() {
-    // Stop timers
-    if (this.calendarSyncTimer) {
-      clearInterval(this.calendarSyncTimer)
-      this.calendarSyncTimer = null
-    }
-
-    if (this.datetimeTimer) {
-      clearInterval(this.datetimeTimer)
-      this.datetimeTimer = null
-    }
-
     // Cleanup WebSocket
     this.ws.cleanup()
 

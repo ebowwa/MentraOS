@@ -1,6 +1,6 @@
 import os from "os";
 import { Logger } from "pino";
-import SessionStorage from "../session/SessionStorage";
+// SessionStorage replaced by static registry in UserSession
 import { logger as rootLogger } from "../logging/pino-logger";
 import UserSession from "../session/UserSession";
 
@@ -90,7 +90,7 @@ export class MemoryTelemetryService {
   }
 
   getCurrentStats(): MemoryTelemetrySnapshot {
-    const sessions = SessionStorage.getInstance().getAllSessions();
+  const sessions = UserSession.getAllSessions();
     const sessionStats = sessions.map((s) => this.getSessionStats(s));
     const mem = process.memoryUsage();
     return {
