@@ -1,10 +1,10 @@
-import React, {useState, useEffect} from "react"
 import {View, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {type ThemeType} from "@/utils/useAppTheme"
+// eslint-disable-next-line
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
