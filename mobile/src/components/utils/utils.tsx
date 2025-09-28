@@ -48,8 +48,10 @@ export function OtaUpdateChecker() {
 
       // Check for updates
       setIsChecking(true)
+      let checkCompleted = false
       try {
         const versionJson = await fetchVersionInfo(otaVersionUrl)
+        checkCompleted = true
         if (isUpdateAvailable(currentBuildNumber, versionJson)) {
           const latestVersionInfo = getLatestVersionInfo(versionJson)
           setLatestVersion(latestVersionInfo?.versionName || null)
@@ -74,8 +76,12 @@ export function OtaUpdateChecker() {
         }
       } catch (error) {
         console.error("Error checking for OTA update:", error)
+        checkCompleted = true
       } finally {
         setIsChecking(false)
+        if (checkCompleted) {
+          setHasChecked(true)
+        }
       }
     }
     checkForOtaUpdate()
