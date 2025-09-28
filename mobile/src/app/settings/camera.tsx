@@ -36,7 +36,7 @@ export default function CameraSettingsScreen() {
   const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {user} = useAuth()
-  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   // Local state for optimistic updates - initialize from status
   const [photoSize, setPhotoSize] = useState<PhotoSize>(
@@ -81,7 +81,7 @@ export default function CameraSettingsScreen() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.DEV_MODE)
+      const devModeSetting = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.dev_mode)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()

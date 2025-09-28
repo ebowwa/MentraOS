@@ -32,7 +32,7 @@ interface SwitchInputProps extends BaseToggleInputProps<SwitchToggleProps> {
  */
 export function Switch(props: SwitchToggleProps) {
   const {accessibilityMode, ...rest} = props
-  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [showNewUi] = useSetting(SETTINGS_KEYS.new_ui)
 
   const switchInput = useCallback(
     (toggleProps: SwitchInputProps) => {

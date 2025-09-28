@@ -54,7 +54,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   // Check onboarding status
   useEffect(() => {
     const checkOnboarding = async () => {
-      const onboardingCompleted = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+      const onboardingCompleted = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
       if (!onboardingCompleted) {
         // Check if glasses are connected
         const glassesConnected = status.glasses_info?.model_name != null
@@ -78,7 +78,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
           // }
           // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
           setVisible(false)
-          await useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+          await useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
         }
       }
     }
@@ -92,7 +92,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   const handleDismiss = () => {
     setVisible(false)
     // Mark onboarding as completed if user skips
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
   }
 
   // Handle spotlight target press
@@ -108,7 +108,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
         await restComms.startApp(liveCaptionsPackageName)
 
         // Mark onboarding as completed
-        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
 
         // Show the success message after a short delay
         setTimeout(() => {

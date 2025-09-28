@@ -20,7 +20,7 @@ import {useSettingsStore} from "@/stores/settings"
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
 
-  const isNewUi = useSettingsStore(state => state.settings[SETTINGS_KEYS.NEW_UI])
+  const isNewUi = useSettingsStore(state => state.settings[SETTINGS_KEYS.new_ui])
   const setSetting = useSettingsStore(state => state.setSetting)
   const {theme, themed} = useAppTheme()
   const {replace} = useNavigationHistory()
@@ -59,7 +59,7 @@ export default function Layout() {
     if (pressCount.current === maxPressCount) {
       // Show alert on 8th press
       showAlert("Developer Mode", "You are now a developer!", [{text: translate("common:ok")}])
-      useSettingsStore.getState().setSetting(SETTINGS_KEYS.DEV_MODE, true)
+      useSettingsStore.getState().setSetting(SETTINGS_KEYS.dev_mode, true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -82,7 +82,7 @@ export default function Layout() {
   // enable new home ui if you tap and hold
   const handleHomeLongPress = async () => {
     replace("/home")
-    await setSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    await setSetting(SETTINGS_KEYS.new_ui, !isNewUi)
     Toast.show({
       type: "info",
       text1: isNewUi ? "New UI disabled" : "New UI enabled",

@@ -13,7 +13,7 @@ export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
   const {replace} = useNavigationHistory()
 
-  const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
+  const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.theme_preference)
 
   const handleThemeChange = async (newTheme: ThemeType) => {
     await setThemePreference(newTheme)

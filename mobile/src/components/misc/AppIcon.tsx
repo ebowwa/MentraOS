@@ -22,8 +22,8 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.ENABLE_SQUIRCLES)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
 
   return (
     <WrapperComponent

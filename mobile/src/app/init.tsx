@@ -53,8 +53,8 @@ export default function InitScreen() {
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
   const [isRetrying, setIsRetrying] = useState(false)
   // Zustand store hooks
-  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const [onboardingCompleted, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
+  const [onboardingCompleted, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.onboarding_completed)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -67,7 +67,7 @@ export default function InitScreen() {
   }
 
   const checkCustomUrl = async (): Promise<boolean> => {
-    const defaultUrl = useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const defaultUrl = useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.custom_backend_url)
     const isCustom = customBackendUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
@@ -211,7 +211,7 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.custom_backend_url)) as string
       await setCustomBackendUrl(defaultUrl)
       await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)

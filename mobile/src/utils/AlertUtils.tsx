@@ -68,7 +68,7 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 // Global component that will be rendered once at the app root
 export function ModalProvider({children}: {children: React.ReactNode}) {
   const {theme} = useAppTheme()
-  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [showNewUi] = useSetting(SETTINGS_KEYS.new_ui)
   const [visible, setVisible] = React.useState(false)
   const [title, setTitle] = React.useState("")
   const [message, setMessage] = React.useState("")

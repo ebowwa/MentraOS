@@ -36,7 +36,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   const colorScheme = useColorScheme()
   const [overrideTheme, setTheme] = useState<ThemeContexts>(initialTheme)
   const [isLoaded, setIsLoaded] = useState(false)
-  const [savedTheme, _setSavedTheme] = useSetting(SETTINGS_KEYS.THEME_PREFERENCE)
+  const [savedTheme, _setSavedTheme] = useSetting(SETTINGS_KEYS.theme_preference)
 
   const setThemeContextOverride = useCallback((newTheme: ThemeContexts) => {
     setTheme(newTheme)

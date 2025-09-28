@@ -93,7 +93,7 @@ export function Reconnect() {
       if (nextAppState === "active") {
         const reconnectOnAppForeground = await useSettingsStore
           .getState()
-          .getSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
+          .getSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
         if (!reconnectOnAppForeground) {
           return
         }

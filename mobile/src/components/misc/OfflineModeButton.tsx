@@ -10,7 +10,7 @@ import bridge from "@/bridge/MantleBridge"
 
 export const OfflineModeButton: React.FC = () => {
   const {theme, themed} = useAppTheme()
-  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
   const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
     SETTINGS_KEYS.offline_captions_app_running,
   )

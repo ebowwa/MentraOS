@@ -24,11 +24,11 @@ export default function DeveloperSettingsScreen() {
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
-  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
   const [powerSavingMode, setPowerSavingMode] = useSetting(SETTINGS_KEYS.power_saving_mode)
-  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.ENABLE_SQUIRCLES)
+  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
