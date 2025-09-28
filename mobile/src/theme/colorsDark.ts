@@ -130,5 +130,13 @@ export const colors = {
   secondary: palette.secondary300,
   accent: palette.accent300,
 
+  // Iconography
+  icon: palette.neutral900,
+  iconSecondary: palette.neutral500,
+
+  // Status chips
+  statusIcon: palette.lightPurple1,
+  statusText: palette.neutral900,
+
   ...unique,
 } as const

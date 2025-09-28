@@ -318,6 +318,10 @@ export function DeviceToolbar() {
     return null
   }
 
+  if (!status.glasses_info?.model_name) {
+    return null
+  }
+
   // don't show if simulated glasses
   if (status.glasses_info?.model_name?.toLowerCase().includes("simulated")) {
     return null

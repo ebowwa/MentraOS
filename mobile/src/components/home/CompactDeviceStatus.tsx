@@ -226,7 +226,7 @@ export const CompactDeviceStatus: React.FC = () => {
 
       <View style={themed($statusContainer)}>
         <View style={themed($statusRow)}>
-          <Icon icon="battery" size={16} color={theme.colors.statusIcon} />
+          <Icon icon="battery" size={16} color={theme.colors.statusText} />
           <Text style={themed($statusText)} numberOfLines={1}>
             {batteryLevel !== -1 ? (
               `${batteryLevel}%`
@@ -238,7 +238,7 @@ export const CompactDeviceStatus: React.FC = () => {
 
         {hasDisplay && (
           <View style={themed($statusRow)}>
-            <SunIcon size={16} color={theme.colors.statusIcon} />
+            <SunIcon size={16} color={theme.colors.statusText} />
             <Text style={themed($statusText)} numberOfLines={1}>
               {autoBrightness ? "Auto" : `${status.glasses_settings?.brightness}%`}
             </Text>
@@ -257,7 +257,7 @@ export const CompactDeviceStatus: React.FC = () => {
               <MaterialCommunityIcons
                 name={wifiConnected ? "wifi" : "wifi-off"}
                 size={16}
-                color={theme.colors.statusIcon}
+                color={theme.colors.statusText}
               />
               <Text style={themed($statusText)} numberOfLines={1}>
                 {truncateText(wifiSsid || "No WiFi", 12)}
@@ -265,7 +265,7 @@ export const CompactDeviceStatus: React.FC = () => {
             </TouchableOpacity>
           ) : (
             <>
-              <MaterialCommunityIcons name="bluetooth" size={16} color={theme.colors.statusIcon} />
+              <MaterialCommunityIcons name="bluetooth" size={16} color={theme.colors.statusText} />
               <Text style={themed($statusText)} numberOfLines={1}>
                 Connected
               </Text>
