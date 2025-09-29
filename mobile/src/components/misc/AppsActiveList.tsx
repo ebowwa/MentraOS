@@ -54,7 +54,7 @@ export default function AppsActiveList({
   // Check if user has ever activated an app
   useEffect(() => {
     const checkHasActivatedApp = async () => {
-      const hasActivated = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP)
+      const hasActivated = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.has_ever_activated_app)
       setHasEverActivatedApp(hasActivated)
     }
     checkHasActivatedApp()
@@ -63,7 +63,7 @@ export default function AppsActiveList({
   // Update hasEverActivatedApp when apps change
   useEffect(() => {
     const checkHasActivatedApp = async () => {
-      const hasActivated = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP)
+      const hasActivated = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.has_ever_activated_app)
       setHasEverActivatedApp(hasActivated)
     }
     // Re-check when app status changes (e.g., after activating first app)

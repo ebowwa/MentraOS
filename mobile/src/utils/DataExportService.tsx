@@ -206,6 +206,7 @@ export class DataExportService {
           }
         } catch (error) {
           // Key doesn't exist, skip
+          console.warn(`DataExportService: Key ${key} does not exist in local storage`)
         }
       }
 

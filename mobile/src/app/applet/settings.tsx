@@ -85,7 +85,7 @@ export default function AppSettings() {
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
 
   if (!packageName || typeof packageName !== "string") {
     console.error("No packageName found in params")
@@ -651,7 +651,7 @@ export default function AppSettings() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: theme.spacing.xs,
-                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                backgroundColor: theme.colors.errorBackground,
                 borderRadius: 8,
                 paddingHorizontal: theme.spacing.sm,
                 paddingVertical: theme.spacing.xs,

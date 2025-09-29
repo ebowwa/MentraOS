@@ -184,7 +184,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.new_ui)
 
     setAppStatus(currentStatus => {
       // Update the app to be running immediately in new UI
@@ -202,7 +202,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.has_ever_activated_app, true)
         // Clear loading state immediately after successful start
         setAppStatus(currentStatus =>
           currentStatus.map(app => (app.packageName === packageName ? {...app, loading: false} : app)),

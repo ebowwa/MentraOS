@@ -1,14 +1,15 @@
-import React from "react"
 import {Alert, Platform, Animated} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {StyleSheet, View} from "react-native"
 import {useAppTheme} from "./useAppTheme"
 import {BackHandler} from "react-native"
 import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
 import {StatusBar} from "expo-status-bar"
 import * as NavigationBar from "expo-navigation-bar"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {useEffect, useRef, useState} from "react"
+// eslint-disable-next-line
+import {StyleSheet} from "react-native"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -68,24 +69,24 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 // Global component that will be rendered once at the app root
 export function ModalProvider({children}: {children: React.ReactNode}) {
   const {theme} = useAppTheme()
-  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [visible, setVisible] = React.useState(false)
-  const [title, setTitle] = React.useState("")
-  const [message, setMessage] = React.useState("")
-  const [buttons, setButtons] = React.useState<ModalButton[]>([])
-  const [options, setOptions] = React.useState<{
+  const [showNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [visible, setVisible] = useState(false)
+  const [title, setTitle] = useState("")
+  const [message, setMessage] = useState("")
+  const [buttons, setButtons] = useState<ModalButton[]>([])
+  const [options, setOptions] = useState<{
     iconName?: string
     iconSize?: number
     iconColor?: string
     icon?: React.ReactNode
   }>({})
-  const [originalNavBarColor, setOriginalNavBarColor] = React.useState<string | null>(null)
+  const [originalNavBarColor, setOriginalNavBarColor] = useState<string | null>(null)
 
   // Animation values - start at final values if not using new UI
-  const fadeAnim = React.useRef(new Animated.Value(showNewUi ? 0 : 1)).current
-  const scaleAnim = React.useRef(new Animated.Value(showNewUi ? 0.93 : 1)).current
+  const fadeAnim = useRef(new Animated.Value(showNewUi ? 0 : 1)).current
+  const scaleAnim = useRef(new Animated.Value(showNewUi ? 0.93 : 1)).current
 
-  React.useEffect(() => {
+  useEffect(() => {
     const backHandler = () => {
       if (visible) {
         return true // prevent default back behavior
@@ -99,7 +100,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   }, [visible])
 
   // Handle navigation bar color changes when modal visibility changes
-  React.useEffect(() => {
+  useEffect(() => {
     const updateNavigationBarColor = async () => {
       if (Platform.OS === "android") {
         try {
@@ -133,7 +134,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   }, [visible, theme, originalNavBarColor])
 
   // Handle animations when visibility changes
-  React.useEffect(() => {
+  useEffect(() => {
     // Skip animations if not using new UI
     if (!showNewUi) {
       // Set values immediately without animation
@@ -174,7 +175,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     }
   }, [visible, fadeAnim, scaleAnim, showNewUi])
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Register the modal functions for global access
     setModalRef({
       showModal: (title, message, alertButtons = [], opts = {}) => {
@@ -242,7 +243,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
               zIndex: 10,
               justifyContent: "center",
               alignItems: "center",
-              backgroundColor: theme.colors.modalOverlay,
+              backgroundColor: theme.colors.background + "60",
               paddingHorizontal: 24,
               opacity: fadeAnim,
             }}>

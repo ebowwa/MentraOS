@@ -1,21 +1,7 @@
 import React, {useState, useEffect} from "react"
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  ActivityIndicator,
-  ScrollView,
-  ImageStyle,
-  TextStyle,
-  ViewStyle,
-} from "react-native"
+import {View, Image, ActivityIndicator, ScrollView, ImageStyle, TextStyle, ViewStyle} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
-import Icon from "react-native-vector-icons/FontAwesome"
-import RestComms from "@/managers/RestComms"
-import {useAuth} from "@/contexts/AuthContext"
-import {Button, Header, Screen, Text} from "@/components/ignite"
+import {Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {router} from "expo-router"
@@ -270,41 +256,7 @@ const $label: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
 })
 
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-  flex: 1,
-})
-
-const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-  flex: 1,
-})
-
-const $header: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-  flex: 1,
-})
-
-const darkHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-  flex: 1,
-})
-
-const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.angry500,
-})
-
-const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({})
-
-const $requestDataExportButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.palette.primary500,
-})
-
-const $deleteAccountButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.palette.primary500,
-})
-
-const $profileImage: ThemedStyle<ImageStyle> = ({colors}) => ({
+const $profileImage: ThemedStyle<ImageStyle> = () => ({
   width: 100,
   height: 100,
   borderRadius: 50,
@@ -312,7 +264,7 @@ const $profileImage: ThemedStyle<ImageStyle> = ({colors}) => ({
   marginBottom: 20,
 })
 
-const $profilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $profilePlaceholder: ThemedStyle<ViewStyle> = () => ({
   width: 100,
   height: 100,
   borderRadius: 50,
@@ -327,7 +279,7 @@ const $profilePlaceholderText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
 })
 
-const $infoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $infoContainer: ThemedStyle<ViewStyle> = () => ({
   marginBottom: 15,
 })
 
@@ -335,47 +287,4 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   marginTop: 4,
   color: colors.text,
-})
-
-const $headerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 20,
-})
-
-const $backButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  width: 60,
-})
-
-const $backButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  marginLeft: 5,
-  fontSize: 16,
-})
-
-const $title: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 24,
-  fontWeight: "bold",
-  textAlign: "center",
-})
-
-const $lightProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.lightGray,
-})
-
-const $darkProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.gray800,
-})
-
-const $navigationBarContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  right: 0,
-})
-
-const $inputIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
-  marginRight: 12,
 })

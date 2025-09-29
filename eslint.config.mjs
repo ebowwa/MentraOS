@@ -68,7 +68,7 @@ export default [
       "react-native/split-platform-components": "warn",
       "react-native/no-inline-styles": "warn",
       "react-native/no-color-literals": "off",
-      "react-native/no-raw-text": "off",
+      "react-native/no-raw-text": "error",
 
       // Reactotron
       "reactotron/no-tron-in-production": "error",
@@ -99,6 +99,11 @@ export default [
               name: "expo-router",
               importNames: ["useRouter"],
               message: "Do not use useRouter from expo-router. Use our useNavigationHistory hook instead.",
+            },
+            {
+              name: "react-native",
+              importNames: ["Text"],
+              message: "Do not import Text from 'react-native'. Use the Ignite component with the tx prop instead.",
             },
           ],
         },

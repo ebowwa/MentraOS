@@ -137,6 +137,9 @@ const en = {
     swipeToView: "Swipe to view {{target}}",
     backgroundApps: "Background Apps",
     backgroundAppsActive: "active",
+    tapAnAppSwitch: "Tap an app's switch to activate it",
+    activeBackgroundApps: "Active Background Apps",
+    inactiveBackgroundApps: "Inactive Background Apps",
   },
   glasses: {
     title: "Glasses",
@@ -346,6 +349,15 @@ const en = {
     settings: "Settings",
     openWebView: "Open Web View",
     version: "MentraOS v{{number}}",
+    reset: "Reset",
+  },
+  developer: {
+    dev: "Dev",
+    usCentral: "US Central",
+    france: "France",
+    asiaEast: "Asia East",
+    global: "Global",
+    debug: "Debug",
   },
   welcomeScreen: {
     postscript:

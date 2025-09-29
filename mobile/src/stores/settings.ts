@@ -5,24 +5,23 @@ import {getTimeZone} from "react-native-localize"
 import bridge from "@/bridge/MantleBridge"
 import restComms from "@/managers/RestComms"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {isMentraUser} from "@/utils/isMentraUser"
 
 export const SETTINGS_KEYS = {
-  PREVIOUSLY_BONDED_PUCK: "PREVIOUSLY_BONDED_PUCK",
-  ENABLE_PHONE_NOTIFICATIONS: "ENABLE_PHONE_NOTIFICATIONS",
-  NOTIFICATION_APP_PREFERENCES: "NOTIFICATION_APP_PREFERENCES",
-  NOTIFICATION_CATEGORY_PREFERENCES: "NOTIFICATION_CATEGORY_PREFERENCES",
-  ONBOARDING_COMPLETED: "ONBOARDING_COMPLETED",
-  SETTINGS_ACCESS_COUNT: "SETTINGS_ACCESS_COUNT",
-  VISITED_LIVECAPTIONS_SETTINGS: "VISITED_LIVECAPTIONS_SETTINGS",
-  CUSTOM_BACKEND_URL: "CUSTOM_BACKEND_URL",
-  RECONNECT_ON_APP_FOREGROUND: "RECONNECT_ON_APP_FOREGROUND",
-  HAS_EVER_ACTIVATED_APP: "HAS_EVER_ACTIVATED_APP",
-  THEME_PREFERENCE: "THEME_PREFERENCE",
-  DEV_MODE: "DEV_MODE",
-  NEW_UI: "NEW_UI",
-  ENABLE_SQUIRCLES: "ENABLE_SQUIRCLES",
-  OFFLINE_MODE: "OFFLINE_MODE",
+  previously_bonded_puck: "previously_bonded_puck",
+  enable_phone_notifications: "enable_phone_notifications",
+  notification_app_preferences: "notification_app_preferences",
+  notification_category_preferences: "notification_category_preferences",
+  onboarding_completed: "onboarding_completed",
+  settings_access_count: "settings_access_count",
+  visited_livecaptions_settings: "visited_livecaptions_settings",
+  custom_backend_url: "custom_backend_url",
+  reconnect_on_app_foreground: "reconnect_on_app_foreground",
+  has_ever_activated_app: "has_ever_activated_app",
+  theme_preference: "theme_preference",
+  dev_mode: "dev_mode",
+  new_ui: "new_ui",
+  enable_squircles: "enable_squircles",
+  offline_mode: "offline_mode",
   sensing_enabled: "sensing_enabled",
   power_saving_mode: "power_saving_mode",
   always_on_status_bar: "always_on_status_bar",
@@ -54,13 +53,11 @@ export const SETTINGS_KEYS = {
   SHOW_ADVANCED_SETTINGS: "SHOW_ADVANCED_SETTINGS",
 } as const
 
-type SettingsKeys = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS]
-
 const DEFAULT_SETTINGS: Record<string, any> = {
-  [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass:443",
-  [SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]: false,
-  [SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES]: "{}",
-  [SETTINGS_KEYS.NOTIFICATION_CATEGORY_PREFERENCES]: JSON.stringify({
+  [SETTINGS_KEYS.custom_backend_url]: "https://api.mentra.glass:443",
+  [SETTINGS_KEYS.enable_phone_notifications]: false,
+  [SETTINGS_KEYS.notification_app_preferences]: "{}",
+  [SETTINGS_KEYS.notification_category_preferences]: JSON.stringify({
     social: true,
     communication: true,
     entertainment: true,
@@ -69,16 +66,16 @@ const DEFAULT_SETTINGS: Record<string, any> = {
     shopping: true,
     other: true,
   }),
-  [SETTINGS_KEYS.ONBOARDING_COMPLETED]: false,
-  [SETTINGS_KEYS.SETTINGS_ACCESS_COUNT]: 0,
-  [SETTINGS_KEYS.VISITED_LIVECAPTIONS_SETTINGS]: false,
-  [SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND]: false,
-  [SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP]: false,
-  [SETTINGS_KEYS.THEME_PREFERENCE]: "system",
-  [SETTINGS_KEYS.DEV_MODE]: false,
-  [SETTINGS_KEYS.NEW_UI]: false,
-  [SETTINGS_KEYS.ENABLE_SQUIRCLES]: false,
-  [SETTINGS_KEYS.OFFLINE_MODE]: false,
+  [SETTINGS_KEYS.onboarding_completed]: false,
+  [SETTINGS_KEYS.settings_access_count]: 0,
+  [SETTINGS_KEYS.visited_livecaptions_settings]: false,
+  [SETTINGS_KEYS.reconnect_on_app_foreground]: false,
+  [SETTINGS_KEYS.has_ever_activated_app]: false,
+  [SETTINGS_KEYS.theme_preference]: "system",
+  [SETTINGS_KEYS.dev_mode]: false,
+  [SETTINGS_KEYS.new_ui]: false,
+  [SETTINGS_KEYS.enable_squircles]: false,
+  [SETTINGS_KEYS.offline_mode]: false,
   [SETTINGS_KEYS.sensing_enabled]: true,
   [SETTINGS_KEYS.power_saving_mode]: false,
   [SETTINGS_KEYS.always_on_status_bar]: false,
@@ -251,7 +248,7 @@ export const useSettingsStore = create<SettingsState>()(
       if (key === SETTINGS_KEYS.time_zone) {
         return getTimeZone()
       }
-      if (key === SETTINGS_KEYS.DEV_MODE) {
+      if (key === SETTINGS_KEYS.dev_mode) {
         return isDeveloperBuildOrTestflight()
       }
       return DEFAULT_SETTINGS[key]
@@ -322,7 +319,7 @@ export const useSettingsStore = create<SettingsState>()(
     },
 
     loadAllSettings: async () => {
-      set(state => ({
+      set(_state => ({
         loadingKeys: new Set(Object.values(SETTINGS_KEYS)),
       }))
 
@@ -352,14 +349,14 @@ export const useSettingsStore = create<SettingsState>()(
     },
 
     getRestUrl: () => {
-      const serverUrl = get().getSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+      const serverUrl = get().getSetting(SETTINGS_KEYS.custom_backend_url)
       const url = new URL(serverUrl)
       const secure = url.protocol === "https:"
       return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
     },
 
     getWsUrl: () => {
-      const serverUrl = get().getSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+      const serverUrl = get().getSetting(SETTINGS_KEYS.custom_backend_url)
       const url = new URL(serverUrl)
       const secure = url.protocol === "https:"
       return `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`
@@ -403,8 +400,8 @@ export const useSettings = (keys: string[]): Record<string, any> => {
 }
 
 // Selectors for specific settings (memoized automatically by Zustand)
-// export const useDevMode = () => useSetting<boolean>(SETTINGS_KEYS.DEV_MODE)
-// export const useNotificationsEnabled = () => useSetting<boolean>(SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS)
+// export const useDevMode = () => useSetting<boolean>(SETTINGS_KEYS.dev_mode)
+// export const useNotificationsEnabled = () => useSetting<boolean>(SETTINGS_KEYS.enable_phone_notifications)
 
 // Example usage:
 /**
@@ -423,16 +420,16 @@ export const useSettings = (keys: string[]): Record<string, any> => {
  * // Or with multiple settings:
  * function NotificationSettings() {
  *   const settings = useSettings([
- *     SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS,
- *     SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES
+ *     SETTINGS_KEYS.enable_phone_notifications,
+ *     SETTINGS_KEYS.notification_app_preferences
  *   ])
  *   const setSetting = useSettingsStore(state => state.setSetting)
  *
  *   return (
  *     <Switch
- *       value={settings[SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]}
+ *       value={settings[SETTINGS_KEYS.enable_phone_notifications]}
  *       onValueChange={(enabled) =>
- *         setSetting(SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS, enabled)
+ *         setSetting(SETTINGS_KEYS.enable_phone_notifications, enabled)
  *       }
  *     />
  *   )
@@ -440,7 +437,7 @@ export const useSettings = (keys: string[]): Record<string, any> => {
  *
  * // Subscribe to specific changes outside React:
  * const unsubscribe = useSettingsStore.subscribe(
- *   state => state.settings[SETTINGS_KEYS.THEME_PREFERENCE],
+ *   state => state.settings[SETTINGS_KEYS.theme_preference],
  *   (theme) => console.log('Theme changed to:', theme)
  * )
  */
