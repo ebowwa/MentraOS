@@ -210,7 +210,7 @@ public class MediaCaptureService {
 
     private void playShutterSound() {
         if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
-            hardwareManager.playAudioAsset("camera_sound.mp3");
+            hardwareManager.playAudioAsset("camera_sound.wav");
         }
     }
     
