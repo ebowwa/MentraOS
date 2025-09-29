@@ -306,7 +306,10 @@ class STTModelManager {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
           onExtractionProgress?.({percentage: 25})
-          await bridge.extractTarBz2(tempPath, finalPath)
+          const extractionResult = await bridge.extractTarBz2(tempPath, finalPath)
+          if (!extractionResult) {
+            throw new Error("Native extraction returned failure status")
+          }
           onExtractionProgress?.({percentage: 90})
           console.log("Native extraction completed")
         } catch (extractError) {
@@ -322,7 +325,10 @@ class STTModelManager {
           console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
           try {
             onExtractionProgress?.({percentage: 25})
-            await nativeModule.extractTarBz2(tempPath, finalPath)
+            const extractionResult = await nativeModule.extractTarBz2(tempPath, finalPath)
+            if (!extractionResult) {
+              throw new Error("Native extraction returned failure status")
+            }
             onExtractionProgress?.({percentage: 90})
             console.log("Native extraction completed")
           } catch (extractError) {
