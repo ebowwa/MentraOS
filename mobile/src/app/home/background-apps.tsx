@@ -1,4 +1,4 @@
-import {Fragment} from "react"
+import {Fragment, useMemo} from "react"
 import {View, ScrollView, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
@@ -14,13 +14,22 @@ import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const {push, goBack} = useNavigationHistory()
-  const {active: activeApps, inactive: inactiveApps} = useBackgroundApps()
   const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+
+  const {active, inactive} = useBackgroundApps()
+
+  const incompatibleApps = useMemo(
+    () => inactive.filter(app => app.compatibility != null && app.compatibility.isCompatible === false),
+    [inactive],
+  )
 
   const toggleApp = async (app: AppletInterface) => {
     if (app.is_running) {
@@ -31,33 +40,27 @@ export default function BackgroundAppsScreen() {
   }
 
   const startApp = async (packageName: string) => {
-    const app = inactiveApps.find(a => a.packageName === packageName)
+    const app = inactive.find(a => a.packageName === packageName)
     if (!app) {
       console.error("App not found:", packageName)
       return
     }
 
-    // First check permissions for the app
     const permissionResult = await askPermissionsUI(app, theme)
     if (permissionResult === -1) {
-      // User cancelled
       return
     } else if (permissionResult === 0) {
-      // Permissions failed, retry
       await startApp(packageName)
       return
     }
 
-    // If app is marked as online by backend, start optimistically immediately
     if (app.isOnline !== false) {
       console.log("Background app is online, starting optimistically:", packageName)
       optimisticallyStartApp(packageName)
 
-      // Do health check in background
       performHealthCheckFlow({
         app,
         onStartApp: async () => {
-          // App already started optimistically, just make the server call
           try {
             await restComms.startApp(packageName)
             clearPendingOperation(packageName)
@@ -70,7 +73,6 @@ export default function BackgroundAppsScreen() {
           await refreshAppStatus()
         },
         onHealthCheckFailed: async () => {
-          // Health check failed, revert the switch
           console.log("Health check failed, reverting background app to inactive:", packageName)
           optimisticallyStopApp(packageName)
           refreshAppStatus()
@@ -79,7 +81,6 @@ export default function BackgroundAppsScreen() {
         clearPendingOperation,
       })
     } else {
-      // App is explicitly offline, use normal flow with health check first
       await performHealthCheckFlow({
         app,
         onStartApp: async () => {
@@ -114,7 +115,6 @@ export default function BackgroundAppsScreen() {
   }
 
   const openAppSettings = (app: AppletInterface) => {
-    // Check if app has webviewURL and navigate directly to it
     if (app.webviewURL && app.isOnline !== false) {
       push("/applet/webview", {
         webviewURL: app.webviewURL,
@@ -204,28 +204,27 @@ export default function BackgroundAppsScreen() {
         style={themed($scrollView)}
         contentContainerStyle={themed($scrollViewContent)}
         showsVerticalScrollIndicator={false}>
-        {inactiveApps.length === 0 ? (
+        {inactive.length === 0 && active.length === 0 ? (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No background apps available</Text>
           </View>
         ) : (
           <>
-            {/* Active Background Apps Section */}
-            {activeApps.length > 0 ? (
+            {active.length > 0 ? (
               <>
                 <Text style={themed($sectionHeader)}>Active Background Apps</Text>
                 <View style={themed($sectionContent)}>
-                  {activeApps.map((app, index) => renderAppItem(app, index, index === activeApps.length - 1))}
+                  {active.map((app, index) => renderAppItem(app, index, index === active.length - 1))}
                 </View>
                 <Spacer height={theme.spacing.lg} />
               </>
             ) : (
               <>
-                <Text style={themed($sectionHeader)}>Active Background Apps</Text>
+                <Text style={themed($sectionHeader)} tx="home:activeBackgroundApps" />
                 <View style={themed($tipContainer)}>
                   <View style={themed($tipContent)}>
-                    <Text style={themed($tipText)}>Activate an App</Text>
-                    <Text style={themed($tipSubtext)}>Tap an app&apos;s switch to activate it</Text>
+                    <Text style={themed($tipText)} tx="home:activateAnApp" />
+                    <Text style={themed($tipSubtext)} tx="home:tapAnAppSwitch" />
                   </View>
                   <Switch value={false} onValueChange={() => {}} disabled={false} pointerEvents="none" />
                 </View>
@@ -233,13 +232,11 @@ export default function BackgroundAppsScreen() {
               </>
             )}
 
-            {/* Inactive Background Apps Section */}
-            {inactiveApps.length > 0 && (
+            {inactive.length > 0 && (
               <>
-                <Text style={themed($sectionHeader)}>Inactive Background Apps</Text>
+                <Text style={themed($sectionHeader)} tx="home:inactiveBackgroundApps" />
                 <View style={themed($sectionContent)}>
-                  {inactiveApps.map((app, index) => renderAppItem(app, index, false))}
-                  {/* Get More Apps item */}
+                  {inactive.map((app, index) => renderAppItem(app, index, false))}
                   <TouchableOpacity style={themed($appRow)} onPress={() => push("/store")} activeOpacity={0.7}>
                     <View style={themed($appContent)}>
                       <GetMoreAppsIcon size="medium" />
@@ -253,6 +250,50 @@ export default function BackgroundAppsScreen() {
                 </View>
               </>
             )}
+
+            {incompatibleApps.length > 0 && (
+              <>
+                <Spacer height={theme.spacing.lg} />
+                <Text style={themed($sectionHeader)}>{`Incompatible with ${defaultWearable}`}</Text>
+                <View style={themed($sectionContent)}>
+                  {incompatibleApps.map((app, index) => (
+                    <Fragment key={app.packageName}>
+                      <TouchableOpacity
+                        style={themed($appRow)}
+                        onPress={() => {
+                          const missingHardware =
+                            app.compatibility?.missingRequired?.map(req => req.type.toLowerCase()).join(", ") ||
+                            "required features"
+                          showAlert(
+                            "Hardware Incompatible",
+                            app.compatibility?.message ||
+                              `${app.name} requires ${missingHardware} which is not available on your connected glasses`,
+                            [{text: "OK"}],
+                            {
+                              iconName: "alert-circle-outline",
+                              iconColor: theme.colors.error,
+                            },
+                          )
+                        }}
+                        activeOpacity={0.7}>
+                        <View style={themed($appContent)}>
+                          <AppIcon app={app as any} style={themed($incompatibleAppIcon)} />
+                          <View style={themed($appInfo)}>
+                            <Text
+                              text={app.name}
+                              style={themed($incompatibleAppName)}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      {index < incompatibleApps.length - 1 && <Divider />}
+                    </Fragment>
+                  ))}
+                </View>
+              </>
+            )}
           </>
         )}
 
@@ -262,15 +303,13 @@ export default function BackgroundAppsScreen() {
   )
 }
 
-const $screen: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $screen: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
-  backgroundColor: colors.background,
 })
 
-const $headerInfo: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $headerInfo: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,
-  // backgroundColor: colors.surface,
   borderBottomWidth: 1,
   borderBottomColor: colors.border,
 })
@@ -363,7 +402,7 @@ const $tipContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginHorizontal: spacing.lg,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.md,
-  backgroundColor: colors.palette.neutral100,
+  backgroundColor: colors.background,
   borderRadius: spacing.sm,
   flexDirection: "row",
   alignItems: "center",
@@ -409,4 +448,15 @@ const $getMoreAppsSubtext: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
   color: colors.textDim,
   marginTop: 2,
+})
+
+const $incompatibleAppIcon: ThemedStyle<ViewStyle> = () => ({
+  width: 48,
+  height: 48,
+  opacity: 0.4,
+})
+
+const $incompatibleAppName: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  color: colors.textDim,
 })

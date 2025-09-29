@@ -3,149 +3,202 @@ import SWCompression
 
 @objc(TarBz2Extractor)
 public class TarBz2Extractor: NSObject {
-    @objc public static func extractTarBz2From(_ sourcePath: String, to destinationPath: String, error: NSErrorPointer) -> Bool {
-        print("TarBz2Extractor: Starting extraction from \(sourcePath) to \(destinationPath)")
+    private static let chunkSize = 1 << 16 // 64 KB
+
+    @objc
+    public static func extractTarBz2From(
+        _ sourcePath: String,
+        to destinationPath: String,
+        error errorPointer: NSErrorPointer
+    ) -> Bool {
+        Bridge.log("TarBz2Extractor: begin extraction")
         do {
-            try extractTarBz2Internal(from: sourcePath, to: destinationPath)
-            print("TarBz2Extractor: Extraction completed successfully")
+            try performExtraction(from: sourcePath, to: destinationPath)
+            Bridge.log("TarBz2Extractor: extraction complete")
             return true
         } catch let extractionError as NSError {
-            print("TarBz2Extractor: Extraction failed with error: \(extractionError)")
-            if let errorPtr = error {
-                errorPtr.pointee = extractionError
-            }
+            Bridge.log("TarBz2Extractor: failed - \(extractionError.localizedDescription)")
+            errorPointer?.pointee = extractionError
             return false
-        } catch let unknownError {
-            print("TarBz2Extractor: Extraction failed with unknown error: \(unknownError)")
-            if let errorPtr = error {
-                errorPtr.pointee = NSError(domain: "TarBz2Extractor", code: 0, userInfo: [NSLocalizedDescriptionKey: unknownError.localizedDescription])
-            }
+        } catch {
+            let nsError = NSError(
+                domain: "TarBz2Extractor",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: error.localizedDescription]
+            )
+            Bridge.log("TarBz2Extractor: failed - \(error.localizedDescription)")
+            errorPointer?.pointee = nsError
             return false
         }
     }
 
-    private static func extractTarBz2Internal(from sourcePath: String, to destinationPath: String) throws {
-        print("TarBz2Extractor: Reading file from \(sourcePath)")
-
-        // Check file size
-        let fileURL = URL(fileURLWithPath: sourcePath)
-        let fileAttributes = try FileManager.default.attributesOfItem(atPath: sourcePath)
-        let fileSize = fileAttributes[.size] as? Int64 ?? 0
-        print("TarBz2Extractor: File size is \(fileSize / 1024 / 1024) MB")
-
-        // Read the compressed file with autoreleasepool to manage memory
-        var compressedData: Data?
-        autoreleasepool {
-            compressedData = try? Data(contentsOf: fileURL, options: .mappedIfSafe)
-        }
-
-        guard let data = compressedData else {
-            throw NSError(domain: "TarBz2Extractor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to read compressed file"])
-        }
-        print("TarBz2Extractor: Read \(data.count / 1024 / 1024) MB")
-
-        // Decompress bz2 with timeout check
-        print("TarBz2Extractor: Starting bz2 decompression...")
-        let startTime = Date()
-        let decompressedData: Data
-
-        do {
-            // Use autoreleasepool to manage memory during decompression
-            let result = try autoreleasepool { () -> Data in
-                return try BZip2.decompress(data: data)
-            }
-            decompressedData = result
-
-            let elapsed = Date().timeIntervalSince(startTime)
-            print("TarBz2Extractor: Decompressed to \(decompressedData.count / 1024 / 1024) MB in \(elapsed) seconds")
-        } catch {
-            print("TarBz2Extractor: BZip2 decompression failed: \(error)")
-            throw NSError(domain: "TarBz2Extractor", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to decompress bz2: \(error.localizedDescription)"])
-        }
-
-        // Extract tar
-        print("TarBz2Extractor: Starting tar extraction...")
-        let tarEntries: [TarEntry]
-        do {
-            tarEntries = try TarContainer.open(container: decompressedData)
-            print("TarBz2Extractor: Found \(tarEntries.count) entries in tar")
-        } catch {
-            print("TarBz2Extractor: Tar extraction failed: \(error)")
-            throw NSError(domain: "TarBz2Extractor", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to extract tar: \(error.localizedDescription)"])
-        }
-
-        // Create destination directory
+    private static func performExtraction(from sourcePath: String, to destinationPath: String) throws {
         let fileManager = FileManager.default
-        try? fileManager.createDirectory(atPath: destinationPath, withIntermediateDirectories: true, attributes: nil)
+        try fileManager.createDirectory(
+            atPath: destinationPath,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
 
-        // Extract files, stripping the first directory component
-        for entry in tarEntries {
-            guard let entryData = entry.data else { continue }
+        let tempTarURL = try decompressBzipArchive(at: sourcePath)
+        defer { try? fileManager.removeItem(at: tempTarURL) }
 
-            var entryName = entry.info.name
+        try extractTarArchive(at: tempTarURL, to: destinationPath)
+        try flattenNestedDirectory(at: destinationPath)
+    }
 
-            // Remove leading ./ if present
-            if entryName.hasPrefix("./") {
-                entryName = String(entryName.dropFirst(2))
-            }
+    private static func decompressBzipArchive(at sourcePath: String) throws -> URL {
+        let tempTarURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("tar")
 
-            // Strip the first directory component (like --strip-components=1)
-            if let firstSlashIndex = entryName.firstIndex(of: "/") {
-                entryName = String(entryName[entryName.index(after: firstSlashIndex)...])
+        guard let sourceFile = fopen(sourcePath, "rb") else {
+            throw makeError(code: 1001, message: "Unable to open source file at \(sourcePath)")
+        }
+        defer { fclose(sourceFile) }
+
+        guard let destinationFile = fopen(tempTarURL.path, "wb") else {
+            throw makeError(code: 1002, message: "Unable to create temporary tar file")
+        }
+        defer { fclose(destinationFile) }
+
+        var bzError: Int32 = BZ_OK
+        guard let bzFile = BZ2_bzReadOpen(&bzError, sourceFile, 0, 0, nil, 0), bzError == BZ_OK else {
+            throw makeError(code: 1003, message: "Unable to open bzip stream (code \(bzError))")
+        }
+
+        var buffer = [Int8](repeating: 0, count: chunkSize)
+        while true {
+            let bytesRead = BZ2_bzRead(&bzError, bzFile, &buffer, Int32(buffer.count))
+            if bzError == BZ_OK || bzError == BZ_STREAM_END {
+                if bytesRead > 0 {
+                    let written = buffer.withUnsafeBytes { rawBuffer -> Int in
+                        guard let baseAddress = rawBuffer.baseAddress else { return 0 }
+                        return fwrite(baseAddress, 1, Int(bytesRead), destinationFile)
+                    }
+                    guard written == Int(bytesRead) else {
+                        BZ2_bzReadClose(&bzError, bzFile)
+                        throw makeError(code: 1004, message: "Failed to write decompressed data")
+                    }
+                }
+                if bzError == BZ_STREAM_END {
+                    break
+                }
             } else {
-                // Skip entries that don't have a directory component
+                BZ2_bzReadClose(&bzError, bzFile)
+                throw makeError(code: 1005, message: "bzip2 read failed with code \(bzError)")
+            }
+        }
+
+        BZ2_bzReadClose(&bzError, bzFile)
+        guard bzError == BZ_OK else {
+            throw makeError(code: 1006, message: "bzip2 close failed with code \(bzError)")
+        }
+
+        return tempTarURL
+    }
+
+    private static func extractTarArchive(at tarURL: URL, to destinationPath: String) throws {
+        let destinationRoot = URL(fileURLWithPath: destinationPath, isDirectory: true)
+        let fileManager = FileManager.default
+
+        let handle = try FileHandle(forReadingFrom: tarURL)
+        defer { try? handle.close() }
+
+        var reader = TarReader(fileHandle: handle)
+
+        while let entry = try reader.read() {
+            let sanitizedName = sanitize(entryName: entry.info.name)
+            if sanitizedName.isEmpty {
                 continue
             }
 
-            // Skip empty entries
-            if entryName.isEmpty { continue }
-
-            let destinationURL = URL(fileURLWithPath: destinationPath).appendingPathComponent(entryName)
-
-            if entry.info.type == .directory {
-                // Create directory
-                try? fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
-            } else if entry.info.type == .regular {
-                // Create parent directory if needed
-                let parentDir = destinationURL.deletingLastPathComponent()
-                try? fileManager.createDirectory(at: parentDir, withIntermediateDirectories: true, attributes: nil)
-
-                // Handle file renaming for specific model files
-                var finalURL = destinationURL
-                let fileName = destinationURL.lastPathComponent
-
-                if fileName == "encoder-epoch-99-avg-1.onnx" {
-                    finalURL = parentDir.appendingPathComponent("encoder.onnx")
-                } else if fileName == "decoder-epoch-99-avg-1.onnx" {
-                    finalURL = parentDir.appendingPathComponent("decoder.onnx")
-                } else if fileName == "joiner-epoch-99-avg-1.int8.onnx" {
-                    finalURL = parentDir.appendingPathComponent("joiner.onnx")
-                }
-
-                // Write file
-                do {
-                    try entryData.write(to: finalURL)
-                } catch {
-                    print("Failed to write file \(finalURL): \(error)")
-                }
+            let entryURL = destinationRoot.appendingPathComponent(sanitizedName)
+            switch entry.info.type {
+            case .directory:
+                try fileManager.createDirectory(
+                    at: entryURL,
+                    withIntermediateDirectories: true,
+                    attributes: nil
+                )
+            case .regular:
+                guard let data = entry.data else { continue }
+                try fileManager.createDirectory(
+                    at: entryURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true,
+                    attributes: nil
+                )
+                let finalURL = remapModelFileIfNeeded(for: entryURL)
+                try data.write(to: finalURL, options: .atomic)
+            default:
+                continue
             }
         }
+    }
 
-        // Check if files were extracted into a nested directory (for archives with ./ prefix)
-        let nestedDirURL = URL(fileURLWithPath: destinationPath).appendingPathComponent(URL(fileURLWithPath: destinationPath).lastPathComponent)
-        if fileManager.fileExists(atPath: nestedDirURL.path) {
-            // Move files from nested directory to parent
-            do {
-                let nestedFiles = try fileManager.contentsOfDirectory(at: nestedDirURL, includingPropertiesForKeys: nil)
-                for file in nestedFiles {
-                    let destFile = URL(fileURLWithPath: destinationPath).appendingPathComponent(file.lastPathComponent)
-                    try? fileManager.moveItem(at: file, to: destFile)
-                }
-                // Remove the now-empty nested directory
-                try? fileManager.removeItem(at: nestedDirURL)
-            } catch {
-                print("Failed to handle nested directory: \(error)")
+    private static func flattenNestedDirectory(at destinationPath: String) throws {
+        let fileManager = FileManager.default
+        let destinationURL = URL(fileURLWithPath: destinationPath, isDirectory: true)
+        let nestedURL = destinationURL.appendingPathComponent(destinationURL.lastPathComponent)
+
+        guard fileManager.fileExists(atPath: nestedURL.path) else { return }
+
+        let nestedFiles = try fileManager.contentsOfDirectory(at: nestedURL, includingPropertiesForKeys: nil)
+        for file in nestedFiles {
+            let target = destinationURL.appendingPathComponent(file.lastPathComponent)
+            if fileManager.fileExists(atPath: target.path) {
+                try fileManager.removeItem(at: target)
             }
+            try fileManager.moveItem(at: file, to: target)
         }
+
+        try fileManager.removeItem(at: nestedURL)
+    }
+
+    private static func sanitize(entryName: String) -> String {
+        var name = entryName
+
+        if name.hasPrefix("./") {
+            name.removeFirst(2)
+        }
+        while name.hasPrefix("/") {
+            name.removeFirst()
+        }
+
+        guard !name.isEmpty else { return "" }
+
+        var components = name.split(separator: "/").map(String.init)
+        guard !components.isEmpty else { return "" }
+
+        if components.count > 1 {
+            components.removeFirst()
+            name = components.joined(separator: "/")
+        } else {
+            name = components[0]
+        }
+
+        return name
+    }
+
+    private static func remapModelFileIfNeeded(for url: URL) -> URL {
+        let parent = url.deletingLastPathComponent()
+        switch url.lastPathComponent {
+        case "encoder-epoch-99-avg-1.onnx":
+            return parent.appendingPathComponent("encoder.onnx")
+        case "decoder-epoch-99-avg-1.onnx":
+            return parent.appendingPathComponent("decoder.onnx")
+        case "joiner-epoch-99-avg-1.int8.onnx":
+            return parent.appendingPathComponent("joiner.onnx")
+        default:
+            return url
+        }
+    }
+
+    private static func makeError(code: Int, message: String) -> NSError {
+        return NSError(
+            domain: "TarBz2Extractor",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: message]
+        )
     }
 }

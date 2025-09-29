@@ -2,6 +2,7 @@ import React, {useRef, PropsWithChildren, useState, useEffect} from "react"
 import {Animated, ScrollView} from "react-native"
 import {Header, Screen} from "@/components/ignite"
 import {ConnectDeviceButton, ConnectedGlasses} from "@/components/misc/ConnectedDeviceInfo"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 import CloudConnection from "@/components/misc/CloudConnection"
 
@@ -14,7 +15,8 @@ import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function Homepage() {
   const {theme} = useAppTheme()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const {status} = useCoreStatus()
 
   const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
   let pageTitle
@@ -32,8 +34,12 @@ export default function Homepage() {
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
         <CloudConnection />
-        {defaultWearable && glassesFeatures[defaultWearable].display && <ConnectedSimulatedGlassesInfo />}
-        {defaultWearable && !glassesFeatures[defaultWearable].display && <ConnectedGlasses showTitle={false} />}
+        {defaultWearable && status.glasses_info?.model_name && glassesFeatures[defaultWearable].display && (
+          <ConnectedSimulatedGlassesInfo />
+        )}
+        {defaultWearable && status.glasses_info?.model_name && !glassesFeatures[defaultWearable].display && (
+          <ConnectedGlasses showTitle={false} />
+        )}
         <Spacer height={theme.spacing.lg} />
         <ConnectDeviceButton />
         <DeviceSettings />

@@ -1,20 +1,18 @@
-import React, {useState, useEffect} from "react"
+import {useState} from "react"
 import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
 import RouteButton from "@/components/ui/RouteButton"
-import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function DeveloperSettingsScreen() {
   // const {status} = useCoreStatus()
@@ -23,11 +21,12 @@ export default function DeveloperSettingsScreen() {
   const {replace} = useNavigationHistory()
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [isSavingUrl, setIsSavingUrl] = useState(false)
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
-  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
   const [powerSavingMode, setPowerSavingMode] = useSetting(SETTINGS_KEYS.power_saving_mode)
-  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -41,6 +40,11 @@ export default function DeveloperSettingsScreen() {
   const toggleNewUi = async () => {
     const newSetting = !newUi
     await setNewUi(newSetting)
+  }
+
+  const toggleEnableSquircles = async () => {
+    const newSetting = !enableSquircles
+    await setEnableSquircles(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -178,7 +182,7 @@ export default function DeveloperSettingsScreen() {
           {
             backgroundColor: theme.colors.warningBackgroundDestructive,
             borderWidth: theme.spacing.xxxs,
-            borderColor: theme.colors.warningBorderDestructive,
+            borderColor: theme.colors.palette.angry600,
           },
         ]}>
         <View style={styles.warningContent}>
@@ -215,6 +219,18 @@ export default function DeveloperSettingsScreen() {
         />
 
         <Spacer height={theme.spacing.md} />
+
+        {Platform.OS === "ios" && (
+          <>
+            <ToggleSetting
+              label="Enable Squircles"
+              subtitle="Use iOS-style squircle app icons instead of circles"
+              value={enableSquircles}
+              onValueChange={toggleEnableSquircles}
+            />
+            <Spacer height={theme.spacing.md} />
+          </>
+        )}
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
         {defaultWearable && glassesFeatures[defaultWearable] && glassesFeatures[defaultWearable].powerSavingMode && (
@@ -275,7 +291,7 @@ export default function DeveloperSettingsScreen() {
                 buttonStyle={styles.saveButton}
               />
               <PillButton
-                text="Reset"
+                tx="common:reset"
                 variant="icon"
                 onPress={handleResetUrl}
                 disabled={isSavingUrl}
@@ -284,13 +300,13 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="Global"
+                tx="developer:global"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://api.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="Dev"
+                tx="developer:dev"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://devapi.mentra.glass:443")}
                 buttonStyle={styles.button}
@@ -298,13 +314,13 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="Debug"
+                tx="developer:debug"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
                 buttonStyle={styles.button}
               />
               <PillButton
-                text="US Central"
+                tx="developer:usCentral"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://uscentralapi.mentra.glass:443")}
                 buttonStyle={styles.button}
@@ -312,12 +328,17 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumn}>
               <PillButton
-                text="France"
+                tx="developer:france"
                 variant="icon"
                 onPress={() => setCustomUrlInput("https://franceapi.mentra.glass:443")}
                 buttonStyle={styles.button}
               />
-              <PillButton text="Asia East" variant="icon" onPress={handleAsiaButtonPress} buttonStyle={styles.button} />
+              <PillButton
+                tx="developer:asiaEast"
+                variant="icon"
+                onPress={handleAsiaButtonPress}
+                buttonStyle={styles.button}
+              />
             </View>
           </View>
         </View>
@@ -369,12 +390,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    marginTop: 12,
-  },
-  buttonColumnCentered: {
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "center",
     marginTop: 12,
   },
   settingTextContainer: {

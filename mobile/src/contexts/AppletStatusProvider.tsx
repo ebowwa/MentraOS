@@ -142,6 +142,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const diff = deepCompare(currentAppStatus, mapped)
         if (diff.length === 0) {
           console.log("AppStatusProvider: Applet status did not change")
+          //console.log(JSON.stringify(currentAppStatus, null, 2));
           return currentAppStatus
         }
         return mapped
@@ -183,7 +184,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.NEW_UI)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.new_ui)
 
     setAppStatus(currentStatus => {
       // Update the app to be running immediately in new UI
@@ -201,7 +202,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.has_ever_activated_app, true)
         // Clear loading state immediately after successful start
         setAppStatus(currentStatus =>
           currentStatus.map(app => (app.packageName === packageName ? {...app, loading: false} : app)),
@@ -413,5 +414,23 @@ export function useActiveBackgroundAppsCount(): number {
   return useMemo(() => {
     if (!appStatus || !Array.isArray(appStatus)) return 0
     return appStatus.filter(app => app.type === "background" && app.is_running).length
+  }, [appStatus])
+}
+
+/**
+ * Hook to get incompatible apps (both foreground and background)
+ */
+export function useIncompatibleApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
   }, [appStatus])
 }

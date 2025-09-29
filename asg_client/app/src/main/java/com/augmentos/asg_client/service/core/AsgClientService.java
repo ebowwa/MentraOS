@@ -199,6 +199,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📋 Sending initial version information");
             sendVersionInfo();
 
+            // Clean up orphaned BLE transfer files from previous sessions
+            Log.d(TAG, "🗑️ Cleaning up orphaned BLE transfer files");
+            cleanupOrphanedBleTransfers();
+
             Log.i(TAG, "✅ AsgClientServiceV2 onCreate() completed successfully");
         } catch (Exception e) {
             Log.e(TAG, "💥 Error in onCreate()", e);
@@ -1006,7 +1010,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     public static void openWifi(Context context, boolean bEnable) {
         Log.d(TAG, "🌐 openWifi() called - Enable: " + bEnable);
-        
+
         try {
             if (bEnable) {
                 Log.d(TAG, "📶 Enabling WiFi via ADB command");

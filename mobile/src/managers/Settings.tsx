@@ -4,19 +4,19 @@
 // import {getTimeZone} from "react-native-localize"
 
 // export const SETTINGS_KEYS = {
-//   PREVIOUSLY_BONDED_PUCK: "PREVIOUSLY_BONDED_PUCK",
-//   ENABLE_PHONE_NOTIFICATIONS: "ENABLE_PHONE_NOTIFICATIONS",
-//   NOTIFICATION_APP_PREFERENCES: "NOTIFICATION_APP_PREFERENCES",
-//   NOTIFICATION_CATEGORY_PREFERENCES: "NOTIFICATION_CATEGORY_PREFERENCES",
-//   ONBOARDING_COMPLETED: "ONBOARDING_COMPLETED",
-//   SETTINGS_ACCESS_COUNT: "SETTINGS_ACCESS_COUNT",
-//   VISITED_LIVECAPTIONS_SETTINGS: "VISITED_LIVECAPTIONS_SETTINGS",
-//   CUSTOM_BACKEND_URL: "CUSTOM_BACKEND_URL",
-//   RECONNECT_ON_APP_FOREGROUND: "RECONNECT_ON_APP_FOREGROUND",
-//   HAS_EVER_ACTIVATED_APP: "HAS_EVER_ACTIVATED_APP",
-//   THEME_PREFERENCE: "THEME_PREFERENCE",
-//   DEV_MODE: "DEV_MODE",
-//   NEW_UI: "NEW_UI",
+//   previously_bonded_puck: "previously_bonded_puck",
+//   enable_phone_notifications: "enable_phone_notifications",
+//   notification_app_preferences: "notification_app_preferences",
+//   notification_category_preferences: "notification_category_preferences",
+//   onboarding_completed: "onboarding_completed",
+//   settings_access_count: "settings_access_count",
+//   visited_livecaptions_settings: "visited_livecaptions_settings",
+//   custom_backend_url: "custom_backend_url",
+//   reconnect_on_app_foreground: "reconnect_on_app_foreground",
+//   has_ever_activated_app: "has_ever_activated_app",
+//   theme_preference: "theme_preference",
+//   dev_mode: "dev_mode",
+//   new_ui: "new_ui",
 //   sensing_enabled: "sensing_enabled",
 //   power_saving_mode: "power_saving_mode",
 //   always_on_status_bar: "always_on_status_bar",
@@ -48,10 +48,10 @@
 // }
 
 // const DEFAULT_SETTINGS = {
-//   [SETTINGS_KEYS.CUSTOM_BACKEND_URL]: "https://api.mentra.glass:443",
-//   [SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS]: false,
-//   [SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES]: "{}",
-//   [SETTINGS_KEYS.NOTIFICATION_CATEGORY_PREFERENCES]: JSON.stringify({
+//   [SETTINGS_KEYS.custom_backend_url]: "https://api.mentra.glass:443",
+//   [SETTINGS_KEYS.enable_phone_notifications]: false,
+//   [SETTINGS_KEYS.notification_app_preferences]: "{}",
+//   [SETTINGS_KEYS.notification_category_preferences]: JSON.stringify({
 //     social: true,
 //     communication: true,
 //     entertainment: true,
@@ -60,14 +60,14 @@
 //     shopping: true,
 //     other: true,
 //   }),
-//   [SETTINGS_KEYS.ONBOARDING_COMPLETED]: false,
-//   [SETTINGS_KEYS.SETTINGS_ACCESS_COUNT]: 0,
-//   [SETTINGS_KEYS.VISITED_LIVECAPTIONS_SETTINGS]: false,
-//   [SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND]: true,
-//   [SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP]: false,
-//   [SETTINGS_KEYS.THEME_PREFERENCE]: "system",
-//   [SETTINGS_KEYS.DEV_MODE]: false,
-//   [SETTINGS_KEYS.NEW_UI]: false,
+//   [SETTINGS_KEYS.onboarding_completed]: false,
+//   [SETTINGS_KEYS.settings_access_count]: 0,
+//   [SETTINGS_KEYS.visited_livecaptions_settings]: false,
+//   [SETTINGS_KEYS.reconnect_on_app_foreground]: true,
+//   [SETTINGS_KEYS.has_ever_activated_app]: false,
+//   [SETTINGS_KEYS.theme_preference]: "system",
+//   [SETTINGS_KEYS.dev_mode]: false,
+//   [SETTINGS_KEYS.new_ui]: false,
 //   // previously core settings:
 //   [SETTINGS_KEYS.sensing_enabled]: true,
 //   [SETTINGS_KEYS.power_saving_mode]: false,
@@ -197,14 +197,14 @@
 //   }
 
 //   public async getRestUrl(): Promise<string> {
-//     const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+//     const serverUrl = await this.get(SETTINGS_KEYS.custom_backend_url)
 //     const url = new URL(serverUrl)
 //     const secure = url.protocol === "https:"
 //     return `${secure ? "https" : "http"}://${url.hostname}:${url.port || (secure ? 443 : 80)}`
 //   }
 
 //   public async getWsUrl(): Promise<string> {
-//     const serverUrl = await this.get(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+//     const serverUrl = await this.get(SETTINGS_KEYS.custom_backend_url)
 //     const url = new URL(serverUrl)
 //     const secure = url.protocol === "https:"
 //     const wsUrl = `${secure ? "wss" : "ws"}://${url.hostname}:${url.port || (secure ? 443 : 80)}/glasses-ws`

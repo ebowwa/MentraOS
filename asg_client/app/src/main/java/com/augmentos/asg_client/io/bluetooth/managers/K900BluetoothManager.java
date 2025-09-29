@@ -11,6 +11,7 @@ import com.augmentos.asg_client.io.bluetooth.utils.DebugNotificationManager;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Executors;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
@@ -19,8 +20,12 @@ import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.json.JSONObject;
+import org.json.JSONException;
 
 /**
  * Implementation of IBluetoothManager for K900 devices.
@@ -37,9 +42,20 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     // File transfer state management
     private FileTransferSession currentFileTransfer = null;
     private ScheduledExecutorService fileTransferExecutor;
-    private ConcurrentHashMap<Integer, FilePacketState> pendingPackets = new ConcurrentHashMap<>();
-    private static final int FILE_TRANSFER_ACK_TIMEOUT_MS = 3000;
-    private static final int FILE_TRANSFER_MAX_RETRIES = 5;
+    private ScheduledFuture<?> timeoutTask = null; // Track timeout task for cancellation
+    private static final int TRANSFER_TIMEOUT_MS = 5000; // 5 seconds timeout (reset on each retry)
+    
+    // Packet transmission timing configuration
+    private static final int PACKET_SEND_DELAY_MS = 10; // Delay between packets to prevent UART overflow
+    private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
+    
+    // Testing: Packet drop simulation
+    private static final boolean ENABLE_PACKET_DROP_TEST = false; // Disabled for production (set to true for testing)
+    private static final int PACKET_TO_DROP = 5; // Drop packet #5 for testing
+    private boolean hasDroppedTestPacket = false; // Track if we've already dropped the test packet
+
+    // Retry limits
+    private static final int MAX_TRANSFER_RETRIES = 3; // Maximum number of retry attempts
 
     // Inner class to track file transfer state
     private static class FileTransferSession {
@@ -51,6 +67,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         int currentPacketIndex;
         boolean isActive;
         long startTime;
+        int retryCount; // Track number of retry attempts
 
         FileTransferSession(String filePath, String fileName, byte[] fileData) {
             this.filePath = filePath;
@@ -61,19 +78,10 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             this.currentPacketIndex = 0;
             this.isActive = true;
             this.startTime = System.currentTimeMillis();
+            this.retryCount = 0; // Initialize retry counter
         }
     }
 
-    // Inner class to track packet state
-    private static class FilePacketState {
-        int retryCount;
-        long lastSendTime;
-
-        FilePacketState() {
-            this.retryCount = 0;
-            this.lastSendTime = System.currentTimeMillis();
-        }
-    }
 
     /**
      * Create a new K900BluetoothManager
@@ -192,11 +200,10 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         if (currentFileTransfer != null && currentFileTransfer.isActive) {
             Log.d(TAG, "Cancelling active file transfer");
             currentFileTransfer.isActive = false;
+            Log.d(TAG, "5 Disabling fast mode");
             comManager.setFastMode(false);
         }
         
-        // Clear pending packets
-        pendingPackets.clear();
         
         // Shutdown file transfer executor
         if (fileTransferExecutor != null) {
@@ -274,9 +281,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                     // Log.d(TAG, "📥 Extracted " + completeMessages.size() + " complete messages");
                     // Process each complete message
                     for (byte[] message : completeMessages) {
-                        // Check for file transfer acknowledgments first
-                        processReceivedMessage(message);
-                        
                         // Extract payload from K900 protocol message for listeners
                         if (K900ProtocolUtils.isK900ProtocolFormat(message)) {
                             // Try to extract payload (big-endian first, then little-endian)
@@ -428,7 +432,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         }
         
         currentFileTransfer = new FileTransferSession(filePath, fileName, fileData);
-        pendingPackets.clear();
         
         Log.d(TAG, "Starting file transfer: " + fileName + " (" + fileData.length + " bytes, " + 
                    currentFileTransfer.totalPackets + " packets)");
@@ -439,54 +442,135 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         // Enable fast mode for file transfer
         comManager.setFastMode(true);
         
-        // Send the first packet
-        sendNextFilePacket();
-        
+        // Send file transfer announcement first
+        sendFileTransferAnnouncement();
+
+        // Schedule transfer timeout check
+        scheduleTimeoutCheck();
+
+        // Send all packets using iterative approach (from remote)
+        sendAllFilePackets();
+
         return true;
     }
     
     /**
-     * Send the next file packet
+     * Restart entire file transfer due to missing packets (for now - will be optimized to selective retransmission)
      */
-    private void sendNextFilePacket() {
-        long methodStartTime = System.currentTimeMillis();
-        
+    public void retransmitMissingPackets(String fileName, List<Integer> missingPackets) {
+        Log.d(TAG, "🔄 retransmitMissingPackets() called - fileName: " + fileName + ", missing " + missingPackets.size() + " packets: " + missingPackets);
+
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            Log.w(TAG, "🔄 Cannot restart - no active transfer (currentFileTransfer: " + (currentFileTransfer != null ? "exists but inactive" : "null") + ")");
+            return;
+        }
+
+        if (!currentFileTransfer.fileName.equals(fileName)) {
+            Log.w(TAG, "🔄 Cannot restart - filename mismatch. Expected: " + currentFileTransfer.fileName + ", Got: " + fileName);
+            return;
+        }
+
+        // Increment retry counter
+        currentFileTransfer.retryCount++;
+        Log.w(TAG, "🔄 Retry attempt " + currentFileTransfer.retryCount + "/" + MAX_TRANSFER_RETRIES + " for " + fileName);
+
+        // Check if we've exceeded max retries
+        if (currentFileTransfer.retryCount > MAX_TRANSFER_RETRIES) {
+            Log.e(TAG, "❌ Max retries exceeded (" + MAX_TRANSFER_RETRIES + ") for " + fileName + ". Giving up.");
+
+            // Report failure
+            BluetoothReporting.reportFileTransferFailure(context, currentFileTransfer.filePath,
+                "send_file", "max_retries_exceeded", null);
+
+            notificationManager.showDebugNotification("File Transfer Failed",
+                "Max retries exceeded for " + currentFileTransfer.fileName);
+
+            // Send final failure notification to phone
+            sendTransferFailureNotification(currentFileTransfer.fileName, "max_retries_exceeded");
+
+            // Clean up but keep the file for manual retry or debugging
+            Log.d(TAG, "Disabling fast mode after max retries");
+            comManager.setFastMode(false);
+            currentFileTransfer = null;
+
+            return;
+        }
+
+        Log.w(TAG, "🔄 RESTARTING entire file transfer due to " + missingPackets.size() + " missing packets for " + fileName);
+
+        // Reset transfer state to beginning
+        currentFileTransfer.currentPacketIndex = 0;
+        currentFileTransfer.startTime = System.currentTimeMillis(); // Reset start time for fresh timeout
+
+        // Cancel existing timeout and reschedule for the retry
+        cancelTimeoutCheck();
+        scheduleTimeoutCheck();
+
+        // Send file transfer announcement again to notify phone of restart
+        sendFileTransferAnnouncement();
+
+        // Send all packets from the beginning
+        Log.d(TAG, "🔄 Restarting transmission of all " + currentFileTransfer.totalPackets + " packets");
+        sendAllFilePackets();
+    }
+    
+    /**
+     * Send file transfer announcement to phone
+     */
+    private void sendFileTransferAnnouncement() {
+        if (currentFileTransfer == null) {
             return;
         }
         
-        if (currentFileTransfer.currentPacketIndex >= currentFileTransfer.totalPackets) {
-            // Transfer complete
-            long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
-            Log.d(TAG, "✅ File transfer complete: " + currentFileTransfer.fileName);
-            Log.d(TAG, "⏱️ Transfer took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
-            Log.d(TAG, "📊 Transfer rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+        try {
+            // Create announcement message in same format as version_info
+            JSONObject announcement = new JSONObject();
+            announcement.put("type", "file_announce");
+            announcement.put("fileName", currentFileTransfer.fileName);
+            announcement.put("totalPackets", currentFileTransfer.totalPackets);
+            announcement.put("fileSize", currentFileTransfer.fileSize);
+            announcement.put("timestamp", System.currentTimeMillis());
             
-            notificationManager.showDebugNotification("File Transfer Complete", 
-                currentFileTransfer.fileName + " in " + transferDuration + "ms");
+            String jsonStr = announcement.toString();
+            Log.d(TAG, "📢 Sending file transfer announcement: " + jsonStr);
             
-            // Delete the file after successful transfer
-            try {
-                File file = new File(currentFileTransfer.filePath);
-                if (file.exists() && file.delete()) {
-                    Log.d(TAG, "🗑️ Deleted file after successful BLE transfer: " + currentFileTransfer.filePath);
-                } else {
-                    Log.w(TAG, "Failed to delete file: " + currentFileTransfer.filePath);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error deleting file after BLE transfer", e);
+            // Send directly as JSON (same format as version_info)
+            boolean sent = sendData(jsonStr.getBytes(StandardCharsets.UTF_8));
+            if (sent) {
+                Log.d(TAG, "📢 File transfer announcement sent successfully");
+            } else {
+                Log.e(TAG, "📢 Failed to send file transfer announcement");
             }
             
-            // Disable fast mode
-            comManager.setFastMode(false);
-            
-            currentFileTransfer = null;
-            pendingPackets.clear();
-            return;
+        } catch (Exception e) {
+            Log.e(TAG, "📢 Error creating file transfer announcement", e);
+        }
+    }
+    
+    /**
+     * Complete encapsulated packet transmission - handles everything for one packet index
+     * @param packetIndex The packet index to transmit
+     * @return true if packet was sent successfully, false otherwise
+     */
+    private boolean transmitSinglePacket(int packetIndex) {
+        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            Log.w(TAG, "📦 Cannot transmit packet " + packetIndex + " - no active transfer");
+            return false;
+        }
+        
+        if (packetIndex < 0 || packetIndex >= currentFileTransfer.totalPackets) {
+            Log.w(TAG, "📦 Invalid packet index " + packetIndex + " (valid range: 0-" + (currentFileTransfer.totalPackets - 1) + ")");
+            return false;
+        }
+        
+        // TESTING: Simulate packet drop for testing missing packet detection (only on first attempt)
+        if (ENABLE_PACKET_DROP_TEST && packetIndex == PACKET_TO_DROP && !hasDroppedTestPacket) {
+            Log.w(TAG, "🧪 TESTING: Deliberately dropping packet " + packetIndex + " to test restart behavior (FIRST ATTEMPT ONLY)");
+            hasDroppedTestPacket = true; // Mark that we've dropped the test packet
+            return true; // Return true to continue with other packets
         }
         
         // Calculate packet data
-        int packetIndex = currentFileTransfer.currentPacketIndex;
         int offset = packetIndex * K900ProtocolUtils.FILE_PACK_SIZE;
         int packSize = Math.min(K900ProtocolUtils.FILE_PACK_SIZE, 
                                 currentFileTransfer.fileSize - offset);
@@ -503,124 +587,233 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         );
         
         if (packet == null) {
-            Log.e(TAG, "Failed to pack file packet " + packetIndex);
-            currentFileTransfer = null;
-            return;
+            Log.e(TAG, "📦 Failed to pack packet " + packetIndex);
+            return false;
         }
         
-        // Send the packet using sendFile (no logging)
+        // Commander, mission objective: Log the full contents of the outgoing UART packet before transmission for maximum battlefield visibility.
+        // Plan of attack: We'll log the packet in hex format, up to the first 64 bytes for recon, and if it's longer, indicate the total size.
+        StringBuilder hexDump = new StringBuilder();
+        int dumpLen = Math.min(packet.length, 64);
+        for (int i = 0; i < dumpLen; i++) {
+            hexDump.append(String.format("%02X ", packet[i]));
+        }
+        Log.d(TAG, "📦 UART packet dump (" + packet.length + " bytes): " + hexDump.toString() + (packet.length > 64 ? "... [truncated]" : ""));
+
+        // Send the packet via UART
         long sendStartTime = System.currentTimeMillis();
         comManager.sendFile(packet);
         long sendEndTime = System.currentTimeMillis();
         
-        // Track packet state for acknowledgment (preserve retry count if resending)
-        FilePacketState existingState = pendingPackets.get(packetIndex);
-        if (existingState == null) {
-            pendingPackets.put(packetIndex, new FilePacketState());
-        } else {
-            // Update timestamp but preserve retry count
-            existingState.lastSendTime = System.currentTimeMillis();
-        }
-        
-        long totalMethodTime = System.currentTimeMillis() - methodStartTime;
-        Log.d(TAG, "📊 Sent file packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
-                   " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + 
-                   "ms, total method time: " + totalMethodTime + "ms");
-        
-        // Schedule acknowledgment timeout check
-        fileTransferExecutor.schedule(() -> checkFilePacketAck(packetIndex), 
-                                     FILE_TRANSFER_ACK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        // Log transmission details
+        Log.d(TAG, "📦 Sent packet " + packetIndex + "/" + (currentFileTransfer.totalPackets - 1) + 
+                   " (" + packSize + " bytes) - UART send took " + (sendEndTime - sendStartTime) + "ms");
+
+        return true;
     }
     
     /**
-     * Check if file packet acknowledgment was received
+     * Schedule a timeout check for the current transfer
      */
-    private void checkFilePacketAck(int packetIndex) {
+    private void scheduleTimeoutCheck() {
+        if (fileTransferExecutor != null && currentFileTransfer != null) {
+            // Cancel any existing timeout
+            cancelTimeoutCheck();
+
+            // Schedule new timeout
+            timeoutTask = fileTransferExecutor.schedule(() -> checkTransferTimeout(),
+                                                        TRANSFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            Log.d(TAG, "⏱️ Scheduled transfer timeout check for " + TRANSFER_TIMEOUT_MS + "ms");
+        }
+    }
+
+    /**
+     * Cancel the current timeout check
+     */
+    private void cancelTimeoutCheck() {
+        if (timeoutTask != null && !timeoutTask.isDone()) {
+            timeoutTask.cancel(false);
+            Log.d(TAG, "⏱️ Cancelled existing timeout check");
+        }
+    }
+
+    /**
+     * Check if transfer has timed out (5 seconds elapsed)
+     */
+    private void checkTransferTimeout() {
         if (currentFileTransfer == null || !currentFileTransfer.isActive) {
-            return;
+            return; // Transfer already completed or cancelled
         }
         
-        FilePacketState packetState = pendingPackets.get(packetIndex);
-        if (packetState == null) {
-            // Packet was acknowledged and removed
-            return;
-        }
-        
-        long timeSinceLastSend = System.currentTimeMillis() - packetState.lastSendTime;
-        if (timeSinceLastSend >= FILE_TRANSFER_ACK_TIMEOUT_MS) {
-            packetState.retryCount++;
+        long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
+        if (transferDuration >= TRANSFER_TIMEOUT_MS) {
+            Log.e(TAG, "⏰ File transfer timeout after " + transferDuration + "ms for " + currentFileTransfer.fileName);
             
-            if (packetState.retryCount >= FILE_TRANSFER_MAX_RETRIES) {
-                Log.e(TAG, "File packet " + packetIndex + " failed after " + FILE_TRANSFER_MAX_RETRIES + " retries");
-                
-                // Report file transfer failure
-                BluetoothReporting.reportFileTransferFailure(context, currentFileTransfer.filePath, 
-                    "send_file", "packet_timeout", null);
-                
-                notificationManager.showDebugNotification("File Transfer Failed", 
-                    "Packet " + packetIndex + " timeout");
-                
-                // Cancel transfer
-                comManager.setFastMode(false);
-                currentFileTransfer = null;
-                pendingPackets.clear();
+            // Report transfer failure
+            BluetoothReporting.reportFileTransferFailure(context, currentFileTransfer.filePath, 
+                "send_file", "transfer_timeout", null);
+            
+            notificationManager.showDebugNotification("File Transfer Timeout", 
+                "Transfer of " + currentFileTransfer.fileName + " timed out after 3 seconds");
+            
+            // Send timeout notification to phone
+            sendTransferTimeoutNotification(currentFileTransfer.fileName);
+            
+            Log.d(TAG, "3 Disabling fast mode");
+            // Clean up and disable fast mode
+            comManager.setFastMode(false);
+            currentFileTransfer = null;
+        }
+    }
+    
+    /**
+     * Send transfer timeout notification to phone
+     */
+    private void sendTransferTimeoutNotification(String fileName) {
+        try {
+            JSONObject timeoutNotification = new JSONObject();
+            timeoutNotification.put("type", "transfer_timeout");
+            timeoutNotification.put("fileName", fileName);
+            timeoutNotification.put("timestamp", System.currentTimeMillis());
+
+            String jsonStr = timeoutNotification.toString();
+            Log.d(TAG, "⏰ Sending transfer timeout notification: " + jsonStr);
+
+            // Send directly as JSON (same format as announcement)
+            boolean sent = sendData(jsonStr.getBytes(StandardCharsets.UTF_8));
+            if (sent) {
+                Log.d(TAG, "⏰ Transfer timeout notification sent successfully");
             } else {
-                Log.w(TAG, "File packet " + packetIndex + " timeout, retrying (attempt " + 
-                          (packetState.retryCount + 1) + "/" + FILE_TRANSFER_MAX_RETRIES + ")");
-                
-                // Resend the packet
-                currentFileTransfer.currentPacketIndex = packetIndex;
-                sendNextFilePacket();
+                Log.e(TAG, "⏰ Failed to send transfer timeout notification");
             }
+
+        } catch (Exception e) {
+            Log.e(TAG, "⏰ Error creating transfer timeout notification", e);
+        }
+    }
+
+    /**
+     * Send transfer failure notification to phone (when max retries exceeded)
+     */
+    private void sendTransferFailureNotification(String fileName, String reason) {
+        try {
+            JSONObject failureNotification = new JSONObject();
+            failureNotification.put("type", "transfer_failed");
+            failureNotification.put("fileName", fileName);
+            failureNotification.put("reason", reason);
+            failureNotification.put("timestamp", System.currentTimeMillis());
+
+            String jsonStr = failureNotification.toString();
+            Log.d(TAG, "❌ Sending transfer failure notification: " + jsonStr);
+
+            // Send directly as JSON (same format as announcement)
+            boolean sent = sendData(jsonStr.getBytes(StandardCharsets.UTF_8));
+            if (sent) {
+                Log.d(TAG, "❌ Transfer failure notification sent successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send transfer failure notification");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "❌ Error creating transfer failure notification", e);
         }
     }
     
     /**
-     * Handle file transfer acknowledgment
-     * Made public so K900CommandHandler can call it when ACK is received as JSON
+     * Handle transfer completion confirmation from phone
      */
-    public void handleFileTransferAck(int state, int index) {
-        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+    public void handleTransferCompletion(String fileName, boolean success) {
+        if (currentFileTransfer == null) {
+            Log.w(TAG, "✅ Transfer completion received but no active transfer");
             return;
         }
         
-        // Calculate time since packet was sent
-        FilePacketState packetState = pendingPackets.get(index);
-        long ackDelay = packetState != null ? 
-            (System.currentTimeMillis() - packetState.lastSendTime) : -1;
+        if (!currentFileTransfer.fileName.equals(fileName)) {
+            Log.w(TAG, "✅ Transfer completion filename mismatch. Expected: " + currentFileTransfer.fileName + ", Got: " + fileName);
+            return;
+        }
         
-        Log.d(TAG, "📊 File transfer ACK: state=" + state + ", index=" + index + 
-                   ", ACK received after " + ackDelay + "ms");
-        
-        if (state == 1) { // Success (K900 uses state=1 for success)
-            // Remove from pending packets
-            pendingPackets.remove(index);
-            
-            // Move to next packet
-            currentFileTransfer.currentPacketIndex = index + 1;
-            sendNextFilePacket();
+        Log.d(TAG, (success ? "✅" : "❌") + " Transfer completion confirmed for: " + fileName + " (success: " + success + ")");
+
+        // Cancel timeout since we got a response
+        cancelTimeoutCheck();
+
+        // Store file path before cleaning up transfer session
+        String filePath = currentFileTransfer.filePath;
+
+        // Clean up transfer session
+        currentFileTransfer = null;
+
+        Log.d(TAG, "4 Disabling fast mode");
+        // Disable fast mode
+        comManager.setFastMode(false);
+
+        if (success) {
+            Log.d(TAG, "✅ File transfer completed successfully: " + fileName);
+
+            // Delete the file after successful transfer confirmation
+            if (filePath != null) {
+                try {
+                    File file = new File(filePath);
+                    if (file.exists() && file.delete()) {
+                        Log.d(TAG, "🗑️ Deleted file after confirmed successful BLE transfer: " + filePath);
+                    } else {
+                        Log.w(TAG, "Failed to delete file: " + filePath);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error deleting file after BLE transfer", e);
+                }
+            }
         } else {
-            // Error - retry the packet
-            Log.w(TAG, "File packet " + index + " failed with state " + state + ", retrying");
-            currentFileTransfer.currentPacketIndex = index;
-            sendNextFilePacket();
+            Log.e(TAG, "❌ File transfer failed: " + fileName);
+            // Keep file for potential retry or debugging
         }
     }
     
     /**
-     * Process received message for file transfer acknowledgments
+     * Send all file packets using iterative approach (non-recursive)
      */
-    private void processReceivedMessage(byte[] message) {
-        if (message == null || message.length < 4) {
+    private void sendAllFilePackets() {
+        if (currentFileTransfer == null || !currentFileTransfer.isActive) {
+            Log.w(TAG, "📦 Cannot send packets - no active transfer");
             return;
         }
         
-        // Check if this is a file transfer acknowledgment
-        // Format: [CMD_TYPE][STATE][INDEX_HIGH][INDEX_LOW]...
-        if (message[0] == K900ProtocolUtils.CMD_TYPE_PHOTO && message.length >= 4) {
-            int state = message[1] & 0xFF;
-            int index = ((message[2] & 0xFF) << 8) | (message[3] & 0xFF);
-            handleFileTransferAck(state, index);
+        Log.d(TAG, "🚀 Starting iterative transmission of " + currentFileTransfer.totalPackets + " packets");
+        
+        // Send all packets with rate limiting using executor scheduling
+        for (int i = 0; i < currentFileTransfer.totalPackets; i++) {
+            final int packetIndex = i;
+            
+            // Schedule packet transmission with rate limiting
+            long delay = i * PACKET_SEND_DELAY_MS; // Stagger packets by 10ms each
+            fileTransferExecutor.schedule(() -> {
+                // Use encapsulated single packet transmission (handles drop logic internally)
+                boolean sent = transmitSinglePacket(packetIndex);
+                if (!sent) {
+                    Log.e(TAG, "📦 Failed to transmit packet " + packetIndex + " - aborting transfer");
+                    currentFileTransfer = null;
+                    comManager.setFastMode(false);
+                    return;
+                }
+                
+                // Check if this was the last packet
+                if (packetIndex == currentFileTransfer.totalPackets - 1) {
+                    long transferDuration = System.currentTimeMillis() - currentFileTransfer.startTime;
+                    Log.d(TAG, "📦 All packets sent: " + currentFileTransfer.fileName);
+                    Log.d(TAG, "⏱️ Transmission took: " + transferDuration + "ms for " + currentFileTransfer.fileSize + " bytes");
+                    Log.d(TAG, "📊 Transmission rate: " + (currentFileTransfer.fileSize * 1000 / transferDuration) + " bytes/sec");
+                    Log.d(TAG, "⏳ Waiting for phone confirmation or timeout before cleanup...");
+                }
+            }, delay, TimeUnit.MILLISECONDS);
         }
     }
-} 
+    
+    /**
+     * Send the next file packet (legacy wrapper - now just starts all packets)
+     */
+    private void sendNextFilePacket() {
+        Log.d(TAG, "📦 Legacy sendNextFilePacket() called - starting all packets transmission");
+        sendAllFilePackets();
+    }
+}

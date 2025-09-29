@@ -21,6 +21,7 @@ const PERMISSION_DISPLAY_INFO: Record<
     isLegacy: boolean;
     category: string;
     replacedBy?: PermissionType[];
+    isSelectable?: boolean;
   }
 > = {
   [PermissionType.NOTIFICATIONS]: {
@@ -75,11 +76,17 @@ const PERMISSION_DISPLAY_INFO: Record<
     category: "camera",
   },
   [PermissionType.ALL]: {
-    label: "All Permissions",
-    description: "Access to all available permissions",
+    label: "All Permissions (Deprecated)",
+    description: "Access to all available permissions - no longer selectable",
     isLegacy: false,
     category: "system",
+    isSelectable: false,
   },
+};
+
+// Check if a permission type is selectable
+const isPermissionSelectable = (type: PermissionType): boolean => {
+  return PERMISSION_DISPLAY_INFO[type]?.isSelectable !== false;
 };
 
 interface PermissionsFormProps {
@@ -250,11 +257,19 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {/* Available types for new/existing permissions */}
-                  {availableTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
+                  {availableTypes.map((type) => {
+                    const isSelectable = isPermissionSelectable(type);
+                    return (
+                      <SelectItem 
+                        key={type} 
+                        value={type}
+                        disabled={!isSelectable}
+                        className={!isSelectable ? "text-gray-400 cursor-not-allowed" : ""}
+                      >
+                        {type}{!isSelectable ? " (Deprecated - Not Selectable)" : ""}
+                      </SelectItem>
+                    );
+                  })}
 
                   {/* Current legacy type (only if editing existing legacy permission) */}
                   {PERMISSION_DISPLAY_INFO[permission.type]?.isLegacy && (
@@ -323,7 +338,7 @@ export function PermissionsForm({
     description: "",
   });
 
-  // Get available permission types for NEW permission selection (excludes legacy)
+  // Get available permission types for NEW permission selection (excludes legacy but includes unselectable)
   const getAvailablePermissionTypes = (
     excludeIndex?: number,
   ): PermissionType[] => {
@@ -335,6 +350,7 @@ export function PermissionsForm({
       return !permissions.some((p, i) => p.type === type && i !== excludeIndex);
     });
   };
+
 
   // Add a new permission
   const addPermission = () => {

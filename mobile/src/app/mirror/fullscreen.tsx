@@ -314,7 +314,7 @@ export default function GlassesMirrorFullscreen() {
   }
 
   return (
-    <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.fullscreenBackground}]}>
+    <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.palette.black}]}>
       {isGlassesConnected && currentEvent.layout ? (
         <View style={{flex: 1}}>
           {/* Camera feed - only render if camera is on */}
@@ -329,9 +329,7 @@ export default function GlassesMirrorFullscreen() {
           )}
 
           {/* Dark background when camera is off */}
-          {!isCameraOn && (
-            <View style={[styles.cameraBackground, {backgroundColor: theme.colors.fullscreenBackground}]} />
-          )}
+          {!isCameraOn && <View style={[styles.cameraBackground, {backgroundColor: theme.colors.palette.black}]} />}
 
           {/* Overlay the glasses display content */}
           <View style={styles.fullscreenOverlay}>
@@ -421,7 +419,7 @@ export default function GlassesMirrorFullscreen() {
           {status.glasses_info?.model_name?.includes("Simulated") && <SimulatedGlassesControls />}
         </View>
       ) : (
-        <View style={[styles.fallbackContainer, {backgroundColor: theme.colors.galleryBackground}]}>
+        <View style={[styles.fallbackContainer, {backgroundColor: theme.colors.backgroundAlt}]}>
           <Text style={[styles.fallbackText, {color: theme.colors.icon}]}>
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
