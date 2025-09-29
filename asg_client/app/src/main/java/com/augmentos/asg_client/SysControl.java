@@ -243,6 +243,14 @@ public class SysControl {
         nn.putExtra("enable", enable);
         sendBroadcast(context, nn);
     }
+
+    public static void setI2SAudioPlayReceiverPackage(Context context, String packageName) {
+        Intent nn = new Intent();
+        nn.putExtra("cmd", "i2s_pkname");
+        nn.putExtra("pkname", packageName);
+        sendBroadcast(context, nn);
+        Log.d(TAG, "Registered I2S audio receiver package: " + packageName);
+    }
     
     // NEW METHODS - Package Management (EXPERIMENTAL)
     public static void enablePackage(Context context, String packageName) {

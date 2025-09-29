@@ -19,6 +19,7 @@ import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
+import com.augmentos.asg_client.audio.AudioAssets;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -207,6 +208,24 @@ public class MediaCaptureService {
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
     }
+
+    private void playShutterSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
+        }
+    }
+
+    private void playVideoStartSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_START);
+        }
+    }
+
+    private void playVideoStopSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_STOP);
+        }
+    }
     
     /**
      * Start video recording with specific settings
@@ -347,6 +366,9 @@ public class MediaCaptureService {
         currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
+            // Play video start sound
+            playVideoStartSound();
+
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
@@ -443,6 +465,9 @@ public class MediaCaptureService {
         }
 
         try {
+            // Play video stop sound
+            playVideoStopSound();
+
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
@@ -641,6 +666,8 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
+        playShutterSound();
+
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
 
@@ -700,6 +727,8 @@ public class MediaCaptureService {
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
+            playShutterSound();
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -1197,6 +1226,8 @@ public class MediaCaptureService {
         }
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
+
+        playShutterSound();
 
         try {
             // Use CameraNeo for photo capture
