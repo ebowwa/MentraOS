@@ -31,8 +31,8 @@ export default function Homepage() {
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
-  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
+  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
 
   useFocusEffect(
     useCallback(() => {

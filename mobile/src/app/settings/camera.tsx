@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from "react"
-import {View, Text, ScrollView, StyleSheet, TouchableOpacity} from "react-native"
+import {useEffect, useState} from "react"
+import {View, ScrollView, TouchableOpacity} from "react-native"
+import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -36,7 +37,7 @@ export default function CameraSettingsScreen() {
   const {status} = useCoreStatus()
   const {goBack} = useNavigationHistory()
   const {user} = useAuth()
-  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   // Local state for optimistic updates - initialize from status
   const [photoSize, setPhotoSize] = useState<PhotoSize>(
@@ -81,7 +82,7 @@ export default function CameraSettingsScreen() {
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.DEV_MODE)
+      const devModeSetting = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.dev_mode)
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
@@ -183,7 +184,7 @@ export default function CameraSettingsScreen() {
                 <MaterialCommunityIcons
                   name="check"
                   size={24}
-                  color={photoSize === value ? theme.colors.checkmark : "transparent"}
+                  color={photoSize === value ? theme.colors.primary : "transparent"}
                 />
               </TouchableOpacity>
             </View>
@@ -204,7 +205,7 @@ export default function CameraSettingsScreen() {
                 <MaterialCommunityIcons
                   name="check"
                   size={24}
-                  color={videoResolution === value ? theme.colors.checkmark : "transparent"}
+                  color={videoResolution === value ? theme.colors.primary : "transparent"}
                 />
               </TouchableOpacity>
             </View>
@@ -231,12 +232,6 @@ export default function CameraSettingsScreen() {
     </Screen>
   )
 }
-
-const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
@@ -281,14 +276,14 @@ const $optionText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $warningContainer: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
-  backgroundColor: colors.warningBackground || "#fff3cd",
+  backgroundColor: colors.warning,
   padding: spacing.md,
   margin: spacing.md,
   borderRadius: spacing.xs,
 })
 
 const $warningText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.warningText || "#856404",
+  color: colors.textDim,
   textAlign: "center",
 })
 
