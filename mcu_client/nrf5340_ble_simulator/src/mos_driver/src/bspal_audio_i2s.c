@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-08-25 17:45:35
+ * @LastEditTime : 2025-09-29 15:40:07
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -20,8 +20,8 @@
 #include "bspal_audio_i2s.h"
 #include "mos_pdm.h"
 
-#define LOG_MODULE_NAME BSPAL_I2S
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+LOG_MODULE_REGISTER(audio_iis, LOG_LEVEL_INF);
 
 #define I2S_NL DT_NODELABEL(i2s0)
 
@@ -87,13 +87,13 @@ static void i2s_buffer_req_evt_handle(nrfx_i2s_buffers_t const *p_released, uint
     {
         err_code         = nrfx_i2s_next_buffers_set(&i2s_inst, &i2s_req_buffer[1]);
         mp_block_to_fill = i2s_tx_req_buffer[1];
-        // printk("i2s p_released->p_rx_buffer = %lld\r\n", k_uptime_get() );
+        // LOG_INF("i2s p_released->p_rx_buffer = %lld\r\n", k_uptime_get() );
     }
     else
     {
         err_code         = nrfx_i2s_next_buffers_set(&i2s_inst, p_released);
-        mp_block_to_fill = (uint32_t *)p_released->p_tx_buffer;
-        // printk("i2s next buffers needed = %lld\r\n", k_uptime_get() );
+        mp_block_to_fill = (uint32_t*)p_released->p_tx_buffer;
+        // LOG_INF("i2s next buffers needed = %lld\r\n", k_uptime_get() );
     }
 }
 

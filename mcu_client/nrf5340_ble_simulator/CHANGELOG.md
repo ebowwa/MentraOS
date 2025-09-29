@@ -2,6 +2,15 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## [Unreleased]
+
+- Replace manual per-byte hex printing loops with Zephyr logging hexdump API to ensure logs go through the logging subsystem and respect runtime filtering/backends.
+  - Updated: `src/protobuf_handler.c` — replaced manual loops with `LOG_HEXDUMP_INF` for BLE RX, protobuf raw data, first-10 bytes, outgoing packet and echo packet.
+
+- Fix nanopb generated binding metadata to avoid static assertions during build by widening fieldinfo for DisplayScrollingText.
+  - Updated: `src/proto/mentraos_ble.pb.c` — changed `PB_BIND(mentraos_ble_DisplayScrollingText, ..., AUTO)` to use a wider binding (`PB_BIND(..., 2)`).
+
+
 ## [2.18.0] - 2025-09-17
 
 ### 🔧 Git Branch Reorganization & Complete Display System Validation

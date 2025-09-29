@@ -2,8 +2,8 @@
 # This configures string fields to use direct char arrays instead of callbacks
 
 # Configure text fields to use fixed-size char arrays instead of callbacks
-mentraos.ble.DisplayText.text                max_size:128
-mentraos.ble.DisplayScrollingText.text        max_size:128
+mentraos.ble.DisplayText.text                max_size:220
+mentraos.ble.DisplayScrollingText.text        max_size:220
 
 # Other string fields that might need direct access
 mentraos.ble.DeviceInfo.fw_version           max_size:32

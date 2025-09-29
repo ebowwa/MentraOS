@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 13:54:11
+ * @LastEditTime : 2025-09-29 16:16:35
  * @FilePath     : hls12vga.c
  * @Description  :
  *
@@ -27,7 +27,8 @@
 #include "../../../../src/mos_components/mos_lvgl_display/include/display_config.h"
 #endif
 
-LOG_MODULE_REGISTER(custom_hls12vga, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(custom_hls12vga, LOG_LEVEL_INF);
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define DT_DRV_COMPAT zephyr_custom_hls12vga
@@ -281,7 +282,6 @@ static int hls12vga_write(const struct device *dev,
 	
 	// Disable hex dump logging
 	// const uint8_t *debug_src = (const uint8_t *)buf;
-	// BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
 	
 	// **SAFETY CHECK: Implement chunked transfers for large displays**
 	uint32_t total_pixels = width * height;
@@ -348,7 +348,6 @@ static int hls12vga_write(const struct device *dev,
 	const uint16_t src_stride = (width + 7) / 8;
 	const uint16_t dst_stride = cfg->screen_width;
 
-	// BSP_LOG_BUFFER_HEX(TAG, src, src_stride); // PIXEL_FORMAT_MONO10 原始数据默认背景色是0x00
 	// 每像素1bit展开为 0x00 / 0xFF
 	for (uint16_t row = 0; row < height; row++)
 	{

@@ -43,8 +43,8 @@
 #include <nrfx_clock.h>
 
 
-#define LOG_MODULE_NAME peripheral_uart
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 static int hfclock_config_and_start(void)
 {
@@ -734,7 +734,8 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	uint32_t buttons = button_state & has_changed;
 
 	// **DEBUG: Enhanced button logging to identify spurious events**
-	if (has_changed != 0) {
+	if ((has_changed != 0) && !(has_changed & (DK_BTN3_MSK | DK_BTN4_MSK))) // Ignore spurious changes on Button 3/4
+	{
 		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
 		        button_state, has_changed, buttons);
 	}
@@ -828,7 +829,7 @@ int main(void)
 	// Note: Use built-in 'log' shell commands for runtime control instead
 
 	LOG_INF("🚀🚀🚀 MAIN FUNCTION STARTED - v2.2.0-DISPLAY_OPEN_FIX 🚀🚀🚀");
-	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
+	LOG_INF("🌟🌟🌟 MAIN FUNCTION LOG_INF - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
 
 	configure_gpio();
 
@@ -904,7 +905,7 @@ int main(void)
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
 	// Initialize LVGL display system with working driver implementation
-	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	LOG_INF("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
 	
 	// Start the LVGL display thread first!
 	LOG_INF("🧵 Starting LVGL display thread...");
@@ -915,7 +916,7 @@ int main(void)
         k_msleep(100);
         
         // Send LCD_CMD_OPEN to start the LVGL display system
-        printk("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
+        LOG_INF("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
         display_open();
         LOG_INF("✅ display_open() call completed!");
         

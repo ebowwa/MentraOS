@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-11 21:08:42
+ * @LastEditTime : 2025-09-29 16:19:52
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -29,10 +29,8 @@
 // #include "task_ble_receive.h"
 #include <zephyr/logging/log.h>
 
-#define LOG_MODULE_NAME MOS_LVGL
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+LOG_MODULE_REGISTER(mos_lvgl_display, LOG_LEVEL_INF);
 
-#define TAG            "MOS_LVGL"
 #define TASK_LVGL_NAME "MOS_LVGL"
 
 #define LVGL_THREAD_STACK_SIZE (4096 * 4)
@@ -64,10 +62,10 @@ static void fps_timer_cb(struct k_timer *timer_id)
 {
     uint32_t fps = frame_count;
     frame_count  = 0;
-//     BSP_LOGI(TAG, "📈 LVGL Performance Monitor:");
-//     BSP_LOGI(TAG, "  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
-//     BSP_LOGI(TAG, "  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
-//     BSP_LOGI(TAG, "  - Message Queue Timeout: 1ms (K901 fast response)");
+//     LOG_INF("📈 LVGL Performance Monitor:");
+//     LOG_INF("  - Current FPS: %d (Target: ~5 FPS like K901)", fps);
+//     LOG_INF("  - LVGL Tick Rate: %d ms (K901 optimized)", LVGL_TICK_MS);
+//     LOG_INF("  - Message Queue Timeout: 1ms (K901 fast response)");
 }
 
 void lv_example_scroll_text(void)
@@ -142,7 +140,7 @@ void display_update_protobuf_text(const char *text_content)
 {
     if (!text_content)
     {
-        BSP_LOGE(TAG, "Invalid text content pointer");
+        LOG_ERR("Invalid text content pointer");
         return;
     }
 
@@ -155,7 +153,7 @@ void display_update_protobuf_text(const char *text_content)
     if (text_len > MAX_TEXT_LEN)
     {
         text_len = MAX_TEXT_LEN;
-        BSP_LOGW(TAG, "Protobuf text truncated to %d chars", MAX_TEXT_LEN);
+        LOG_WRN( "Protobuf text truncated to %d chars", MAX_TEXT_LEN);
     }
 
     strncpy(cmd.p.protobuf_text.text, text_content, text_len);
@@ -188,7 +186,7 @@ void display_update_xy_text(uint16_t x, uint16_t y, const char *text_content, ui
 {
     if (!text_content)
     {
-        BSP_LOGE(TAG, "Invalid XY text content pointer");
+        LOG_ERR("Invalid XY text content pointer");
         return;
     }
 
@@ -203,7 +201,7 @@ void display_update_xy_text(uint16_t x, uint16_t y, const char *text_content, ui
     if (text_len > MAX_TEXT_LEN)
     {
         text_len = MAX_TEXT_LEN;
-        BSP_LOGW(TAG, "XY text truncated to %d chars", MAX_TEXT_LEN);
+        LOG_WRN( "XY text truncated to %d chars", MAX_TEXT_LEN);
     }
 
     strncpy(cmd.p.xy_text.text, text_content, text_len);
@@ -352,8 +350,7 @@ void scroll_text_stop(void)
 //     display_cmd_t cmd;
 
 //     cmd.type = LCD_CMD_TEXT;
-//     BSP_LOGI(TAG, "show text: %s", (char *)txt->text.arg);
-//     BSP_LOG_BUFFER_HEX(TAG, (char *)txt->text.arg, MAX_TEXT_LEN);
+//     LOG_INF("show text: %s", (char *)txt->text.arg);
 //     // /* txt->text.arg 已由 decode_string 填入 NUL 结尾字符串 */
 //     // // strncpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
 //     memcpy(cmd.p.text.text, (char *)txt->text.arg, MAX_TEXT_LEN);
@@ -367,7 +364,7 @@ void scroll_text_stop(void)
 //     // 非阻塞入队，队满则丢弃并打印警告
 //     if (mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_ON) != 0)
 //     {
-//         BSP_LOGE(TAG, "UI queue full, drop text");
+//         LOG_ERR("UI queue full, drop text");
 //     }
 // }
 
@@ -453,7 +450,7 @@ static void create_vertical_zebra_pattern(lv_obj_t *screen)
     const int stripe_width = config->patterns.bar_thickness;
     const int num_stripes  = config->width / stripe_width;
 
-    BSP_LOGI(TAG, "🦓 Creating adaptive vertical zebra: %d stripes (%dpx width) for %s", 
+    LOG_INF("🦓 Creating adaptive vertical zebra: %d stripes (%dpx width) for %s", 
              num_stripes, stripe_width, config->name);
 
     for (int i = 0; i < num_stripes; i++)
@@ -658,7 +655,7 @@ static void create_scrolling_text_container(lv_obj_t *screen)
 
     // AUTO-SCROLL TO BOTTOM to show latest content
     lv_obj_update_layout(container);  // Ensure layout is calculated
-    BSP_LOGI(TAG, "📝 Created adaptive scrolling container: %dx%d with %s font", 
+    LOG_INF("📝 Created adaptive scrolling container: %dx%d with %s font", 
              config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
@@ -688,7 +685,7 @@ static void create_xy_text_positioning_area(lv_obj_t *screen)
 
     // **EMPTY CONTAINER**: No default text - ready for XY positioned messages
 
-    BSP_LOGI(TAG, "📍 Pattern 5: XY Text Positioning Area created (%dx%d) for %s", 
+    LOG_INF("📍 Pattern 5: XY Text Positioning Area created (%dx%d) for %s", 
              config->layout.usable_width, config->layout.usable_height, config->name);
 }
 
@@ -735,7 +732,7 @@ static void show_test_pattern(int pattern_id)
             create_xy_text_positioning_area(screen);
             break;
         default:
-            BSP_LOGE(TAG, "❌ Unknown pattern ID: %d", pattern_id);
+            LOG_ERR("❌ Unknown pattern ID: %d", pattern_id);
             return;
     }
 
@@ -762,7 +759,7 @@ void cycle_test_pattern(void)
     last_cycle_time = current_time;
 
     current_pattern = (current_pattern + 1) % num_patterns;
-    BSP_LOGI(TAG, "Pattern #%d", current_pattern);  // Minimal log
+    LOG_INF("Pattern #%d", current_pattern);  // Minimal log
     show_test_pattern(current_pattern);
 }
 
@@ -773,14 +770,14 @@ static void update_protobuf_text_content(const char *text_content)
 
     if (!text_content)
     {
-        BSP_LOGE(TAG, "Invalid text content pointer");
+        LOG_ERR("Invalid text content pointer");
         return;
     }
 
     // Verify we have valid global references
     if (!protobuf_container || !protobuf_label)
     {
-        BSP_LOGE(TAG, "Protobuf container not initialized");
+        LOG_ERR("Protobuf container not initialized");
         return;
     }
 
@@ -791,7 +788,7 @@ static void update_protobuf_text_content(const char *text_content)
     lv_obj_update_layout(protobuf_container);  // Ensure layout is calculated
     lv_obj_scroll_to_y(protobuf_container, lv_obj_get_scroll_bottom(protobuf_container), LV_ANIM_OFF);
 
-    BSP_LOGI(TAG, "📱 Protobuf text updated: %.50s%s", text_content, strlen(text_content) > 50 ? "..." : "");
+    LOG_INF("📱 Protobuf text updated: %.50s%s", text_content, strlen(text_content) > 50 ? "..." : "");
 }
 
 // **NEW: Pattern 5 - Handle XY positioned text with font size control**
@@ -802,14 +799,14 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
 
     if (!text_content)
     {
-        BSP_LOGE(TAG, "Invalid XY text content pointer");
+        LOG_ERR("Invalid XY text content pointer");
         return;
     }
 
     // Verify we have valid XY container reference
     if (!xy_text_container)
     {
-        BSP_LOGE(TAG, "XY text container not initialized - must be in Pattern 5");
+        LOG_ERR("XY text container not initialized - must be in Pattern 5");
         return;
     }
 
@@ -821,22 +818,22 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     const uint16_t max_x = 580;  // 600 - (2 * 10px padding)
     const uint16_t max_y = 420;  // 440 - (2 * 10px padding)
 
-    BSP_LOGI(TAG, "📍 Original XY: (%u,%u), max bounds: (%u,%u)", x, y, max_x, max_y);
+    LOG_INF("📍 Original XY: (%u,%u), max bounds: (%u,%u)", x, y, max_x, max_y);
 
     if (x >= max_x || y >= max_y)
     {
-        BSP_LOGW(TAG, "XY coordinates out of bounds: (%u,%u) - max is (%u,%u)", x, y, max_x, max_y);
+        LOG_WRN( "XY coordinates out of bounds: (%u,%u) - max is (%u,%u)", x, y, max_x, max_y);
         // Clamp to valid range
         x = (x >= max_x) ? max_x - 50 : x;  // Leave some space for text
         y = (y >= max_y) ? max_y - 30 : y;
-        BSP_LOGW(TAG, "📍 Clamped to: (%u,%u)", x, y);
+        LOG_WRN( "📍 Clamped to: (%u,%u)", x, y);
     }
 
     // Map font size to available fonts, default to 12pt if invalid
     const lv_font_t *font = display_manager_map_font(font_size);
     if (!font)
     {
-        BSP_LOGW(TAG, "Invalid font size %u, using default 12pt", font_size);
+        LOG_WRN( "Invalid font size %u, using default 12pt", font_size);
         font = display_manager_map_font(12);  // Fallback to 12pt
     }
 
@@ -856,7 +853,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     // Position the text at specified coordinates (relative to container padding)
     lv_obj_set_pos(current_xy_text_label, x, y);
 
-    BSP_LOGI(TAG, "� Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", x, y,
+    LOG_INF("� Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", x, y,
              font_size, color, text_content, strlen(text_content) > 30 ? "..." : "");
 }
 
@@ -868,24 +865,24 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     // lv_font_glyph_dsc_t glyph_dsc;
     // if (lv_font_get_glyph_dsc(font, &glyph_dsc, unicode, 0))
     // {
-    //     BSP_LOGI(TAG, "字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
+    //     LOG_INF("字符 'A' 宽度 = %d px", glyph_dsc.adv_w);
     // }
     // mos_delay_ms(1000);
-    // BSP_LOGI(TAG, "Font pointer: %p", font);
-    // BSP_LOGI(TAG, "字体高度：%d px", font->line_height);
-    // BSP_LOGI(TAG, "基线位置：%d px", font->base_line);
+    // LOG_INF("Font pointer: %p", font);
+    // LOG_INF("字体高度：%d px", font->line_height);
+    // LOG_INF("基线位置：%d px", font->base_line);
     const struct device *display_dev;
     display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
     if (!device_is_ready(display_dev))
     {
-        BSP_LOGI(TAG, "display_dev Device not ready, aborting test");
+        LOG_INF("display_dev Device not ready, aborting test");
         return;
     }
     
     // **NEW: Initialize modular display configuration system**
     int config_result = display_config_init();
     if (config_result != 0) {
-        BSP_LOGE(TAG, "Failed to initialize display configuration: %d", config_result);
+        LOG_ERR("Failed to initialize display configuration: %d", config_result);
         return;
     }
     
@@ -894,7 +891,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
              config->name, config->width, config->height);
     // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
     // {
-    //     BSP_LOGE(TAG, "Failed to hls12vga_init_sem_take err");
+    //     LOG_ERR("Failed to hls12vga_init_sem_take err");
     //     return;
     // }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
@@ -946,7 +943,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     break;
                 case LCD_CMD_CYCLE_PATTERN:
                     /* **NEW: Handle pattern cycling safely in LVGL thread** */
-                    BSP_LOGI(TAG, "LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
+                    LOG_INF("LCD_CMD_CYCLE_PATTERN - Thread-safe pattern cycling");
                     cycle_test_pattern();  // Now called from LVGL thread context
                     break;
                 case LCD_CMD_UPDATE_PROTOBUF_TEXT:
@@ -955,7 +952,7 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     break;
                 case LCD_CMD_UPDATE_XY_TEXT:
                     /* **NEW: Handle XY positioned text updates for Pattern 5** */
-                    BSP_LOGI(TAG, "LCD_CMD_UPDATE_XY_TEXT - XY positioned text at (%u,%u)", cmd.p.xy_text.x,
+                    LOG_INF("LCD_CMD_UPDATE_XY_TEXT - XY positioned text at (%u,%u)", cmd.p.xy_text.x,
                              cmd.p.xy_text.y);
                     update_xy_positioned_text(cmd.p.xy_text.x, cmd.p.xy_text.y, cmd.p.xy_text.text,
                                               cmd.p.xy_text.font_size, cmd.p.xy_text.color);
@@ -984,26 +981,26 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
                     /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
-                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
+                    // LOG_INF("LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
                     // if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
                     // {
-                    //     BSP_LOGE(TAG, "Failed to draw horizontal grayscale pattern");
+                    //     LOG_ERR("Failed to draw horizontal grayscale pattern");
                     // }
                     // break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
                     /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
-                    // BSP_LOGI(TAG, "LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
+                    // LOG_INF("LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
                     // if (hls12vga_draw_vertical_grayscale_pattern() != 0)
                     // {
-                    //     BSP_LOGE(TAG, "Failed to draw vertical grayscale pattern");
+                    //     LOG_ERR("Failed to draw vertical grayscale pattern");
                     // }
                     // break;
                 case LCD_CMD_CHESS_PATTERN:
                     /* **NEW: Handle direct HLS12VGA chess pattern** */
-                    // BSP_LOGI(TAG, "LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
+                    // LOG_INF("LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
                     // if (hls12vga_draw_chess_pattern() != 0)
                     // {
-                    //     BSP_LOGE(TAG, "Failed to draw chess pattern");
+                    //     LOG_ERR("Failed to draw chess pattern");
                     // }
                     // break;
                 default:
