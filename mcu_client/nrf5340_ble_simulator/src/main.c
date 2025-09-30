@@ -29,7 +29,7 @@
 #include "pdm_audio_stream.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
-#include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
+// #include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
 
 #include <dk_buttons_and_leds.h>
 
@@ -39,11 +39,12 @@
 #include <string.h>
 
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <nrfx_clock.h>
-#include "bspal_littlefs.h"
 
-#define LOG_MODULE_NAME peripheral_uart
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+
+LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 static int hfclock_config_and_start(void)
 {
@@ -64,7 +65,7 @@ static int hfclock_config_and_start(void)
 // 初始化高频时钟128Mhz运行模式
 SYS_INIT(hfclock_config_and_start, POST_KERNEL, 0);
 
-#define STACKSIZE 4096
+#define STACKSIZE 2048
 #define PRIORITY 7
 
 #define DEVICE_NAME CONFIG_BT_DEVICE_NAME
@@ -602,7 +603,7 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 	} else {
 		LOG_WRN("⚠️ No echo response generated (echo_len = %d)", echo_len);
 	}
-
+#if 0
 	// Also forward to UART for debugging
 	for (uint16_t pos = 0; pos != len;) {
 		struct uart_data_t *tx = k_malloc(sizeof(*tx));
@@ -638,6 +639,7 @@ static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
 			k_fifo_put(&fifo_uart_tx_data, tx);
 		}
 	}
+#endif
 }
 
 static struct mentra_ble_cb mentra_cb = {
@@ -732,9 +734,10 @@ void button_changed(uint32_t button_state, uint32_t has_changed)
 	uint32_t buttons = button_state & has_changed;
 
 	// **DEBUG: Enhanced button logging to identify spurious events**
-	if (has_changed != 0) {
-		// LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
-		//         button_state, has_changed, buttons);
+	if ((has_changed != 0) && !(has_changed & (DK_BTN3_MSK | DK_BTN4_MSK))) // Ignore spurious changes on Button 3/4
+	{
+		LOG_INF("� Button Event: state=0x%02X, changed=0x%02X, pressed=0x%02X", 
+		        button_state, has_changed, buttons);
 	}
 
 #ifdef CONFIG_BT_NUS_SECURITY_ENABLED
@@ -809,15 +812,24 @@ static void configure_gpio(void)
 		LOG_ERR("Cannot init LEDs (err: %d)", err);
 	}
 }
-extern void function_in_extern_flash(void);
-extern void test_extern_flash(void);
+
+// External BSP log control
+extern void bsp_log_init(void);
+extern int bsp_log_runtime_level;
+
 int main(void)
 {
 	int blink_status = 0;
 	int err = 0;
 
+	// Initialize BSP logging with disabled defaults (level 0 = DISABLED)
+	bsp_log_init();
+	
+	// Set Zephyr log level to ERROR only for very clean startup  
+	// Note: Use built-in 'log' shell commands for runtime control instead
+
 	LOG_INF("🚀🚀🚀 MAIN FUNCTION STARTED - v2.2.0-DISPLAY_OPEN_FIX 🚀🚀🚀");
-	printk("🌟🌟🌟 MAIN FUNCTION PRINTK - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
+	LOG_INF("🌟🌟🌟 MAIN FUNCTION LOG_INF - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
 
 	configure_gpio();
 
@@ -837,11 +849,10 @@ int main(void)
 	// Set initial brightness to 50%
 	protobuf_set_brightness_level(50);
 
-
-	err = uart_init();
-	if (err) {
-		error();
-	}
+	// err = uart_init();
+	// if (err) {
+	// 	error();
+	// }
 
 	if (IS_ENABLED(CONFIG_BT_NUS_SECURITY_ENABLED)) {
 		err = bt_conn_auth_cb_register(&conn_auth_callbacks);
@@ -876,7 +887,6 @@ int main(void)
 		return 0;
 	}
 	bt_gatt_cb_register(&gatt_callbacks);
-	#if 1
 	// Initialize PDM audio streaming system
 	LOG_INF("🎤 Initializing PDM audio streaming system...");
 	err = pdm_audio_stream_init();
@@ -895,20 +905,20 @@ int main(void)
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
 	// Initialize LVGL display system with working driver implementation
-	printk("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	LOG_INF("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
 	
 	// Start the LVGL display thread first!
-	printk("🧵🧵🧵 Starting LVGL display thread... 🧵🧵🧵\n");
+	LOG_INF("🧵 Starting LVGL display thread...");
 	lvgl_display_thread();
-	printk("✅✅✅ LVGL display thread started! ✅✅✅\n");
-
-	// Give the thread a moment to initialize
-	k_msleep(100);
-
+	LOG_INF("✅ LVGL display thread started!");
+#if 0
+        // Give the thread a moment to initialize
+        k_msleep(100);
+        
         // Send LCD_CMD_OPEN to start the LVGL display system
-        printk("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
+        LOG_INF("📡📡📡 Calling display_open() NOW... 📡📡📡\n");
         display_open();
-        printk("✅✅✅ display_open() call completed! ✅✅✅\n");
+        LOG_INF("✅ display_open() call completed!");
         
         // Add direct HLS12VGA test from main thread
         LOG_INF("🖥️ Testing HLS12VGA display from main thread...");
@@ -946,16 +956,10 @@ int main(void)
 #endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
-	k_msleep(1000);
-	littlefs_test();
-	#if 1 //test extern flash
-	function_in_extern_flash();
-	test_extern_flash();
-	#endif
+
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
-		
 	}
 }
 
@@ -966,7 +970,7 @@ void ble_write_thread(void)
 	struct uart_data_t mentra_data = {
 		.len = 0,
 	};
-	
+
 	for (;;) {
 		/* Wait indefinitely for data to be sent over bluetooth */
 		struct uart_data_t *buf = k_fifo_get(&fifo_uart_rx_data,

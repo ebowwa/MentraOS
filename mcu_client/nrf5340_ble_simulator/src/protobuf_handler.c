@@ -81,6 +81,7 @@ static uint32_t ping_sequence_number = 0;
 static uint32_t ping_retry_count = 0;
 static bool ping_waiting_for_pong = false;
 static bool phone_connected = true;
+bool ping_logging_enabled = true;  // Global flag to control ping logging
 
 #define PING_INTERVAL_MS 10000    // Send ping every 10 seconds
 #define PING_TIMEOUT_MS 3000      // Wait 3 seconds for pong response
@@ -105,21 +106,14 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 	}
 
 	LOG_INF("🚨🚨🚨 BLE MESSAGE RECEIVED! 🚨🚨🚨");
-	printk("🚨🚨🚨 BLE MESSAGE RECEIVED via PRINTK! 🚨🚨🚨\n");
+	LOG_INF("🚨🚨🚨 BLE MESSAGE RECEIVED via LOG_INF! 🚨🚨🚨\n");
 
 	LOG_INF("=== BLE DATA RECEIVED ===");
 	LOG_INF("Received BLE data (%u bytes):", len);
 	
-	// Print hex dump
-	for (int i = 0; i < len; i++) {
-		printk("0x%02X ", data[i]);
-		if ((i + 1) % 16 == 0) {
-			printk("\n");
-		}
-	}
-	if (len % 16 != 0) {
-		printk("\n");
-	}
+	// Print hex dump (use Zephyr hexdump helper so logging backend and
+	// runtime filtering are respected)
+	LOG_HEXDUMP_INF(data, len, "BLE_RX");
 
 	// Check if this looks like a protobuf message (starts with control header)
 	uint8_t firstByte = data[0];
@@ -147,20 +141,19 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 	}
 
 	// Show raw ASCII if printable and check for brightness text
-	LOG_INF("[ASCII] Raw string: \"");
-	char ascii_buffer[256] = {0};
-	int ascii_idx = 0;
+	// LOG_INF("[ASCII] Raw string: \"");
+	// char ascii_buffer[256] = {0};
+	// int ascii_idx = 0;
 	
-	for (int i = 0; i < len && ascii_idx < 255; i++) {
-		if (data[i] >= 32 && data[i] <= 126) {
-			printk("%c", data[i]);
-			ascii_buffer[ascii_idx++] = data[i];
-		} else {
-			printk(".");
-		}
-	}
-	printk("\"\n");
-	
+	// for (int i = 0; i < len && ascii_idx < 255; i++) {
+	// 	if (data[i] >= 32 && data[i] <= 126) {
+	// 		LOG_INF("%c", data[i]);
+	// 		ascii_buffer[ascii_idx++] = data[i];
+	// 	} else {
+	// 		LOG_INF(".");
+	// 	}
+	// }
+	// LOG_INF("\"\n");
 	// TODO: Discuss with mobile app team - brightness text messages are not part of official protocol
 	// The official protocol uses BrightnessConfig protobuf (tag 37), but mobile app sends debug text
 	// Commenting out for now to focus on official protocol compliance
@@ -180,37 +173,33 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 	LOG_INF("Parsing protobuf control message (%u bytes) using nanopb", len);
 	
 	// *** DETAILED HEX DUMP FOR DEBUGGING ***
-	printk("\n=== PROTOBUF RAW DATA HEX DUMP (Length: %u bytes) ===\n", len);
-	for (size_t i = 0; i < len; i++) {
-		printk("%02X ", protobuf_data[i]);
-		if ((i + 1) % 16 == 0) printk("\n");
-	}
-	if (len % 16 != 0) printk("\n");
-	printk("=== END HEX DUMP ===\n");
+	LOG_INF("\n=== PROTOBUF RAW DATA HEX DUMP (Length: %u bytes) ===\n", len);
+	/* Use Zephyr logging hexdump helper so output is handled by the
+	 * logging subsystem (and respects runtime filtering/backends).
+	 */
+	LOG_HEXDUMP_INF(protobuf_data, len, "PROTOBUF");
+	LOG_INF("=== END HEX DUMP ===\n");
 	
 	if (len == 0) {
 		LOG_WRN("Empty protobuf message");
 		return;
 	}
 
-	// Print first few bytes for debugging
-	LOG_INF("First 10 bytes of protobuf data:");
-	for (int i = 0; i < len && i < 10; i++) {
-		printk("0x%02X ", protobuf_data[i]);
-	}
-	printk("\n");
+	// Print first few bytes for debugging (as hexdump, up to 10 bytes)
+	LOG_INF("First %u bytes of protobuf data:", (len < 10) ? (uint32_t)len : 10U);
+	LOG_HEXDUMP_INF(protobuf_data, (len < 10) ? len : 10, "PROTO_FIRST10");
 
 	// Try to decode as PhoneToGlasses message
 	mentraos_ble_PhoneToGlasses phone_msg = mentraos_ble_PhoneToGlasses_init_default;
 	
 	LOG_INF("Attempting to decode PhoneToGlasses message...");
-	printk("[Phone->Glasses] Decoding protobuf message (%u bytes)\n", len);
+	LOG_INF("[Phone->Glasses] Decoding protobuf message (%u bytes)\n", len);
 	bool decode_result = decode_phone_to_glasses_message(protobuf_data, len, &phone_msg);
 	
 	if (decode_result) {
 		LOG_INF("Successfully decoded PhoneToGlasses message!");
 		LOG_INF("Message type (which_payload): %u", phone_msg.which_payload);
-		printk("[Phone->Glasses] Successfully decoded message type: %u\n", phone_msg.which_payload);
+		LOG_INF("[Phone->Glasses] Successfully decoded message type: %u\n", phone_msg.which_payload);
 		
 		// Enhanced message type logging with protocol details
 		const char *message_name;
@@ -268,7 +257,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		LOG_INF("  - Tag: %u", phone_msg.which_payload);
 		LOG_INF("  - Description: %s", message_description);
 		LOG_INF("  - Protocol: MentraOS BLE Protobuf v3");
-		printk("[Phone->Glasses] %s (Tag %u): %s\n", message_name, phone_msg.which_payload, message_description);
+		LOG_INF("[Phone->Glasses] %s (Tag %u): %s\n", message_name, phone_msg.which_payload, message_description);
 		
 		// Process the decoded message based on payload type
 		switch (phone_msg.which_payload) {
@@ -308,7 +297,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		case 16: // ping_tag (Phone responds to our pong-as-ping with ping-as-pong)
 			LOG_INF("Processing Ping Response from Phone (ping acting as pong response)...");
 			if (phone_msg.which_payload == mentraos_ble_PhoneToGlasses_ping_tag) {
-				printk("[GLASSES<-PHONE PONG] Received ping-as-pong response from phone\n");
+				LOG_INF("[PING] Received pong response from phone");
 				protobuf_process_pong_response(&phone_msg.payload.ping);
 			}
 			break;
@@ -357,7 +346,7 @@ void protobuf_parse_control_message(const uint8_t *protobuf_data, uint16_t len)
 		
 	} else {
 		LOG_ERR("Failed to decode protobuf message - falling back to detailed analysis");
-		printk("[Phone->Glasses] ❌ Failed to decode protobuf message (%u bytes)\n", len);
+		LOG_INF("[Phone->Glasses] ❌ Failed to decode protobuf message (%u bytes)\n", len);
 		
 		// Enhanced protobuf wire format analysis
 		LOG_INF("=== PROTOBUF DECODE FAILURE ANALYSIS ===");
@@ -636,18 +625,10 @@ void protobuf_send_battery_notification(void)
 		
 		// Detailed hex dump of response packet
 		LOG_INF("Outgoing Packet Hex Dump (%zu bytes):", bytes_written + 1);
-		for (size_t i = 0; i < bytes_written + 1; i++) {
-			printk("0x%02X ", buffer[i]);
-			if ((i + 1) % 16 == 0) {
-				printk("\n");
-			}
-		}
-		if ((bytes_written + 1) % 16 != 0) {
-			printk("\n");
-		}
+		LOG_HEXDUMP_INF(buffer, bytes_written + 1, "OUTGOING_PKT");
 		
 		// Print to UART with comprehensive details
-		printk("\n[Glasses->Phone BATTERY] Battery Status: %u%%, charging:%s (protobuf:%zu bytes)\n", 
+		LOG_INF("\n[Glasses->Phone BATTERY] Battery Status: %u%%, charging:%s (protobuf:%zu bytes)\n", 
 		       notification.payload.battery_status.level, 
 		       notification.payload.battery_status.charging ? "Y" : "N",
 		       bytes_written);
@@ -734,18 +715,10 @@ int protobuf_generate_echo_response(const uint8_t *input_data, uint16_t input_le
 		
 		// Detailed hex dump of response packet
 		LOG_INF("Outgoing Echo Packet Hex Dump (%zu bytes):", bytes_written + 1);
-		for (size_t i = 0; i < bytes_written + 1; i++) {
-			printk("0x%02X ", output_data[i]);
-			if ((i + 1) % 16 == 0) {
-				printk("\n");
-			}
-		}
-		if ((bytes_written + 1) % 16 != 0) {
-			printk("\n");
-		}
+		LOG_HEXDUMP_INF(output_data, bytes_written + 1, "ECHO_PKT");
 		
 		// Print to UART with comprehensive details
-		printk("\n[Glasses->Phone ECHO] Echo Response: battery:%u%%, charging:%s (protobuf:%zu bytes)\n", 
+		LOG_INF("\n[Glasses->Phone ECHO] Echo Response: battery:%u%%, charging:%s (protobuf:%zu bytes)\n", 
 		       response.payload.battery_status.level, 
 		       response.payload.battery_status.charging ? "Y" : "N",
 		       bytes_written);
@@ -891,7 +864,7 @@ void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *bri
 	LOG_INF("  - Implementation: Hardware PWM control (LED3) + Projector brightness (HLS12VGA) + Auto brightness disable");
 	
 	// Print to UART
-	printk("\n[Phone->Glasses BRIGHTNESS] %u%% -> LED3: %u%%, Projector: %u/9, Auto: %s->OFF\n", 
+	LOG_INF("\n[Phone->Glasses BRIGHTNESS] %u%% -> LED3: %u%%, Projector: %u/9, Auto: %s->OFF\n", 
 	       current_brightness_level, clamped_level, (clamped_level * 9) / 100, auto_brightness_enabled ? "ON" : "OFF");
 	
 	// Clamp and set the new brightness level (this will disable auto brightness)
@@ -969,7 +942,7 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 	LOG_INF("  - Position bounds: X=%u, Y=%u (bounds depend on display)", display_text->x, display_text->y);
 	
 	// Print to UART with comprehensive details
-	printk("\n[Phone->Glasses TEXT] Display Text: \"%s\" (len:%zu, pos:(%u,%u), color:0x%04X, font:%u, size:%u)\n", 
+	LOG_INF("\n[Phone->Glasses TEXT] Display Text: \"%s\" (len:%zu, pos:(%u,%u), color:0x%04X, font:%u, size:%u)\n", 
 	       display_text->text, text_length, display_text->x, display_text->y, 
 	       color_rgb565, display_text->font_code, display_text->size);
 	
@@ -982,12 +955,12 @@ void protobuf_process_display_text(const mentraos_ble_DisplayText *display_text)
 		uint16_t font_size = (display_text->size > 0) ? display_text->size : 12;  // Default to 12pt
 		display_update_xy_text(display_text->x, display_text->y, display_text->text, 
 		                      font_size, color_rgb565);
-		printk("✅ LVGL: XY positioned text at (%u,%u) with font %upt in Pattern 5\n", 
+		LOG_INF("✅ LVGL: XY positioned text at (%u,%u) with font %upt in Pattern 5\n", 
 		       display_text->x, display_text->y, font_size);
 	} else {
 		// Pattern 4 or others: Auto-scroll container (backward compatibility)
 		display_update_protobuf_text(display_text->text);
-		printk("✅ LVGL: Protobuf text updated in auto-scroll container (Pattern %d)\n", current_pattern);
+		LOG_INF("✅ LVGL: Protobuf text updated in auto-scroll container (Pattern %d)\n", current_pattern);
 	}
 	
 	LOG_INF("=== END DISPLAY TEXT MESSAGE ===");
@@ -1073,14 +1046,14 @@ void protobuf_process_display_scrolling_text(const mentraos_ble_DisplayScrolling
 	LOG_INF("  - Area size: %u pixels²", scrolling_text->width * scrolling_text->height);
 	
 	// Print to UART with comprehensive details
-	printk("\n[Phone->Glasses SCROLL] Scrolling Text: \"%s\" (len:%zu, area:%ux%u, speed:%ups, align:%s, loop:%s)\n", 
+	LOG_INF("\n[Phone->Glasses SCROLL] Scrolling Text: \"%s\" (len:%zu, area:%ux%u, speed:%ups, align:%s, loop:%s)\n", 
 	       scrolling_text->text, text_length, scrolling_text->width, scrolling_text->height,
 	       scrolling_text->speed, alignment_name, scrolling_text->loop ? "Y" : "N");
 	
 	// *** LVGL INTEGRATION: Display scrolling text in protobuf container ***
 	// **NEW: Both DisplayText and DisplayScrollingText update the same auto-scroll container**
 	display_update_protobuf_text(scrolling_text->text);
-	printk("✅ LVGL: Protobuf scrolling text updated in auto-scroll container\n");
+	LOG_INF("✅ LVGL: Protobuf scrolling text updated in auto-scroll container\n");
 	
 	LOG_INF("=== END SCROLLING TEXT MESSAGE ===");
 }
@@ -1121,7 +1094,7 @@ void protobuf_parse_text_brightness(const char *text)
 				
 				if (brightness_value >= 0 && brightness_value <= 100) {
 					protobuf_set_brightness_level((uint32_t)brightness_value);
-					printk("\n[UART BRIGHTNESS] Text brightness set to %d%%\n", brightness_value);
+					LOG_INF("\n[UART BRIGHTNESS] Text brightness set to %d%%\n", brightness_value);
 				} else {
 					LOG_WRN("TEXT BRIGHTNESS: Invalid value %d (must be 0-100)", brightness_value);
 				}
@@ -1167,7 +1140,7 @@ void protobuf_process_clear_display(void)
 	LOG_INF("  - Refresh display: TODO");
 	
 	// Print to UART
-	printk("\n[Phone->Glasses CLEAR] Clear Display: all content cleared (temporary tag:99)\n");
+	LOG_INF("\n[Phone->Glasses CLEAR] Clear Display: all content cleared (temporary tag:99)\n");
 	
 	LOG_INF("Clear Display Command Processed");
 	LOG_INF("=== END CLEAR DISPLAY MESSAGE ===");
@@ -1236,7 +1209,7 @@ void protobuf_process_auto_brightness_config(const mentraos_ble_AutoBrightnessCo
 	}
 	
 	// Print to UART with comprehensive details
-	printk("\n[Phone->Glasses AUTO_BRIGHTNESS] Auto Brightness: %s->%s (manual_level:%u%%)\n", 
+	LOG_INF("\n[Phone->Glasses AUTO_BRIGHTNESS] Auto Brightness: %s->%s (manual_level:%u%%)\n", 
 	       previous_state ? "ON" : "OFF", enabled ? "ON" : "OFF", protobuf_get_brightness_level());
 	
 	// Status change logging
@@ -1274,13 +1247,13 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	LOG_INF("=== MICROPHONE STATE CONFIG MESSAGE (Tag 20) ===");
 	
 	// *** RAW PROTOBUF FIELD ANALYSIS ***
-	printk("\n🔍 RAW MICSTATECONFIG FIELD VALUES:\n");
-	printk("  - enabled field: %s (bool value: %d)\n", mic_state->enabled ? "true" : "false", mic_state->enabled);
-	printk("🔍 FIELD INTERPRETATION:\n");
-	printk("  - Message Type: PhoneToGlasses::MicStateConfig\n");
-	printk("  - Tag Number: 20\n");
-	printk("  - Field 1 (enabled): %s\n", mic_state->enabled ? "ENABLE_MICROPHONE" : "DISABLE_MICROPHONE");
-	printk("  - Expected Action: %s\n", mic_state->enabled ? "Start PDM capture + LC3 encoding + BLE streaming" : "Stop all audio processing");
+	LOG_INF("\n🔍 RAW MICSTATECONFIG FIELD VALUES:\n");
+	LOG_INF("  - enabled field: %s (bool value: %d)\n", mic_state->enabled ? "true" : "false", mic_state->enabled);
+	LOG_INF("🔍 FIELD INTERPRETATION:\n");
+	LOG_INF("  - Message Type: PhoneToGlasses::MicStateConfig\n");
+	LOG_INF("  - Tag Number: 20\n");
+	LOG_INF("  - Field 1 (enabled): %s\n", mic_state->enabled ? "ENABLE_MICROPHONE" : "DISABLE_MICROPHONE");
+	LOG_INF("  - Expected Action: %s\n", mic_state->enabled ? "Start PDM capture + LC3 encoding + BLE streaming" : "Stop all audio processing");
 	
 	bool enabled = mic_state->enabled;
 
@@ -1345,7 +1318,7 @@ void protobuf_process_mic_state_config(const mentraos_ble_MicStateConfig *mic_st
 	LOG_INF("  - Implementation: PDM microphone + LC3 encoding + BLE streaming");
 	
 	// Print concise status to UART
-	printk("\n[Phone->Glasses MIC_STATE] Microphone: %s->%s (frames: %u/%u/%u, errors: %u)\n", 
+	LOG_INF("\n[Phone->Glasses MIC_STATE] Microphone: %s->%s (frames: %u/%u/%u, errors: %u)\n", 
 	       was_streaming ? "ON" : "OFF", enabled ? "ON" : "OFF", 
 	       frames_captured, frames_encoded, frames_transmitted, errors);
 	
@@ -1365,22 +1338,30 @@ static void ping_timer_handler(struct k_timer *timer)
 	if (!ping_waiting_for_pong) {
 		protobuf_send_ping_request();
 	} else {
-		printk("[GLASSES PING] Still waiting for pong response, skipping this ping\n");
+		if (ping_logging_enabled) {
+			LOG_WRN("[PING] Still waiting for pong response, skipping this ping");
+		}
 	}
 }
 
 // Timeout handler: Handle ping timeout (no pong received)
 static void ping_timeout_handler(struct k_timer *timer)
 {
-	printk("[GLASSES PING TIMEOUT] No pong response received within %d ms\n", PING_TIMEOUT_MS);
+	if (ping_logging_enabled) {
+		LOG_WRN("[PING] Timeout - no pong response within %d ms", PING_TIMEOUT_MS);
+	}
 	ping_retry_count++;
 	ping_waiting_for_pong = false;
 	
 	if (ping_retry_count >= PING_MAX_RETRIES) {
-		printk("[GLASSES PING FAILURE] Max retries (%d) reached - phone disconnected!\n", PING_MAX_RETRIES);
+		if (ping_logging_enabled) {
+			LOG_ERR("[PING] Max retries (%d) reached - phone disconnected!", PING_MAX_RETRIES);
+		}
 		protobuf_handle_ping_failure();
 	} else {
-		printk("[GLASSES PING RETRY] Attempt %d/%d failed, will retry\n", ping_retry_count, PING_MAX_RETRIES);
+		if (ping_logging_enabled) {
+			LOG_WRN("[PING] Retry %d/%d - attempt failed", ping_retry_count, PING_MAX_RETRIES);
+		}
 		// The next ping will be sent by the regular ping timer
 	}
 }
@@ -1399,14 +1380,16 @@ static void protobuf_send_ping_request(void)
 	message.payload.pong.dummy_field = 1; // Just to set something
 	
 	// Encode the message
-	uint8_t buffer[128];
+	uint8_t buffer[256];
 	pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
 	
 	if (pb_encode(&stream, mentraos_ble_GlassesToPhone_fields, &message)) {
 		size_t message_length = stream.bytes_written;
 		
-		printk("[GLASSES->PHONE PING] Sending ping #%u (using GlassesToPhone pong tag 15, %zu bytes)\n", 
-		       ping_sequence_number, message_length);
+		if (ping_logging_enabled) {
+			LOG_DBG("[PING] Sending ping #%u (%zu bytes)", 
+			       ping_sequence_number, message_length);
+		}
 		
 		// TODO: Get current BLE connection handle and send
 		// int result = mentra_ble_send(conn, buffer, message_length);
@@ -1414,9 +1397,13 @@ static void protobuf_send_ping_request(void)
 		// Start timeout timer
 		k_timer_start(&ping_timeout_timer, K_MSEC(PING_TIMEOUT_MS), K_NO_WAIT);
 		
-		printk("[GLASSES PING] Waiting for pong response (timeout: %d ms)\n", PING_TIMEOUT_MS);
+		if (ping_logging_enabled) {
+			LOG_INF("[PING] Waiting for pong response (timeout: %d ms)", PING_TIMEOUT_MS);
+		}
 	} else {
-		printk("[GLASSES PING ERROR] Failed to encode ping request\n");
+		if (ping_logging_enabled) {
+			LOG_ERR("[PING] Failed to encode ping request");
+		}
 		ping_waiting_for_pong = false;
 	}
 }
@@ -1425,7 +1412,7 @@ static void protobuf_send_ping_request(void)
 static void protobuf_process_pong_response(const mentraos_ble_PingRequest *pong)
 {
 	if (!ping_waiting_for_pong) {
-		printk("[GLASSES PONG] Received unexpected pong (not waiting)\n");
+		LOG_WRN("[PING] Received unexpected pong (not waiting)");
 		return;
 	}
 	
@@ -1436,11 +1423,11 @@ static void protobuf_process_pong_response(const mentraos_ble_PingRequest *pong)
 	// Calculate simple round-trip time (note: no timestamp in current protobuf)
 	int64_t current_time = k_uptime_get();
 	
-	printk("[GLASSES<-PHONE PONG] Received pong response (dummy_field: %c)\n", 
+	LOG_INF("[GLASSES<-PHONE PONG] Received pong response (dummy_field: %c)\n", 
 	       pong->dummy_field);
 	
 	// Since current protobuf doesn't have sequence numbers, we'll assume success
-	printk("[GLASSES PONG SUCCESS] Phone responded - connection alive!\n");
+	LOG_INF("[PING] Phone responded - connection alive!");
 	protobuf_handle_ping_success();
 }
 
@@ -1451,11 +1438,11 @@ static void protobuf_handle_ping_success(void)
 	
 	if (!phone_connected) {
 		phone_connected = true;
-		printk("[GLASSES CONNECTION] Phone reconnected!\n");
+		LOG_INF("[GLASSES CONNECTION] Phone reconnected!\n");
 		// TODO: Wake up from sleep mode, restore normal operation
 	}
 	
-	printk("[GLASSES CONNECTION] Phone connectivity confirmed (retry count reset)\n");
+	LOG_INF("[GLASSES CONNECTION] Phone connectivity confirmed (retry count reset)\n");
 }
 
 // Handle ping failure (no pong response after max retries)
@@ -1465,7 +1452,9 @@ static void protobuf_handle_ping_failure(void)
 	ping_retry_count = 0;
 	ping_waiting_for_pong = false;
 	
-	printk("[GLASSES DISCONNECT] Phone connection lost - entering sleep mode\n");
+	if (ping_logging_enabled) {
+		LOG_ERR("[PING] Phone connection lost - entering sleep mode");
+	}
 	
 	// TODO: Implement sleep/disconnect logic:
 	// 1. Stop all non-essential operations
@@ -1474,8 +1463,10 @@ static void protobuf_handle_ping_failure(void)
 	// 4. Enter low-power mode
 	// 5. Wake up periodically to check for reconnection
 	
-	printk("[GLASSES SLEEP] TODO: Implement sleep mode (display off, low power)\n");
-	printk("[GLASSES SLEEP] TODO: Wake up periodically to check for phone reconnection\n");
+	if (ping_logging_enabled) {
+		LOG_WRN("[PING] TODO: Implement sleep mode (display off, low power)");
+		LOG_WRN("[PING] TODO: Wake up periodically to check for phone reconnection");
+	}
 }
 
 // Initialize ping/pong monitoring system
@@ -1488,7 +1479,7 @@ void protobuf_init_ping_monitoring(void)
 	// Start periodic ping timer (10 seconds interval)
 	k_timer_start(&ping_timer, K_MSEC(PING_INTERVAL_MS), K_MSEC(PING_INTERVAL_MS));
 	
-	printk("[GLASSES PING INIT] Ping monitoring started (interval: %d ms, timeout: %d ms, max retries: %d)\n", 
+	LOG_INF("[PING] Ping monitoring started (interval: %d ms, timeout: %d ms, max retries: %d)", 
 	       PING_INTERVAL_MS, PING_TIMEOUT_MS, PING_MAX_RETRIES);
 }
 
@@ -1500,6 +1491,6 @@ void protobuf_init_ping_monitoring(void)
 
 void protobuf_send_pong_response(mentraos_ble_PingRequest *ping_request)
 {
-	printk("[DEPRECATED] protobuf_send_pong_response called - glasses now send pings instead\n");
+	LOG_INF("[DEPRECATED] protobuf_send_pong_response called - glasses now send pings instead\n");
 	// This function is no longer used in the new ping/pong direction
 }

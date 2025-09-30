@@ -6,7 +6,7 @@ import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {router} from "expo-router"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
@@ -14,12 +14,12 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("light")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
   const {replace} = useNavigationHistory()
 
   useEffect(() => {
     // Load saved theme preference
-    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "light").then(savedTheme => {
+    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
       setSelectedTheme(savedTheme as ThemeType)
     })
   }, [])

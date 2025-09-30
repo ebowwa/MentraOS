@@ -5,9 +5,10 @@ export const getGlassesImage = (glasses: string | null) => {
     case "Vuzix-z100":
     case "Vuzix Z100":
     case "Vuzix Ultralite":
+      return require("../../assets/glasses/vuzix-z100-glasses.png")
     case "Mentra Mach1":
     case "Mach1":
-      return require("../../assets/glasses/vuzix-z100-glasses.png")
+      return require("../../assets/glasses/mentra-mach1-glasses.png")
     case "Mentra Live":
     case "mentra_live":
       return require("../../assets/glasses/mentra_live.png")
@@ -30,6 +31,9 @@ export const getGlassesImage = (glasses: string | null) => {
       } else {
         return require("../../assets/guide/android.png")
       }
+    case "Brilliant Labs Frame":
+    case "frame":
+      return require("../../assets/glasses/frame.png")
     default:
       return require("../../assets/glasses/unknown_wearable.png")
   }
@@ -108,7 +112,7 @@ export const getEvenRealitiesG1Image = (
     a_brown1_l_wearing_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_wearing_dark.png"),
     a_brown1_l_folded_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_folded_dark.png"),
     a_brown1_l_prescription_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_prescription_dark.png"),
-    a_brown1_l_case_open_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_case_open_full_dark.png"),
+    a_brown1_l_case_open_full_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_case_open_full_dark.png"),
     a_brown1_l_case_close_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_full_dark.png"),
     a_brown1_l_case_charging_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_charging_dark.png"),
 

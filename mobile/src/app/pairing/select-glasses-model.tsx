@@ -13,9 +13,9 @@ import {
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -26,7 +26,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, Ellipse, LinearGradient, RadialGradient, Rect, Stop} from "react-native-svg"
 
 export default function SelectGlassesModelScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const {theme, themed} = useAppTheme()
@@ -41,6 +41,8 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Even Realities G1", key: "evenrealities_g1"},
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
+          {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
           // Android:
@@ -49,6 +51,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: "Mentra Live", key: "mentra_live"},
           {modelName: "Mentra Mach1", key: "mentra_mach1"},
           {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 
   // Check onboarding status when screen comes into focus
@@ -140,7 +143,7 @@ export default function SelectGlassesModelScreen() {
           <View
             style={[
               styles.onboardingBanner,
-              {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary},
+              {backgroundColor: theme.colors.palette.blue500, borderColor: theme.colors.buttonPrimary},
             ]}>
             <Icon name="info-circle" size={20} color={theme.colors.icon} style={{marginRight: 8}} />
 

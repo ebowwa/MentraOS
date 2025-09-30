@@ -38,12 +38,13 @@ static const struct {
 } font_map[] = {
     {12, &lv_font_montserrat_12},
     {14, &lv_font_montserrat_14},
-    {16, &lv_font_montserrat_16},
-    {18, &lv_font_montserrat_18},
-    {24, &lv_font_montserrat_24},
-    {30, &lv_font_montserrat_30},
-    {48, &lv_font_montserrat_48},
-    {0, &lv_font_montserrat_16} // Default font
+    // Removed large fonts to save FLASH memory
+    // {16, &lv_font_montserrat_16},  // Not available
+    // {18, &lv_font_montserrat_18},  // Not available  
+    // {24, &lv_font_montserrat_24},  // Not available
+    // {30, &lv_font_montserrat_30},  // Not available
+    // {48, &lv_font_montserrat_48},  // Not available
+    {0, &lv_font_montserrat_14} // Default font (was 16)
 };
 
 static void display_thread_entry(void *arg1, void *arg2, void *arg3);
@@ -226,7 +227,7 @@ const lv_font_t *display_manager_map_font(uint16_t font_code)
     
     // Return default font if not found
     LOG_WRN("⚠️  Font code %u not found, using default", font_code);
-    return &lv_font_montserrat_16;
+    return &lv_font_montserrat_14;  // Was 16, using 14 for memory
 }
 
 lv_color_t display_manager_convert_color(uint32_t rgb888_color)

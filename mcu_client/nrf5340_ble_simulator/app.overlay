@@ -8,7 +8,8 @@
 	chosen {
 		nordic,nus-uart = &uart0;
 		/* Use HLS12VGA projector display */
-		zephyr,display = &hls12vga;
+		// zephyr,display = &hls12vga;
+		zephyr,display = &ssd1306;
 	};
 	
 	pwmleds {
@@ -30,7 +31,7 @@
 		compatible = "zephyr,dummy-dc";
 		width = <640>;
 		height = <480>;
-		status = "okay";
+		status = "disabled";  // Disabled since we're using SSD1306
 	};
 };
 
@@ -67,11 +68,13 @@
 
 		};
 	};
+
+	// I2C2 pinctrl moved to board overlay
 };
 
 &spi4 {
 	compatible = "nordic,nrf-spim";
-	status = "okay";
+	status = "disabled";
 	pinctrl-0 = <&spi4_default>;
 	pinctrl-1 = <&spi4_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -79,7 +82,7 @@
 	hls12vga: hls12vga@0 {
 		compatible = "zephyr,custom-hls12vga";
 		reg = <0>;
-		status = "okay";
+		status = "disabled";
 		spi-max-frequency = <32000000>;
 
 		left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
@@ -131,3 +134,8 @@ dmic_dev: &pdm0 {
 	// clock-source = "ACLK";
 };
 
+
+
+&i2c2 {
+    // SSD1306 configuration moved to board overlay
+};

@@ -1,73 +1,35 @@
 import React, {useState, useEffect, useCallback} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  Switch,
-  ScrollView,
-  Alert,
-  Platform,
-  Button,
-  ViewStyle,
-  TextStyle,
-  Dimensions,
-} from "react-native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
-import {Slider} from "react-native-elements"
+import {StyleSheet, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import bridge from "@/bridge/MantleBridge"
 import {Header, Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useFocusEffect} from "expo-router"
+import {useFocusEffect} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
-import ToggleSetting from "@/components/settings/ToggleSetting"
 import SliderSetting from "@/components/settings/SliderSetting"
-import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-const parseBrightness = (brightnessStr: string | null | undefined): number => {
-  if (typeof brightnessStr === "number") {
-    return brightnessStr
-  }
-  if (!brightnessStr || brightnessStr.includes("-")) {
-    return 50
-  }
-  const parsed = parseInt(brightnessStr.replace("%", ""), 10)
-  return isNaN(parsed) ? 50 : parsed
-}
+import {loadSetting, saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 export default function ScreenSettingsScreen() {
-  const {status} = useStatus()
   const {theme, themed} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
-  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
   const [depth, setDepth] = useState<number | null>(null)
   const [height, setHeight] = useState<number | null>(null)
 
-  // -- Effects --
+  // load settings:
   useEffect(() => {
-    setBrightness(status.glasses_settings.brightness)
-  }, [status.glasses_settings.brightness])
-
-  useEffect(() => {
-    setIsAutoBrightnessEnabled(status.glasses_settings.auto_brightness)
-  }, [status.glasses_settings.auto_brightness])
-
-  useEffect(() => {
-    setDepth(status.glasses_settings.dashboard_depth)
-  }, [status.glasses_settings.dashboard_depth])
-
-  useEffect(() => {
-    setHeight(status.glasses_settings.dashboard_height)
-  }, [status.glasses_settings.dashboard_height])
+    loadSetting(SETTINGS_KEYS.dashboard_depth).then(setDepth)
+    loadSetting(SETTINGS_KEYS.dashboard_height).then(setHeight)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
-      coreCommunicator.toggleUpdatingScreen(true)
+      bridge.toggleUpdatingScreen(true)
       return () => {
-        coreCommunicator.toggleUpdatingScreen(false)
+        bridge.toggleUpdatingScreen(false)
       }
     }, []),
   )
@@ -84,83 +46,21 @@ export default function ScreenSettingsScreen() {
     }
 
     // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
-    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false)
+    await bridge.setGlassesBrightnessMode(newBrightness, false) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.brightness, newBrightness)
     setBrightness(newBrightness)
   }
 
   const changeDepth = async (newDepth: number) => {
-    await coreCommunicator.setGlassesDepth(newDepth)
+    await bridge.setGlassesDepth(newDepth) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.dashboard_depth, newDepth)
     setDepth(newDepth)
   }
 
   const changeHeight = async (newHeight: number) => {
-    await coreCommunicator.setGlassesHeight(newHeight)
+    await bridge.setGlassesHeight(newHeight) // TODO: config: remove
+    await saveSetting(SETTINGS_KEYS.dashboard_height, newHeight)
     setHeight(newHeight)
-  }
-
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled
-    await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal)
-    setIsAutoBrightnessEnabled(newVal)
-  }
-
-  // Switch track colors
-  const switchColors = {
-    trackColor: {
-      false: theme.colors.switchTrackOff,
-      true: theme.colors.switchTrackOn,
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
-    ios_backgroundColor: theme.colors.switchTrackOff,
-  }
-
-  // Fixed slider props to avoid warning
-  const sliderProps = {
-    style: [styles.slider],
-    minimumValue: 0,
-    maximumValue: 100,
-    step: 1,
-    onSlidingComplete: (value: number) => changeBrightness(value),
-    value: brightness ?? 50,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
-  }
-
-  const depthSliderProps = {
-    style: [styles.slider],
-    minimumValue: 1,
-    maximumValue: 5,
-    step: 1,
-    onSlidingComplete: (value: number) => changeDepth(value),
-    value: depth ?? 5,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
-  }
-
-  const heightSliderProps = {
-    style: [styles.slider],
-    minimumValue: 1,
-    maximumValue: 8,
-    step: 1,
-    onSlidingComplete: (value: number) => changeHeight(value),
-    value: height ?? 4,
-    minimumTrackTintColor: theme.colors.buttonPrimary,
-    maximumTrackTintColor: theme.colors.switchTrackOff,
-    thumbTintColor: theme.colors.icon,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
   }
 
   return (

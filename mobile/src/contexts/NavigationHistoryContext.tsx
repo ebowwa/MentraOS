@@ -32,6 +32,8 @@ const NavigationHistoryContext = createContext<NavigationHistoryContextType | un
 
 export function NavigationHistoryProvider({children}: {children: React.ReactNode}) {
   const historyRef = useRef<string[]>([])
+  const historyParamsRef = useRef<any[]>([])
+
   const pathname = usePathname()
   const segments = useSegments()
   // const [pendingRoute, setPendingRouteNonClashingName] = useState<string | null>(null)
@@ -54,7 +56,7 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     useCallback(() => {
       const onBackPress = () => {
         // Skip for app settings and webview - they handle their own back navigation
-        if (pathname === "/app/settings" || pathname === "/app/webview") {
+        if (pathname === "/applet/settings" || pathname === "/applet/webview") {
           return false // Let the screen's handler execute
         }
 
@@ -71,49 +73,53 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   )
 
   const goBack = () => {
-    console.log("NAV_HISTORY: goBack()")
+    console.info("NavHistory: goBack()")
     const history = historyRef.current
 
     // Remove current path
     history.pop()
+    historyParamsRef.current.pop()
 
     // Get previous path
     const previousPath = history[history.length - 1]
+    const previousParams = historyParamsRef.current[historyParamsRef.current.length - 1]
 
-    if (previousPath) {
-      // Fallback to direct navigation if router.back() fails
-      router.replace(previousPath as any)
-    } else if (router.canGoBack()) {
+    console.info(`NavHistory: going back to: ${previousPath}`)
+    // if (previousPath) {
+    //   // Fallback to direct navigation if router.back() fails
+    //   // router.replace({pathname: previousPath as any, params: previousParams as any})
+    // } else if (router.canGoBack()) {
+    //   router.back()
+    // } else {
+    //   // Ultimate fallback to home tab
+    //   router.replace("/(tabs)/home")
+    // }
+    if (router.canGoBack()) {
       router.back()
-    } else {
-      // Ultimate fallback to home tab
-      router.replace("/(tabs)/home")
     }
   }
 
   const push = (path: string, params?: any): Promise<void> => {
-    console.log("NAV_HISTORY: push()", path)
+    console.info("NavHistory: push()", path)
     // if the path is the same as the last path, don't add it to the history
     if (historyRef.current[historyRef.current.length - 1] === path) {
       return Promise.resolve()
     }
 
     historyRef.current.push(path)
+    historyParamsRef.current.push(params)
 
     router.push({pathname: path as any, params: params as any})
     return Promise.resolve()
   }
 
   const replace = (path: string, params?: any): Promise<void> => {
-    console.log("NAV_HISTORY: replace()", path)
+    console.info("NavHistory: replace()", path)
     historyRef.current.pop()
+    historyParamsRef.current.pop()
     historyRef.current.push(path)
+    historyParamsRef.current.push(params)
     const result = router.replace({pathname: path as any, params: params as any})
-    // throw new Error("test")
-    // if (Math.random() < 0.5) {
-    // if (path === "/(tabs)/home") {
-    //   throw new Error("test")
-    // }
     return result || Promise.resolve()
   }
 
@@ -122,12 +128,13 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const clearHistory = () => {
-    console.log("NAV_HISTORY: clearHistory()")
+    console.info("NavHistory: clearHistory()")
     historyRef.current = []
+    historyParamsRef.current = []
   }
 
   const setPendingRoute = (route: string | null) => {
-    console.log("NAV_HISTORY: setPendingRoute()", route)
+    console.info("NavHistory: setPendingRoute()", route)
     // setPendingRouteNonClashingName(route)
     pendingRoute.current = route
   }
@@ -137,15 +144,20 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const navigate = (path: string, params?: any) => {
-    console.log("NAV_HISTORY: navigate()", path)
+    console.info("NavHistory: navigate()", path)
     router.navigate({pathname: path as any, params: params as any})
   }
 
   const clearHistoryAndGoHome = () => {
-    console.log("NAV_HISTORY: clearHistoryAndGoHome()")
+    console.info("NavHistory: clearHistoryAndGoHome()")
     historyRef.current = []
-    router.dismissAll()
-    router.navigate("/(tabs)/home")
+    historyParamsRef.current = []
+    try {
+      router.dismissAll()
+    } catch (error) {
+      console.error("NavHistory: clearHistoryAndGoHome() error", error)
+    }
+    router.replace("/(tabs)/home")
   }
 
   return (

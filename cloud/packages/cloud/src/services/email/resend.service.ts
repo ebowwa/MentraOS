@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
 /**
  * Email service using Resend API for sending transactional emails
@@ -14,10 +14,157 @@ export class ResendEmailService {
   constructor() {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY is not defined in environment variables');
+      throw new Error("RESEND_API_KEY is not defined in environment variables");
     }
     this.resend = new Resend(apiKey);
-    this.defaultSender = process.env.EMAIL_SENDER || 'Mentra <noreply@mentra.glass>';
+    this.defaultSender =
+      process.env.EMAIL_SENDER || "Mentra <noreply@mentra.glass>";
+  }
+
+  /**
+   * Sends an app approval notification email to the developer/organization contact.
+   * Includes optional review notes from the admin.
+   */
+  async sendFeedback(
+    userEmail: string,
+    feedback: string,
+    to: string[],
+  ): Promise<{ id?: string; error?: any }> {
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: this.defaultSender,
+        to: to,
+        cc: [userEmail],
+        subject: `New feedback from: ${userEmail}`,
+        html: `<p>${feedback}</p>`,
+      });
+
+      if (error) {
+        console.error("[resend.service] Failed to send feedback email:", error);
+        return { error };
+      }
+
+      return { id: data?.id };
+    } catch (error) {
+      console.error("[resend.service] Error sending approval email:", error);
+      return { error };
+    }
+  }
+
+  /**
+   * Sends an app approval notification email to the developer/organization contact.
+   * Includes optional review notes from the admin.
+   */
+  async sendAppApprovalNotification(
+    recipientEmail: string,
+    appName: string,
+    packageName: string,
+    notes?: string,
+  ): Promise<{ id?: string; error?: any }> {
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: this.defaultSender,
+        to: [recipientEmail],
+        subject: `Your MentraOS app "${appName}" was approved`,
+        html: this.generateApprovalEmailHtml(appName, packageName, notes),
+      });
+
+      if (error) {
+        console.error("[resend.service] Failed to send approval email:", error);
+        return { error };
+      }
+
+      return { id: data?.id };
+    } catch (error) {
+      console.error("[resend.service] Error sending approval email:", error);
+      return { error };
+    }
+  }
+
+  /**
+   * Sends an app rejection notification email to the developer/organization contact.
+   * Includes required review notes from the admin.
+   */
+  async sendAppRejectionNotification(
+    recipientEmail: string,
+    appName: string,
+    packageName: string,
+    notes: string,
+    reviewerEmail?: string,
+  ): Promise<{ id?: string; error?: any }> {
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: this.defaultSender,
+        to: [recipientEmail],
+        cc: reviewerEmail ? [reviewerEmail] : undefined,
+        subject: `Your MentraOS app "${appName}" was not approved`,
+        html: this.generateRejectionEmailHtml(
+          appName,
+          packageName,
+          notes,
+          reviewerEmail,
+        ),
+      });
+
+      if (error) {
+        console.error(
+          "[resend.service] Failed to send rejection email:",
+          error,
+        );
+        return { error };
+      }
+
+      return { id: data?.id };
+    } catch (error) {
+      console.error("[resend.service] Error sending rejection email:", error);
+      return { error };
+    }
+  }
+
+  /**
+   * Sends an app outage notification email to a developer/organization contact.
+   */
+  async sendAppOutageNotification(
+    recipientEmail: string,
+    appName: string,
+    packageName: string,
+    publicUrl?: string,
+  ): Promise<{ id?: string; error?: any }> {
+    try {
+      const healthUrl = publicUrl
+        ? `${publicUrl.replace(/\/$/, "")}/health`
+        : undefined;
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8" /><title>${appName} appears offline</title></head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;">
+            <h2>Your app ${appName} appears to be offline</h2>
+            <p>We detected that your app <strong>${appName}</strong> (${packageName}) is currently not responding as of ${new Date().toISOString()}.</p>
+            ${healthUrl ? `<p>Please check your server's health endpoint: <a href="${healthUrl}">${healthUrl}</a></p>` : ""}
+            <p>We will send at most one notification every 24 hours while the app remains offline.</p>
+            <p>— MentraOS</p>
+          </body>
+        </html>
+      `;
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.defaultSender,
+        to: [recipientEmail],
+        subject: `[Alert] ${appName} appears to be down`,
+        html,
+      });
+
+      if (error) {
+        console.error("[resend.service] Failed to send outage email:", error);
+        return { error };
+      }
+
+      return { id: data?.id };
+    } catch (error) {
+      console.error("[resend.service] Error sending outage email:", error);
+      return { error };
+    }
   }
 
   /**
@@ -34,26 +181,34 @@ export class ResendEmailService {
     inviterName: string,
     organizationName: string,
     inviteToken: string,
-    role: string
+    role: string,
   ): Promise<{ id?: string; error?: any }> {
-    const inviteUrl = `${process.env.DEV_CONSOLE_FRONTEND_URL || 'https://console.mentra.glass'}/invite/accept?token=${inviteToken}`;
+    const inviteUrl = `${process.env.DEV_CONSOLE_FRONTEND_URL || "https://console.mentra.glass"}/invite/accept?token=${inviteToken}`;
 
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.defaultSender,
         to: [recipientEmail],
         subject: `You've been invited to join ${organizationName} on Mentra`,
-        html: this.generateInviteEmailHtml(inviterName, organizationName, inviteUrl, role),
+        html: this.generateInviteEmailHtml(
+          inviterName,
+          organizationName,
+          inviteUrl,
+          role,
+        ),
       });
 
       if (error) {
-        console.error('[resend.service] Failed to send invitation email:', error);
+        console.error(
+          "[resend.service] Failed to send invitation email:",
+          error,
+        );
         return { error };
       }
 
       return { id: data?.id };
     } catch (error) {
-      console.error('[resend.service] Error sending invitation email:', error);
+      console.error("[resend.service] Error sending invitation email:", error);
       return { error };
     }
   }
@@ -71,7 +226,7 @@ export class ResendEmailService {
     inviterName: string,
     organizationName: string,
     inviteUrl: string,
-    role: string
+    role: string,
   ): string {
     return `
       <!DOCTYPE html>
@@ -223,25 +378,34 @@ export class ResendEmailService {
    */
   async sendAccountDeletionVerification(
     recipientEmail: string,
-    verificationCode: string
+    verificationCode: string,
   ): Promise<{ id?: string; error?: any }> {
     try {
       const { data, error } = await this.resend.emails.send({
         from: this.defaultSender,
         to: [recipientEmail],
-        subject: 'Confirm Account Deletion - Mentra',
+        subject: "Confirm Account Deletion - Mentra",
         html: this.generateDeletionEmailHtml(verificationCode),
       });
 
       if (error) {
-        console.error('[resend.service] Failed to send deletion verification email:', error);
+        console.error(
+          "[resend.service] Failed to send deletion verification email:",
+          error,
+        );
         return { error };
       }
 
-      console.log('[resend.service] Deletion verification email sent successfully:', data?.id);
+      console.log(
+        "[resend.service] Deletion verification email sent successfully:",
+        data?.id,
+      );
       return { id: data?.id };
     } catch (error) {
-      console.error('[resend.service] Error sending deletion verification email:', error);
+      console.error(
+        "[resend.service] Error sending deletion verification email:",
+        error,
+      );
       return { error };
     }
   }
@@ -363,6 +527,91 @@ export class ResendEmailService {
             <div class="footer">
               &copy; ${new Date().getFullYear()} Mentra Labs.
             </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generates HTML for approval notification.
+   */
+  private generateApprovalEmailHtml(
+    appName: string,
+    packageName: string,
+    notes?: string,
+  ): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>MentraOS App Approved</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background-color: #f6f7f9; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+            .header { background-color: #16a34a; color: #fff; padding: 24px; text-align: center; }
+            .content { padding: 24px; }
+            .meta { color: #555; font-size: 14px; margin-top: 8px; }
+            .notes { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 16px; border-radius: 6px; white-space: pre-wrap; }
+            .footer { background: #f8fafc; padding: 16px; text-align: center; color: #64748b; font-size: 13px; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>Your app was approved</h2>
+            </div>
+            <div class="content">
+              <p>Great news! Your app <strong>${appName}</strong> (<code>${packageName}</code>) has been approved for publishing on MentraOS.</p>
+              ${notes && notes.trim() ? `<div class="meta">Review notes from our team:</div><div class="notes">${notes}</div>` : ""}
+              <p>Your app will now appear in the MentraOS app store and be available to users.</p>
+            </div>
+            <div class="footer">&copy; ${new Date().getFullYear()} Mentra Labs</div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Generates HTML for rejection notification.
+   */
+  private generateRejectionEmailHtml(
+    appName: string,
+    packageName: string,
+    notes: string,
+    reviewerEmail?: string,
+  ): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>MentraOS App Not Approved</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background-color: #f6f7f9; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: #fff; border: 1px solid #e1e4e8; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+            .header { background-color: #dc2626; color: #fff; padding: 24px; text-align: center; }
+            .content { padding: 24px; }
+            .notes { background: #fff7ed; border: 1px solid #fed7aa; padding: 16px; border-radius: 6px; white-space: pre-wrap; }
+            .footer { background: #f8fafc; padding: 16px; text-align: center; color: #64748b; font-size: 13px; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>Your app was not approved</h2>
+            </div>
+            <div class="content">
+              <p>Your app <strong>${appName}</strong> (<code>${packageName}</code>) was not approved at this time, with the following feedback:</p>
+              <div class="notes">${notes || "No notes provided."}</div>
+              <p>You can address the items above and resubmit the app when ready.</p>
+              ${reviewerEmail ? `<p class="meta">If you have questions about this decision, you can reply to <a href="mailto:${reviewerEmail}">${reviewerEmail}</a>.</p>` : ""}
+            </div>
+            <div class="footer">&copy; ${new Date().getFullYear()} Mentra Labs</div>
           </div>
         </body>
       </html>

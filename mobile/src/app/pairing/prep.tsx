@@ -1,7 +1,7 @@
 import React from "react"
 import {View, Text, StyleSheet, Platform, Linking, ViewStyle, ScrollView} from "react-native"
 import {useRoute} from "@react-navigation/native"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
@@ -10,10 +10,11 @@ import {Button, Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {LinearGradient} from "expo-linear-gradient"
+import {saveSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -21,7 +22,7 @@ import {LinearGradient} from "expo-linear-gradient"
 // This simplifies our code and avoids making redundant permission requests
 
 export default function PairingPrepScreen() {
-  const {status} = useStatus()
+  const {status} = useCoreStatus()
   const route = useRoute()
   const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -44,7 +45,11 @@ export default function PairingPrepScreen() {
     }
 
     // Always request Bluetooth permissions - required for Android 14+ foreground service
-    const needsBluetoothPermissions = true
+    let needsBluetoothPermissions = true
+    // we don't need bluetooth permissions for simulated glasses
+    if (glassesModelName.startsWith("Simulated") && Platform.OS === "ios") {
+      needsBluetoothPermissions = false
+    }
 
     try {
       // Check for Android-specific permissions
@@ -65,9 +70,12 @@ export default function PairingPrepScreen() {
           const bluetoothPermissions: any[] = []
 
           // Bluetooth permissions based on Android version
-          if (typeof Platform.Version === "number" && Platform.Version >= 30 && Platform.Version < 31) {
-            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH)
-            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN)
+          if (typeof Platform.Version === "number" && Platform.Version < 31) {
+            // For Android 9, 10, and 11 (API 28-30), use legacy Bluetooth permissions
+            bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH || "android.permission.BLUETOOTH")
+            bluetoothPermissions.push(
+              PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN || "android.permission.BLUETOOTH_ADMIN",
+            )
           }
           if (typeof Platform.Version === "number" && Platform.Version >= 31) {
             bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN)
@@ -75,14 +83,31 @@ export default function PairingPrepScreen() {
             bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE)
 
             // Add NEARBY_DEVICES permission for Android 12+ (API 31+)
-            if (PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES) {
+            // Only add if the permission is defined and not null
+            if (PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES != null) {
               bluetoothPermissions.push(PermissionsAndroid.PERMISSIONS.NEARBY_DEVICES)
             }
           }
 
           // Request Bluetooth permissions directly
           if (bluetoothPermissions.length > 0) {
-            const results = await PermissionsAndroid.requestMultiple(bluetoothPermissions)
+            console.log("RIGHT BEFORE ASKING FOR PERMS")
+            console.log("Bluetooth permissions array:", bluetoothPermissions)
+            console.log(
+              "Bluetooth permission values:",
+              bluetoothPermissions.map(p => `${p} (${typeof p})`),
+            )
+
+            // Filter out any null/undefined permissions
+            const validBluetoothPermissions = bluetoothPermissions.filter(permission => permission != null)
+            console.log("Valid Bluetooth permissions after filtering:", validBluetoothPermissions)
+
+            if (validBluetoothPermissions.length === 0) {
+              console.warn("No valid Bluetooth permissions to request")
+              return
+            }
+
+            const results = await PermissionsAndroid.requestMultiple(validBluetoothPermissions)
             const allGranted = Object.values(results).every(value => value === PermissionsAndroid.RESULTS.GRANTED)
 
             // Since we now handle NEVER_ASK_AGAIN in requestFeaturePermissions,
@@ -129,7 +154,7 @@ export default function PairingPrepScreen() {
       console.log("DEBUG: needsBluetoothPermissions:", needsBluetoothPermissions, "Platform.OS:", Platform.OS)
       if (needsBluetoothPermissions && Platform.OS === "ios") {
         console.log("DEBUG: Running iOS connectivity check early")
-        const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+        const requirementsCheck = await bridge.checkConnectivityRequirements()
         if (!requirementsCheck.isReady) {
           // Show alert about missing requirements with "Turn On" button
           switch (requirementsCheck.requirement) {
@@ -216,7 +241,7 @@ export default function PairingPrepScreen() {
 
     // Check connectivity for Android after permissions are granted
     if (needsBluetoothPermissions && Platform.OS === "android") {
-      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+      const requirementsCheck = await bridge.checkConnectivityRequirements()
       if (!requirementsCheck.isReady) {
         // Show alert about missing requirements with "Turn On" button
         switch (requirementsCheck.requirement) {
@@ -253,13 +278,14 @@ export default function PairingPrepScreen() {
 
     // skip pairing for simulated glasses:
     if (glassesModelName.startsWith("Simulated")) {
-      coreCommunicator.sendSearchForCompatibleDeviceNames("Simulated Glasses")
-      coreCommunicator.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
+      await saveSetting(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
+      bridge.sendSearchForCompatibleDeviceNames("Simulated Glasses")
+      bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses")
       clearHistoryAndGoHome()
       return
     }
 
-    push("/pairing/bluetooth", {glassesModelName})
+    push("/pairing/scan", {glassesModelName})
   }
 
   return (
@@ -268,7 +294,7 @@ export default function PairingPrepScreen() {
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       </ScrollView>
-      <View style={{marginBottom: theme.spacing.md}}>
+      <View style={{marginBottom: theme.spacing.lg}}>
         <Button onPress={advanceToPairing} disabled={false}>
           <Text>{translate("common:continue")}</Text>
         </Button>

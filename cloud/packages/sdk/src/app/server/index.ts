@@ -159,6 +159,7 @@ export class AppServer {
     this.setupHealthCheck();
     this.setupToolCallEndpoint();
     this.setupPhotoUploadEndpoint();
+    this.setupMentraAuthRedirect();
     this.setupPublicDir();
     this.setupShutdown();
   }
@@ -420,8 +421,28 @@ export class AppServer {
           `👋 Session ${sessionId} disconnected: ${info.message} (code: ${info.code}, reason: ${info.reason})`,
         );
 
+        // Check if this is a user session end event
+        // This happens when the UserSession is disposed after 1 minute grace period
+        if (info.sessionEnded === true) {
+          this.logger.info(
+            `🛑 User session ended for session ${sessionId}, calling onStop`,
+          );
+
+          // Call onStop with session end reason
+          // This allows apps to clean up resources when the user's session ends
+          this.onStop(
+            sessionId,
+            userId,
+            "User session ended",
+          ).catch((error) => {
+            this.logger.error(
+              error,
+              `❌ Error in onStop handler for session end:`,
+            );
+          });
+        }
         // Check if this is a permanent disconnection after exhausted reconnection attempts
-        if (info.permanent === true) {
+        else if (info.permanent === true) {
           this.logger.info(
             `🛑 Permanent disconnection detected for session ${sessionId}, calling onStop`,
           );
@@ -708,6 +729,21 @@ export class AppServer {
         }
       },
     );
+  }
+
+  /**
+   * 🔐 Setup Mentra Auth Redirect Endpoint
+   * Creates a /mentra-auth endpoint that redirects to the MentraOS OAuth flow.
+   */
+  private setupMentraAuthRedirect(): void {
+    this.app.get("/mentra-auth", (req, res) => {
+      // Redirect to the account.mentra.glass OAuth flow with the app's package name
+      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(this.config.packageName)}`;
+
+      this.logger.info(`🔐 Redirecting to MentraOS OAuth flow: ${authUrl}`);
+
+      res.redirect(302, authUrl);
+    });
   }
 
   /**

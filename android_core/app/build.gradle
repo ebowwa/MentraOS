@@ -133,9 +133,18 @@ dependencies {
     // SGM leftover for ASG connector
     implementation "org.java-websocket:Java-WebSocket:1.5.2"
 
+    // Need this to later enforce version 1.17.1 on libonnxruntime.so conflicts. Sherpa packs a jni compliant with this version.
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.17.1'
+
+    implementation 'com.github.k2-fsa:sherpa-onnx:v1.12.8'
+
     //for VAD (using Silero DNN)
-    implementation 'com.github.gkonovalov:android-vad:2.0.1'
-    //implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.15.0'
+    implementation ('com.github.gkonovalov:android-vad:2.0.9') {
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime'
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime4j'
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime4j-jni'
+    }
+    
 
     //Vuzix Ultralite OEM Platform / Vuzix Z100
     implementation 'com.vuzix:ultralite-sdk-android:1.8'

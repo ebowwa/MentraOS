@@ -1,6 +1,6 @@
 //backend/src/routes/apps.ts
 import express from 'express';
-import sessionService from '../services/session/session.service';
+import UserSession from '../services/session/UserSession';
 import { TranscriptSegment } from '@mentra/sdk';
 const router = express.Router();
 
@@ -30,23 +30,23 @@ router.get('/api/transcripts/:appSessionId', async (req, res) => {
     }
 
     const userSessionId = appSessionId.split('-')[0];
-    const userSession = sessionService.getSession(userSessionId);
+    const userSession = UserSession.getById(userSessionId);
     if (!userSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
     // Use TranscriptionManager to get transcript history
     const timeRange: any = {};
-    
+
     if (duration) {
       timeRange.duration = parseInt(duration as string);
     }
-    
+
     // TODO: Add handling for startTime/endTime filters
     if (startTime) {
       timeRange.startTime = new Date(startTime as string);
     }
-    
+
     if (endTime) {
       timeRange.endTime = new Date(endTime as string);
     }

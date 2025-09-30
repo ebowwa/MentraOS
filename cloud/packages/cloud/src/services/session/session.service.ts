@@ -4,7 +4,7 @@
  * and uses specialized managers for different concerns.
  */
 
-import WebSocket from 'ws';
+import WebSocket from "ws";
 import {
   StreamType,
   CloudToGlassesMessageType,
@@ -13,18 +13,18 @@ import {
   AppConnectionInit,
   DataStream,
   CloudToAppMessageType,
-  GlassesToCloudMessage
-} from '@mentra/sdk';
-import { Logger } from 'pino';
-import { logger as rootLogger } from '../logging/pino-logger';
-import { DebugService } from '../debug/debug-service';
-import subscriptionService from './subscription.service';
-import { User } from '../../models/user.model';
-import UserSession from './UserSession';
-import { getCapabilitiesForModel } from '../../config/hardware-capabilities';
+  GlassesToCloudMessage,
+} from "@mentra/sdk";
+import { Logger } from "pino";
+import { logger as rootLogger } from "../logging/pino-logger";
+import { DebugService } from "../debug/debug-service";
+// import subscriptionService from './subscription.service';
+import { User } from "../../models/user.model";
+import UserSession from "./UserSession";
+import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 
 // Constants
-const SERVICE_NAME = 'session.service';
+const SERVICE_NAME = "session.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
 
 // Default settings
@@ -38,7 +38,7 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
   alwaysOnStatusBar: false,
   bypassVad: false,
   bypassAudioEncoding: false,
-  metricSystemEnabled: false
+  metricSystemEnabled: false,
 };
 
 /**
@@ -46,9 +46,8 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
  * Coordinates session-related functionality across the system
  */
 export class SessionService {
-
   constructor() {
-    logger.info('Session Service initialized');
+    logger.info("Session Service initialized");
   }
 
   /**
@@ -58,7 +57,10 @@ export class SessionService {
    * @param userId User ID
    * @returns User session
    */
-  async createSession(ws: WebSocket, userId: string): Promise<{ userSession: UserSession, reconnection: boolean }> {
+  async createSession(
+    ws: WebSocket,
+    userId: string,
+  ): Promise<{ userSession: UserSession; reconnection: boolean }> {
     try {
       // Check if user already has an active session
       const existingSession = UserSession.getById(userId);
@@ -98,7 +100,9 @@ export class SessionService {
           userSession.installedApps.set(app.packageName, app);
         }
 
-        logger.info(`Fetched ${installedApps.length} installed apps for user ${userId}`);
+        logger.info(
+          `Fetched ${installedApps.length} installed apps for user ${userId}`,
+        );
       } catch (error) {
         logger.error(`Error fetching apps for user ${userId}:`, error);
       }
@@ -136,17 +140,23 @@ export class SessionService {
 
       // For each running app, get its subscriptions
       for (const packageName of userSession.runningApps) {
-        appSubscriptions[packageName] = subscriptionService.getAppSubscriptions(
-          userId,
-          packageName
-        );
+        appSubscriptions[packageName] =
+          userSession.subscriptionManager.getAppSubscriptions(packageName);
       }
 
       // Calculate streams that need to be active
-      const requiresAudio = subscriptionService.hasMediaSubscriptions(userId);
-      userSession.microphoneManager.updateState(requiresAudio); // TODO(isaiah): Feels like an odd place to put it, but it works for now.
+      // const requiresAudio = subscriptionService.hasMediaSubscriptions(userId);
+      const hasPCMTranscriptionSubscriptions =
+        userSession.subscriptionManager.hasPCMTranscriptionSubscriptions();
+      const requiresAudio = hasPCMTranscriptionSubscriptions.hasMedia;
+      const requiredData = userSession.microphoneManager.calculateRequiredData(
+        hasPCMTranscriptionSubscriptions.hasPCM,
+        hasPCMTranscriptionSubscriptions.hasTranscription,
+      );
+      userSession.microphoneManager.updateState(requiresAudio, requiredData); // TODO(isaiah): Feels like an odd place to put it, but it works for now.
 
-      const minimumTranscriptionLanguages = subscriptionService.getMinimalLanguageSubscriptions(userId);
+      const minimumTranscriptionLanguages =
+        userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
       // Transform to client-friendly format
       return {
@@ -172,7 +182,6 @@ export class SessionService {
     }
   }
 
-
   // Transcript management is now handled by TranscriptionManager
   // No need for manual transcript segment addition
 
@@ -194,7 +203,6 @@ export class SessionService {
   getSessionByUserId(userId: string): UserSession | null {
     return UserSession.getById(userId) || null;
   }
-
 
   // Transcription is now handled by TranscriptionManager based on app subscriptions
   // and VAD events. No need for manual start/stop methods.
@@ -220,7 +228,7 @@ export class SessionService {
 
       // Create a settings object combining both augmentOS settings and app settings
       const allSettings: Record<string, any> = {
-        ...augmentosSettings
+        ...augmentosSettings,
       };
 
       // Get app settings and add them to the response
@@ -252,7 +260,10 @@ export class SessionService {
    * @param packageName App package name
    * @returns App settings
    */
-  async getAppSettings(userId: string, packageName: string): Promise<Record<string, any>> {
+  async getAppSettings(
+    userId: string,
+    packageName: string,
+  ): Promise<Record<string, any>> {
     try {
       const allSettings = await this.getUserSettings(userId);
       return allSettings.appSettings?.[packageName] || {};
@@ -269,16 +280,23 @@ export class SessionService {
    * @param streamType Stream type
    * @param data Message data
    */
-  relayMessageToApps(userSession: UserSession, data: GlassesToCloudMessage): void {
+  relayMessageToApps(
+    userSession: UserSession,
+    data: GlassesToCloudMessage,
+  ): void {
     try {
       // Get all Apps subscribed to this stream type
-      const subscribedPackageNames = subscriptionService.getSubscribedApps(userSession, data.type);
+      const subscribedPackageNames =
+        userSession.subscriptionManager.getSubscribedApps(data.type as any);
 
       if (subscribedPackageNames.length === 0) {
         return; // No subscribers, nothing to do
       }
 
-      userSession.logger.debug({ service: SERVICE_NAME, data }, `Relaying ${data.type} to ${subscribedPackageNames.length} Apps for user ${userSession.userId}`);
+      userSession.logger.debug(
+        { service: SERVICE_NAME, data },
+        `Relaying ${data.type} to ${subscribedPackageNames.length} Apps for user ${userSession.userId}`,
+      );
 
       // Send to each subscribed App
       for (const packageName of subscribedPackageNames) {
@@ -290,19 +308,26 @@ export class SessionService {
             type: CloudToAppMessageType.DATA_STREAM,
             sessionId: appSessionId,
             streamType: data.type as StreamType, // Base type remains the same in the message.
-            data,      // The data now may contain language info.
-            timestamp: new Date()
+            data, // The data now may contain language info.
+            timestamp: new Date(),
           };
           try {
             const messageStr = JSON.stringify(dataStream);
             connection.send(messageStr);
           } catch (sendError) {
-            userSession.logger.error({ service: SERVICE_NAME, error: sendError, packageName, data }, `Error sending streamType: ${data.type} to ${packageName}:`, sendError);
+            userSession.logger.error(
+              { service: SERVICE_NAME, error: sendError, packageName, data },
+              `Error sending streamType: ${data.type} to ${packageName}:`,
+              sendError,
+            );
           }
         }
       }
     } catch (error) {
-      userSession.logger.error({ service: SERVICE_NAME, error, data }, `Error relaying streamType: ${data.type} message`);
+      userSession.logger.error(
+        { service: SERVICE_NAME, error, data },
+        `Error relaying streamType: ${data.type} message`,
+      );
     }
   }
 
@@ -317,7 +342,10 @@ export class SessionService {
       // Delegate to audio manager
       userSession.audioManager.processAudioData(audioData, false);
     } catch (error) {
-      userSession.logger.error({ error }, `Error relaying audio for user: ${userSession.userId}`);
+      userSession.logger.error(
+        { error },
+        `Error relaying audio for user: ${userSession.userId}`,
+      );
     }
   }
 
@@ -327,26 +355,36 @@ export class SessionService {
    * @param userSession User session
    * @param audioResponse Audio play response from glasses/core
    */
-  relayAudioPlayResponseToApp(userSession: UserSession, audioResponse: any): void {
+  relayAudioPlayResponseToApp(
+    userSession: UserSession,
+    audioResponse: any,
+  ): void {
     try {
       const requestId = audioResponse.requestId;
       if (!requestId) {
-        userSession.logger.error({ audioResponse }, 'Audio play response missing requestId');
+        userSession.logger.error(
+          { audioResponse },
+          "Audio play response missing requestId",
+        );
         return;
       }
 
       // Look up which app made this request
       const packageName = userSession.audioPlayRequestMapping.get(requestId);
       if (!packageName) {
-        userSession.logger.warn(`🔊 [SessionService] No app mapping found for audio request ${requestId}. Available mappings:`,
-          Array.from(userSession.audioPlayRequestMapping.keys()));
+        userSession.logger.warn(
+          `🔊 [SessionService] No app mapping found for audio request ${requestId}. Available mappings:`,
+          Array.from(userSession.audioPlayRequestMapping.keys()),
+        );
         return;
       }
 
       // Get the app's WebSocket connection
       const appWebSocket = userSession.appWebsockets.get(packageName);
       if (!appWebSocket || appWebSocket.readyState !== WebSocket.OPEN) {
-        userSession.logger.warn(`🔊 [SessionService] App ${packageName} not connected or WebSocket not ready for audio response ${requestId}`);
+        userSession.logger.warn(
+          `🔊 [SessionService] App ${packageName} not connected or WebSocket not ready for audio response ${requestId}`,
+        );
         // Clean up the mapping even if we can't deliver the response
         userSession.audioPlayRequestMapping.delete(requestId);
         return;
@@ -360,26 +398,34 @@ export class SessionService {
         success: audioResponse.success,
         error: audioResponse.error,
         duration: audioResponse.duration,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       // Send the response to the app
       try {
         appWebSocket.send(JSON.stringify(appAudioResponse));
-        userSession.logger.info(`🔊 [SessionService] Successfully sent audio play response ${requestId} to app ${packageName}`);
+        userSession.logger.info(
+          `🔊 [SessionService] Successfully sent audio play response ${requestId} to app ${packageName}`,
+        );
       } catch (sendError) {
-        userSession.logger.error(`🔊 [SessionService] Error sending audio response ${requestId} to app ${packageName}:`, sendError);
+        userSession.logger.error(
+          `🔊 [SessionService] Error sending audio response ${requestId} to app ${packageName}:`,
+          sendError,
+        );
       }
 
       // Clean up the mapping
       userSession.audioPlayRequestMapping.delete(requestId);
-      userSession.logger.debug(`🔊 [SessionService] Cleaned up audio request mapping for ${requestId}. Remaining mappings: ${userSession.audioPlayRequestMapping.size}`);
-
+      userSession.logger.debug(
+        `🔊 [SessionService] Cleaned up audio request mapping for ${requestId}. Remaining mappings: ${userSession.audioPlayRequestMapping.size}`,
+      );
     } catch (error) {
-      userSession.logger.error({ error, audioResponse }, `Error relaying audio play response`);
+      userSession.logger.error(
+        { error, audioResponse },
+        `Error relaying audio play response`,
+      );
     }
   }
-
 }
 
 // We'll initialize this in index.ts after creating the debug service
@@ -394,7 +440,7 @@ let _sessionService: SessionService | null = null;
 export function initializeSessionService(): SessionService {
   if (!_sessionService) {
     _sessionService = new SessionService();
-    logger.info('✅ Session Service Initialized');
+    logger.info("✅ Session Service Initialized");
   }
   return _sessionService;
 }
@@ -406,7 +452,7 @@ export function initializeSessionService(): SessionService {
  */
 export function getSessionService(): SessionService {
   if (!_sessionService) {
-    throw new Error('Session service not initialized');
+    throw new Error("Session service not initialized");
   }
   return _sessionService;
 }
@@ -416,10 +462,10 @@ const sessionServiceProxy = new Proxy({} as SessionService, {
   get(target, prop: keyof SessionService) {
     const service = _sessionService;
     if (!service) {
-      throw new Error('Session service accessed before initialization');
+      throw new Error("Session service accessed before initialization");
     }
     return service[prop];
-  }
+  },
 });
 
 initializeSessionService();
@@ -429,4 +475,4 @@ export const sessionService = sessionServiceProxy;
 export default sessionServiceProxy;
 
 // Import the app service here to avoid circular dependencies
-import appService from '../core/app.service';
+import appService from "../core/app.service";

@@ -1,66 +1,37 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
+import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import bridge from "@/bridge/MantleBridge"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
-import axios from "axios"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen, PillButton} from "@/components/ignite"
+import {Header, Screen, PillButton, Text} from "@/components/ignite"
+import RouteButton from "@/components/ui/RouteButton"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
+import {glassesFeatures} from "@/config/glassesFeatures"
 
 export default function DeveloperSettingsScreen() {
-  const {status} = useStatus()
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
-    status.core_info.bypass_vad_for_debugging,
-  )
-  const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
-    status.core_info.bypass_audio_encoding_for_debugging,
-  )
-  const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
-
+  const {status} = useCoreStatus()
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  // State for custom URL management
+  const {replace} = useNavigationHistory()
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
-  const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
+  const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
-  const {replace} = useNavigationHistory()
+  const [showNewUi, setShowNewUi] = useState(false)
+  const [powerSavingMode, setPowerSavingMode] = useState(false)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
   const [asiaButtonLastTapTime, setAsiaButtonLastTapTime] = useState(0)
-
-  // Load saved URL on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-      setSavedCustomUrl(url)
-      setCustomUrlInput(url || "")
-
-      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
-      setReconnectOnAppForeground(reconnectOnAppForeground)
-    }
-    loadSettings()
-  }, [])
-
-  useEffect(() => {
-    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging)
-  }, [status.core_info.bypass_vad_for_debugging])
-
-  const toggleBypassVadForDebugging = async () => {
-    const newSetting = !isBypassVADForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
-    setIsBypassVADForDebuggingEnabled(newSetting)
-  }
 
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
@@ -68,10 +39,10 @@ export default function DeveloperSettingsScreen() {
     setReconnectOnAppForeground(newSetting)
   }
 
-  const toggleBypassAudioEncodingForDebugging = async () => {
-    const newSetting = !isBypassAudioEncodingForDebuggingEnabled
-    await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
-    setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
+  const toggleNewUi = async () => {
+    const newSetting = !showNewUi
+    await saveSetting(SETTINGS_KEYS.NEW_UI, newSetting)
+    setShowNewUi(newSetting)
   }
 
   // Modified handler for Custom URL
@@ -83,6 +54,7 @@ export default function DeveloperSettingsScreen() {
       showAlert("Empty URL", "Please enter a URL or reset to default.", [{text: "OK"}])
       return
     }
+
     if (!urlToTest.startsWith("http://") && !urlToTest.startsWith("https://")) {
       showAlert("Invalid URL", "Please enter a valid URL starting with http:// or https://", [{text: "OK"}])
       return
@@ -94,56 +66,67 @@ export default function DeveloperSettingsScreen() {
       // Test the URL by fetching the version endpoint
       const testUrl = `${urlToTest}/apps/version`
       console.log(`Testing URL: ${testUrl}`)
-      const response = await axios.get(testUrl, {timeout: 5000})
 
-      // Check if the request was successful (status 200-299)
-      if (response.status >= 200 && response.status < 300) {
-        console.log("URL Test Successful:", response.data)
-        // Save the URL if the test passes
-        await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
-        await coreCommunicator.setServerUrl(urlToTest)
-        setSavedCustomUrl(urlToTest)
-        await showAlert(
-          "Success",
-          "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
-          [
-            {
-              text: translate("common:ok"),
-              onPress: () => {
-                replace("/auth/core-token-exchange")
+      // Create an AbortController for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+
+      try {
+        const response = await fetch(testUrl, {
+          method: "GET",
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId) // Clear timeout if request completes
+
+        // Check if the request was successful (status 200-299)
+        if (response.ok) {
+          const data = await response.json()
+          console.log("URL Test Successful:", data)
+
+          // Save the URL if the test passes
+          await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
+          await bridge.setServerUrl(urlToTest) // TODO: config: remove
+          setSavedCustomUrl(urlToTest)
+
+          await showAlert(
+            "Success",
+            "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
+            [
+              {
+                text: translate("common:ok"),
+                onPress: () => {
+                  replace("/init")
+                },
               },
-            },
-          ],
-        )
-      } else {
-        // Handle non-2xx responses as errors
-        console.error(`URL Test Failed: Status ${response.status}`)
-        showAlert(
-          "Verification Failed",
-          `The server responded, but with status ${response.status}. Please check the URL and server status.`,
-          [{text: "OK"}],
-        )
+            ],
+          )
+        } else {
+          // Handle non-2xx responses as errors
+          console.error(`URL Test Failed: Status ${response.status}`)
+          showAlert(
+            "Verification Failed",
+            `The server responded, but with status ${response.status}. Please check the URL and server status.`,
+            [{text: "OK"}],
+          )
+        }
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId) // Ensure timeout is cleared
+        throw fetchError // Re-throw to be caught by outer try-catch
       }
     } catch (error: unknown) {
       // Handle network errors or timeouts
       console.error("URL Test Failed:", error instanceof Error ? error.message : "Unknown error")
+
       let errorMessage = "Could not connect to the specified URL. Please check the URL and your network connection."
 
-      // Type guard for axios error with code property
-      if (error && typeof error === "object" && "code" in error && error.code === "ECONNABORTED") {
+      // Check if it's an abort error (timeout)
+      if (error instanceof Error && error.name === "AbortError") {
         errorMessage = "Connection timed out. Please check the URL and server status."
       }
-      // Type guard for axios error with response property
-      else if (
-        error &&
-        typeof error === "object" &&
-        "response" in error &&
-        error.response &&
-        typeof error.response === "object" &&
-        "status" in error.response
-      ) {
-        // Server responded with an error status code (4xx, 5xx)
-        errorMessage = `Server responded with error ${error.response.status}. Please check the URL and server status.`
+      // Check for network errors
+      else if (error instanceof TypeError && error.message.includes("fetch")) {
+        errorMessage = "Network error occurred. Please check your internet connection and the URL."
       }
 
       showAlert("Verification Failed", errorMessage, [{text: "OK"}])
@@ -154,10 +137,17 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    await coreCommunicator.setServerUrl("") // Clear Android service override
+    await bridge.setServerUrl("") // TODO: config: remove
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
+    showAlert("Success", "Reset backend URL to default.", [
+      {
+        text: "OK",
+        onPress: () => {
+          replace("/init")
+        },
+      },
+    ])
   }
 
   // Triple-tap handler for Asia East button
@@ -191,6 +181,25 @@ export default function DeveloperSettingsScreen() {
     ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
+  // Load saved URL on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+      setSavedCustomUrl(url)
+      setCustomUrlInput(url || "")
+
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
+      setReconnectOnAppForeground(reconnectOnAppForeground)
+
+      const newUiSetting = await loadSetting(SETTINGS_KEYS.NEW_UI)
+      setShowNewUi(newUiSetting)
+
+      const powerSavingMode = await loadSetting(SETTINGS_KEYS.power_saving_mode)
+      setPowerSavingMode(powerSavingMode)
+    }
+    loadSettings()
+  }, [])
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
@@ -206,25 +215,21 @@ export default function DeveloperSettingsScreen() {
         ]}>
         <View style={styles.warningContent}>
           <Icon name="alert" size={16} color={theme.colors.text} />
-          <Text style={[styles.warningTitle, {color: theme.colors.text}]}>Warning</Text>
+          <Text tx="warning:warning" style={[styles.warningTitle, {color: theme.colors.text}]} />
         </View>
-        <Text style={[styles.warningSubtitle, {color: theme.colors.text}]}>
-          These may break the app. Use at your own risk.
-        </Text>
+        <Text tx="warning:developerSettingsWarning" style={[styles.warningSubtitle, {color: theme.colors.text}]} />
       </View>
 
       <Spacer height={theme.spacing.md} />
 
       <ScrollView>
-        <ToggleSetting
-          label={translate("settings:bypassVAD")}
-          subtitle={translate("settings:bypassVADSubtitle")}
-          value={isBypassVADForDebuggingEnabled}
-          onValueChange={toggleBypassVadForDebugging}
+        <RouteButton
+          label="🎥 Buffer Recording Debug"
+          subtitle="Control 30-second video buffer on glasses"
+          onPress={() => push("/settings/buffer-debug")}
         />
 
         <Spacer height={theme.spacing.md} />
-
         <ToggleSetting
           label={translate("settings:reconnectOnAppForeground")}
           subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
@@ -233,6 +238,34 @@ export default function DeveloperSettingsScreen() {
         />
 
         <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={translate("settings:newUi")}
+          subtitle={translate("settings:newUiSubtitle")}
+          value={showNewUi}
+          onValueChange={toggleNewUi}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
+        {status.core_info.default_wearable &&
+          glassesFeatures[status.core_info.default_wearable] &&
+          glassesFeatures[status.core_info.default_wearable].powerSavingMode && (
+            <>
+              <Text style={[styles.sectionTitle, {color: theme.colors.textDim}]}>G1 Specific Settings</Text>
+              <ToggleSetting
+                label={translate("settings:powerSavingMode")}
+                subtitle={translate("settings:powerSavingModeSubtitle")}
+                value={powerSavingMode}
+                onValueChange={async value => {
+                  setPowerSavingMode(value)
+                  await bridge.sendTogglePowerSavingMode(value)
+                }}
+              />
+              <Spacer height={theme.spacing.md} />
+            </>
+          )}
 
         <View
           style={[
@@ -323,7 +356,7 @@ export default function DeveloperSettingsScreen() {
           </View>
         </View>
 
-        {isTestFlightOrDev && <Spacer height={theme.spacing.md} />}
+        <Spacer height={theme.spacing.md} />
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>
@@ -351,12 +384,21 @@ export default function DeveloperSettingsScreen() {
             ios_backgroundColor={switchColors.ios_backgroundColor}
           />
         </View> */}
+        <Spacer height={theme.spacing.xxl} />
       </ScrollView>
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   warningContainer: {
     borderRadius: spacing.sm,
     paddingHorizontal: spacing.md,

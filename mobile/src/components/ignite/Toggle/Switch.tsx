@@ -35,7 +35,7 @@ export function Switch(props: SwitchToggleProps) {
     (toggleProps: SwitchInputProps) => <SwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />,
     [accessibilityMode],
   )
-  return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={16} />
+  return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={rest.hitSlop || 16} />
 }
 
 function SwitchInput(props: SwitchInputProps) {
@@ -48,10 +48,8 @@ function SwitchInput(props: SwitchInputProps) {
     detailStyle: $detailStyleOverride,
   } = props
 
-  const {
-    theme: {colors, isDark},
-    themed,
-  } = useAppTheme()
+  const {themed, theme} = useAppTheme()
+  const {colors, spacing} = theme
 
   const animate = useRef(new Animated.Value(on ? 1 : 0)) // Initial value is set based on isActive
   const opacity = useRef(new Animated.Value(0))
@@ -69,19 +67,19 @@ function SwitchInput(props: SwitchInputProps) {
     setTimeout(() => {
       Animated.timing(trackColorAnim.current, {
         toValue: on ? 1 : 0,
-        duration: 100, // Quick color transition at the end
+        duration: 50, // Quick color transition at the end
         useNativeDriver: false,
       }).start()
-    }, 150) // Start color change 150ms into the 200ms animation
+    }, 50) // Start color change 150ms into the 200ms animation
   }, [on])
 
-  useEffect(() => {
-    Animated.timing(opacity.current, {
-      toValue: on ? 1 : 0,
-      duration: 200, // Match the faster animation speed
-      useNativeDriver: true,
-    }).start()
-  }, [on])
+  // useEffect(() => {
+  //   Animated.timing(opacity.current, {
+  //     toValue: on ? 1 : 0,
+  //     duration: 200, // Match the faster animation speed
+  //     useNativeDriver: true,
+  //   }).start()
+  // }, [on])
 
   const knobSizeFallback = 2
 
@@ -168,7 +166,7 @@ function SwitchInput(props: SwitchInputProps) {
           {
             backgroundColor: animatedTrackColor,
             borderColor: colors.switchBorder,
-            borderWidth: colors.switchBorderWidth,
+            borderWidth: spacing.xxxs,
           },
           $outerStyleOverride,
           // {transform: [{translateX: -12}]},

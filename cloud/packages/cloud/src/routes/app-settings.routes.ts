@@ -8,9 +8,9 @@ import Organization from '../models/organization.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 import appService, { isUninstallable, SYSTEM_DASHBOARD_PACKAGE_NAME } from '../services/core/app.service';
-import { sessionService } from '../services/session/session.service';
+import ServerUserSession from '../services/session/UserSession';
 import { logger as rootLogger } from '../services/logging/pino-logger';
-import { CloudToAppMessageType, UserSession, AppSetting } from '@mentra/sdk';
+import { CloudToAppMessageType, UserSession as SdkUserSession, AppSetting } from '@mentra/sdk';
 import { Permission } from '@mentra/sdk';
 
 const router = express.Router();
@@ -296,7 +296,7 @@ router.post('/:appName', async (req, res) => {
     rootLogger.info(`Updated settings for app "${appName}" for user ${userId}`);
 
     // Get user session to send WebSocket update
-    const userSession = sessionService.getSession(userId);
+    const userSession = ServerUserSession.getById(userId);
 
     // If user has active sessions, send them settings updates via WebSocket
     if (userSession && appName !== SYSTEM_DASHBOARD_PACKAGE_NAME && appName !== "com.augmentos.dashboard") {
@@ -311,12 +311,11 @@ router.post('/:appName', async (req, res) => {
       try {
         // When the user is not runnning the app, the appConnection is undefined, so we wrap it in a try/catch.
         const appWebsocket = userSession.appWebsockets.get(appName);
-        if (!appWebsocket) {
+        if (appWebsocket) {
           userSession.logger.warn({ packageName: appName, }, `No WebSocket connection found for App ${appName} for user ${userId}`);
-          return res.status(404).json({ error: `No WebSocket connection found for App ${appName}` });
+          appWebsocket.send(JSON.stringify(settingsUpdate));
+          userSession.logger.info({ packageName: appName }, `Sent settings update via WebSocket to ${appName} for user ${userId}`);
         }
-        appWebsocket.send(JSON.stringify(settingsUpdate));
-        userSession.logger.info({ packageName: appName }, `Sent settings update via WebSocket to ${appName} for user ${userId}`);
       }
       catch (error) {
         rootLogger.error('Error sending settings update via WebSocket:', error);

@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import com.augmentos.asg_client.service.core.AsgClientService;
 
 /**
  * Boot receiver for AsgClient application.

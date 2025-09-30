@@ -7,23 +7,26 @@ import { StreamType } from "./streams";
  */
 export enum GlassesToCloudMessageType {
   // Control actions
-  CONNECTION_INIT = 'connection_init',
-  REQUEST_SETTINGS = 'request_settings',
+  CONNECTION_INIT = "connection_init",
+  REQUEST_SETTINGS = "request_settings",
   // START_APP = 'start_app',
   // STOP_APP = 'stop_app',
 
   START_APP = StreamType.START_APP,
   STOP_APP = StreamType.STOP_APP,
 
-  DASHBOARD_STATE = 'dashboard_state',
+  DASHBOARD_STATE = "dashboard_state",
   OPEN_DASHBOARD = StreamType.OPEN_DASHBOARD,
 
   // Mentra Live
   PHOTO_RESPONSE = StreamType.PHOTO_RESPONSE,
 
+  // Local Transcription
+  LOCAL_TRANSCRIPTION = "local_transcription",
+
   // RTMP streaming
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
-  KEEP_ALIVE_ACK = 'keep_alive_ack',
+  KEEP_ALIVE_ACK = "keep_alive_ack",
 
   // OPEN_DASHBOARD = 'open_dashboard',
   // Events and data
@@ -50,7 +53,7 @@ export enum GlassesToCloudMessageType {
   MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
   PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
-  AUDIO_PLAY_RESPONSE = 'audio_play_response'
+  AUDIO_PLAY_RESPONSE = "audio_play_response",
 }
 
 /**
@@ -58,33 +61,33 @@ export enum GlassesToCloudMessageType {
  */
 export enum CloudToGlassesMessageType {
   // Responses
-  CONNECTION_ACK = 'connection_ack',
-  CONNECTION_ERROR = 'connection_error',
-  AUTH_ERROR = 'auth_error',
+  CONNECTION_ACK = "connection_ack",
+  CONNECTION_ERROR = "connection_error",
+  AUTH_ERROR = "auth_error",
 
   // Updates
-  DISPLAY_EVENT = 'display_event',
-  APP_STATE_CHANGE = 'app_state_change',
-  MICROPHONE_STATE_CHANGE = 'microphone_state_change',
-  PHOTO_REQUEST = 'photo_request',
-  AUDIO_PLAY_REQUEST = 'audio_play_request',
-  AUDIO_STOP_REQUEST = 'audio_stop_request',
-  SETTINGS_UPDATE = 'settings_update',
+  DISPLAY_EVENT = "display_event",
+  APP_STATE_CHANGE = "app_state_change",
+  MICROPHONE_STATE_CHANGE = "microphone_state_change",
+  PHOTO_REQUEST = "photo_request",
+  AUDIO_PLAY_REQUEST = "audio_play_request",
+  AUDIO_STOP_REQUEST = "audio_stop_request",
+  SETTINGS_UPDATE = "settings_update",
 
   // RTMP streaming
-  START_RTMP_STREAM = 'start_rtmp_stream',
-  STOP_RTMP_STREAM = 'stop_rtmp_stream',
-  KEEP_RTMP_STREAM_ALIVE = 'keep_rtmp_stream_alive',
+  START_RTMP_STREAM = "start_rtmp_stream",
+  STOP_RTMP_STREAM = "stop_rtmp_stream",
+  KEEP_RTMP_STREAM_ALIVE = "keep_rtmp_stream_alive",
 
   // Dashboard updates
-  DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
-  DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
+  DASHBOARD_MODE_CHANGE = "dashboard_mode_change",
+  DASHBOARD_ALWAYS_ON_CHANGE = "dashboard_always_on_change",
 
   // Location Service
-  SET_LOCATION_TIER = 'set_location_tier',
-  REQUEST_SINGLE_LOCATION = 'request_single_location',
+  SET_LOCATION_TIER = "set_location_tier",
+  REQUEST_SINGLE_LOCATION = "request_single_location",
 
-  WEBSOCKET_ERROR = 'websocket_error'
+  WEBSOCKET_ERROR = "websocket_error",
 }
 
 /**
@@ -92,35 +95,38 @@ export enum CloudToGlassesMessageType {
  */
 export enum AppToCloudMessageType {
   // Commands
-  CONNECTION_INIT = 'tpa_connection_init',
-  SUBSCRIPTION_UPDATE = 'subscription_update',
-  LOCATION_POLL_REQUEST = 'location_poll_request',
+  CONNECTION_INIT = "tpa_connection_init",
+  SUBSCRIPTION_UPDATE = "subscription_update",
+  LOCATION_POLL_REQUEST = "location_poll_request",
 
   // Requests
-  DISPLAY_REQUEST = 'display_event',
-  PHOTO_REQUEST = 'photo_request',
-  AUDIO_PLAY_REQUEST = 'audio_play_request',
-  AUDIO_STOP_REQUEST = 'audio_stop_request',
+  DISPLAY_REQUEST = "display_event",
+  PHOTO_REQUEST = "photo_request",
+  AUDIO_PLAY_REQUEST = "audio_play_request",
+  AUDIO_STOP_REQUEST = "audio_stop_request",
 
   // RTMP streaming
-  RTMP_STREAM_REQUEST = 'rtmp_stream_request',
-  RTMP_STREAM_STOP = 'rtmp_stream_stop',
-  
+  RTMP_STREAM_REQUEST = "rtmp_stream_request",
+  RTMP_STREAM_STOP = "rtmp_stream_stop",
+
   // Managed RTMP streaming
-  MANAGED_STREAM_REQUEST = 'managed_stream_request',
-  MANAGED_STREAM_STOP = 'managed_stream_stop',
+  MANAGED_STREAM_REQUEST = "managed_stream_request",
+  MANAGED_STREAM_STOP = "managed_stream_stop",
+
+  // Stream status check (both managed and unmanaged)
+  STREAM_STATUS_CHECK = "stream_status_check",
 
   // Dashboard requests
-  DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
-  DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
-  DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
-  
+  DASHBOARD_CONTENT_UPDATE = "dashboard_content_update",
+  DASHBOARD_MODE_CHANGE = "dashboard_mode_change",
+  DASHBOARD_SYSTEM_UPDATE = "dashboard_system_update",
+
   // App-to-App Communication
-  APP_BROADCAST_MESSAGE = 'app_broadcast_message',
-  APP_DIRECT_MESSAGE = 'app_direct_message',
-  APP_USER_DISCOVERY = 'app_user_discovery',
-  APP_ROOM_JOIN = 'app_room_join',
-  APP_ROOM_LEAVE = 'app_room_leave'
+  APP_BROADCAST_MESSAGE = "app_broadcast_message",
+  APP_DIRECT_MESSAGE = "app_direct_message",
+  APP_USER_DISCOVERY = "app_user_discovery",
+  APP_ROOM_JOIN = "app_room_join",
+  APP_ROOM_LEAVE = "app_room_leave",
 }
 
 /**
@@ -128,40 +134,42 @@ export enum AppToCloudMessageType {
  */
 export enum CloudToAppMessageType {
   // Responses
-  CONNECTION_ACK = 'tpa_connection_ack',
-  CONNECTION_ERROR = 'tpa_connection_error',
+  CONNECTION_ACK = "tpa_connection_ack",
+  CONNECTION_ERROR = "tpa_connection_error",
 
   // Updates
-  APP_STOPPED = 'app_stopped',
-  SETTINGS_UPDATE = 'settings_update',
+  APP_STOPPED = "app_stopped",
+  SETTINGS_UPDATE = "settings_update",
+  CAPABILITIES_UPDATE = "capabilities_update",
 
   // Dashboard updates
-  DASHBOARD_MODE_CHANGED = 'dashboard_mode_changed',
-  DASHBOARD_ALWAYS_ON_CHANGED = 'dashboard_always_on_changed',
+  DASHBOARD_MODE_CHANGED = "dashboard_mode_changed",
+  DASHBOARD_ALWAYS_ON_CHANGED = "dashboard_always_on_changed",
 
   // Stream data
-  DATA_STREAM = 'data_stream',
+  DATA_STREAM = "data_stream",
 
   // Media responses
-  PHOTO_RESPONSE = 'photo_response',
-  AUDIO_PLAY_RESPONSE = 'audio_play_response',
-  RTMP_STREAM_STATUS = 'rtmp_stream_status',
-  MANAGED_STREAM_STATUS = 'managed_stream_status',
+  PHOTO_RESPONSE = "photo_response",
+  AUDIO_PLAY_RESPONSE = "audio_play_response",
+  RTMP_STREAM_STATUS = "rtmp_stream_status",
+  MANAGED_STREAM_STATUS = "managed_stream_status",
+  STREAM_STATUS_CHECK_RESPONSE = "stream_status_check_response",
 
-  WEBSOCKET_ERROR = 'websocket_error',
+  WEBSOCKET_ERROR = "websocket_error",
 
   // Permissions
-  PERMISSION_ERROR = 'permission_error',
+  PERMISSION_ERROR = "permission_error",
 
   // General purpose messaging
-  CUSTOM_MESSAGE = 'custom_message',
-  
+  CUSTOM_MESSAGE = "custom_message",
+
   // App-to-App Communication Responses
-  APP_MESSAGE_RECEIVED = 'app_message_received',
-  APP_USER_JOINED = 'app_user_joined',
-  APP_USER_LEFT = 'app_user_left',
-  APP_ROOM_UPDATED = 'app_room_updated',
-  APP_DIRECT_MESSAGE_RESPONSE = 'app_direct_message_response'
+  APP_MESSAGE_RECEIVED = "app_message_received",
+  APP_USER_JOINED = "app_user_joined",
+  APP_USER_LEFT = "app_user_left",
+  APP_ROOM_UPDATED = "app_room_updated",
+  APP_DIRECT_MESSAGE_RESPONSE = "app_direct_message_response",
 }
 
 /**
@@ -172,7 +180,7 @@ export const ControlActionTypes = [
   GlassesToCloudMessageType.START_APP,
   GlassesToCloudMessageType.STOP_APP,
   GlassesToCloudMessageType.DASHBOARD_STATE,
-  GlassesToCloudMessageType.OPEN_DASHBOARD
+  GlassesToCloudMessageType.OPEN_DASHBOARD,
 ] as const;
 
 /**
@@ -191,7 +199,8 @@ export const EventTypes = [
   GlassesToCloudMessageType.PHONE_NOTIFICATION_DISMISSED,
   GlassesToCloudMessageType.CALENDAR_EVENT,
   GlassesToCloudMessageType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
-  GlassesToCloudMessageType.CORE_STATUS_UPDATE
+  GlassesToCloudMessageType.CORE_STATUS_UPDATE,
+  GlassesToCloudMessageType.LOCAL_TRANSCRIPTION,
 ] as const;
 
 /**
@@ -200,7 +209,7 @@ export const EventTypes = [
 export const ResponseTypes = [
   CloudToGlassesMessageType.CONNECTION_ACK,
   CloudToGlassesMessageType.CONNECTION_ERROR,
-  CloudToGlassesMessageType.AUTH_ERROR
+  CloudToGlassesMessageType.AUTH_ERROR,
 ] as const;
 
 /**
@@ -218,7 +227,7 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,
   CloudToGlassesMessageType.START_RTMP_STREAM,
   CloudToGlassesMessageType.STOP_RTMP_STREAM,
-  CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE
+  CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
 ] as const;
 
 /**
@@ -229,5 +238,5 @@ export const DashboardMessageTypes = [
   AppToCloudMessageType.DASHBOARD_MODE_CHANGE,
   AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
   CloudToAppMessageType.DASHBOARD_MODE_CHANGED,
-  CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED
+  CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED,
 ] as const;

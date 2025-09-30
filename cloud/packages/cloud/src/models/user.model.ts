@@ -35,6 +35,7 @@ export interface UserI extends Document {
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
     metricSystemEnabled: boolean;
+    enforceLocalTranscription: boolean;
   };
   location?: Location;
   locationSubscriptions?: Map<string, { rate: string }>;
@@ -179,6 +180,7 @@ const UserSchema = new Schema<UserI>(
         alwaysOnStatusBar: { type: Boolean, default: false },
         bypassVad: { type: Boolean, default: false },
         bypassAudioEncoding: { type: Boolean, default: false },
+        enforceLocalTranscription: { type: Boolean, default: false },
       },
       default: function () {
         return {
@@ -194,6 +196,7 @@ const UserSchema = new Schema<UserI>(
           alwaysOnStatusBar: false,
           bypassVad: false,
           bypassAudioEncoding: false,
+          enforceLocalTranscription: false,
         };
       },
     },
@@ -710,7 +713,7 @@ UserSchema.methods.getGlassesModels = function (): string[] {
 };
 
 // --- Middleware ---
-UserSchema.pre("save", function (next) {
+UserSchema.pre("save", function (this: UserI, next) {
   if (this.email) {
     this.email = this.email.toLowerCase();
   }

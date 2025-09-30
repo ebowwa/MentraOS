@@ -1,21 +1,19 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
 import {View, ViewStyle, Animated, Easing} from "react-native"
-import {useAppStatus} from "@/contexts/AppStatusProvider"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import EmptyAppsView from "../home/EmptyAppsView"
-import {colors, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
 import TempActivateAppWindow from "./TempActivateAppWindow"
 import {AppListItem} from "./AppListItem"
 import Divider from "./Divider"
 import {Spacer} from "./Spacer"
-import Toast from "react-native-toast-message"
-import {TruckIcon} from "assets/icons/component/TruckIcon"
-import {translate} from "@/i18n"
 import AppsHeader from "./AppsHeader"
 import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import RestComms from "@/managers/RestComms"
+import restComms from "@/managers/RestComms"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -25,10 +23,10 @@ export default function AppsActiveList({
   searchQuery?: string
 }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
-  const backendComms = BackendServerComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
   const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)
+  const {push} = useNavigationHistory()
 
   const runningApps = useMemo(() => {
     let apps = appStatus.filter(app => app.is_running)
@@ -37,8 +35,8 @@ export default function AppsActiveList({
     }
     // Sort to put foreground apps (appType === "standard") at the top
     return apps.sort((a, b) => {
-      const aIsForeground = a.appType === "standard"
-      const bIsForeground = b.appType === "standard"
+      const aIsForeground = a.type === "standard"
+      const bIsForeground = b.type === "standard"
 
       if (aIsForeground && !bIsForeground) return -1
       if (!aIsForeground && bIsForeground) return 1
@@ -135,7 +133,7 @@ export default function AppsActiveList({
 
     setIsLoading(true)
     try {
-      await backendComms.stopApp(packageName)
+      await restComms.stopApp(packageName)
       // Clear the pending operation since it completed successfully
       clearPendingOperation(packageName)
       // showToast()
@@ -149,13 +147,7 @@ export default function AppsActiveList({
   }
 
   const openAppSettings = (app: any) => {
-    router.push({
-      pathname: "/app/settings",
-      params: {
-        packageName: app.packageName,
-        appName: app.name,
-      },
-    })
+    push("/applet/settings", {packageName: app.packageName, appName: app.name})
   }
 
   function getAppsList() {
@@ -166,25 +158,33 @@ export default function AppsActiveList({
     return (
       <>
         {runningApps.map((app, index) => {
+          // Ensure opacity value exists, create if missing
+          if (!opacities[app.packageName]) {
+            opacities[app.packageName] = new Animated.Value(1)
+          }
           const itemOpacity = opacities[app.packageName]
           return (
             <React.Fragment key={app.packageName}>
               <AppListItem
                 app={app}
-                // @ts-ignore
-                is_foreground={app.appType == "standard" || app["tpaType"] == "standard"}
                 isActive={true}
                 onTogglePress={() => {
-                  Animated.timing(itemOpacity, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                  }).start()
+                  if (itemOpacity) {
+                    Animated.timing(itemOpacity, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start()
 
-                  setTimeout(() => {
+                    setTimeout(() => {
+                      const pkg = app.packageName
+                      stopApp(pkg).then(() => {})
+                    }, 300)
+                  } else {
+                    // Fallback: stop app immediately if animation can't run
                     const pkg = app.packageName
                     stopApp(pkg).then(() => {})
-                  }, 300)
+                  }
                 }}
                 onSettingsPress={() => openAppSettings(app)}
                 opacity={itemOpacity}

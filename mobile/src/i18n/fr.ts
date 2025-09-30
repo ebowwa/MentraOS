@@ -1,7 +1,7 @@
-import demoFr from "./demo-fr"
-import {Translations} from "./en"
+import en, {Translations} from "./en"
 
 const fr: Translations = {
+  ...en,
   common: {
     ok: "OK !",
     cancel: "Annuler",
@@ -44,6 +44,15 @@ const fr: Translations = {
     passwordFieldPlaceholder: "Mot de passe super secret ici",
     tapToLogIn: "Appuyez pour vous connecter!",
     hint: "Astuce : vous pouvez utiliser n'importe quelle adresse e-mail et votre mot de passe préféré :)",
+  },
+  home: {
+    hardwareIncompatible: "Matériel Incompatible",
+    hardwareIncompatibleMessage:
+      "{{app}} nécessite du matériel qui n'est pas disponible sur vos lunettes connectées : {{missing}}",
+    incompatibleApps: "Applications Incompatibles",
+    incompatibleAppsDescription:
+      "Ces applications nécessitent des fonctionnalités matérielles non disponibles sur vos lunettes connectées",
+    incompatible: "Incompatible",
   },
   demoNavigator: {
     componentsTab: "Composants",
@@ -122,8 +131,6 @@ const fr: Translations = {
         "Aucun favori n'a été ajouté pour le moment. Appuyez sur le cœur d'un épisode pour l'ajouter à vos favoris !",
     },
   },
-
-  ...demoFr,
 }
 
 export default fr

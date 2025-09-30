@@ -2,6 +2,199 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## Unreleased
+
+### �️ Comprehensive Shell Display Command System - 2025-09-30
+
+#### Major Shell Display Control Implementation
+- **✅ NEW**: `src/shell_display_control.c` — Complete shell command system for manual display control
+- **🎯 Features**: Manual brightness control, clear/fill display, text positioning, pattern selection, battery management
+- **📋 Commands Added**:
+  - `display brightness 0-255` — Set HLS12VGA projector brightness
+  - `display clear` — Clear display to black using HLS12VGA driver
+  - `display fill` — Fill display with white (opposite of clear)
+  - `display text "Hello" 100 200 16` — Position text with font size control
+  - `display pattern 0-5` — Switch between 6 display patterns (chess, zebra, scrolling, protobuf, XY positioning)
+  - `display battery 85 true` — Set battery level (0-100%) with optional charging state
+  - `display help` — Comprehensive help system with examples
+
+#### Shell Architecture & Integration
+- **🔧 Stack Configuration**: Increased `CONFIG_SHELL_STACK_SIZE=8192` to prevent stack overflow in display commands
+- **🛡️ Driver Integration**: Uses proper HLS12VGA driver functions instead of direct LVGL calls to avoid assertion failures
+- **📱 Protobuf Integration**: Battery command integrates with protobuf system for automatic mobile app notifications
+- **🌐 CJK Font Support**: All text commands use CJK font for Chinese character support
+- **⚡ Pattern Switching**: Dynamic pattern selection with 6 test patterns plus protobuf/XY text containers
+
+#### Critical Display Context Fix
+- **🐛 FIXED**: Battery command display interference issue
+- **❌ Issue**: `display battery` command was creating persistent XY text elements that interfered with normal text rendering
+- **✅ Solution**: Removed display interference, battery command now only updates protobuf system and mobile app notifications
+- **🎯 Result**: All display patterns and text commands work normally without positioning conflicts
+
+#### Text Overlay System Enhancement
+- **✅ Pattern 4 Support**: Modified `update_xy_positioned_text()` to handle scrolling text container (protobuf messages)
+- **✅ Pattern 5 Support**: Full XY text positioning with coordinate validation and bounds checking
+- **🔧 Flexible Text API**: `display text` command supports both overlay mode and positioned mode
+- **🌏 Font Consistency**: Unified CJK font usage across shell commands and protobuf text rendering
+
+### �🔆 Display Brightness Control Fix - 2025-09-30
+
+#### Fixed HLS12VGA Projector Brightness Control
+- **✅ FIXED**: `src/protobuf_handler.c` — Restored `hls12vga_set_brightness()` function call that was commented out
+- **✅ FIXED**: Uncommented HLS12VGA header include to enable projector brightness control
+- **🎯 Issue**: Phone app BrightnessConfig messages were only controlling PWM LED3, not display projector
+- **🔧 Solution**: Enabled dual brightness control - both LED backlight and projector display brightness now respond to phone app commands
+- **📱 Functionality**: BrightnessConfig protobuf messages now control:
+  - PWM LED3 brightness (0-100% → PWM duty cycle) 
+  - HLS12VGA projector brightness (0-100% → 0-9 brightness levels)
+
+### 🛠️ Previous Changes
+
+- `prj.conf` — Update Bluetooth L2CAP/ATT buffer and MTU settings for the simulator target (CONFIG_BT_L2CAP_TX_MTU=247).
+- `proto/mentraos_ble.options` — Adjust nanopb string max_size fields (e.g. DisplayText/DisplayScrollingText = 247).
+- `src/proto/mentraos_ble.pb.c`, `src/proto/mentraos_ble.pb.h` — Regenerate nanopb bindings; widen fieldinfo (PB_BIND) for large text fields to avoid static assertions.
+
+
+## [2.18.0] - 2025-09-17
+
+### 🔧 Git Branch Reorganization & Complete Display System Validation
+
+#### Major Git Workflow Restructuring
+- **🌳 nexfirmware Branch**: Established as primary firmware development branch
+- **🔄 Branch Migration**: Successfully merged `dev-loay-nexfirmware` → `nexfirmware`
+- **🏷️ Naming Integration**: Integrated Cole's updated naming conventions (mentraos_nrf5340/mos_*)
+- **📋 Legacy Cleanup**: Replaced old K901_NRF5340/xyzn_* OEM naming throughout codebase
+- **🔗 Feature Branch Targets**: Updated dev-nexfirmware-* branches to target nexfirmware
+
+#### Complete Display System Testing & Validation
+- **✅ HLS12VGA Verification**: Successfully tested 640×480 projector display functionality
+- **✅ SSD1306 Compatibility**: Maintained full 128×64 OLED display support
+- **🎨 LVGL Optimization**: Confirmed 1-bit color depth works optimally for both displays
+- **🔧 Configuration Validation**: Tested display switching between SSD1306 and HLS12VGA
+
+#### Display Switching Instructions
+
+##### Quick Switch: HLS12VGA ↔ SSD1306
+**Step 1: Device Tree Changes** (`boards/nrf5340dk_nrf5340_cpuapp_ns.overlay`)
+
+For **HLS12VGA Projector**:
+```dts
+/ {
+    chosen {
+        zephyr,display = &hls12vga;  // Point to HLS12VGA
+    };
+};
+
+&spi4 {
+    hls12vga: hls12vga@0 {
+        status = "okay";  // Enable HLS12VGA
+    };
+};
+
+&i2c2 {
+    ssd1306: ssd1306@3c {
+        status = "disabled";  // Disable SSD1306
+    };
+};
+```
+
+For **SSD1306 OLED**:
+```dts
+/ {
+    chosen {
+        zephyr,display = &ssd1306;  // Point to SSD1306
+    };
+};
+
+&spi4 {
+    hls12vga: hls12vga@0 {
+        status = "disabled";  // Disable HLS12VGA
+    };
+};
+
+&i2c2 {
+    ssd1306: ssd1306@3c {
+        status = "okay";  // Enable SSD1306
+    };
+};
+```
+
+**Step 2: Optional Configuration** (`prj.conf`)
+```properties
+# For HLS12VGA (current):
+CONFIG_CUSTOM_HLS12VGA=y    # Enable HLS12VGA driver
+CONFIG_SSD1306=y            # Keep SSD1306 available
+
+# For SSD1306 only (flash optimization):
+CONFIG_CUSTOM_HLS12VGA=n    # Disable HLS12VGA to save flash
+CONFIG_SSD1306=y            # Enable SSD1306 driver
+
+# Common (works for both):
+CONFIG_LV_COLOR_DEPTH_1=y   # 1-bit monochrome optimal for both
+```
+
+**Step 3: Build & Flash**
+```bash
+./build_firmware.sh
+./flash_firmware.sh
+```
+
+#### Technical Specifications
+
+##### Hardware Interfaces
+- **HLS12VGA**: SPI4 @ 32MHz, 640×480, multiple GPIO control lines
+- **SSD1306**: I2C2 @ 1MHz, 128×64, simple 2-wire interface
+
+##### Memory Usage
+- **HLS12VGA**: ~38KB framebuffer (640×480 @ 1-bit)
+- **SSD1306**: ~1KB framebuffer (128×64 @ 1-bit)
+
+##### Display Capabilities
+- **Both displays**: 1-bit monochrome, LVGL compatible
+- **HLS12VGA**: Projector output, hardware mirroring correction
+- **SSD1306**: OLED panel, direct pixel mapping
+
+#### Development Workflow Changes
+- **Primary Branch**: `nexfirmware` (replaces dev-loay-nexfirmware)
+- **Feature Branches**: `dev-nexfirmware-*` → target nexfirmware
+- **Integration**: All Cole's mentraos_nrf5340 work preserved and integrated
+- **Build System**: Full nRF Connect SDK v3.0.0 compatibility maintained
+
+#### Status: ✅ Production Ready
+- **Git Workflow**: Reorganized and documented for team collaboration
+- **Display System**: Both HLS12VGA and SSD1306 fully tested and working
+- **Build System**: Zero compilation errors, optimized configurations
+- **Hardware Validation**: Real-world testing completed successfully
+
+## [2.17.0] - 2025-09-16
+
+### 🖥️ HLS12VGA Projector Display Support & Modular Display System
+
+#### Complete HLS12VGA Integration
+- **📺 HLS12VGA 640x480 Support**: Full hardware support for TI DLP2000 projector module
+- **🔧 Modular Display Configuration**: Centralized display-specific settings system
+- **🎨 Adaptive Color Management**: Dynamic color handling for different display technologies
+- **🔄 Hardware Mirroring Correction**: Fixed horizontal display flipping for HLS12VGA
+- **🎭 Color Inversion Fix**: Proper white-on-black text display for projector hardware
+
+#### Display Configuration System
+- **⚙️ display_config.h/c**: Centralized configuration with display-type detection
+- **🎨 Adaptive Color Functions**: `display_get_text_color()`, `display_get_background_color()`, `display_get_adjusted_color()`
+- **🔧 Hardware-Level Fixes**: Direct pixel processing corrections in HLS12VGA driver
+- **🔀 Cross-Display Compatibility**: Maintains SSD1306 functionality while adding HLS12VGA support
+
+#### Technical Implementation
+- **🖥️ SPI Interface**: High-speed SPI communication for 640x480 projector data
+- **⚡ Performance Optimized**: Efficient pixel processing with hardware mirroring correction
+- **🎯 LVGL Integration**: Seamless integration with existing LVGL graphics system
+- **📋 Conditional Compilation**: Clean build system supporting multiple display types
+
+#### Multi-Display Architecture
+- **🔧 Display Type Detection**: Automatic configuration based on connected hardware
+- **🎨 Color Inversion Support**: Hardware-level bit mapping respects display configuration
+- **🔄 Mirroring Support**: Configurable horizontal mirroring for different display orientations
+- **✅ Backward Compatibility**: Preserves all existing SSD1306 OLED functionality
+
 ## [2.16.0] - 2025-09-02
 
 ### 🎵 LC3 Audio Codec Integration & Live Caption System

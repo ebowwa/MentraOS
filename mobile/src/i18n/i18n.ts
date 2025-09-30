@@ -48,11 +48,19 @@ export const initI18n = async () => {
 
   await i18n.init({
     resources,
-    lng: locale?.languageTag ?? fallbackLocale,
-    fallbackLng: fallbackLocale,
+    // lng: locale?.languageTag ?? fallbackLocale,
+    lng: "en", // TODO: setup a ci process for translating text
+    // This ensures we check the English language for missing keys
+    fallbackLng: {
+      default: ["en"],
+    },
     interpolation: {
       escapeValue: false,
     },
+    // This is important - return the key if translation is missing, not an empty string
+    returnEmptyString: false,
+    // Fall back to showing the key rather than empty string
+    returnNull: false,
   })
 
   return i18n

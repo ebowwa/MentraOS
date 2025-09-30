@@ -18,14 +18,18 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.replace("/(tabs)/home")
+      // Don't navigate to home without authentication
+      // Let the app's index route handle the navigation logic
+      navObject.replace("/")
     },
+    requiresAuth: false, // Let index.tsx handle auth checking
   },
   {
     pattern: "/home",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
       navObject.replace("/(tabs)/home")
     },
+    requiresAuth: true, // Require auth for explicit /home navigation
   },
 
   // Settings routes
@@ -67,6 +71,13 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/glasses",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       navObject.push("/(tabs)/glasses")
+    },
+    requiresAuth: true,
+  },
+  {
+    pattern: "/asg/gallery",
+    handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
+      navObject.push("/asg/gallery")
     },
     requiresAuth: true,
   },
@@ -188,7 +199,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             setTimeout(() => {
               console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
               try {
-                navObject.replace("/")
+                navObject.replace("/init")
                 console.log("[LOGIN DEBUG] router.replace called successfully")
               } catch (navError) {
                 console.error("[LOGIN DEBUG] Error calling router.replace:", navError)
@@ -197,13 +208,9 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             console.log("[LOGIN DEBUG] setTimeout scheduled")
             return // Don't do the navigation below
           }
-        } catch (err) {
-          console.error("Exception during setSession:", err)
-          console.error("[LOGIN DEBUG] setSession error details:", {
-            name: err.name,
-            message: err.message,
-            stack: err.stack,
-          })
+        } catch (e) {
+          console.error("Exception during setSession:", e)
+          console.error("[LOGIN DEBUG] setSession error details:", e)
         }
       }
 
@@ -297,15 +304,6 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     requiresAuth: true,
   },
 
-  // Permissions routes
-  {
-    pattern: "/permissions/grant",
-    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.push("/permissions/grant")
-    },
-    requiresAuth: true,
-  },
-
   // Onboarding routes
   {
     pattern: "/welcome",
@@ -333,7 +331,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      navObject.push(`/app/webview?packageName=${packageName}`)
+      navObject.push(`/applet/webview?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
@@ -341,7 +339,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName/settings",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      navObject.push(`/app/settings?packageName=${packageName}`)
+      navObject.push(`/applet/settings?packageName=${packageName}`)
     },
     requiresAuth: true,
   },

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 10:06:28
+ * @LastEditTime : 2025-09-30 09:40:16
  * @FilePath     : mos_pdm.c
  * @Description  :
  *
@@ -17,8 +17,7 @@
 
 #include "bal_os.h"
 
-#define LOG_MODULE_NAME MOS_LE_AUDIO
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+LOG_MODULE_REGISTER(MOS_LE_AUDIO, LOG_LEVEL_DBG);
 
 #define PCM_FIFO_FRAMES 5
 static K_SEM_DEFINE(pcmsem, 0, PCM_FIFO_FRAMES);

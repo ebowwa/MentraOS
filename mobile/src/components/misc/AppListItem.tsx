@@ -10,11 +10,17 @@ import {translate} from "@/i18n"
 import {Switch, Text} from "@/components/ignite"
 import {TooltipIcon} from "assets/icons/component/TooltipIcon"
 import Toast from "react-native-toast-message"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface AppModel {
   name: string
   packageName: string
-  is_foreground?: boolean
+  type: string
+  isOnline?: boolean | null
+  compatibility?: {
+    isCompatible: boolean
+    message?: string
+  }
 }
 
 interface AppListItemProps {
@@ -23,10 +29,10 @@ interface AppListItemProps {
   onTogglePress: () => void
   onSettingsPress: () => void
   refProp?: React.Ref<any>
-  is_foreground?: boolean
   opacity?: Animated.AnimatedValue
   height?: Animated.AnimatedValue
   isDisabled?: boolean
+  isIncompatible?: boolean
 }
 
 export const AppListItem = ({
@@ -37,8 +43,8 @@ export const AppListItem = ({
   refProp,
   opacity,
   isDisabled,
-  is_foreground,
   height,
+  isIncompatible,
 }: AppListItemProps) => {
   const {themed, theme} = useAppTheme()
 
@@ -64,25 +70,37 @@ export const AppListItem = ({
         onPress={onSettingsPress}
         disabled={isDisabled}
         activeOpacity={0.7}>
-        <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
+        <AppIcon app={app as any} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
-            style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
+            style={[
+              themed($appName),
+              isActive ? themed($activeApp) : themed($inactiveApp),
+              isIncompatible && themed($incompatibleApp),
+              app.isOnline === false && themed($offlineApp),
+            ]}
             numberOfLines={1}
             ellipsizeMode="tail"
           />
-          <Tag isActive={isActive} isForeground={is_foreground} />
+          {app.isOnline === false && (
+            <View style={themed($offlineRow)}>
+              <MaterialCommunityIcons name="alert-circle" size={14} color={theme.colors.error} />
+              <Text text={"Offline"} style={themed($offlineRowText)} />
+            </View>
+          )}
+          <Tag isActive={isActive} isForeground={app.type == "standard"} isIncompatible={isIncompatible} />
         </View>
       </TouchableOpacity>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-        <View pointerEvents={isDisabled ? "none" : "auto"}>
-          <Switch value={isActive} hitSlop={12} onValueChange={onTogglePress} />
-        </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
-          <ChevronRight color={theme.colors.chevron} />
-        </TouchableOpacity>
+        {isIncompatible ? (
+          <TouchableOpacity onPress={onTogglePress} activeOpacity={0.7}>
+            <TooltipIcon size={20} color={theme.colors.error} />
+          </TouchableOpacity>
+        ) : (
+          <Switch value={isActive} onValueChange={onTogglePress} hitSlop={{left: 48, right: 16, top: 24, bottom: 24}} />
+        )}
       </View>
     </Animated.View>
   )
@@ -95,6 +113,15 @@ const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
+})
+
+const $incompatibleApp: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textDim,
+  opacity: 0.7,
+})
+
+const $offlineApp: ThemedStyle<TextStyle> = () => ({
+  textDecorationLine: "line-through",
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
@@ -134,6 +161,18 @@ const $appName: ThemedStyle<TextStyle> = () => ({
   overflow: "hidden",
 })
 
+const $offlineRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginTop: 2,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+})
+
+const $offlineRowText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.error,
+})
+
 const $toggleParent: ThemedStyle<ViewStyle> = () => ({
   gap: 12,
 })
@@ -143,9 +182,21 @@ const $chevronHitbox: ThemedStyle<ViewStyle> = () => ({
   margin: -8,
 })
 
-const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
+const Tag = ({
+  isActive,
+  isForeground = false,
+  isIncompatible = false,
+}: {
+  isActive: boolean
+  isForeground?: boolean
+  isIncompatible?: boolean
+}) => {
   const {themed, theme} = useAppTheme()
   const mColor = isActive ? theme.colors.foregroundTagText : theme.colors.textDim
+
+  if (isIncompatible) {
+    return null
+  }
 
   if (!isForeground) {
     return null

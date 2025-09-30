@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { validateAppApiKey } from '../middleware/validateApiKey';
-import sessionService from '../services/session/session.service';
+import UserSession from '../services/session/UserSession';
 // import multiUserAppService from '../services/core/multi-user-app.service';
 import appService from '../services/core/app.service';
 
@@ -42,7 +42,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     // console.log('4324 userId', userId);
 
     // Find the user's active session
-    const userSession = sessionService.getSessionByUserId(userId);
+    const userSession = UserSession.getById(userId);
     if (!userSession) {
       return res.status(404).json({ error: 'No active session found for user' });
     }
@@ -54,7 +54,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     /* const users = multiUserAppService.getActiveAppUsers(packageName)
       .filter((otherUserId: string) => otherUserId !== userId)
       .map((otherUserId: string) => {
-        const otherSession = sessionService.getSessionByUserId(otherUserId);
+  const otherSession = UserSession.getById(otherUserId);
         return {
           userId: otherUserId,
           sessionId: otherSession?.sessionId || 'unknown',

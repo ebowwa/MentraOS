@@ -61,6 +61,10 @@ public class MicrophoneLocalAndBluetooth {
 
     // Flag to track receiver registration status
     private boolean isReceiverRegistered = false;
+    
+    // Track last time we received audio data for health monitoring
+    private volatile long lastAudioDataReceivedTime = 0;
+    private static final long AUDIO_DATA_TIMEOUT_MS = 1000; // 1 second without data = unhealthy
 
     private final BroadcastReceiver bluetoothStateReceiver = new BroadcastReceiver() {
         private BluetoothState bluetoothState = BluetoothState.UNAVAILABLE;
@@ -295,13 +299,8 @@ public class MicrophoneLocalAndBluetooth {
             audioManager.setMode(AudioManager.MODE_IN_CALL);
             EventBus.getDefault().post(new ScoStartEvent(true));
         } else {
-            // Samsung devices work better with MODE_IN_COMMUNICATION for non-SCO recording
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-                Log.d(TAG, "Samsung device - using MODE_IN_COMMUNICATION for better audio routing");
-            } else {
-                audioManager.setMode(AudioManager.MODE_NORMAL);
-            }
+            // Use MODE_NORMAL for all devices (Samsung-specific mode removed)
+            audioManager.setMode(AudioManager.MODE_NORMAL);
             EventBus.getDefault().post(new ScoStartEvent(false));
         }
 
@@ -312,38 +311,27 @@ public class MicrophoneLocalAndBluetooth {
         }
 
         try {
-            // Choose audio source based on device manufacturer
-            // Samsung devices work better with VOICE_RECOGNITION source
-            int audioSource = MediaRecorder.AudioSource.CAMCORDER;
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                // VOICE_RECOGNITION is more cooperative on Samsung devices
+            // Use VOICE_RECOGNITION for Samsung to allow better mic sharing with Gboard
+            // CAMCORDER has higher priority and blocks other apps more aggressively
+            int audioSource;
+            if ("samsung".equalsIgnoreCase(Build.MANUFACTURER)) {
                 audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
-                Log.d(TAG, "Samsung device detected - using VOICE_RECOGNITION audio source for better app cooperation");
+                Log.d(TAG, "Using VOICE_RECOGNITION source for Samsung device");
+            } else {
+                audioSource = MediaRecorder.AudioSource.CAMCORDER;
             }
             
             recorder = new AudioRecord(audioSource,
                     SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize * 2);
             
-            Log.d(TAG, "AudioRecord created with source: " + audioSource + 
-                  " (CAMCORDER=" + MediaRecorder.AudioSource.CAMCORDER + 
-                  ", VOICE_RECOGNITION=" + MediaRecorder.AudioSource.VOICE_RECOGNITION + ")");
+            Log.d(TAG, "AudioRecord created with source: " + 
+                    (audioSource == MediaRecorder.AudioSource.VOICE_RECOGNITION ? "VOICE_RECOGNITION" : "CAMCORDER"));
 
             if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
                 Log.e(TAG, "Failed to initialize AudioRecord");
                 Toast.makeText(this.mContext, "Error starting onboard microphone", Toast.LENGTH_LONG).show();
                 stopRecording();
                 return;
-            }
-            
-            // On Samsung devices, set the audio session ID to help with detection
-            if ("samsung".equalsIgnoreCase(android.os.Build.MANUFACTURER)) {
-                try {
-                    // This might help with Samsung's audio routing
-                    recorder.setPreferredDevice(null); // Clear any preferred device
-                    Log.d(TAG, "Samsung: Cleared preferred audio device for better sharing");
-                } catch (Exception e) {
-                    Log.e(TAG, "Error setting Samsung audio preferences", e);
-                }
             }
             
             // Register our AudioRecord with the PhoneMicrophoneManager for conflict detection
@@ -358,6 +346,9 @@ public class MicrophoneLocalAndBluetooth {
             recorder.startRecording();
 
             recordingInProgress.set(true);
+            
+            // Initialize the last data received time
+            lastAudioDataReceivedTime = System.currentTimeMillis();
 
             recordingThread = new Thread(new RecordingRunnable(), "Recording Thread");
             recordingThread.setDaemon(true); // Make it a daemon thread so it doesn't prevent JVM shutdown
@@ -620,6 +611,11 @@ public class MicrophoneLocalAndBluetooth {
                         Log.d(TAG, "Error reading from AudioRecord"); //: " + getBufferReadFailureReason(result));
                         break;
                     }
+                    
+                    // Update last data received time for health monitoring
+                    if (result > 0) {
+                        lastAudioDataReceivedTime = System.currentTimeMillis();
+                    }
 
                     // Callback
                     b_buffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -686,6 +682,60 @@ public class MicrophoneLocalAndBluetooth {
 
     enum BluetoothState {
         AVAILABLE, UNAVAILABLE
+    }
+
+    /**
+     * Check if recording is currently active and healthy
+     * Used by MicrophoneLifecycleManager to detect background failures
+     */
+    public boolean isRecordingActive() {
+        // Check multiple indicators of health:
+        // 1. Recording flag is set
+        // 2. Recorder exists and is initialized
+        // 3. Recording thread is alive
+        // 4. AudioRecord is in recording state
+        // 5. We're actually receiving audio data (most important!)
+        
+        if (!recordingInProgress.get()) {
+            return false;
+        }
+        
+        if (recorder == null) {
+            return false;
+        }
+        
+        try {
+            // Check if AudioRecord is in a valid state
+            if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                Log.w(TAG, "AudioRecord not in initialized state");
+                return false;
+            }
+            
+            // Check if actually recording
+            if (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                Log.w(TAG, "AudioRecord not in recording state");
+                return false;
+            }
+            
+            // Check if recording thread is alive
+            if (recordingThread == null || !recordingThread.isAlive()) {
+                Log.w(TAG, "Recording thread is not alive");
+                return false;
+            }
+            
+            // MOST IMPORTANT: Check if we're actually receiving audio data
+            // If we haven't received data in the last second, something is wrong
+            long timeSinceLastData = System.currentTimeMillis() - lastAudioDataReceivedTime;
+            if (lastAudioDataReceivedTime > 0 && timeSinceLastData > AUDIO_DATA_TIMEOUT_MS) {
+                Log.w(TAG, "No audio data received for " + timeSinceLastData + "ms - recording is unhealthy!");
+                return false;
+            }
+            
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking recording health", e);
+            return false;
+        }
     }
 
     public synchronized void destroy() {

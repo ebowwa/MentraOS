@@ -9,10 +9,35 @@ import {useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/AllProviders"
 import BackgroundGradient from "@/components/misc/BackgroundGradient"
 import MessageBanner from "@/components/misc/MessageBanner"
-import Toast, {SuccessToast, BaseToast, ErrorToast} from "react-native-toast-message"
+import Toast from "react-native-toast-message"
 import {View} from "react-native"
 import {Text} from "@/components/ignite"
-import {Ionicons} from "@expo/vector-icons" // Replace with your project's icon import if different
+import * as Sentry from "@sentry/react-native"
+import Constants from "expo-constants"
+import {registerGlobals} from "@livekit/react-native-webrtc"
+
+Sentry.init({
+  dsn: Constants.expoConfig?.extra?.SENTRY_DSN,
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Configure Session Replay
+  // DISABLED: Mobile replay causes MediaCodec spam by recording screen every 5 seconds
+  // replaysSessionSampleRate: 0.1,
+  // replaysOnErrorSampleRate: 1,
+  // integrations: [Sentry.mobileReplayIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+
+  // beforeSend(event, hint) {
+  //   // console.log("Sentry.beforeSend", event, hint)
+  //   console.log("Sentry.beforeSend", hint)
+  //   return event
+  // },
+})
 
 SplashScreen.preventAutoHideAsync()
 
@@ -23,9 +48,7 @@ if (__DEV__) {
   require("src/devtools/ReactotronConfig.ts")
 }
 
-export {ErrorBoundary} from "@/components/ErrorBoundary/ErrorBoundary"
-
-export default function Root() {
+function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
@@ -39,6 +62,13 @@ export default function Root() {
         // Still set initialized to true to prevent app from being stuck
         setIsI18nInitialized(true)
       })
+
+    try {
+      // initialize webrtc
+      registerGlobals()
+    } catch (error) {
+      // console.error("LivekitManager: Error registering globals", error)// safe to ignore
+    }
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized
@@ -96,8 +126,7 @@ export default function Root() {
                 // gestureResponseDistance: 100,
                 // fullScreenGestureEnabled: true,
                 animation: "none",
-              }}
-            />
+              }}></Stack>
             <MessageBanner />
             <Toast config={toastConfig} />
           </BackgroundGradient>
@@ -106,3 +135,5 @@ export default function Root() {
     </ThemeProvider>
   )
 }
+
+export default Sentry.wrap(Root)

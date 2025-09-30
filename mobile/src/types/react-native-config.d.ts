@@ -13,6 +13,9 @@ declare module "react-native-config" {
 
     // PostHog settings
     POSTHOG_API_KEY?: string
+
+    // Sentry settings
+    SENTRY_DSN?: string
   }
 
   export const Config: NativeConfig

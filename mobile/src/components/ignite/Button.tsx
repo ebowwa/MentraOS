@@ -19,7 +19,7 @@ const gradientBorderStyle: ViewStyle = {
   padding: 2,
 }
 
-type Presets = "default" | "filled" | "reversed"
+type Presets = "default" | "filled" | "reversed" | "outlined"
 
 export interface ButtonAccessoryProps {
   style: StyleProp<any>
@@ -165,42 +165,42 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    <LinearGradient
-      colors={gradientColors}
-      start={{x: 1, y: 0}}
-      end={{x: 0, y: 0}}
-      style={theme.isDark ? gradientBorderStyle : {}}>
-      <Pressable
-        style={$viewStyle}
-        accessibilityRole="button"
-        accessibilityState={{disabled: !!disabled}}
-        {...rest}
-        disabled={disabled}>
-        {state => (
-          <View style={{flex: 1, position: "relative", justifyContent: "center"}}>
-            {!!LeftAccessory && (
-              <View style={{marginLeft: spacing.xxs, position: "absolute", left: 0}}>
-                <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
-              </View>
-            )}
+    // <LinearGradient
+    //   colors={gradientColors}
+    //   start={{x: 1, y: 0}}
+    //   end={{x: 0, y: 0}}
+    //   style={theme.isDark ? gradientBorderStyle : {}}>
+    <Pressable
+      style={$viewStyle}
+      accessibilityRole="button"
+      accessibilityState={{disabled: !!disabled}}
+      {...rest}
+      disabled={disabled}>
+      {state => (
+        <View style={{flex: 1, position: "relative", justifyContent: "center"}}>
+          {!!LeftAccessory && (
+            <View style={{marginLeft: spacing.xxs, position: "absolute", left: 0}}>
+              <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
+            </View>
+          )}
 
-            <Text
-              tx={tx}
-              text={text}
-              txOptions={txOptions}
-              style={[$textStyle(state), {textAlign: props.textAlignment === "left" ? "left" : "center"}]}>
-              {children}
-            </Text>
+          <Text
+            tx={tx}
+            text={text}
+            txOptions={txOptions}
+            style={[$textStyle(state), {textAlign: props.textAlignment === "left" ? "left" : "center"}]}>
+            {children}
+          </Text>
 
-            {!!RightAccessory && (
-              <View style={{position: "absolute", right: 0}}>
-                <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
-              </View>
-            )}
-          </View>
-        )}
-      </Pressable>
-    </LinearGradient>
+          {!!RightAccessory && (
+            <View style={{position: "absolute", right: 0}}>
+              <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
+            </View>
+          )}
+        </View>
+      )}
+    </Pressable>
+    // </LinearGradient>
   )
 }
 
@@ -251,24 +251,39 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
   reversed: [
     $styles.row,
     $baseViewStyle,
-    ({colors}) => ({backgroundColor: colors.palette.neutral800, borderColor: colors.palette.neutral900}),
+    ({colors}) => ({
+      backgroundColor: colors.buttonPillIcon,
+      borderWidth: 0,
+    }),
+  ],
+  outlined: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.transparent,
+      borderWidth: 1.5,
+      borderColor: colors.textDim,
+    }),
   ],
 }
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   default: [$baseTextStyle],
   filled: [$baseTextStyle],
-  reversed: [$baseTextStyle, ({colors}) => ({color: colors.palette.neutral100})],
+  reversed: [$baseTextStyle, ({colors}) => ({color: colors.buttonPillIconText})],
+  outlined: [$baseTextStyle, ({colors}) => ({color: colors.text})],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   default: ({colors, isDark}) => ({backgroundColor: isDark ? colors.palette.neutral200 : colors.palette.primary100}),
   filled: ({colors}) => ({backgroundColor: colors.palette.neutral400}),
-  reversed: ({colors}) => ({backgroundColor: colors.palette.neutral700}),
+  reversed: ({colors}) => ({opacity: 0.8}),
+  outlined: ({colors}) => ({backgroundColor: colors.palette.neutral100, opacity: 0.1}),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   default: () => ({opacity: 0.9}),
   filled: () => ({opacity: 0.9}),
   reversed: () => ({opacity: 0.9}),
+  outlined: () => ({opacity: 0.8}),
 }

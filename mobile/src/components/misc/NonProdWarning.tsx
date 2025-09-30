@@ -8,7 +8,7 @@ import {NavigationProps} from "./types"
 import {router, useFocusEffect} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {SETTINGS_KEYS} from "@/consts"
+import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import showAlert from "@/utils/AlertUtils"
@@ -21,7 +21,7 @@ export default function NonProdWarning() {
   const {push} = useNavigationHistory()
 
   const checkNonProdBackend = async () => {
-    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, "prod.augmentos.cloud")
 
     let isProd = false
     if (
@@ -59,7 +59,7 @@ export default function NonProdWarning() {
   //     <TouchableOpacity
   //       style={styles.settingsButton}
   //       onPress={() => {
-  //         router.push("/settings/developer")
+  //         push("/settings/developer")
   //       }}>
   //       <Text style={styles.settingsButtonTextBlue}>Settings</Text>
   //     </TouchableOpacity>

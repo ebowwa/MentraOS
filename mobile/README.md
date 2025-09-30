@@ -12,6 +12,8 @@ git checkout dev
 choco install -y nodejs-lts microsoft-openjdk17
 ```
 
+Install swiftformat from https://github.com/nicklockwood/SwiftFormat/releases
+
 ## Android
 
 ```
@@ -21,6 +23,14 @@ bun android
 ```
 
 ## iOS
+
+### deps
+
+```
+brew install swiftformat
+brew install bun
+brew install openjdk@17
+```
 
 ```
 bun install
