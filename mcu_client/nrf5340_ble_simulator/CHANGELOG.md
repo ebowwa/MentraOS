@@ -2,6 +2,59 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
+## Unreleased
+
+### �️ Comprehensive Shell Display Command System - 2025-09-30
+
+#### Major Shell Display Control Implementation
+- **✅ NEW**: `src/shell_display_control.c` — Complete shell command system for manual display control
+- **🎯 Features**: Manual brightness control, clear/fill display, text positioning, pattern selection, battery management
+- **📋 Commands Added**:
+  - `display brightness 0-255` — Set HLS12VGA projector brightness
+  - `display clear` — Clear display to black using HLS12VGA driver
+  - `display fill` — Fill display with white (opposite of clear)
+  - `display text "Hello" 100 200 16` — Position text with font size control
+  - `display pattern 0-5` — Switch between 6 display patterns (chess, zebra, scrolling, protobuf, XY positioning)
+  - `display battery 85 true` — Set battery level (0-100%) with optional charging state
+  - `display help` — Comprehensive help system with examples
+
+#### Shell Architecture & Integration
+- **🔧 Stack Configuration**: Increased `CONFIG_SHELL_STACK_SIZE=8192` to prevent stack overflow in display commands
+- **🛡️ Driver Integration**: Uses proper HLS12VGA driver functions instead of direct LVGL calls to avoid assertion failures
+- **📱 Protobuf Integration**: Battery command integrates with protobuf system for automatic mobile app notifications
+- **🌐 CJK Font Support**: All text commands use CJK font for Chinese character support
+- **⚡ Pattern Switching**: Dynamic pattern selection with 6 test patterns plus protobuf/XY text containers
+
+#### Critical Display Context Fix
+- **🐛 FIXED**: Battery command display interference issue
+- **❌ Issue**: `display battery` command was creating persistent XY text elements that interfered with normal text rendering
+- **✅ Solution**: Removed display interference, battery command now only updates protobuf system and mobile app notifications
+- **🎯 Result**: All display patterns and text commands work normally without positioning conflicts
+
+#### Text Overlay System Enhancement
+- **✅ Pattern 4 Support**: Modified `update_xy_positioned_text()` to handle scrolling text container (protobuf messages)
+- **✅ Pattern 5 Support**: Full XY text positioning with coordinate validation and bounds checking
+- **🔧 Flexible Text API**: `display text` command supports both overlay mode and positioned mode
+- **🌏 Font Consistency**: Unified CJK font usage across shell commands and protobuf text rendering
+
+### �🔆 Display Brightness Control Fix - 2025-09-30
+
+#### Fixed HLS12VGA Projector Brightness Control
+- **✅ FIXED**: `src/protobuf_handler.c` — Restored `hls12vga_set_brightness()` function call that was commented out
+- **✅ FIXED**: Uncommented HLS12VGA header include to enable projector brightness control
+- **🎯 Issue**: Phone app BrightnessConfig messages were only controlling PWM LED3, not display projector
+- **🔧 Solution**: Enabled dual brightness control - both LED backlight and projector display brightness now respond to phone app commands
+- **📱 Functionality**: BrightnessConfig protobuf messages now control:
+  - PWM LED3 brightness (0-100% → PWM duty cycle) 
+  - HLS12VGA projector brightness (0-100% → 0-9 brightness levels)
+
+### 🛠️ Previous Changes
+
+- `prj.conf` — Update Bluetooth L2CAP/ATT buffer and MTU settings for the simulator target (CONFIG_BT_L2CAP_TX_MTU=247).
+- `proto/mentraos_ble.options` — Adjust nanopb string max_size fields (e.g. DisplayText/DisplayScrollingText = 247).
+- `src/proto/mentraos_ble.pb.c`, `src/proto/mentraos_ble.pb.h` — Regenerate nanopb bindings; widen fieldinfo (PB_BIND) for large text fields to avoid static assertions.
+
+
 ## [2.18.0] - 2025-09-17
 
 ### 🔧 Git Branch Reorganization & Complete Display System Validation

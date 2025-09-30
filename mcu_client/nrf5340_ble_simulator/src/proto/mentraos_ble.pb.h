@@ -133,7 +133,8 @@ typedef struct _mentraos_ble_VadEvent {
 } mentraos_ble_VadEvent;
 
 typedef struct _mentraos_ble_DisplayText {
-    char text[128];
+    // char text[128];
+    char text[247];
     uint32_t color; /* RGB565 format (e.g., 0xF800 for red) */
     uint32_t font_code; /* Font identifier */
     uint32_t x;
@@ -174,7 +175,8 @@ typedef struct _mentraos_ble_ClearCachedImage {
 } mentraos_ble_ClearCachedImage;
 
 typedef struct _mentraos_ble_DisplayScrollingText {
-    char text[128];
+    // char text[128];
+    char text[247];
     uint32_t color;
     uint32_t font_code;
     uint32_t x;

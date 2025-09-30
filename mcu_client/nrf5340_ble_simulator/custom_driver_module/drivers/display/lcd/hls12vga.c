@@ -1,12 +1,15 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-02 13:54:11
+ * @LastEditTime : 2025-09-30 09:39:49
  * @FilePath     : hls12vga.c
  * @Description  :
  *
  *  Copyright (c) MentraOS Contributors 2025
- *  SPDX-License-Identifier: Apache-2.0
+ 				LOG_DBG("SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)", 
+						transfer_count, size, transfer_time_ms, (fl		LOG_ERR("❌ Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", 
+				y, height, cfg->screen_height);LOG_ERR("Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", 
+				y, height, cfg->screen_height);t)bytes_per_sec / 1000000.0f, effective_speed_mhz); SPDX-License-Identifier: Apache-2.0
  */
 
 #include <stdio.h>
@@ -16,7 +19,7 @@
 #include <zephyr/device.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/drivers/display.h>
-#include "bsp_log.h"
+#include <zephyr/logging/log.h>
 #include "hls12vga.h"
 
 // Include display config for adaptive mirroring correction
@@ -24,7 +27,8 @@
 #include "../../../../src/mos_components/mos_lvgl_display/include/display_config.h"
 #endif
 
-#define TAG "CUSTOM_HLS12VGA"
+LOG_MODULE_REGISTER(custom_hls12vga, LOG_LEVEL_DBG);
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 #define DT_DRV_COMPAT zephyr_custom_hls12vga
@@ -54,12 +58,12 @@ static int write_reg_side(const struct device *dev,
 {
 	if ((!device_is_ready(dev)))
 	{
-		BSP_LOGE(TAG, "device_is_ready err!!!");
+		LOG_ERR("SPI device not ready");
 		return -EINVAL;
 	}
 	if (!gpio_is_ready_dt(cs))
 	{
-		BSP_LOGE(TAG, "gpio_is_ready_dt err!!!");
+		LOG_ERR("GPIO CS not ready");
 		return -EINVAL;
 	}
 
@@ -82,7 +86,7 @@ static int write_reg_side(const struct device *dev,
 
 	if (err)
 	{
-		BSP_LOGE(TAG, "SPI write_reg_side @0x%02x failed: %d", reg, err);
+		LOG_ERR("SPI write_reg_side @0x%02x failed: %d", reg, err);
 	}
 	return err;
 }
@@ -95,7 +99,7 @@ int hls12vga_set_shift(move_mode mode, uint8_t pixels)
 {
 	if ((pixels > HLS12VGA_SHIFT_MAX) || (mode > MOVE_DOWN))
 	{
-		BSP_LOGE(TAG, "Invalid parameters err!!!");
+		LOG_ERR("Invalid shift parameters");
 		return -EINVAL;
 	}
 	const hls12vga_config *cfg = dev_hls12vga->config;
@@ -137,7 +141,7 @@ int hls12vga_set_shift(move_mode mode, uint8_t pixels)
 	default:
 		return -EINVAL;
 	}
-	BSP_LOGI(TAG, "hls12vga_set_shift: reg_l=%02X, val_l=%d reg_r=%02X, val_r=%d", reg_l, val_l, reg_r, val_r);
+	LOG_DBG("hls12vga_set_shift: reg_l=%02X, val_l=%d reg_r=%02X, val_r=%d", reg_l, val_l, reg_r, val_r);
 	/* 分别对左右两路写寄存器; Write registers separately for both sides */
 	err1 = write_reg_side(dev_hls12vga, &cfg->left_cs, reg_l, val_l);
 	err2 = write_reg_side(dev_hls12vga, &cfg->right_cs, reg_r, val_r);
@@ -188,7 +192,7 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 		if (err != 0)
 		{
 			k_msleep(1); /* 短暂延迟; Short delay */
-			BSP_LOGI(TAG, "SPI write to left failed (attempt %d/%d): %d", i + 1, retries + 1, err);
+			LOG_DBG("SPI write to left failed (attempt %d/%d): %d", i + 1, retries + 1, err);
 			continue;
 		}
 		if (err == 0)
@@ -199,16 +203,16 @@ static int hls12vga_transmit_all(const struct device *dev, const uint8_t *data, 
 			uint32_t bytes_per_sec = (transfer_time_ms > 0) ? (size * 1000) / transfer_time_ms : 0;
 			float effective_speed_mhz = (float)(size * 8) / (transfer_time_ms * 1000.0f);  // bits per microsecond = MHz
 			
-			// Log every 100th transfer to avoid spam
+			// Log every 100th transfer to avoid spam (disabled for runtime)
 			if (transfer_count % 100 == 0) {
-				BSP_LOGI(TAG, "📊 SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)", 
+				LOG_DBG("SPI Transfer #%d: %zu bytes in %lld ms (%.2f MB/s, %.2f MHz effective)", 
 					transfer_count, size, transfer_time_ms, (float)bytes_per_sec / 1000000.0f, effective_speed_mhz);
 			}
 			
 			return 0; /* 成功; Success */
 		}
 		k_msleep(1); /* 短暂延迟; Short delay */
-		BSP_LOGI(TAG, "SPI write to right failed (attempt %d/%d): %d", i + 1, retries + 1, err);
+		LOG_DBG("SPI write to right failed (attempt %d/%d): %d", i + 1, retries + 1, err);
 	}
 	return err;
 }
@@ -267,31 +271,30 @@ static int hls12vga_write(const struct device *dev,
 	static uint32_t write_call_count = 0;
 	write_call_count++;
 	
-	// BSP_LOGI(TAG, "🎨 hls12vga_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)", 
+	// LOG_DBG( "🎨 hls12vga_write #%d: pos(%d,%d) size(%dx%d) pitch(%d)", 
 	//	write_call_count, x, y, width, height, pitch);
 	
 	// Disable verbose buffer analysis logging
-	// BSP_LOGI(TAG, "📊 LVGL Buffer Analysis:");
-	// BSP_LOGI(TAG, "  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
-	// BSP_LOGI(TAG, "  - dst_stride: %d bytes (expanded)", cfg->screen_width);
-	// BSP_LOGI(TAG, "  - Total bytes to send: %d", height * cfg->screen_width);
+	// LOG_DBG( "📊 LVGL Buffer Analysis:");
+	// LOG_DBG( "  - src_stride: %d bytes (packed bits)", (width + 7) / 8);
+	// LOG_DBG( "  - dst_stride: %d bytes (expanded)", cfg->screen_width);
+	// LOG_DBG( "  - Total bytes to send: %d", height * cfg->screen_width);
 	
 	// Disable hex dump logging
 	// const uint8_t *debug_src = (const uint8_t *)buf;
-	// BSP_LOG_BUFFER_HEX(TAG, debug_src, MIN(16, (width + 7) / 8));
 	
 	// **SAFETY CHECK: Implement chunked transfers for large displays**
 	uint32_t total_pixels = width * height;
 	const uint32_t MAX_PIXELS_PER_CHUNK = 32000;  // 32K pixels max per transfer
 	
 	if (total_pixels > MAX_PIXELS_PER_CHUNK) {
-		// BSP_LOGI(TAG, "🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
+		// LOG_DBG( "🔄 Large transfer detected: %d pixels. Implementing chunked transfer...", total_pixels);
 		
 		// Calculate chunk size - process in horizontal strips
 		uint16_t chunk_height = MAX_PIXELS_PER_CHUNK / width;
 		if (chunk_height > height) chunk_height = height;
 		
-		// BSP_LOGI(TAG, "📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
+		// LOG_DBG( "📦 Chunk size: %dx%d (%d pixels each)", width, chunk_height, width * chunk_height);
 		
 		// Process in chunks
 		int ret = 0;
@@ -301,7 +304,7 @@ static int hls12vga_write(const struct device *dev,
 				current_chunk_height = height - y_offset;
 			}
 			
-			// BSP_LOGI(TAG, "🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
+			// LOG_DBG( "🧩 Processing chunk at y=%d, height=%d", y + y_offset, current_chunk_height);
 			
 			// Create a descriptor for this chunk
 			struct display_buffer_descriptor chunk_desc = {
@@ -318,7 +321,7 @@ static int hls12vga_write(const struct device *dev,
 			// Recursively call ourselves with the smaller chunk
 			ret = hls12vga_write(dev, x, y + y_offset, &chunk_desc, chunk_src);
 			if (ret != 0) {
-				BSP_LOGE(TAG, "❌ Chunk transfer failed at y=%d: %d", y + y_offset, ret);
+				LOG_ERR("Chunk transfer failed at y=%d: %d", y + y_offset, ret);
 				return ret;
 			}
 			
@@ -326,16 +329,16 @@ static int hls12vga_write(const struct device *dev,
 			k_msleep(1);
 		}
 		
-		// BSP_LOGI(TAG, "✅ Chunked transfer completed successfully!");
+		// LOG_DBG( "✅ Chunked transfer completed successfully!");
 		return 0;
 	}
 	
-	// BSP_LOGI(TAG, "✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
+	// LOG_DBG( "✅ Transfer size OK: %d pixels (direct transfer)", total_pixels);
 	
 	// if (x != 0 || pitch != cfg->screen_width || width != cfg->screen_width || height > MAX_LINES_PER_WRITE)
 	if (y + height > cfg->screen_height)
 	{
-		BSP_LOGE(TAG, "❌ Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", 
+		LOG_ERR("❌ Write bounds check failed: y(%d) + height(%d) > screen_height(%d)", 
 			y, height, cfg->screen_height);
 		return -ENOTSUP;
 	}
@@ -345,7 +348,6 @@ static int hls12vga_write(const struct device *dev,
 	const uint16_t src_stride = (width + 7) / 8;
 	const uint16_t dst_stride = cfg->screen_width;
 
-	// BSP_LOG_BUFFER_HEX(TAG, src, src_stride); // PIXEL_FORMAT_MONO10 原始数据默认背景色是0x00
 	// 每像素1bit展开为 0x00 / 0xFF
 	for (uint16_t row = 0; row < height; row++)
 	{
@@ -399,7 +401,7 @@ static int hls12vga_write(const struct device *dev,
 	ret = hls12vga_transmit_all(dev, tx_buf, 4 + height * dst_stride, 1);
 	if (ret != 0)
 	{
-		BSP_LOGE(TAG, "SPI transmit failed: %d", ret);
+		LOG_ERR("SPI transmit failed: %d", ret);
 	}
 	return ret;
 }
@@ -414,13 +416,13 @@ static int hls12vga_read(struct device *dev, int x, int y,
 }
 int hls12vga_set_brightness(uint8_t brightness)
 {
-	// BSP_LOGI(TAG, "set Brightness: [%d]", brightness);
+	// LOG_DBG( "set Brightness: [%d]", brightness);
 	const uint8_t reg_val[] = {1, 4, 7, 10, 14, 18, 22, 27, 32, 40};
 	uint8_t level = 0;
 	uint8_t cmd[3] = {0};
 	if (brightness > 9)
 	{
-		BSP_LOGE(TAG, "level error %d", brightness);
+		LOG_ERR("level error %d", brightness);
 		level = 40;
 	}
 	else
@@ -478,7 +480,7 @@ static int hls12vga_get_capabilities(struct device *dev,
 }
 void hls12vga_power_on(void)
 {
-	BSP_LOGI(TAG, "bsp_lcd_power_on");
+	LOG_DBG("HLS12VGA power on");
 	const hls12vga_config *cfg = (hls12vga_config *)dev_hls12vga->config;
 	pm_device_action_run(dev_hls12vga, PM_DEVICE_ACTION_RESUME);
 	k_msleep(50);
@@ -496,7 +498,7 @@ void hls12vga_power_on(void)
 
 void hls12vga_power_off(void)
 {
-	BSP_LOGI(TAG, "bsp_lcd_power_off");
+	LOG_DBG("HLS12VGA power off");
 	const hls12vga_config *cfg = (hls12vga_config *)dev_hls12vga->config;
 	// display_blanking_on(dev_hls12vga);
 	// spi_release_dt(&cfg->spi);
@@ -512,7 +514,7 @@ void hls12vga_power_off(void)
 }
 static void lvgl_tick_cb(struct k_timer *timer)
 {
-	// BSP_LOGI(TAG, "lvgl_tick_cb");
+	// LOG_DBG( "lvgl_tick_cb");
 	lv_tick_inc(LVGL_TICK_MS); // Fixed: use raw value instead of K_MSEC
 }
 int hls12vga_clear_screen(bool color_on)
@@ -530,10 +532,10 @@ int hls12vga_clear_screen(bool color_on)
 
 	uint8_t fill_byte = color_on ? 0xFF : 0x00;
 	
-	// BSP_LOGI(TAG, "🧹 hls12vga_clear_screen: color_on=%s, fill_byte=0x%02X", 
+	// LOG_DBG( "🧹 hls12vga_clear_screen: color_on=%s, fill_byte=0x%02X", 
 	//	color_on ? "true" : "false", fill_byte);
-	// BSP_LOGI(TAG, "  - Screen: %dx%d pixels", width, height);
-	// BSP_LOGI(TAG, "  - Total bytes per frame: %d", width * height);
+	// LOG_DBG( "  - Screen: %dx%d pixels", width, height);
+	// LOG_DBG( "  - Total bytes per frame: %d", width * height);
 
 	for (uint16_t y = 0; y < total_lines; y += lines_per_batch)
 	{
@@ -550,7 +552,7 @@ int hls12vga_clear_screen(bool color_on)
 		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
 		if (ret != 0)
 		{
-			BSP_LOGI(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			LOG_ERR("hls12vga_transmit_all failed! (%d)", ret);
 			return ret;
 		}
 	}
@@ -567,7 +569,7 @@ int hls12vga_clear_screen(bool color_on)
 int hls12vga_draw_horizontal_grayscale_pattern(void)
 {
 	if (!dev_hls12vga) {
-		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		LOG_ERR("HLS12VGA device not initialized");
 		return -ENODEV;
 	}
 
@@ -584,7 +586,7 @@ int hls12vga_draw_horizontal_grayscale_pattern(void)
 	uint8_t *tx_buf = data->tx_buf_bulk;
 	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
 	
-	BSP_LOGI(TAG, "🎨 Drawing horizontal grayscale pattern (8 levels, %d pixels per stripe)", stripe_width);
+	LOG_DBG("🎨 Drawing horizontal grayscale pattern (8 levels, %d pixels per stripe)", stripe_width);
 	
 	for (uint16_t y = 0; y < height; y += lines_per_batch) {
 		uint16_t batch_lines = MIN(lines_per_batch, height - y);
@@ -611,12 +613,12 @@ int hls12vga_draw_horizontal_grayscale_pattern(void)
 		
 		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
 		if (ret != 0) {
-			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			LOG_ERR( "hls12vga_transmit_all failed! (%d)", ret);
 			return ret;
 		}
 	}
 	
-	BSP_LOGI(TAG, "✅ Horizontal grayscale pattern completed");
+	LOG_DBG("✅ Horizontal grayscale pattern completed");
 	return 0;
 }
 
@@ -627,7 +629,7 @@ int hls12vga_draw_horizontal_grayscale_pattern(void)
 int hls12vga_draw_vertical_grayscale_pattern(void)
 {
 	if (!dev_hls12vga) {
-		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		LOG_ERR( "HLS12VGA device not initialized");
 		return -ENODEV;
 	}
 
@@ -644,7 +646,7 @@ int hls12vga_draw_vertical_grayscale_pattern(void)
 	uint8_t *tx_buf = data->tx_buf_bulk;
 	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
 	
-	BSP_LOGI(TAG, "🎨 Drawing vertical grayscale pattern (8 levels, %d lines per stripe)", stripe_height);
+	LOG_DBG("🎨 Drawing vertical grayscale pattern (8 levels, %d lines per stripe)", stripe_height);
 	
 	for (uint16_t y = 0; y < height; y += lines_per_batch) {
 		uint16_t batch_lines = MIN(lines_per_batch, height - y);
@@ -671,12 +673,12 @@ int hls12vga_draw_vertical_grayscale_pattern(void)
 		
 		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
 		if (ret != 0) {
-			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			LOG_ERR( "hls12vga_transmit_all failed! (%d)", ret);
 			return ret;
 		}
 	}
 	
-	BSP_LOGI(TAG, "✅ Vertical grayscale pattern completed");
+	LOG_DBG("✅ Vertical grayscale pattern completed");
 	return 0;
 }
 
@@ -687,7 +689,7 @@ int hls12vga_draw_vertical_grayscale_pattern(void)
 int hls12vga_draw_chess_pattern(void)
 {
 	if (!dev_hls12vga) {
-		BSP_LOGE(TAG, "HLS12VGA device not initialized");
+		LOG_ERR( "HLS12VGA device not initialized");
 		return -ENODEV;
 	}
 
@@ -701,7 +703,7 @@ int hls12vga_draw_chess_pattern(void)
 	uint8_t *tx_buf = data->tx_buf_bulk;
 	uint16_t lines_per_batch = MAX_LINES_PER_WRITE;
 	
-	BSP_LOGI(TAG, "🎨 Drawing chess pattern (%dx%d squares)", square_size, square_size);
+	LOG_DBG("🎨 Drawing chess pattern (%dx%d squares)", square_size, square_size);
 	
 	for (uint16_t y = 0; y < height; y += lines_per_batch) {
 		uint16_t batch_lines = MIN(lines_per_batch, height - y);
@@ -727,12 +729,12 @@ int hls12vga_draw_chess_pattern(void)
 		
 		int ret = hls12vga_transmit_all(dev_hls12vga, tx_buf, 4 + batch_lines * width, 1);
 		if (ret != 0) {
-			BSP_LOGE(TAG, "hls12vga_transmit_all failed! (%d)", ret);
+			LOG_ERR( "hls12vga_transmit_all failed! (%d)", ret);
 			return ret;
 		}
 	}
 	
-	BSP_LOGI(TAG, "✅ Chess pattern completed");
+	LOG_DBG("✅ Chess pattern completed");
 	return 0;
 }
 
@@ -752,147 +754,147 @@ static int hls12vga_init(const struct device *dev)
 	int ret;
 	
 	// **NEW: Log SPI configuration for debugging**
-	BSP_LOGI(TAG, "🚀 HLS12VGA SPI Configuration:");
-	BSP_LOGI(TAG, "  - Device: %s", cfg->spi.bus->name);
-	BSP_LOGI(TAG, "  - Max Frequency: %d Hz (%.2f MHz)", 
+	LOG_DBG("HLS12VGA SPI Configuration:");
+	LOG_DBG("  - Device: %s", cfg->spi.bus->name);
+	LOG_DBG("  - Max Frequency: %d Hz (%.2f MHz)", 
 		cfg->spi.config.frequency, (float)cfg->spi.config.frequency / 1000000.0f);
-	BSP_LOGI(TAG, "  - Operation Mode: 0x%08X", cfg->spi.config.operation);
-	BSP_LOGI(TAG, "  - Slave ID: %d", cfg->spi.config.slave);
+	LOG_DBG("  - Operation Mode: 0x%08X", cfg->spi.config.operation);
+	LOG_DBG("  - Slave ID: %d", cfg->spi.config.slave);
 	
 	if (!spi_is_ready_dt(&cfg->spi))
 	{
-		BSP_LOGE(TAG, "custom_hls12vga_init SPI device not ready");
+		LOG_ERR("HLS12VGA SPI device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->left_cs))
 	{
-		BSP_LOGE(TAG, "GPIO left cs device not ready");
+		LOG_ERR("HLS12VGA GPIO left cs device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->right_cs))
 	{
-		BSP_LOGE(TAG, "GPIO right cs device not ready");
+		LOG_ERR( "GPIO right cs device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->reset))
 	{
-		BSP_LOGE(TAG, "GPIO reset device not ready");
+		LOG_ERR( "GPIO reset device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->vcom))
 	{
-		BSP_LOGE(TAG, "GPIO vcom device not ready");
+		LOG_ERR( "GPIO vcom device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->v1_8))
 	{
-		BSP_LOGE(TAG, "GPIO v0_8 device not ready");
+		LOG_ERR( "GPIO v0_8 device not ready");
 		return -ENODEV;
 	}
 	if (!gpio_is_ready_dt(&cfg->v0_9))
 	{
-		BSP_LOGE(TAG, "GPIO v0_9 device not ready");
+		LOG_ERR( "GPIO v0_9 device not ready");
 		return -ENODEV;
 	}
 	/****************************************************************** */
 	ret = gpio_pin_configure_dt(&cfg->left_cs, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "cs display failed! (%d)", ret);
+		LOG_ERR( "cs display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->left_cs, 1);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "left_cs Enable display failed! (%d)", ret);
+		LOG_ERR( "left_cs Enable display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_configure_dt(&cfg->right_cs, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "right_cs display failed! (%d)", ret);
+		LOG_ERR( "right_cs display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->right_cs, 1);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "right_cs Enable display failed! (%d)", ret);
+		LOG_ERR( "right_cs Enable display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_configure_dt(&cfg->reset, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "Reset display failed! (%d)", ret);
+		LOG_ERR( "Reset display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->reset, 1);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "reset Enable display failed! (%d)", ret);
+		LOG_ERR( "reset Enable display failed! (%d)", ret);
 		return ret;
 	}
 
 	ret = gpio_pin_configure_dt(&cfg->vcom, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "vcom display failed! (%d)", ret);
+		LOG_ERR( "vcom display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->vcom, 1);  // Enable VCOM (HIGH)
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "vcom Enable display failed! (%d)", ret);
+		LOG_ERR( "vcom Enable display failed! (%d)", ret);
 		return ret;
 	}
 
 	ret = gpio_pin_configure_dt(&cfg->v1_8, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "v1_8 display failed! (%d)", ret);
+		LOG_ERR( "v1_8 display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->v1_8, 1);  // Enable 1.8V power supply
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "v1_8 Enable display failed! (%d)", ret);
+		LOG_ERR( "v1_8 Enable display failed! (%d)", ret);
 		return ret;
 	}
 
 	ret = gpio_pin_configure_dt(&cfg->v0_9, GPIO_OUTPUT);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "v0_9 display failed! (%d)", ret);
+		LOG_ERR( "v0_9 display failed! (%d)", ret);
 		return ret;
 	}
 	ret = gpio_pin_set_dt(&cfg->v0_9, 1);  // Enable 0.9V power supply
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "v0_9 Enable display failed! (%d)", ret);
+		LOG_ERR( "v0_9 Enable display failed! (%d)", ret);
 		return ret;
 	}
 	hls12vga_init_sem_give();
 	data->initialized = true;
 	
 	// Simple blinking test - DISABLED to test LVGL patterns
-	// BSP_LOGI(TAG, "🔧 Starting simple blinking test (500ms on/off)...");
+	// LOG_DBG( "🔧 Starting simple blinking test (500ms on/off)...");
 	// 
 	// for (int i = 0; i < 6; i++) {  // 3 full blink cycles
-	// 	BSP_LOGI(TAG, "💡 Blink %d: Display OFF", i/2 + 1);
+	// 	LOG_DBG( "💡 Blink %d: Display OFF", i/2 + 1);
 	// 	hls12vga_clear_screen(false);  // Turn off
 	// 	k_msleep(500);  // 500ms on
 	// 	
-	// 	BSP_LOGI(TAG, "💡 Blink %d: Display ON", i/2 + 1);
+	// 	LOG_DBG( "💡 Blink %d: Display ON", i/2 + 1);
 	// 	hls12vga_clear_screen(true); // Turn on
 	// 	k_msleep(500);  // 500ms off
 	// }
 	// 
-	// BSP_LOGI(TAG, "🔧 Blinking test completed - leaving display ON");
+	// LOG_DBG( "🔧 Blinking test completed - leaving display ON");
 
 	// Clear the display to start fresh for LVGL
-	// BSP_LOGI(TAG, "🧹 Clearing display for LVGL (setting to OFF/black)");
+	// LOG_DBG( "🧹 Clearing display for LVGL (setting to OFF/black)");
 	// hls12vga_clear_screen(false);  // Start with display OFF (black)
 
-	BSP_LOGI(TAG, "Display initialized");
+	LOG_DBG( "Display initialized");
 	return 0;
 }
 /********************************************************************************/

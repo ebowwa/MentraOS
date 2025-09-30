@@ -1,7 +1,7 @@
 /*
  * @Author       : Loay Yari
  * @Date         : 2025-09-15 
- * @LastEditTime : 2025-09-15
+ * @LastEditTime : 2025-09-30 14:16:54
  * @FilePath     : display_config.c
  * @Description  : Modular display configuration system implementation
  *
@@ -16,8 +16,7 @@
 #include <zephyr/logging/log.h>
 #include <string.h>
 
-#define LOG_MODULE_NAME DISPLAY_CONFIG
-LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+LOG_MODULE_REGISTER(display_config, LOG_LEVEL_DBG);
 
 // Global configuration state
 static display_config_t current_config;
