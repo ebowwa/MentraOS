@@ -53,7 +53,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     
     
     // Packet transmission timing configuration
-    private static final int PACKET_SEND_DELAY_MS = 10; // Delay between packets to prevent UART overflow
+    private static final int PACKET_SEND_DELAY_MS = 20; // Delay between packets to prevent UART overflow
     private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
     
     // Testing: Packet drop simulation
