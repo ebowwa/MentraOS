@@ -53,13 +53,13 @@ public interface IHardwareManager {
      * @param durationMs Duration in milliseconds to keep LED on
      */
     void flashRecordingLed(long durationMs);
-    
+
     /**
      * Check if the recording LED is currently on (solid or blinking)
      * @return true if LED is on or blinking, false if off
      */
     boolean isRecordingLedOn();
-    
+
     /**
      * Check if the recording LED is currently blinking
      * @return true if LED is blinking, false otherwise
@@ -77,7 +77,24 @@ public interface IHardwareManager {
      * @return true if running on K900 hardware, false otherwise
      */
     boolean isK900Device();
-    
+
+    /**
+     * Check whether this hardware supports audio playback through the MCU.
+     * @return true if audio playback helpers are available.
+     */
+    boolean supportsAudioPlayback();
+
+    /**
+     * Play an audio asset routed through the device-specific audio path (e.g. I2S).
+     * @param assetName Name of the asset in the application's assets directory
+     */
+    void playAudioAsset(String assetName);
+
+    /**
+     * Stop any active MCU-managed audio playback.
+     */
+    void stopAudioPlayback();
+
     /**
      * Release any resources held by the hardware manager
      */

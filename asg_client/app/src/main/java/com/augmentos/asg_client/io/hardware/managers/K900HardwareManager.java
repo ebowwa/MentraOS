@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.hardware.core.BaseHardwareManager;
 import com.augmentos.asg_client.hardware.K900LedController;
+import com.augmentos.asg_client.audio.I2SAudioController;
 
 /**
  * Implementation of IHardwareManager for K900 devices.
@@ -14,6 +15,7 @@ public class K900HardwareManager extends BaseHardwareManager {
     private static final String TAG = "K900HardwareManager";
     
     private K900LedController ledController;
+    private I2SAudioController audioController;
     
     /**
      * Create a new K900HardwareManager
@@ -39,7 +41,9 @@ public class K900HardwareManager extends BaseHardwareManager {
             Log.e(TAG, "🔧 ❌ Failed to initialize K900 LED controller", e);
             ledController = null;
         }
-        
+
+        audioController = new I2SAudioController(context);
+
         Log.d(TAG, "🔧 ✅ K900 Hardware Manager initialized");
     }
     
@@ -135,16 +139,42 @@ public class K900HardwareManager extends BaseHardwareManager {
     public boolean isK900Device() {
         return true;
     }
-    
+
+    @Override
+    public boolean supportsAudioPlayback() {
+        return true;
+    }
+
+    @Override
+    public void playAudioAsset(String assetName) {
+        if (audioController != null) {
+            audioController.playAsset(assetName);
+        } else {
+            Log.w(TAG, "Audio controller not available");
+        }
+    }
+
+    @Override
+    public void stopAudioPlayback() {
+        if (audioController != null) {
+            audioController.stopPlayback();
+        }
+    }
+
     @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down K900HardwareManager");
-        
+
+        if (audioController != null) {
+            audioController.stopPlayback();
+            audioController = null;
+        }
+
         if (ledController != null) {
             ledController.shutdown();
             ledController = null;
         }
-        
+
         super.shutdown();
     }
 }
