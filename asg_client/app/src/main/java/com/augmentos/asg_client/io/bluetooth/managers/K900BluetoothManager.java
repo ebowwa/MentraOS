@@ -45,6 +45,12 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     private ScheduledFuture<?> timeoutTask = null; // Track timeout task for cancellation
     private static final int TRANSFER_TIMEOUT_MS = 5000; // 5 seconds timeout (reset on each retry)
     
+    // Callback for file transfer completion events
+    public interface FileTransferCompletionCallback {
+        void onFileTransferCompleted(boolean success, String fileName);
+    }
+    private FileTransferCompletionCallback transferCompletionCallback;
+    
     // Packet transmission timing configuration
     private static final int PACKET_SEND_DELAY_MS = 10; // Delay between packets to prevent UART overflow
     private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
@@ -358,6 +364,13 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             Log.d(TAG, "🔌 ❌ Failed to open serial port");
             notificationManager.showDebugNotification("Serial Error", "Failed to open serial port: " + serialPath + " - " + msg);
         }
+    }
+    
+    /**
+     * Set callback for file transfer completion events
+     */
+    public void setFileTransferCompletionCallback(FileTransferCompletionCallback callback) {
+        this.transferCompletionCallback = callback;
     }
     
     /**
@@ -767,6 +780,11 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         } else {
             Log.e(TAG, "❌ File transfer failed: " + fileName);
             // Keep file for potential retry or debugging
+        }
+        
+        // Notify callback about transfer completion
+        if (transferCompletionCallback != null) {
+            transferCompletionCallback.onFileTransferCompleted(success, fileName);
         }
     }
     

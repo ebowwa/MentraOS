@@ -14,6 +14,7 @@ import com.augmentos.augmentos_core.utils.ServerConfigUtil;
 import com.augmentos.asg_client.io.media.upload.MediaUploadService;
 import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
+import com.augmentos.asg_client.io.media.queue.BleErrorQueue;
 import com.augmentos.asg_client.camera.CameraNeo;
 import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
@@ -252,6 +253,9 @@ public class MediaCaptureService {
     private volatile boolean isUploadingPhoto = false;
     private final Object uploadLock = new Object();
     
+    // BLE error message queue for when file transfer is in progress
+    private BleErrorQueue bleErrorQueue;
+    
     private final FileManager fileManager;
 
     /**
@@ -294,6 +298,21 @@ public class MediaCaptureService {
         // Initialize hardware manager
         hardwareManager = HardwareManagerFactory.getInstance(context);
         Log.d(TAG, "Hardware manager initialized: " + hardwareManager.getDeviceModel());
+        
+        // Initialize BLE error queue
+        bleErrorQueue = new BleErrorQueue(new BleErrorQueue.BleMessageSender() {
+            @Override
+            public void sendThroughBluetooth(byte[] data) {
+                if (mServiceCallback != null) {
+                    mServiceCallback.sendThroughBluetooth(data);
+                }
+            }
+            
+            @Override
+            public boolean isBleTransferInProgress() {
+                return mServiceCallback != null && mServiceCallback.isBleTransferInProgress();
+            }
+        });
         
         // Initialize video buffer
         mVideoBuffer = new CircularVideoBuffer(context);
@@ -1701,8 +1720,16 @@ public class MediaCaptureService {
             if (mServiceCallback != null) {
                 // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
                 if (mServiceCallback.isBleTransferInProgress()) {
-                    Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
-                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_BUSY", "BLE transfer busy - another transfer in progress");
+                    Log.e(TAG, "❌ BLE transfer already in progress - queuing error message to avoid BES2700 overload");
+                    
+                    // Queue the error message instead of sending immediately
+                    bleErrorQueue.queueErrorMessage(requestId, "BLE_TRANSFER_BUSY", 
+                        "BLE transfer busy - another transfer in progress", "photo_response");
+                    
+                    // Also notify local listener
+                    if (mMediaCaptureListener != null) {
+                        mMediaCaptureListener.onMediaError(requestId, "BLE transfer busy - another transfer in progress", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                    }
                     return;
                 }
                 
@@ -1717,11 +1744,13 @@ public class MediaCaptureService {
                 } else {
                     // This shouldn't happen since we checked above, but handle it anyway
                     Log.e(TAG, "Failed to start BLE file transfer despite availability check");
-                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED_TO_START", "BLE transfer failed to start");
+                    bleErrorQueue.queueErrorMessage(requestId, "BLE_TRANSFER_FAILED_TO_START", 
+                        "BLE transfer failed to start", "photo_response");
                 }
             } else {
                 Log.e(TAG, "Service callback not available for BLE file transfer");
-                sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED", "Service callback not available");
+                bleErrorQueue.queueErrorMessage(requestId, "BLE_TRANSFER_FAILED", 
+                    "Service callback not available", "photo_response");
             }
         } finally {
             // Critical: Clean up compressed file if transfer didn't start
@@ -1806,6 +1835,36 @@ public class MediaCaptureService {
             }
         } catch (JSONException e) {
             Log.e(TAG, "❌ Error creating photo error response", e);
+        }
+    }
+
+    /**
+     * Process any queued BLE error messages now that BLE is available.
+     * Call this method when file transfers complete or BLE becomes available.
+     */
+    public void processQueuedBleErrors() {
+        if (bleErrorQueue != null) {
+            bleErrorQueue.processQueueIfAvailable();
+        }
+    }
+    
+    /**
+     * Get the current BLE error queue size for monitoring.
+     */
+    public int getBleErrorQueueSize() {
+        return bleErrorQueue != null ? bleErrorQueue.getQueueSize() : 0;
+    }
+    
+    /**
+     * Run a self-test of the BLE error queue system.
+     * This is useful for debugging and verification.
+     */
+    public void runBleErrorQueueTest() {
+        if (bleErrorQueue != null) {
+            Log.d(TAG, "🧪 Running BLE Error Queue self-test");
+            bleErrorQueue.runSelfTest();
+        } else {
+            Log.w(TAG, "⚠️ BLE Error Queue not initialized - cannot run test");
         }
     }
 
