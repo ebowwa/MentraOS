@@ -206,7 +206,15 @@ public class SysControl {
         
         Log.d(TAG, "✅ Sent WiFi connect broadcast for SSID: " + ssid);
     }
-    
+
+    public static void disconnectFromWifi(Context context) {
+        Log.d(TAG, "📶 Disconnecting from WiFi via SysControl...");
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.setPackage("com.android.systemui");
+        nn.putExtra("cmd", "disconnectwifi");
+        context.sendBroadcast(nn);
+    }
+
     public static void scanWifi(Context context) {
         // Use the exact same pattern that works
         Intent nn = new Intent("com.xy.xsetting.action");

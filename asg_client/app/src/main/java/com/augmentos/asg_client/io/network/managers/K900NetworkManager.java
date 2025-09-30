@@ -325,7 +325,32 @@ public class K900NetworkManager extends BaseNetworkManager {
                     "Failed to connect to WiFi: " + e.getMessage());
         }
     }
-    
+
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "📶 =========================================");
+        Log.d(TAG, "📶 DISCONNECT FROM WIFI");
+        Log.d(TAG, "📶 =========================================");
+        
+        try {
+            // Use SysControl for K900 WiFi disconnection
+            Log.d(TAG, "📶 📡 Disconnecting from WiFi via SysControl...");
+            SysControl.disconnectFromWifi(context);
+            
+            Log.d(TAG, "📶 ✅ WiFi disconnect command sent successfully");
+            notificationManager.showDebugNotification(
+                    "WiFi Disconnection", 
+                    "Disconnecting from current network");
+            
+            Log.i(TAG, "📶 ✅ WiFi disconnect command sent");
+        } catch (Exception e) {
+            Log.e(TAG, "📶 💥 Error disconnecting from WiFi", e);
+            notificationManager.showDebugNotification(
+                    "WiFi Error", 
+                    "Failed to disconnect from WiFi: " + e.getMessage());
+        }
+    }
+
     private void promptConnectToWifi(String ssid, String password) {
         // K900-specific method to prompt user for WiFi connection
         try {

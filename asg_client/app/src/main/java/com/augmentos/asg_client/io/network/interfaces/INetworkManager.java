@@ -55,6 +55,11 @@ public interface INetworkManager {
     void connectToWifi(String ssid, String password);
     
     /**
+     * Disconnect from the currently connected WiFi network
+     */
+    void disconnectFromWifi();
+    
+    /**
      * Add a listener for WiFi state changes
      * @param listener The listener to add
      */
