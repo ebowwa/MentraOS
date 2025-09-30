@@ -4,6 +4,25 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🛡️ Critical Display Pattern BUS FAULT Fix - 2025-09-30
+
+#### Fixed Dangling Pointer Crash in Pattern Switching
+- **🐛 CRITICAL FIX**: `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c` — Fixed BUS FAULT crash when switching display patterns
+- **❌ Issue**: Pattern 0 and other display patterns caused system halt after multiple pattern switches
+- **🔍 Root Cause**: Dangling pointers to destroyed LVGL objects after `lv_obj_clean()` calls
+- **✅ Solution**: Added pointer reset logic in `show_test_pattern()` function:
+  ```c
+  // **CRITICAL FIX: Reset all static global pointers to prevent dangling pointer access**
+  // When lv_obj_clean() destroys objects, these pointers become invalid
+  protobuf_container = NULL;
+  protobuf_label = NULL;  
+  xy_text_container = NULL;
+  current_xy_text_label = NULL;
+  ```
+- **🎯 Impact**: System now handles pattern switching reliably without crashes or BUS FAULT exceptions
+- **🔧 Also Fixed**: Similar dangling pointer reset in `update_xy_positioned_text()` function after `lv_obj_clean(target_container)`
+- **✅ Validation**: Firmware successfully builds and flashes with dangling pointer fixes in place
+
 ### �️ Comprehensive Shell Display Command System - 2025-09-30
 
 #### Major Shell Display Control Implementation
