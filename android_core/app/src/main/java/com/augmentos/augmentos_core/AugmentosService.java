@@ -395,7 +395,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (smartGlassesManager != null) {
             transcriptProcessor.modifyLanguage(event.language);
             String processedText = transcriptProcessor.processString(event.text, event.isFinal);
+            JSONObject displayJson = new JSONObject();
+            JSONObject layoutJson = new JSONObject();
+            try {
+                layoutJson.put("layoutType", "text_wall");
+                layoutJson.put("text", processedText);
+                displayJson.put("layout", layoutJson);
+                displayJson.put("type", "display_event");
+                displayJson.put("view", "main");
+            } catch (JSONException e) {
+                Log.e(TAG, "Failed to construct transcription display JSON", e);
+            }
             if (processedText != null) {
+                blePeripheral.sendGlassesDisplayEventToManager(displayJson);
                 smartGlassesManager.sendTextWall(processedText);
                 // Schedule screen clear after 10 seconds, cancelling previous if pending
                 // In case of online captions cloud takes care of this
@@ -404,6 +416,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
                 clearScreenRunnable = () -> {
                     if (smartGlassesManager != null) {
+                        JSONObject displayJsonScheduled = new JSONObject();
+                        JSONObject layoutJsonScheduled = new JSONObject();
+                        try {
+                            layoutJsonScheduled.put("layoutType", "text_wall");
+                            layoutJsonScheduled.put("text", "");
+                            displayJsonScheduled.put("layout", layoutJsonScheduled);
+                            displayJsonScheduled.put("type", "display_event");
+                            displayJsonScheduled.put("view", "main");
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Failed to construct transcription display JSON", e);
+                        }   
+                        blePeripheral.sendGlassesDisplayEventToManager(displayJsonScheduled);
                         smartGlassesManager.sendTextWall("");
                     }
                 };
