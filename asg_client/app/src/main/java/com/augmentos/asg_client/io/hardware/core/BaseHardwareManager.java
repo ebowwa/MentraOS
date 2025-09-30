@@ -88,7 +88,22 @@ public class BaseHardwareManager implements IHardwareManager {
     public boolean isK900Device() {
         return false;
     }
-    
+
+    @Override
+    public boolean supportsAudioPlayback() {
+        return false;
+    }
+
+    @Override
+    public void playAudioAsset(String assetName) {
+        Log.d(TAG, "playAudioAsset(" + assetName + ") called - no-op on base hardware");
+    }
+
+    @Override
+    public void stopAudioPlayback() {
+        Log.d(TAG, "stopAudioPlayback() called - no-op on base hardware");
+    }
+
     @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down BaseHardwareManager");

@@ -2,7 +2,7 @@ import {useEffect, useState} from "react"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import showAlert from "@/utils/AlertUtils"
+import showAlert, {showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 
 export function OtaUpdateChecker() {
   const {status} = useCoreStatus()
@@ -43,8 +43,10 @@ export function OtaUpdateChecker() {
 
       // Check for updates
       setIsChecking(true)
+      let checkCompleted = false
       try {
         const versionJson = await fetchVersionInfo(otaVersionUrl)
+        checkCompleted = true
         if (isUpdateAvailable(currentBuildNumber, versionJson)) {
           const latestVersionInfo = getLatestVersionInfo(versionJson)
           setLatestVersion(latestVersionInfo?.versionName || null)
@@ -69,8 +71,12 @@ export function OtaUpdateChecker() {
         }
       } catch (error) {
         console.error("Error checking for OTA update:", error)
+        checkCompleted = true
       } finally {
         setIsChecking(false)
+        if (checkCompleted) {
+          setHasChecked(true)
+        }
       }
     }
     checkForOtaUpdate()
@@ -83,6 +89,7 @@ import bridge from "@/bridge/MantleBridge"
 import {AppState} from "react-native"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n"
 
 export function Reconnect() {
   // Add a listener for app state changes to detect when the app comes back from background
@@ -96,6 +103,36 @@ export function Reconnect() {
           .getSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
         if (!reconnectOnAppForeground) {
           return
+        }
+        // check if we have bluetooth perms in case they got removed:
+        const requirementsCheck = await bridge.checkConnectivityRequirements()
+        if (!requirementsCheck.isReady) {
+          switch (requirementsCheck.requirement) {
+            case "bluetooth":
+              showBluetoothAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "location":
+              showLocationAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "locationServices":
+              showLocationServicesAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            default:
+              showAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+                [{text: translate("common:ok")}],
+              )
+          }
         }
         let defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
         let deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)

@@ -66,6 +66,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
     public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
     public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
+    public static final String ACTION_I2S_AUDIO_STATE = "com.augmentos.asg_client.ACTION_I2S_AUDIO_STATE";
+    public static final String EXTRA_I2S_AUDIO_PLAYING = "extra_i2s_audio_playing";
     public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
 
     // OTA Update progress actions
@@ -96,6 +98,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     private AugmentosService augmentosService = null;
     private boolean isAugmentosBound = false;
+    private static AsgClientService instance;
+    private boolean lastI2sPlaying = false;
 
     // ---------------------------------------------
     // WiFi State Management
@@ -171,6 +175,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         Log.i(TAG, "🚀 AsgClientServiceV2 onCreate() started");
         Log.d(TAG, "📊 Android API Level: " + Build.VERSION.SDK_INT);
 
+        instance = this;
+
         try {
             // Register for EventBus events
             Log.d(TAG, "📡 Registering for EventBus events");
@@ -228,7 +234,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             String action = intent.getAction();
             Log.i(TAG, "🎯 Processing action: " + action);
-            
+
+            if (ACTION_I2S_AUDIO_STATE.equals(action)) {
+                boolean playing = intent.getBooleanExtra(EXTRA_I2S_AUDIO_PLAYING, false);
+                handleI2SAudioState(playing);
+                return START_STICKY;
+            }
+
             // Delegate action handling to lifecycle manager
             lifecycleManager.handleAction(action, intent.getExtras());
             Log.d(TAG, "✅ Action processed successfully");
@@ -293,7 +305,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (Exception e) {
             Log.e(TAG, "💥 Error in onDestroy()", e);
         }
-        
+
+        instance = null;
         super.onDestroy();
     }
 
@@ -301,6 +314,56 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "🔗 onBind() called");
         return new LocalBinder();
+    }
+
+    public static AsgClientService getInstance() {
+        return instance;
+    }
+
+    public void handleI2SAudioState(boolean playing) {
+        Log.i(TAG, "I2S audio state request: " + (playing ? "start" : "stop"));
+
+        if (playing == lastI2sPlaying) {
+            Log.d(TAG, "I2S state unchanged, skipping command");
+            return;
+        }
+
+        final String command = playing ? "mh_starti2s" : "mh_stopi2s";
+
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("C", command);
+            payload.put("B", new JSONObject());
+
+            boolean sent = sendK900Command(payload.toString());
+            if (sent) {
+                lastI2sPlaying = playing;
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct I2S command payload", e);
+        }
+    }
+
+    private boolean sendK900Command(String payload) {
+        if (serviceContainer == null || serviceContainer.getServiceManager() == null) {
+            Log.w(TAG, "ServiceContainer not initialized; cannot send I2S command");
+            return false;
+        }
+
+        var bluetoothManager = serviceContainer.getServiceManager().getBluetoothManager();
+        if (bluetoothManager == null) {
+            Log.w(TAG, "Bluetooth manager unavailable; cannot send I2S command");
+            return false;
+        }
+
+        if (!bluetoothManager.isConnected()) {
+            Log.w(TAG, "Bluetooth manager not connected; cannot send I2S command");
+            return false;
+        }
+
+        boolean sent = bluetoothManager.sendData(payload.getBytes(StandardCharsets.UTF_8));
+        Log.i(TAG, "I2S command sent (" + payload + ") result=" + sent);
+        return sent;
     }
 
     // ---------------------------------------------

@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, ActivityIndicator, Platform, Linking} from "react-native"
+import {useState, useEffect} from "react"
+import {View, ActivityIndicator, Platform, Linking} from "react-native"
 import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
@@ -9,7 +9,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useSettingsStore, SETTINGS_KEYS, initializeSettings, useSetting} from "@/stores/settings"
+import {useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
@@ -17,6 +17,7 @@ import {ThemedStyle} from "@/theme"
 import restComms from "@/managers/RestComms"
 import socketComms from "@/managers/SocketComms"
 import mantle from "@/managers/MantleManager"
+import {Text} from "@/components/ignite"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -54,7 +55,7 @@ export default function InitScreen() {
   const [isRetrying, setIsRetrying] = useState(false)
   // Zustand store hooks
   const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
-  const [onboardingCompleted, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.onboarding_completed)
+  const [onboardingCompleted, _setOnboardingCompleted] = useSetting(SETTINGS_KEYS.onboarding_completed)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -124,17 +125,7 @@ export default function InitScreen() {
     if (useNewWsManager) {
       bridge.setup()
       socketComms.setAuthCreds(coreToken, uid)
-
-      try {
-        const loadedSettings = await restComms.loadUserSettings() // get settings from server
-        await useSettingsStore.getState().setManyLocally(loadedSettings) // write settings to local storage
-        await useSettingsStore.getState().initUserSettings() // initialize user settings
-        await mantle.init()
-      } catch (error) {
-        console.error("Failed to load user settings from server:", error)
-      }
-
-      bridge.updateSettings(await useSettingsStore.getState().getCoreSettings()) // send settings to core
+      await mantle.init()
     } else {
       bridge.setAuthCreds(coreToken, uid)
     }
@@ -325,9 +316,7 @@ export default function InitScreen() {
                 preset="secondary"
                 disabled={isRetrying}
                 LeftAccessory={
-                  isRetrying
-                    ? () => <ActivityIndicator size="small" color={theme.colors.buttonPillIconText} />
-                    : undefined
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
                 }
               />
             )}
@@ -336,7 +325,7 @@ export default function InitScreen() {
               <Button
                 preset="accent"
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
               />
