@@ -3,13 +3,12 @@
  * Shows a placeholder for AVIF files since React Native doesn't support them natively
  */
 
-import React, {useState, useEffect} from "react"
-import {View, Image, Text, ActivityIndicator, Platform} from "react-native"
+import {useState, useEffect} from "react"
+import {View, Image, Text} from "react-native"
 import {ViewStyle, ImageStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {PhotoInfo} from "../../../types/asg"
-import RNFS from "react-native-fs"
 
 interface PhotoImageProps {
   photo: PhotoInfo
@@ -18,7 +17,7 @@ interface PhotoImageProps {
 }
 
 export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImageProps) {
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [isAvif, setIsAvif] = useState(false)
@@ -43,29 +42,19 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   })()
 
   useEffect(() => {
-    // Check if this is an AVIF file and verify file exists for local files
-    const checkFileAndFormat = async () => {
-      // For local files, verify they exist
-      if (imageUrl.startsWith("file://")) {
-        const filePath = imageUrl.replace("file://", "")
-        try {
-          const exists = await RNFS.exists(filePath)
-          if (!exists) {
-            console.error("[PhotoImage] Local file does not exist:", filePath)
-            setHasError(true)
-            setIsLoading(false)
-            return
-          }
-
-          // File exists, continue with loading
-        } catch (error) {
-          console.error("[PhotoImage] Error checking file existence:", error)
-          setHasError(true)
-          setIsLoading(false)
-          return
-        }
+    // For local files (file:// URLs), skip async validation and load immediately
+    // Trust our storage system since these are downloaded files we manage
+    if (imageUrl.startsWith("file://")) {
+      // Check if it's AVIF by mime type or filename
+      if (photo.mime_type === "image/avif" || !photo.name.includes(".") || photo.name.match(/\.(avif|avifs)$/i)) {
+        setIsAvif(true)
       }
+      setIsLoading(false)
+      return
+    }
 
+    // For remote files, do full async validation
+    const checkFileAndFormat = async () => {
       // Check by mime type
       if (photo.mime_type === "image/avif") {
         setIsAvif(true)
@@ -82,13 +71,6 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
 
       // Check if the URL returns AVIF data
       if (imageUrl.includes("application/octet-stream") || imageUrl.includes("image/avif")) {
-        setIsAvif(true)
-        setIsLoading(false)
-        return
-      }
-
-      // For file:// URLs, check MIME type directly
-      if (imageUrl.startsWith("file://") && photo.mime_type === "image/avif") {
         setIsAvif(true)
         setIsLoading(false)
         return
@@ -122,7 +104,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   // Show AVIF placeholder
   if (isAvif && showPlaceholder) {
     return (
-      <View style={[themed($placeholderContainer), style]}>
+      <View style={[themed($placeholderContainer), style as ViewStyle]}>
         <View style={themed($avifBadge)}>
           <Text style={themed($avifBadgeText)}>AVIF</Text>
         </View>
@@ -137,7 +119,7 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   // Show error placeholder
   if (hasError && showPlaceholder) {
     return (
-      <View style={[themed($placeholderContainer), style]}>
+      <View style={[themed($placeholderContainer), style as ViewStyle]}>
         <Text style={themed($placeholderText)}>❌</Text>
         <Text style={themed($placeholderSubtext)}>Failed to load</Text>
       </View>
@@ -147,12 +129,8 @@ export function PhotoImage({photo, style, showPlaceholder = true}: PhotoImagePro
   // URL determined and ready to use
 
   return (
-    <View style={style}>
-      {isLoading && (
-        <View style={[themed($loadingOverlay), style]}>
-          <ActivityIndicator size="small" color={theme.colors.palette.primary500} />
-        </View>
-      )}
+    <View style={style as ViewStyle}>
+      {isLoading && <View style={[themed($loadingOverlay), style as ViewStyle]} />}
       <Image
         source={{uri: imageUrl}}
         style={[style, isLoading && {opacity: 0}]}
@@ -206,8 +184,6 @@ const $loadingOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundColor: colors.palette.neutral100,
-  justifyContent: "center",
-  alignItems: "center",
+  backgroundColor: colors.palette.neutral300, // Darker, less jarring than neutral100
   zIndex: 1,
 })
