@@ -46,7 +46,7 @@ PB_BIND(mentraos_ble_VadConfig, mentraos_ble_VadConfig, AUTO)
 
 PB_BIND(mentraos_ble_VadEvent, mentraos_ble_VadEvent, AUTO)
 
-PB_BIND(mentraos_ble_DisplayText, mentraos_ble_DisplayText, AUTO)
+PB_BIND(mentraos_ble_DisplayText, mentraos_ble_DisplayText, 2)
 
 PB_BIND(mentraos_ble_DisplayImage, mentraos_ble_DisplayImage, AUTO)
 

@@ -56,7 +56,7 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 
-LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(protobuf_handler, LOG_LEVEL_DBG);
 
 // Global battery level state (0-100%)
 static uint32_t current_battery_level = 85;
@@ -141,20 +141,19 @@ void protobuf_analyze_message(const uint8_t *data, uint16_t len)
 	}
 
 	// Show raw ASCII if printable and check for brightness text
-	LOG_INF("[ASCII] Raw string: \"");
-	char ascii_buffer[256] = {0};
-	int ascii_idx = 0;
+	// LOG_INF("[ASCII] Raw string: \"");
+	// char ascii_buffer[256] = {0};
+	// int ascii_idx = 0;
 	
-	for (int i = 0; i < len && ascii_idx < 255; i++) {
-		if (data[i] >= 32 && data[i] <= 126) {
-			LOG_INF("%c", data[i]);
-			ascii_buffer[ascii_idx++] = data[i];
-		} else {
-			LOG_INF(".");
-		}
-	}
-	LOG_INF("\"\n");
-	
+	// for (int i = 0; i < len && ascii_idx < 255; i++) {
+	// 	if (data[i] >= 32 && data[i] <= 126) {
+	// 		LOG_INF("%c", data[i]);
+	// 		ascii_buffer[ascii_idx++] = data[i];
+	// 	} else {
+	// 		LOG_INF(".");
+	// 	}
+	// }
+	// LOG_INF("\"\n");
 	// TODO: Discuss with mobile app team - brightness text messages are not part of official protocol
 	// The official protocol uses BrightnessConfig protobuf (tag 37), but mobile app sends debug text
 	// Commenting out for now to focus on official protocol compliance

@@ -9,7 +9,7 @@
 #include <zephyr/logging/log.h>
 #include <stdlib.h>
 
-LOG_MODULE_REGISTER(log_helper, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(log_helper, LOG_LEVEL_DBG);
 
 // External reference to BSP log level
 extern int bsp_log_runtime_level;

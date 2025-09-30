@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-29 16:19:52
+ * @LastEditTime : 2025-09-30 09:40:11
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -29,7 +29,7 @@
 // #include "task_ble_receive.h"
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(mos_lvgl_display, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(mos_lvgl_display, LOG_LEVEL_DBG);
 
 #define TASK_LVGL_NAME "MOS_LVGL"
 

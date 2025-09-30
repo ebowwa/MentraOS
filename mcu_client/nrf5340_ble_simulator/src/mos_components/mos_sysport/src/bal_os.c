@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-29 15:39:14
+ * @LastEditTime : 2025-09-30 09:40:21
  * @FilePath     : bal_os.c
  * @Description  :
  *
@@ -12,7 +12,7 @@
 #include "bal_os.h"
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(bal_os, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(bal_os, LOG_LEVEL_DBG);
 
 void mos_busy_wait(uint32_t us)
 {

@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-29 16:16:35
+ * @LastEditTime : 2025-09-30 09:39:49
  * @FilePath     : hls12vga.c
  * @Description  :
  *
@@ -27,7 +27,7 @@
 #include "../../../../src/mos_components/mos_lvgl_display/include/display_config.h"
 #endif
 
-LOG_MODULE_REGISTER(custom_hls12vga, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(custom_hls12vga, LOG_LEVEL_DBG);
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480

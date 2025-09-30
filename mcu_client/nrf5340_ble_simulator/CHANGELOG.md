@@ -2,13 +2,19 @@
 
 All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be documented in this file.
 
-## [Unreleased]
+## Unreleased
 
-- Replace manual per-byte hex printing loops with Zephyr logging hexdump API to ensure logs go through the logging subsystem and respect runtime filtering/backends.
-  - Updated: `src/protobuf_handler.c` — replaced manual loops with `LOG_HEXDUMP_INF` for BLE RX, protobuf raw data, first-10 bytes, outgoing packet and echo packet.
-
-- Fix nanopb generated binding metadata to avoid static assertions during build by widening fieldinfo for DisplayScrollingText.
-  - Updated: `src/proto/mentraos_ble.pb.c` — changed `PB_BIND(mentraos_ble_DisplayScrollingText, ..., AUTO)` to use a wider binding (`PB_BIND(..., 2)`).
+- `prj.conf` — Update Bluetooth L2CAP/ATT buffer and MTU settings for the simulator target (CONFIG_BT_L2CAP_TX_MTU=247).
+- `proto/mentraos_ble.options` — Adjust nanopb string max_size fields (e.g. DisplayText/DisplayScrollingText = 247).
+- `src/proto/mentraos_ble.pb.c`, `src/proto/mentraos_ble.pb.h` — Regenerate nanopb bindings; widen fieldinfo (PB_BIND) for large text fields to avoid static assertions.
+- `src/protobuf_handler.c` — Replace manual per-byte hex printing with Zephyr logging hexdump API (`LOG_HEXDUMP_INF`); normalize protobuf decode error output.
+- `src/shell_log_control.c` — Add shell commands to control runtime logging level and enable/disable ping/pong logs (`log_help`, `bsp_level`, `ping_enable/disable/status`).
+- `src/mos_components/mos_lvgl_display/src/display_config.c`, `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c` — Display configuration improvements and thread-safe command queue; device-specific font/mirroring/inversion handling.
+- `custom_driver_module/drivers/display/lcd/hls12vga.c` — HLS12VGA driver fixes: boundary checks, chunked transfers, mirroring and inversion handling.
+- `src/mos_components/mos_pdm/src/mos_pdm.c` — PDM driver: small FIFO buffer and improved interrupt callback handling.
+- `src/pdm_audio_stream.c` — Audio pipeline: calculate LC3 frames-per-packet dynamically based on negotiated MTU and improve fade/warm-up logic to avoid audio artifacts.
+- `src/mos_driver/src/bspal_audio_i2s.c` — I2S playback platform adaptation and buffer handling improvements.
+- `src/mos_components/mos_sysport/src/bal_os.c` — Fixes to mos_* OS abstractions (timers, memory, sync wrappers) for portability and better error checking.
 
 
 ## [2.18.0] - 2025-09-17

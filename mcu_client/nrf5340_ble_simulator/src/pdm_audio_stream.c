@@ -20,7 +20,7 @@ int         enable_audio_system(bool enable);
 #define TASK_PDM_AUDIO_THREAD_PRIORITY 5
 static bool audio_system_enabled = false;
 
-LOG_MODULE_REGISTER(pdm_audio_stream, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(pdm_audio_stream, LOG_LEVEL_DBG);
 extern int      ble_send_data(const uint8_t *data, uint16_t len);
 extern uint16_t get_ble_payload_mtu(void);
 // Simple audio streaming state

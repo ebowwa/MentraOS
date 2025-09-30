@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-09-29 15:40:07
+ * @LastEditTime : 2025-09-30 09:40:26
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -21,7 +21,7 @@
 #include "mos_pdm.h"
 
 
-LOG_MODULE_REGISTER(audio_iis, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(audio_iis, LOG_LEVEL_DBG);
 
 #define I2S_NL DT_NODELABEL(i2s0)
 

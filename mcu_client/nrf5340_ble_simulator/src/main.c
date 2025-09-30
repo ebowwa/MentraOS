@@ -44,7 +44,7 @@
 
 
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 static int hfclock_config_and_start(void)
 {
