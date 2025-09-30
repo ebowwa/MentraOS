@@ -739,19 +739,6 @@ public class ServerComms {
     }
     
     /**
-     * Legacy method for backward compatibility - builds and sends error response
-     * @param errorResponse The complete error response JSON object
-     */
-    public void sendPhotoErrorResponse(JSONObject errorResponse) {
-        try {
-            wsManager.sendText(errorResponse.toString());
-            Log.e(TAG, "📡 SENT PHOTO ERROR TO CLOUD (legacy): " + errorResponse.toString());
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error sending photo error response", e);
-        }
-    }
-
-    /**
      * Sends a video stream response message to the server
      *
      * @param appId The ID of the app requesting the stream
