@@ -265,7 +265,7 @@ const $optionItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $divider: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: StyleSheet.hairlineWidth,
+  height: 1,
   backgroundColor: colors.separator,
   marginVertical: 4,
 })

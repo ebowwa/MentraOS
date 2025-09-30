@@ -2,18 +2,45 @@
  * Photo grid display component
  */
 
-import React, {useState} from "react"
-import {View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator} from "react-native"
+import {useState} from "react"
+import {View, TouchableOpacity, Image, FlatList, ActivityIndicator} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {PhotoGridProps, PhotoInfo} from "../../../types/asg"
+import {PhotoInfo} from "../../../types/asg"
 import {translate} from "@/i18n/translate"
 import {asgCameraApi} from "../../../services/asg/asgCameraApi"
+import {Text} from "@/components/ignite"
+
+// Helper function to determine content type based on photos array
+const getContentType = (photos: PhotoInfo[]): "photos" | "videos" | "items" => {
+  if (photos.length === 0) return "items"
+
+  const videoCount = photos.filter(photo => photo.is_video === true).length
+  const photoCount = photos.length - videoCount
+
+  // If all videos, return 'videos'
+  if (videoCount === photos.length) return "videos"
+
+  // If all photos, return 'photos'
+  if (photoCount === photos.length) return "photos"
+
+  // If mixed content, return 'items'
+  return "items"
+}
 
 interface PhotoItemState {
   loading: boolean
   error: boolean
   imageUrl?: string
+}
+
+interface PhotoGridProps {
+  photos: PhotoInfo[]
+  onPhotoPress: (photo: PhotoInfo) => void
+  onPhotoLongPress?: (photo: PhotoInfo) => void
+  loading?: boolean
+  emptyMessage?: string
+  ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null
 }
 
 export function PhotoGrid({
@@ -151,10 +178,23 @@ export function PhotoGrid({
   )
 
   if (loading) {
+    const contentType = getContentType(photos)
+    const getLoadingMessage = () => {
+      switch (contentType) {
+        case "photos":
+          return translate("glasses:loadingPhotos")
+        case "videos":
+          return translate("glasses:loadingVideos")
+        case "items":
+        default:
+          return translate("glasses:loadingItems")
+      }
+    }
+
     return (
       <View style={themed($loadingContainer)}>
         <ActivityIndicator size="large" color={theme.colors.text} />
-        <Text style={themed($loadingText)}>{translate("glasses:loadingPhotos")}</Text>
+        <Text style={themed($loadingText)}>{getLoadingMessage()}</Text>
       </View>
     )
   }
@@ -255,7 +295,7 @@ const $errorSubtext: ThemedStyle<any> = ({colors}) => ({
   textAlign: "center",
 })
 
-const $placeholderContainer: ThemedStyle<any> = ({colors}) => ({
+const $placeholderContainer: ThemedStyle<any> = () => ({
   width: "100%",
   height: "100%",
   backgroundColor: "#f8f9fa",
@@ -263,7 +303,7 @@ const $placeholderContainer: ThemedStyle<any> = ({colors}) => ({
   alignItems: "center",
 })
 
-const $photoInfo: ThemedStyle<any> = ({colors, spacing}) => ({
+const $photoInfo: ThemedStyle<any> = ({spacing}) => ({
   padding: spacing.sm,
 })
 
@@ -279,7 +319,7 @@ const $photoMeta: ThemedStyle<any> = ({colors}) => ({
   fontSize: 12,
 })
 
-const $emptyContainer: ThemedStyle<any> = ({colors, spacing}) => ({
+const $emptyContainer: ThemedStyle<any> = ({spacing}) => ({
   alignItems: "center",
   paddingVertical: spacing.xl,
 })
@@ -297,7 +337,7 @@ const $emptySubtext: ThemedStyle<any> = ({colors}) => ({
   textAlign: "center",
 })
 
-const $loadingContainer: ThemedStyle<any> = ({colors, spacing}) => ({
+const $loadingContainer: ThemedStyle<any> = ({spacing}) => ({
   alignItems: "center",
   paddingVertical: spacing.xl,
 })

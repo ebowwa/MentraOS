@@ -1,19 +1,7 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Animated,
-  Switch,
-  ViewStyle,
-  TextStyle,
-  Platform,
-  ScrollView,
-} from "react-native"
+import {useCallback, useEffect, useRef, useState} from "react"
+import {View, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Icon} from "@/components/ignite"
+import {Icon, Text} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -28,7 +16,7 @@ import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures, hasBrightness, hasCustomMic, hasGallery} from "@/config/glassesFeatures"
-import {useAuth} from "@/contexts/AuthContext"
+import {localStorageService} from "@/services/asg/localStorageService"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
@@ -63,11 +51,10 @@ const CaseIcon = ({size = 24, color, isCharging = false, isDark = false}: CaseIc
 interface GlassesIconProps {
   size?: number
   color?: string
-  isOn?: boolean
   isDark?: boolean
 }
 
-const GlassesIcon = ({size = 24, color, isOn = false, isDark = false}: GlassesIconProps) => {
+const GlassesIcon = ({size = 24, color, isDark = false}: GlassesIconProps) => {
   const glassesSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M1.5 9H3.00005V15.0002H1.5V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M13.502 12H15.002V15.0001H13.502V12Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
@@ -91,12 +78,13 @@ export default function DeviceSettings() {
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
   const isGlassesConnected = Boolean(status.glasses_info?.model_name)
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   const [buttonMode, setButtonMode] = useSetting(SETTINGS_KEYS.button_mode)
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
   const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
   const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
+  const [hasLocalPhotos, setHasLocalPhotos] = useState(false)
 
   const {push} = useNavigationHistory()
 
@@ -115,6 +103,23 @@ export default function DeviceSettings() {
 
   const hasAdvancedSettingsContent = hasMicrophoneSelector || hasDeviceInfo
 
+  // Check for local photos on component mount and when component gains focus
+  const checkLocalPhotos = useCallback(async () => {
+    try {
+      const files = await localStorageService.getDownloadedFiles()
+      const hasPhotos = Object.keys(files).length > 0
+      setHasLocalPhotos(hasPhotos)
+    } catch (error) {
+      console.error("Error checking local photos:", error)
+      setHasLocalPhotos(false)
+    }
+  }, [])
+
+  // Check for local photos on mount
+  useEffect(() => {
+    checkLocalPhotos()
+  }, [checkLocalPhotos])
+
   // Animate advanced settings dropdown
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -130,6 +135,9 @@ export default function DeviceSettings() {
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
       slideAnim.setValue(-50)
+
+      // Check for local photos when component gains focus
+      checkLocalPhotos()
 
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -155,16 +163,8 @@ export default function DeviceSettings() {
         scaleAnim.stopAnimation()
         slideAnim.stopAnimation()
       }
-    }, [fadeAnim, scaleAnim, slideAnim]),
+    }, [fadeAnim, scaleAnim, slideAnim, checkLocalPhotos]),
   )
-
-  const sendDisconnectWearable = async () => {
-    console.log("Disconnecting wearable")
-
-    try {
-      await bridge.sendDisconnectWearable()
-    } catch (error) {}
-  }
 
   useEffect(() => {
     if (status.glasses_settings?.button_mode) {
@@ -226,7 +226,18 @@ export default function DeviceSettings() {
   if (!defaultWearable) {
     return (
       <View style={themed($container)}>
-        <View style={themed($emptyStateContainer)}>
+        {/* Show gallery button if there are local photos, even without glasses */}
+        {
+          <View style={themed($galleryButtonContainer)}>
+            <RouteButton
+              label={translate("glasses:gallery")}
+              subtitle={translate("glasses:galleryDescription")}
+              onPress={() => push("/asg/gallery")}
+            />
+          </View>
+        }
+
+        <View style={themed($emptyStateContainerWithGallery)}>
           <Text style={themed($emptyStateText)}>
             Glasses settings will appear here.{"\n"}Pair glasses to adjust settings.
           </Text>
@@ -302,7 +313,7 @@ export default function DeviceSettings() {
           </View>
         )}
 
-      {hasGallery(defaultWearable) && (
+      {(hasGallery(defaultWearable) || hasLocalPhotos) && (
         <RouteButton
           label={translate("glasses:gallery")}
           subtitle={translate("glasses:galleryDescription")}
@@ -331,7 +342,7 @@ export default function DeviceSettings() {
             <>
               <View
                 style={{
-                  height: StyleSheet.hairlineWidth,
+                  height: 1,
                   backgroundColor: theme.colors.separator,
                   marginBottom: theme.spacing.xs,
                 }}
@@ -382,14 +393,12 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "photo" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "photo" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
 
           {/* divider */}
-          <View
-            style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
-          />
+          <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
 
           <TouchableOpacity
             style={{
@@ -403,14 +412,12 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "apps" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "apps" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
 
           {/* divider */}
-          <View
-            style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}}
-          />
+          <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
 
           <TouchableOpacity
             style={{
@@ -423,7 +430,7 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "both" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "both" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
         </View>
@@ -503,47 +510,47 @@ export default function DeviceSettings() {
               {hasMicrophoneSelector && (
                 <View style={themed($settingsGroup)}>
                   <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>Microphone Selection</Text>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        paddingBottom: theme.spacing.xs,
-                        paddingTop: theme.spacing.xs,
-                      }}
-                      onPress={() => setMic("phone")}>
-                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={24}
-                        color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
-                      />
-                    </TouchableOpacity>
-                    {/* divider */}
-                    <View
-                      style={{
-                        height: StyleSheet.hairlineWidth,
-                        backgroundColor: theme.colors.separator,
-                        marginVertical: 4,
-                      }}
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingBottom: theme.spacing.xs,
+                      paddingTop: theme.spacing.xs,
+                    }}
+                    onPress={() => setMic("phone")}>
+                    <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={24}
+                      color={preferredMic === "phone" ? theme.colors.icon : "transparent"}
                     />
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        paddingTop: theme.spacing.xs,
-                      }}
-                      onPress={() => setMic("glasses")}>
-                      <View style={{flexDirection: "column", gap: 4}}>
-                        <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-                      </View>
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={24}
-                        color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  </TouchableOpacity>
+                  {/* divider */}
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: theme.colors.separator,
+                      marginVertical: 4,
+                    }}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingTop: theme.spacing.xs,
+                    }}
+                    onPress={() => setMic("glasses")}>
+                    <View style={{flexDirection: "column", gap: 4}}>
+                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={24}
+                      color={preferredMic === "glasses" ? theme.colors.icon : "transparent"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Spacer between sections */}
               <View style={{height: 16}} />
@@ -633,160 +640,24 @@ const $advancedSettingsLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "600",
 })
 
-const $emptyStateContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  paddingVertical: spacing.xxl,
-  minHeight: 300,
+const $galleryButtonContainer: ThemedStyle<ViewStyle> = ({spacing: _spacing}) => ({
+  marginTop: _spacing.xl,
+  marginBottom: _spacing.lg,
 })
 
-const $emptyStateText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $emptyStateContainerWithGallery: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "flex-start",
+  alignItems: "center",
+  paddingTop: spacing.xl,
+  paddingBottom: spacing.xxl,
+  minHeight: 200,
+})
+
+const $emptyStateText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 20,
   textAlign: "center",
   lineHeight: 28,
   fontWeight: "500",
-})
-
-const styles = StyleSheet.create({
-  buttonText: {
-    color: "#fff",
-    fontFamily: "Montserrat-Bold",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  connectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    // backgroundColor moved to dynamic styling with theme
-    padding: 10,
-    borderRadius: 8,
-    width: "80%",
-  },
-  connectText: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  connectedDot: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 14,
-    marginRight: 2,
-  },
-  connectedTextGreen: {
-    color: "#28a745",
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginLeft: 4,
-    marginRight: 2,
-  },
-  connectedTextTitle: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  connectingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    // backgroundColor moved to dynamic styling with theme
-    padding: 10,
-    borderRadius: 8,
-    width: "80%",
-  },
-  disabledButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    // backgroundColor moved to dynamic styling with theme
-    padding: 10,
-    borderRadius: 8,
-    width: "80%",
-  },
-  disabledDisconnectButton: {
-    // backgroundColor moved to dynamic styling with theme
-  },
-  disconnectButton: {
-    flexDirection: "row",
-    // backgroundColor moved to dynamic styling with theme
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    justifyContent: "center",
-    marginRight: 5,
-    width: "40%",
-  },
-  disconnectText: {
-    // color moved to dynamic styling with theme
-    fontSize: 12,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Regular",
-  },
-  glassesImage: {
-    height: 120,
-    resizeMode: "contain",
-    width: "80%",
-  },
-  icon: {
-    marginRight: 4,
-  },
-  iconContainer: {
-    // backgroundColor moved to dynamic styling with theme
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  noGlassesText: {
-    color: "black",
-    fontSize: 16,
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  separator: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginHorizontal: 10,
-  },
-  statusIndicatorsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    width: "100%",
-    //height: 30,
-  },
-  statusLabel: {
-    fontFamily: "SF Pro",
-    fontSize: 12,
-    fontWeight: "500",
-    letterSpacing: -0.08,
-    lineHeight: 16,
-  },
-  statusValue: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  wifiContainer: {
-    alignItems: "center",
-    borderRadius: 18,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  wifiSsidText: {
-    fontSize: 12,
-    // color moved to dynamic styling with theme
-    fontWeight: "bold",
-    marginRight: 5,
-    maxWidth: 120,
-  },
 })

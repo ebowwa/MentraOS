@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -340,6 +341,9 @@ public class MediaCaptureService {
                     // Use a special ID for buffer saves
                     mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
                 }
+                
+                // Send gallery status update to phone after buffer video save
+                sendGalleryStatusUpdate();
             }
 
             @Override
@@ -564,6 +568,9 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
                     }
+
+                    // Send gallery status update to phone after video recording
+                    sendGalleryStatusUpdate();
 
                     // Call upload stub (which just logs for now)
                     uploadVideo(filePath, requestId);
@@ -874,6 +881,9 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
                             mMediaCaptureListener.onPhotoUploading(requestId);
                         }
+                        
+                        // Send gallery status update to phone after photo capture
+                        sendGalleryStatusUpdate();
                     }
 
                     @Override
@@ -1888,4 +1898,34 @@ public class MediaCaptureService {
         }
         return ble;
     }
+
+    /**
+     * Send gallery status update to phone after photo capture
+     * Uses GalleryStatusHelper to avoid code duplication with GalleryCommandHandler
+     */
+    private void sendGalleryStatusUpdate() {
+        try {
+            Log.d(TAG, "📸 Sending gallery status update after photo capture");
+
+            if (fileManager == null) {
+                Log.w(TAG, "📸 Cannot send gallery status: FileManager not available");
+                return;
+            }
+
+            // Build gallery status using shared utility
+            JSONObject response = com.augmentos.asg_client.utils.GalleryStatusHelper.buildGalleryStatus(fileManager);
+
+            // Send through bluetooth if available
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(response.toString().getBytes());
+                Log.d(TAG, "📸 Gallery status update sent successfully");
+            } else {
+                Log.w(TAG, "📸 Cannot send gallery status update: service callback not available");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "📸 Error creating gallery status update", e);
+        }
+    }
+
+    // ========== CIRCULAR VIDEO BUFFER METHODS ==========
 }
