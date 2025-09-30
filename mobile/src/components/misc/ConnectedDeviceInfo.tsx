@@ -314,7 +314,7 @@ export function SplitDeviceInfo() {
 
 export function DeviceToolbar() {
   const {status} = useCoreStatus()
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
   const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   if (!defaultWearable) {
