@@ -1474,48 +1474,20 @@ public class MediaCaptureService {
 
     /**
      * Send gallery status update to phone after photo capture
-     * Reuses the same logic as GalleryCommandHandler.handleQueryGalleryStatus()
+     * Uses GalleryStatusHelper to avoid code duplication with GalleryCommandHandler
      */
     private void sendGalleryStatusUpdate() {
         try {
             Log.d(TAG, "📸 Sending gallery status update after photo capture");
-            
+
             if (fileManager == null) {
                 Log.w(TAG, "📸 Cannot send gallery status: FileManager not available");
                 return;
             }
-            
-            // Get all files using FileManager (same as GalleryCommandHandler)
-            List<FileManager.FileMetadata> allFiles = fileManager.listFiles(fileManager.getDefaultPackageName());
-            
-            int photoCount = 0;
-            int videoCount = 0;
-            long totalSize = 0;
-            
-            // Count photos and videos using same logic as GalleryCommandHandler
-            for (FileManager.FileMetadata metadata : allFiles) {
-                String fileName = metadata.getFileName().toLowerCase();
-                totalSize += metadata.getFileSize();
-                
-                if (isVideoFile(fileName)) {
-                    videoCount++;
-                } else {
-                    photoCount++;  // Assume non-video files are photos
-                }
-            }
-            
-            // Build response (same format as GalleryCommandHandler)
-            JSONObject response = new JSONObject();
-            response.put("type", "gallery_status");
-            response.put("photos", photoCount);
-            response.put("videos", videoCount);
-            response.put("total", photoCount + videoCount);
-            response.put("total_size", totalSize);
-            response.put("has_content", (photoCount + videoCount) > 0);
-            
-            Log.d(TAG, "📸 Gallery status: " + photoCount + " photos, " + videoCount + " videos, " + 
-                       formatBytes(totalSize) + " total size");
-            
+
+            // Build gallery status using shared utility
+            JSONObject response = com.augmentos.asg_client.utils.GalleryStatusHelper.buildGalleryStatus(fileManager);
+
             // Send through bluetooth if available
             if (mServiceCallback != null) {
                 mServiceCallback.sendThroughBluetooth(response.toString().getBytes());
@@ -1526,29 +1498,6 @@ public class MediaCaptureService {
         } catch (Exception e) {
             Log.e(TAG, "📸 Error creating gallery status update", e);
         }
-    }
-    
-    /**
-     * Check if a file is a video based on extension (same as GalleryCommandHandler)
-     */
-    private boolean isVideoFile(String fileName) {
-        String lowerName = fileName.toLowerCase();
-        return lowerName.endsWith(".mp4") || 
-               lowerName.endsWith(".mov") || 
-               lowerName.endsWith(".avi") || 
-               lowerName.endsWith(".mkv") ||
-               lowerName.endsWith(".webm") ||
-               lowerName.endsWith(".3gp");
-    }
-    
-    /**
-     * Format bytes to human readable string (same as GalleryCommandHandler)
-     */
-    private String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
-        if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
-        return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
     }
 
     // ========== CIRCULAR VIDEO BUFFER METHODS ==========

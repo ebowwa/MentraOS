@@ -3,16 +3,7 @@
  */
 
 import {useCallback, useState, useEffect, useMemo, useRef} from "react"
-import {
-  View,
-  Text,
-  BackHandler,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  ViewToken,
-} from "react-native"
+import {View, BackHandler, TouchableOpacity, ActivityIndicator, Dimensions, FlatList, ViewToken} from "react-native"
 import {useFocusEffect} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
@@ -38,7 +29,16 @@ import bridge from "@/bridge/MantleBridge"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
-import {Header} from "@/components/ignite"
+import {Header, Text} from "@/components/ignite"
+
+// Gallery timing constants
+const TIMING = {
+  PROGRESS_RING_DISPLAY_MS: 3000, // How long to show completed/failed progress rings
+  SYNC_COMPLETE_DISPLAY_MS: 1000, // How long to show "Sync complete!" message
+  ALERT_DELAY_MS: 100, // Delay before showing alerts to allow UI to settle
+  HOTSPOT_LOAD_DELAY_MS: 500, // Delay before loading photos after hotspot connects
+  RETRY_AFTER_RATE_LIMIT_MS: 5000, // Delay before retrying after 429 rate limit
+} as const
 
 // Gallery state machine states
 enum GalleryState {
@@ -202,7 +202,7 @@ export function GalleryScreen() {
                 transitionToState(GalleryState.CONNECTED_LOADING)
                 loadInitialPhotos()
               }
-            }, 3000)
+            }, TIMING.RETRY_AFTER_RATE_LIMIT_MS)
           } else if (err.message.includes("400")) {
             errorMsg = "Invalid request to server"
           } else {
@@ -387,7 +387,7 @@ export function GalleryScreen() {
       // Keep all progress states visible for a moment to show completion
       setTimeout(() => {
         setPhotoSyncStates(new Map())
-      }, 3000) // Show completion states for 3 seconds
+      }, TIMING.PROGRESS_RING_DISPLAY_MS)
 
       // Mark failed photos
       for (const failedFileName of downloadResult.failed) {
@@ -411,7 +411,7 @@ export function GalleryScreen() {
             }
             return newStates
           })
-        }, 3000) // Show error for 3 seconds
+        }, TIMING.PROGRESS_RING_DISPLAY_MS)
       }
 
       // Files are now deleted immediately after each successful download in batchSyncFiles
@@ -455,7 +455,7 @@ export function GalleryScreen() {
         loadedRanges.current.clear()
         loadingRanges.current.clear()
         transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
-      }, 1000) // Give user time to see "Sync complete!" message
+      }, TIMING.SYNC_COMPLETE_DISPLAY_MS)
     } catch (err) {
       let errorMsg = "Sync failed"
       if (err instanceof Error) {
@@ -520,7 +520,7 @@ export function GalleryScreen() {
         setSelectedPhoto(null)
         setTimeout(() => {
           showAlert("Info", `Please sync this ${mediaType} first to share it`, [{text: translate("common:ok")}])
-        }, 100)
+        }, TIMING.ALERT_DELAY_MS)
         return
       }
 
@@ -529,7 +529,7 @@ export function GalleryScreen() {
         setSelectedPhoto(null)
         setTimeout(() => {
           showAlert("Error", "Unable to share this photo", [{text: translate("common:ok")}])
-        }, 100)
+        }, TIMING.ALERT_DELAY_MS)
         return
       }
 
@@ -551,13 +551,13 @@ export function GalleryScreen() {
             "File sharing will work after the next app build. For now, you can find your photos in the AugmentOS folder.",
             [{text: translate("common:ok")}],
           )
-        }, 100)
+        }, TIMING.ALERT_DELAY_MS)
       } else {
         console.error("Error sharing photo:", error)
         setSelectedPhoto(null)
         setTimeout(() => {
           showAlert("Error", "Failed to share photo", [{text: translate("common:ok")}])
-        }, 100)
+        }, TIMING.ALERT_DELAY_MS)
       }
     }
   }
@@ -643,99 +643,99 @@ export function GalleryScreen() {
   }
 
   // Handle delete all photos
-  const handleDeleteAll = async () => {
-    const totalServerPhotos = totalServerCount
-    const totalLocalPhotos = downloadedPhotos.length
-    const totalPhotos = totalServerPhotos + totalLocalPhotos
+  // const _handleDeleteAll = async () => {
+  //   const totalServerPhotos = totalServerCount
+  //   const totalLocalPhotos = downloadedPhotos.length
+  //   const totalPhotos = totalServerPhotos + totalLocalPhotos
 
-    if (totalPhotos === 0) {
-      showAlert("No Photos", "There are no photos to delete", [{text: translate("common:ok")}])
-      return
-    }
+  //   if (totalPhotos === 0) {
+  //     showAlert("No Photos", "There are no photos to delete", [{text: translate("common:ok")}])
+  //     return
+  //   }
 
-    const itemText = totalPhotos === 1 ? "item" : "items"
-    let message = `This will permanently delete all ${totalPhotos} ${itemText}`
+  //   const itemText = totalPhotos === 1 ? "item" : "items"
+  //   let message = `This will permanently delete all ${totalPhotos} ${itemText}`
 
-    if (totalServerPhotos > 0 && totalLocalPhotos > 0) {
-      message += ` (${totalServerPhotos} from glasses, ${totalLocalPhotos} from local storage)`
-    } else if (totalServerPhotos > 0) {
-      message += ` from your glasses`
-    } else {
-      message += ` from local storage`
-    }
+  //   if (totalServerPhotos > 0 && totalLocalPhotos > 0) {
+  //     message += ` (${totalServerPhotos} from glasses, ${totalLocalPhotos} from local storage)`
+  //   } else if (totalServerPhotos > 0) {
+  //     message += ` from your glasses`
+  //   } else {
+  //     message += ` from local storage`
+  //   }
 
-    message += ". This action cannot be undone."
+  //   message += ". This action cannot be undone."
 
-    showAlert("Delete All Photos", message, [
-      {text: translate("common:cancel"), style: "cancel"},
-      {
-        text: "Delete All",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            let deleteErrors: string[] = []
+  //   showAlert("Delete All Photos", message, [
+  //     {text: translate("common:cancel"), style: "cancel"},
+  //     {
+  //       text: "Delete All",
+  //       style: "destructive",
+  //       onPress: async () => {
+  //         try {
+  //           let deleteErrors: string[] = []
 
-            // Delete all server photos if connected
-            if (totalServerPhotos > 0 && isHotspotEnabled && hotspotGatewayIp) {
-              try {
-                // Get all server photo names
-                const serverPhotoNames: string[] = []
-                for (let i = 0; i < totalServerCount; i++) {
-                  const photo = loadedServerPhotos.get(i)
-                  if (photo) {
-                    serverPhotoNames.push(photo.name)
-                  }
-                }
+  //           // Delete all server photos if connected
+  //           if (totalServerPhotos > 0 && isHotspotEnabled && hotspotGatewayIp) {
+  //             try {
+  //               // Get all server photo names
+  //               const serverPhotoNames: string[] = []
+  //               for (let i = 0; i < totalServerCount; i++) {
+  //                 const photo = loadedServerPhotos.get(i)
+  //                 if (photo) {
+  //                   serverPhotoNames.push(photo.name)
+  //                 }
+  //               }
 
-                if (serverPhotoNames.length > 0) {
-                  const deleteResult = await asgCameraApi.deleteFilesFromServer(serverPhotoNames)
-                  if (deleteResult.failed.length > 0) {
-                    deleteErrors.push(`Failed to delete ${deleteResult.failed.length} photos from glasses`)
-                  }
-                  console.log(`[GalleryScreen] Deleted ${deleteResult.deleted.length} photos from server`)
-                }
-              } catch (err) {
-                console.error("Error deleting server photos:", err)
-                deleteErrors.push("Failed to delete photos from glasses")
-              }
-            }
+  //               if (serverPhotoNames.length > 0) {
+  //                 const deleteResult = await asgCameraApi.deleteFilesFromServer(serverPhotoNames)
+  //                 if (deleteResult.failed.length > 0) {
+  //                   deleteErrors.push(`Failed to delete ${deleteResult.failed.length} photos from glasses`)
+  //                 }
+  //                 console.log(`[GalleryScreen] Deleted ${deleteResult.deleted.length} photos from server`)
+  //               }
+  //             } catch (err) {
+  //               console.error("Error deleting server photos:", err)
+  //               deleteErrors.push("Failed to delete photos from glasses")
+  //             }
+  //           }
 
-            // Delete all local photos
-            if (totalLocalPhotos > 0) {
-              try {
-                await localStorageService.clearAllFiles()
-                console.log(`[GalleryScreen] Cleared all local photos`)
-              } catch (err) {
-                console.error("Error deleting local photos:", err)
-                deleteErrors.push("Failed to delete local photos")
-              }
-            }
+  //           // Delete all local photos
+  //           if (totalLocalPhotos > 0) {
+  //             try {
+  //               await localStorageService.clearAllFiles()
+  //               console.log(`[GalleryScreen] Cleared all local photos`)
+  //             } catch (err) {
+  //               console.error("Error deleting local photos:", err)
+  //               deleteErrors.push("Failed to delete local photos")
+  //             }
+  //           }
 
-            // Refresh the gallery
-            setLoadedServerPhotos(new Map())
-            setTotalServerCount(0)
-            loadedRanges.current.clear()
-            loadingRanges.current.clear()
-            setPhotoSyncStates(new Map())
-            await loadDownloadedPhotos()
+  //           // Refresh the gallery
+  //           setLoadedServerPhotos(new Map())
+  //           setTotalServerCount(0)
+  //           loadedRanges.current.clear()
+  //           loadingRanges.current.clear()
+  //           setPhotoSyncStates(new Map())
+  //           await loadDownloadedPhotos()
 
-            // Refresh server photos if connected
-            if (isHotspotEnabled && hotspotGatewayIp) {
-              loadInitialPhotos()
-            }
+  //           // Refresh server photos if connected
+  //           if (isHotspotEnabled && hotspotGatewayIp) {
+  //             loadInitialPhotos()
+  //           }
 
-            if (deleteErrors.length > 0) {
-              showAlert("Partial Success", deleteErrors.join(". "), [{text: translate("common:ok")}])
-            } else {
-              showAlert("Success", "All photos deleted successfully!", [{text: translate("common:ok")}])
-            }
-          } catch {
-            showAlert("Error", "Failed to delete photos", [{text: translate("common:ok")}])
-          }
-        },
-      },
-    ])
-  }
+  //           if (deleteErrors.length > 0) {
+  //             showAlert("Partial Success", deleteErrors.join(". "), [{text: translate("common:ok")}])
+  //           } else {
+  //             showAlert("Success", "All photos deleted successfully!", [{text: translate("common:ok")}])
+  //           }
+  //         } catch {
+  //           showAlert("Error", "Failed to delete photos", [{text: translate("common:ok")}])
+  //         }
+  //       },
+  //     },
+  //   ])
+  // }
 
   // Connect to hotspot
   const connectToHotspot = async (ssid: string, password: string, ip: string) => {
@@ -759,7 +759,7 @@ export function GalleryScreen() {
 
         setTimeout(() => {
           loadInitialPhotos(ip)
-        }, 500)
+        }, TIMING.HOTSPOT_LOAD_DELAY_MS)
       }
     } catch (error: any) {
       console.log("[GalleryScreen] Failed to connect:", error)
@@ -1320,11 +1320,11 @@ export function GalleryScreen() {
         title="Glasses Gallery"
         leftIcon="caretLeft"
         onLeftPress={() => goBack()}
-        RightActionComponent={
-          <TouchableOpacity onPress={handleDeleteAll} style={themed($deleteAllButton)}>
-            <MaterialCommunityIcons name="delete-sweep" size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-        }
+        // RightActionComponent={
+        //   <TouchableOpacity onPress={handleDeleteAll} style={themed($deleteAllButton)}>
+        //     <MaterialCommunityIcons name="delete-sweep" size={24} color={theme.colors.text} />
+        //   </TouchableOpacity>
+        // }
       />
       <View style={themed($screenContainer)}>
         <View style={themed($galleryContainer)}>
@@ -1555,15 +1555,15 @@ const $serverBadge: ThemedStyle<ViewStyle> = ({spacing}) => ({
   elevation: 3,
 })
 
-const $deleteAllButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.sm,
-  paddingVertical: spacing.xs,
-  borderRadius: spacing.sm,
-  justifyContent: "center",
-  alignItems: "center",
-  minWidth: 44,
-  minHeight: 44,
-})
+// const _$deleteAllButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+//   paddingHorizontal: spacing.sm,
+//   paddingVertical: spacing.xs,
+//   borderRadius: spacing.sm,
+//   justifyContent: "center",
+//   alignItems: "center",
+//   minWidth: 44,
+//   minHeight: 44,
+// })
 
 const $syncButtonProgressBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   height: 6,
