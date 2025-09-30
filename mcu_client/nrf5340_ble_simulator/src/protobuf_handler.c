@@ -48,7 +48,7 @@
 
 #include "protobuf_handler.h"
 #include "proto/mentraos_ble.pb.h"
-// #include "../custom_driver_module/drivers/display/lcd/hls12vga.h"
+#include "../custom_driver_module/drivers/display/lcd/hls12vga.h"
 #include "mentra_ble_service.h"
 #include "lvgl_interface.h"
 #include "mos_components/mos_lvgl_display/include/mos_lvgl_display.h"  // **NEW: For protobuf text display**
@@ -809,12 +809,12 @@ void protobuf_set_brightness_level(uint32_t level)
 	
 	LOG_INF("Setting projector brightness: %u%% -> level %u (0-9)", level, projector_level);
 	
-	// int ret = hls12vga_set_brightness(projector_level);
-	// if (ret == 0) {
-	// 	LOG_INF("✅ Display projector brightness set to level %u/9", projector_level);
-	// } else {
-	// 	LOG_ERR("❌ Failed to set display projector brightness: %d", ret);
-	// }
+	int ret = hls12vga_set_brightness(projector_level);
+	if (ret == 0) {
+		LOG_INF("✅ Display projector brightness set to level %u/9", projector_level);
+	} else {
+		LOG_ERR("❌ Failed to set display projector brightness: %d", ret);
+	}
 }
 
 void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config)

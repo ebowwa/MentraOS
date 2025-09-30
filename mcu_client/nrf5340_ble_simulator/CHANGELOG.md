@@ -4,17 +4,22 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🔆 Display Brightness Control Fix - 2025-09-30
+
+#### Fixed HLS12VGA Projector Brightness Control
+- **✅ FIXED**: `src/protobuf_handler.c` — Restored `hls12vga_set_brightness()` function call that was commented out
+- **✅ FIXED**: Uncommented HLS12VGA header include to enable projector brightness control
+- **🎯 Issue**: Phone app BrightnessConfig messages were only controlling PWM LED3, not display projector
+- **🔧 Solution**: Enabled dual brightness control - both LED backlight and projector display brightness now respond to phone app commands
+- **📱 Functionality**: BrightnessConfig protobuf messages now control:
+  - PWM LED3 brightness (0-100% → PWM duty cycle) 
+  - HLS12VGA projector brightness (0-100% → 0-9 brightness levels)
+
+### 🛠️ Previous Changes
+
 - `prj.conf` — Update Bluetooth L2CAP/ATT buffer and MTU settings for the simulator target (CONFIG_BT_L2CAP_TX_MTU=247).
 - `proto/mentraos_ble.options` — Adjust nanopb string max_size fields (e.g. DisplayText/DisplayScrollingText = 247).
 - `src/proto/mentraos_ble.pb.c`, `src/proto/mentraos_ble.pb.h` — Regenerate nanopb bindings; widen fieldinfo (PB_BIND) for large text fields to avoid static assertions.
-- `src/protobuf_handler.c` — Replace manual per-byte hex printing with Zephyr logging hexdump API (`LOG_HEXDUMP_INF`); normalize protobuf decode error output.
-- `src/shell_log_control.c` — Add shell commands to control runtime logging level and enable/disable ping/pong logs (`log_help`, `bsp_level`, `ping_enable/disable/status`).
-- `src/mos_components/mos_lvgl_display/src/display_config.c`, `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c` — Display configuration improvements and thread-safe command queue; device-specific font/mirroring/inversion handling.
-- `custom_driver_module/drivers/display/lcd/hls12vga.c` — HLS12VGA driver fixes: boundary checks, chunked transfers, mirroring and inversion handling.
-- `src/mos_components/mos_pdm/src/mos_pdm.c` — PDM driver: small FIFO buffer and improved interrupt callback handling.
-- `src/pdm_audio_stream.c` — Audio pipeline: calculate LC3 frames-per-packet dynamically based on negotiated MTU and improve fade/warm-up logic to avoid audio artifacts.
-- `src/mos_driver/src/bspal_audio_i2s.c` — I2S playback platform adaptation and buffer handling improvements.
-- `src/mos_components/mos_sysport/src/bal_os.c` — Fixes to mos_* OS abstractions (timers, memory, sync wrappers) for portability and better error checking.
 
 
 ## [2.18.0] - 2025-09-17
