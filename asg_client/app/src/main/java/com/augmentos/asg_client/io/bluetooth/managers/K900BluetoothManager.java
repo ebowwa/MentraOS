@@ -51,6 +51,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     }
     private FileTransferCompletionCallback transferCompletionCallback;
     
+    
     // Packet transmission timing configuration
     private static final int PACKET_SEND_DELAY_MS = 10; // Delay between packets to prevent UART overflow
     private static final int RETRANSMISSION_DELAY_MS = 10; // Delay between retransmissions
@@ -373,6 +374,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         this.transferCompletionCallback = callback;
     }
     
+    
     /**
      * Check if a file transfer is currently in progress
      * @return true if a transfer is active, false otherwise
@@ -451,6 +453,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         
         notificationManager.showDebugNotification("File Transfer", 
             "Starting transfer of " + fileName + " (" + currentFileTransfer.totalPackets + " packets)");
+        
         
         // Enable fast mode for file transfer
         comManager.setFastMode(true);
@@ -676,6 +679,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             // Clean up and disable fast mode
             comManager.setFastMode(false);
             currentFileTransfer = null;
+            
         }
     }
     
@@ -760,6 +764,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         Log.d(TAG, "4 Disabling fast mode");
         // Disable fast mode
         comManager.setFastMode(false);
+        
 
         if (success) {
             Log.d(TAG, "✅ File transfer completed successfully: " + fileName);
@@ -812,6 +817,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                     Log.e(TAG, "📦 Failed to transmit packet " + packetIndex + " - aborting transfer");
                     currentFileTransfer = null;
                     comManager.setFastMode(false);
+                    
                     return;
                 }
                 

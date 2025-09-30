@@ -225,17 +225,7 @@ public class AsgClientServiceManager {
             if (bluetoothManager instanceof com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) {
                 com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
                     (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) bluetoothManager;
-                k900Manager.setFileTransferCompletionCallback(new com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager.FileTransferCompletionCallback() {
-                    @Override
-                    public void onFileTransferCompleted(boolean success, String fileName) {
-                        Log.d(TAG, "📋 File transfer completed: " + fileName + " (success: " + success + ") - processing error queue");
-                        // Process any queued error messages now that BLE is available
-                        if (mediaCaptureService != null) {
-                            mediaCaptureService.processQueuedBleErrors();
-                        }
-                    }
-                });
-                Log.d(TAG, "📋 File transfer completion callback set for error queue processing");
+                Log.d(TAG, "📋 K900 Bluetooth manager configured");
             }
 
             bluetoothManager.initialize();
