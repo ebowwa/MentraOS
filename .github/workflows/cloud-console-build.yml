@@ -1,0 +1,71 @@
+name: Console build
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+      - staging
+  push:
+    branches:
+      - main
+      - dev
+      - staging
+    paths:
+      - "cloud/websites/console/**"
+
+concurrency:
+  group: console-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  console:
+    name: Build cloud/websites/console
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Needed so paths-filter can diff against the base of the PR
+          fetch-depth: 0
+
+      - name: Compute changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            console:
+              - 'cloud/websites/console/**'
+
+      - name: Skip if no console changes
+        if: steps.filter.outputs.console != 'true'
+        run: |
+          echo "No changes under cloud/websites/console; skipping build."
+
+      - name: Setup Bun
+        if: steps.filter.outputs.console == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun cache
+        if: steps.filter.outputs.console == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-cache-console-${{ hashFiles('cloud/websites/console/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-cache-console-
+
+      - name: Install dependencies
+        if: steps.filter.outputs.console == 'true'
+        working-directory: cloud/websites/console
+        run: bun install --frozen-lockfile
+
+      - name: Run build
+        if: steps.filter.outputs.console == 'true'
+        working-directory: cloud/websites/console
+        run: bun run build

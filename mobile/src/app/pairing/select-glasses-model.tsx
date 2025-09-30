@@ -56,7 +56,7 @@ export default function SelectGlassesModelScreen() {
   useFocusEffect(
     useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const onboardingCompleted = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+        const onboardingCompleted = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.onboarding_completed)
         console.log("ONBOARDING COMPLETED IN SELECTGLASSESMODELSCREEN???: " + onboardingCompleted)
         setIsOnboarding(!onboardingCompleted)
       }

@@ -63,7 +63,7 @@ export default function InactiveAppList({
   useFocusEffect(
     React.useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+        const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
         setOnboardingCompleted(completed)
 
         if (!completed) {
@@ -74,7 +74,7 @@ export default function InactiveAppList({
           setShowOnboardingTip(false)
 
           // If onboarding is completed, check how many times settings have been accessed
-          const settingsAccessCount = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT)
+          const settingsAccessCount = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.settings_access_count)
           // Only show hint if they've accessed settings less than 1 times
           setShowSettingsHint(settingsAccessCount < 1)
         }
@@ -87,7 +87,7 @@ export default function InactiveAppList({
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+      const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
       setOnboardingCompleted(completed)
       setShowOnboardingTip(!completed)
     }
@@ -108,7 +108,7 @@ export default function InactiveAppList({
   }, [showOnboardingTip])
 
   const completeOnboarding = () => {
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
     setOnboardingCompleted(true)
     setShowOnboardingTip(false)
     setInLiveCaptionsPhase(false) // Reset any live captions phase state

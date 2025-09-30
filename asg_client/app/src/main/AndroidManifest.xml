@@ -106,6 +106,17 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".audio.I2SAudioBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.xy.sound.AUDIO_PLAYSTATE_CHANGE" />
+                <action android:name="com.xy.sound.AUDIO_PLAYSTATE_ACTION" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".service.core.AsgClientService"
             android:enabled="true"

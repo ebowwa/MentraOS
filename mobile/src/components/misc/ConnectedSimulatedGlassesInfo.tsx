@@ -136,23 +136,6 @@ export const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) 
   width: "100%", // Increased space above component to match ConnectedDeviceInfo
 })
 
-export const $disconnectButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  alignItems: "center",
-  backgroundColor: "#E24A24",
-  borderRadius: 12,
-  flexDirection: "row",
-  justifyContent: "center",
-  paddingHorizontal: 10,
-  paddingVertical: 6,
-})
-
-export const $disconnectText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: "#fff",
-  fontFamily: "Montserrat-Regular",
-  fontSize: 12,
-  fontWeight: "500",
-})
-
 export const $mirrorContainer: ThemedStyle<ViewStyle> = () => ({
   height: "100%",
   padding: 0,

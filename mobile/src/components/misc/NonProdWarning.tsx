@@ -1,20 +1,19 @@
 // SensingDisabledWarning.tsx
-import React, {useCallback, useEffect, useState} from "react"
-import {StyleSheet, TouchableOpacity, TextStyle} from "react-native"
-import {useFocusEffect} from "expo-router"
+import {useEffect, useState} from "react"
+import {TouchableOpacity, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function NonProdWarning() {
   const {theme, themed} = useAppTheme()
   const [isProdBackend, setIsProdBackend] = useState(true)
   const {push} = useNavigationHistory()
-  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+  const [customBackendUrl, _setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
 
   const checkNonProdBackend = async () => {
     let isProd = false
@@ -78,38 +77,4 @@ export default function NonProdWarning() {
 
 const $settingsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.sm,
-})
-
-const $warningText: ThemedStyle<TextStyle> = ({colors}) => ({
-  marginLeft: 10,
-  fontSize: 14,
-  fontWeight: "500",
-  color: colors.error,
-  flex: 1,
-})
-
-const styles = StyleSheet.create({
-  sensingWarningContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 12, // Match ConnectedDeviceInfo
-    borderWidth: 1, // Restore border for the warning
-    marginBottom: 16,
-    marginTop: 16, // Added spacing above the warning
-    marginHorizontal: 0,
-    width: "100%",
-  },
-
-  settingsButtonTextBlue: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  warningContent: {
-    alignItems: "center",
-    flexDirection: "row",
-    flex: 1,
-  },
 })

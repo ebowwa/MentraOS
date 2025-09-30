@@ -1,33 +1,24 @@
-import React, {useRef, useState, useCallback, useEffect, useMemo} from "react"
-import {View, StyleSheet, ActivityIndicator, BackHandler} from "react-native"
+import {useState, useCallback, useMemo} from "react"
+import {View, ViewStyle, ActivityIndicator, BackHandler, TextStyle} from "react-native"
 import {WebView} from "react-native-webview"
-import Config from "react-native-config"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
-import {RouteProp, useFocusEffect} from "@react-navigation/native"
-import {RootStackParamList} from "@/components/misc/types"
+import {useFocusEffect} from "@react-navigation/native"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useLocalSearchParams, router} from "expo-router"
+import {useLocalSearchParams} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-// Define package name for the store webview
-const STORE_PACKAGE_NAME = "org.augmentos.store"
+import {ThemedStyle} from "@/theme"
 
 export default function AppStoreWeb() {
-  const [webviewLoading, setWebviewLoading] = useState(true)
+  const [_webviewLoading, setWebviewLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  // const packageName = route?.params?.packageName;
   const {packageName} = useLocalSearchParams()
   const [canGoBack, setCanGoBack] = useState(false)
   const {push} = useNavigationHistory()
-  const {
-    appStoreUrl,
-    webviewLoading: prefetchedWebviewLoading,
-    webViewRef: prefetchedWebviewRef,
-  } = useAppStoreWebviewPrefetch()
+  const {appStoreUrl, webViewRef: prefetchedWebviewRef} = useAppStoreWebviewPrefetch()
   const {refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
 
@@ -46,25 +37,6 @@ export default function AppStoreWeb() {
     console.log("AppStoreWeb: finalUrl", url.toString())
     return url.toString()
   }, [appStoreUrl, packageName])
-
-  // Theme colors - using theme system instead of hardcoded values
-  const theme2 = {
-    backgroundColor: theme.colors.background,
-    headerBg: theme.colors.background,
-    textColor: theme.colors.text,
-    secondaryTextColor: theme.colors.textDim,
-    borderColor: theme.colors.border,
-    buttonBg: theme.colors.palette.gray200,
-    buttonTextColor: theme.colors.text,
-    primaryColor: theme.colors.palette.blue500,
-  }
-
-  // Handle WebView loading events
-  const handleLoadStart = () => setWebviewLoading(true)
-  const handleLoadEnd = () => {
-    setWebviewLoading(false)
-    setHasError(false)
-  }
 
   const handleError = (syntheticEvent: any) => {
     const {nativeEvent} = syntheticEvent
@@ -150,13 +122,9 @@ export default function AppStoreWeb() {
     return (
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
         <Header leftTx="store:title" />
-        <View
-          style={[
-            styles.loadingContainer,
-            {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
-          ]}>
-          <ActivityIndicator size="large" color={theme2.primaryColor} />
-          <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
+        <View style={[themed($loadingContainer), {marginHorizontal: -theme.spacing.lg}]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text text="Preparing App Store..." style={themed($loadingText)} />
         </View>
       </Screen>
     )
@@ -178,16 +146,12 @@ export default function AppStoreWeb() {
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="store:title" />
-      <View
-        style={[
-          styles.webViewContainer,
-          {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg},
-        ]}>
+      <View style={[themed($webViewContainer), {marginHorizontal: -theme.spacing.lg}]}>
         {/* Show the prefetched WebView, but now visible and full size */}
         <WebView
           ref={prefetchedWebviewRef}
           source={{uri: finalUrl}}
-          style={[styles.webView, {backgroundColor: theme.colors.background}]}
+          style={themed($webView)}
           onLoadStart={() => setWebviewLoading(true)}
           onLoadEnd={() => setWebviewLoading(false)}
           onError={handleError}
@@ -207,9 +171,9 @@ export default function AppStoreWeb() {
               true;
             `}
           renderLoading={() => (
-            <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
-              <ActivityIndicator size="large" color={theme2.primaryColor} />
-              <Text text="Loading App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
+            <View style={themed($loadingOverlay)}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text text="Loading App Store..." style={themed($loadingText)} />
             </View>
           )}
         />
@@ -218,30 +182,37 @@ export default function AppStoreWeb() {
   )
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingOverlay: {
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    bottom: 0,
-    justifyContent: "center",
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0, // Keep this overlay as is since it's theme-neutral
-  },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 10,
-  },
-  webView: {
-    flex: 1,
-  },
-  webViewContainer: {
-    flex: 1,
-  },
+// Themed styles using ThemedStyle pattern
+const $loadingContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: colors.background,
+})
+
+const $loadingOverlay: ThemedStyle<ViewStyle> = () => ({
+  alignItems: "center",
+  backgroundColor: "rgba(0, 0, 0, 0.3)",
+  bottom: 0,
+  justifyContent: "center",
+  left: 0,
+  position: "absolute",
+  right: 0,
+  top: 0,
+})
+
+const $loadingText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: spacing.md,
+  marginTop: 10,
+  color: colors.text,
+})
+
+const $webView: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  backgroundColor: colors.background,
+})
+
+const $webViewContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  backgroundColor: colors.background,
 })

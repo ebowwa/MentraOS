@@ -6,9 +6,8 @@ import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
 import Divider from "@/components/misc/Divider"
@@ -17,38 +16,20 @@ import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
 import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const {push, goBack} = useNavigationHistory()
-  const {status} = useCoreStatus()
-  const {appStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} =
-    useAppStatus()
+  const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
-  const backgroundApps = useMemo(
-    () => appStatus.filter(app => app.type === "background"),
-    [appStatus],
-  )
+  const {active, inactive} = useBackgroundApps()
 
   const incompatibleApps = useMemo(
-    () =>
-      backgroundApps.filter(
-        app => !app.is_running && app.compatibility !== undefined && app.compatibility.isCompatible === false,
-      ),
-    [backgroundApps],
+    () => inactive.filter(app => app.compatibility != null && app.compatibility.isCompatible === false),
+    [inactive],
   )
-
-  const {activeApps, inactiveApps} = useMemo(() => {
-    const isCompatible = (app: AppletInterface) => !(app.compatibility && app.compatibility.isCompatible === false)
-
-    const active = backgroundApps.filter(app => app.is_running && isCompatible(app))
-    const inactive = backgroundApps.filter(app => !app.is_running && isCompatible(app))
-
-    return {activeApps: active, inactiveApps: inactive}
-  }, [backgroundApps])
-
-  const glassesName =
-    status.glasses_info?.model_name || status.core_info?.default_wearable || "your glasses"
 
   const toggleApp = async (app: AppletInterface) => {
     if (app.is_running) {
@@ -59,7 +40,7 @@ export default function BackgroundAppsScreen() {
   }
 
   const startApp = async (packageName: string) => {
-    const app = backgroundApps.find(a => a.packageName === packageName)
+    const app = inactive.find(a => a.packageName === packageName)
     if (!app) {
       console.error("App not found:", packageName)
       return
@@ -223,27 +204,27 @@ export default function BackgroundAppsScreen() {
         style={themed($scrollView)}
         contentContainerStyle={themed($scrollViewContent)}
         showsVerticalScrollIndicator={false}>
-        {backgroundApps.length === 0 ? (
+        {inactive.length === 0 && active.length === 0 ? (
           <View style={themed($emptyContainer)}>
             <Text style={themed($emptyText)}>No background apps available</Text>
           </View>
         ) : (
           <>
-            {activeApps.length > 0 ? (
+            {active.length > 0 ? (
               <>
                 <Text style={themed($sectionHeader)}>Active Background Apps</Text>
                 <View style={themed($sectionContent)}>
-                  {activeApps.map((app, index) => renderAppItem(app, index, index === activeApps.length - 1))}
+                  {active.map((app, index) => renderAppItem(app, index, index === active.length - 1))}
                 </View>
                 <Spacer height={theme.spacing.lg} />
               </>
             ) : (
               <>
-                <Text style={themed($sectionHeader)}>Active Background Apps</Text>
+                <Text style={themed($sectionHeader)} tx="home:activeBackgroundApps" />
                 <View style={themed($tipContainer)}>
                   <View style={themed($tipContent)}>
-                    <Text style={themed($tipText)}>Activate an App</Text>
-                    <Text style={themed($tipSubtext)}>Tap an app's switch to activate it</Text>
+                    <Text style={themed($tipText)} tx="home:activateAnApp" />
+                    <Text style={themed($tipSubtext)} tx="home:tapAnAppSwitch" />
                   </View>
                   <Switch value={false} onValueChange={() => {}} disabled={false} pointerEvents="none" />
                 </View>
@@ -251,11 +232,11 @@ export default function BackgroundAppsScreen() {
               </>
             )}
 
-            {inactiveApps.length > 0 && (
+            {inactive.length > 0 && (
               <>
-                <Text style={themed($sectionHeader)}>Inactive Background Apps</Text>
+                <Text style={themed($sectionHeader)} tx="home:inactiveBackgroundApps" />
                 <View style={themed($sectionContent)}>
-                  {inactiveApps.map((app, index) => renderAppItem(app, index, false))}
+                  {inactive.map((app, index) => renderAppItem(app, index, false))}
                   <TouchableOpacity style={themed($appRow)} onPress={() => push("/store")} activeOpacity={0.7}>
                     <View style={themed($appContent)}>
                       <GetMoreAppsIcon size="medium" />
@@ -273,7 +254,7 @@ export default function BackgroundAppsScreen() {
             {incompatibleApps.length > 0 && (
               <>
                 <Spacer height={theme.spacing.lg} />
-                <Text style={themed($sectionHeader)}>{`Incompatible with ${glassesName}`}</Text>
+                <Text style={themed($sectionHeader)}>{`Incompatible with ${defaultWearable}`}</Text>
                 <View style={themed($sectionContent)}>
                   {incompatibleApps.map((app, index) => (
                     <Fragment key={app.packageName}>
