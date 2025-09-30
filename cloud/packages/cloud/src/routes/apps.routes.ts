@@ -30,12 +30,13 @@ if (!CLOUD_VERSION) {
 }
 
 // Allowed package names for API key authentication
-const ALLOWED_API_KEY_PACKAGES = [
-  "test.augmentos.mira",
-  "cloud.augmentos.mira",
-  "com.augmentos.mira",
-  "dev.mira.local"
-];
+const ALLOWED_API_KEY_PACKAGES =
+  process.env.ALLOWED_MIRA_API_PACKAGES
+    ?.split(",")
+    .map(pkg => pkg.trim())   // remove leading/trailing spaces
+    .filter(pkg => pkg)       // drop any empty values (like from a trailing comma)
+  || [];
+
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 if (!AUGMENTOS_AUTH_JWT_SECRET) {
