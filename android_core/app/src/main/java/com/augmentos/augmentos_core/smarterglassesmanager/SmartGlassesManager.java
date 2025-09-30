@@ -28,6 +28,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Bypas
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnableOfflineModeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PhotoErrorEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
@@ -56,6 +57,7 @@ import com.augmentos.augmentoslib.events.DisconnectedFromCloudEvent;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.EventBusException;
 import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -1057,6 +1059,9 @@ public class SmartGlassesManager extends Service {
      * @return true if request was sent, false if glasses not connected
      */
     public boolean requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
+
+        Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
+
         // Track photo request info for potential error responses
         if (webhookUrl != null && !webhookUrl.isEmpty()) {
             photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
@@ -1088,12 +1093,13 @@ public class SmartGlassesManager extends Service {
 
     /**
      * Send photo error response via webhook if available, otherwise fallback to legacy method
+     * This is the centralized photo error handler for the entire system
      */
-    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+    public void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
         PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
         if (requestInfo != null && !requestInfo.webhookUrl.isEmpty()) {
             // Use webhook for error response
-            Log.d(TAG, "📡 Sending photo error via webhook for requestId: " + requestId);
+            Log.d(TAG, "23 📡 Sending photo error via webhook for requestId: " + requestId);
             ServerComms.getInstance().sendPhotoErrorViaWebhook(
                 requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMessage);
             
@@ -1101,9 +1107,18 @@ public class SmartGlassesManager extends Service {
             photoRequestInfo.remove(requestId);
         } else {
             // Fallback to legacy WebSocket method
-            Log.d(TAG, "📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
+            Log.d(TAG, "23 📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
             ServerComms.getInstance().sendPhotoErrorResponse(requestId, errorCode, errorMessage);
         }
+    }
+
+    /**
+     * EventBus subscriber for PhotoErrorEvent - handles photo errors from other components
+     */
+    @Subscribe(threadMode = ThreadMode.BACKGROUND)
+    public void onPhotoErrorEvent(PhotoErrorEvent event) {
+        Log.d(TAG, "📡 Received PhotoErrorEvent via EventBus - requestId: " + event.requestId);
+        sendPhotoErrorResponse(event.requestId, event.errorCode, event.errorMessage);
     }
 
     /**

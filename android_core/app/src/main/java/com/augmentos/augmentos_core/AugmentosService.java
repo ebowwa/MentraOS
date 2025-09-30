@@ -2193,22 +2193,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     /**
-     * Send photo error response via webhook if available, otherwise fallback to legacy method
+     * Send photo error response via SmartGlassesManager centralized handler
      */
     private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
-        PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
-        if (requestInfo != null && !requestInfo.webhookUrl.isEmpty()) {
-            // Use webhook for error response
-            Log.d(TAG, "📡 Sending photo error via webhook for requestId: " + requestId);
-            ServerComms.getInstance().sendPhotoErrorViaWebhook(
-                requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMessage);
-            
-            // Clean up tracking
-            photoRequestInfo.remove(requestId);
+        Log.d(TAG, "12 📡 Delegating photo error to SmartGlassesManager for requestId: " + requestId);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.sendPhotoErrorResponse(requestId, errorCode, errorMessage);
         } else {
-            // Fallback to legacy WebSocket method
-            Log.d(TAG, "📡 Sending photo error via legacy WebSocket for requestId: " + requestId);
-            ServerComms.getInstance().sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+            Log.e(TAG, "❌ Cannot send photo error - SmartGlassesManager not available");
         }
     }
 
