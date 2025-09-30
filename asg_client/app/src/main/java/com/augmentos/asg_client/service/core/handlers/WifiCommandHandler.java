@@ -35,7 +35,7 @@ public class WifiCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_wifi_credentials", "request_wifi_status", "request_wifi_scan", "set_hotspot_state");
+        return Set.of("set_wifi_credentials", "request_wifi_status", "request_wifi_scan", "set_hotspot_state", "disconnect_wifi");
     }
 
     @Override
@@ -50,6 +50,8 @@ public class WifiCommandHandler implements ICommandHandler {
                     return handleRequestWifiScan();
                 case "set_hotspot_state":
                     return handleSetHotspotState(data);
+                case "disconnect_wifi":
+                    return handleDisconnectWifi();
                 default:
                     Log.e(TAG, "Unsupported WiFi command: " + commandType);
                     return false;
@@ -193,6 +195,26 @@ public class WifiCommandHandler implements ICommandHandler {
         }
     }
     
+    /**
+     * Handle disconnect WiFi command
+     */
+    private boolean handleDisconnectWifi() {
+        try {
+            INetworkManager networkManager = serviceManager.getNetworkManager();
+            if (networkManager != null) {
+                networkManager.disconnectFromWifi();
+                Log.d(TAG, "📶 WiFi disconnect command executed");
+                return true;
+            } else {
+                Log.e(TAG, "Network manager not available for WiFi disconnect");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling WiFi disconnect command", e);
+            return false;
+        }
+    }
+
     /**
      * Send hotspot status to phone via BLE
      */

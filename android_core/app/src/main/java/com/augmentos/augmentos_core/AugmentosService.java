@@ -2701,6 +2701,38 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "📶 Disconnecting glasses from WiFi");
+
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to disconnect WiFi", "error");
+            return;
+        }
+
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
+            return;
+        }
+
+        // Send WiFi disconnect command to glasses
+        smartGlassesManager.disconnectFromWifi();
+
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+                "system",
+                () -> smartGlassesManager.sendReferenceCard("WiFi Disconnect",
+                        "Disconnecting from WiFi..."),
+                5
+        );
+
+        // Notify manager app
+        blePeripheral.sendNotifyManager("WiFi disconnect command sent to glasses", "success");
+
+        Log.d(TAG, "📶 WiFi disconnect command sent to glasses");
+    }
+
+    @Override
     public void setGlassesHotspotState(boolean enabled) {
         Log.d(TAG, "🔥 Setting glasses hotspot state: " + enabled);
 
