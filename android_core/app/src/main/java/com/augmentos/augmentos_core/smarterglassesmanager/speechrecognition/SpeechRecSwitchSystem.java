@@ -7,6 +7,7 @@ import com.augmentos.augmentos_core.enums.SpeechRequiredDataType;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnforceLocalTranscriptionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.EnableOfflineModeEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PauseAsrEvent;
@@ -78,6 +79,12 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
             speechRecFramework.changeEnforceLocalTranscriptionState(enforce);
         }
     }
+
+    public void setEnableOfflineMode(boolean enable) {
+        if (speechRecFramework != null) {
+            speechRecFramework.changeEnableOfflineModeState(enable);
+        }
+    }
     
     @Subscribe
     public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){
@@ -89,6 +96,12 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
     public void onEnforceLocalTranscriptionEvent(EnforceLocalTranscriptionEvent receivedEvent){
         //redirect audio to the currently in use ASR framework
         setEnforceLocalTranscription(receivedEvent.enforceLocalTranscription);
+    }
+
+    @Subscribe
+    public void onEnableOfflineModeEvent(EnableOfflineModeEvent receivedEvent){
+        //redirect audio to the currently in use ASR framework
+        setEnableOfflineMode(receivedEvent.enableOfflineMode);
     }
 
     // BATTERY OPTIMIZATION: Added direct method call to avoid EventBus overhead

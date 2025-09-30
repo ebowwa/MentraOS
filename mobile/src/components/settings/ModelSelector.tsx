@@ -57,7 +57,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
     if (isDownloading) {
       if (extractionProgress > 0) {
-        return `Extracting... ${extractionProgress}%`
+        return `Extracting...`
       } else if (downloadProgress > 0) {
         return `Downloading... ${downloadProgress}%`
       } else {
@@ -116,7 +116,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text text="Speech Recognition Model" style={[styles.label, {color: theme.colors.text}]} />
+      <Text text="Offline Mode Speech Model" style={[styles.label, {color: theme.colors.text}]} />
 
       <TouchableOpacity
         style={[

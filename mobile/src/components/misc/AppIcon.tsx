@@ -7,29 +7,23 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {SquircleView} from "expo-squircle-view"
-import {loadSetting, SETTINGS_KEYS} from "@/utils/SettingsHelper"
+import {useSetting, SETTINGS_KEYS} from "@/stores/settings"
 
 interface AppIconProps {
   app: AppletInterface
   onClick?: () => void
   style?: ViewStyle
   showLabel?: boolean
+  hideLoadingIndicator?: boolean
 }
 
-const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false}) => {
+const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false, hideLoadingIndicator = false}) => {
   const {themed, theme} = useAppTheme()
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
-  const [usingNewUI, setUsingNewUI] = useState(false)
-
-  useEffect(() => {
-    const check = async () => {
-      const newUI = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-      setUsingNewUI(newUI)
-    }
-    check()
-  }, [])
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
 
   return (
     <WrapperComponent
@@ -38,7 +32,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      {Platform.OS === "ios" && usingNewUI ? (
+      {Platform.OS === "ios" && enableSquircles ? (
         <SquircleView
           cornerSmoothing={100}
           preserveSmoothing={true}
@@ -50,9 +44,9 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
             height: style?.height ?? 56,
             borderRadius: style?.borderRadius ?? theme.spacing.md,
           }}>
-          {app.loading && (
+          {app.loading && !hideLoadingIndicator && (
             <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.palette.white} />
+              <ActivityIndicator size="small" color={theme.colors.palette.white} />
             </View>
           )}
           <Image
@@ -65,9 +59,9 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
         </SquircleView>
       ) : (
         <>
-          {app.loading && usingNewUI && (
+          {app.loading && newUi && !hideLoadingIndicator && (
             <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.tint} />
+              <ActivityIndicator size="small" color={theme.colors.tint} />
             </View>
           )}
           <Image
@@ -97,7 +91,7 @@ const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
   alignItems: "center",
   zIndex: 10,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backgroundColor: "rgba(0, 0, 0, 0.2)", // Much more subtle overlay
 })
 
 const $icon: ThemedStyle<ImageStyle> = () => ({

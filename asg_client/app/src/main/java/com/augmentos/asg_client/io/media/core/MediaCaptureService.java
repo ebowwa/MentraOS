@@ -19,6 +19,7 @@ import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
+import com.augmentos.asg_client.audio.AudioAssets;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -179,6 +181,9 @@ public class MediaCaptureService {
                     // Use a special ID for buffer saves
                     mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
                 }
+                
+                // Send gallery status update to phone after buffer video save
+                sendGalleryStatusUpdate();
             }
 
             @Override
@@ -208,121 +213,21 @@ public class MediaCaptureService {
         this.mServiceCallback = callback;
     }
 
-    /**
-     * Handles the photo button press by sending a request to the cloud server
-     * If connected, makes REST API call to server
-     * If disconnected or server error, takes photo locally
-     */
-    public void handlePhotoButtonPress() {
-        // Get core token for authentication
-        String coreToken = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getString("core_token", "");
-
-        // Get device ID for hardware identification
-        String deviceId = android.os.Build.MODEL + "_" + android.os.Build.SERIAL;
-
-        if (coreToken == null || coreToken.isEmpty()) {
-            Log.e(TAG, "No core token available, taking photo locally");
-            takePhotoLocally();
-            return;
-        }
-
-        // Prepare REST API call
-        try {
-            // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
-
-            // Create payload for button press event
-            JSONObject buttonPressPayload = new JSONObject();
-            buttonPressPayload.put("buttonId", "photo");
-            buttonPressPayload.put("pressType", "short");
-            buttonPressPayload.put("deviceId", deviceId);
-
-            Log.d(TAG, "Sending button press event to server: " + buttonPressUrl);
-
-            // Make REST API call with timeout
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                    .build();
-
-            RequestBody requestBody = RequestBody.create(
-                    MediaType.parse("application/json"),
-                    buttonPressPayload.toString()
-            );
-
-            Request request = new Request.Builder()
-                    .url(buttonPressUrl)
-                    .header("Authorization", "Bearer " + coreToken)
-                    .post(requestBody)
-                    .build();
-
-            // Execute request asynchronously
-            client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send button press event", e);
-                    // Connection failed, take photo locally
-                    takePhotoLocally();
-                }
-
-                @Override
-                public void onResponse(Call call, Response response) {
-                    try {
-                        if (!response.isSuccessful()) {
-                            Log.e(TAG, "Server returned error: " + response.code());
-                            // Server error, take photo locally
-                            takePhotoLocally();
-                            return;
-                        }
-
-                        // Parse response
-                        String responseBody = response.body().string();
-                        Log.d(TAG, "Server response: " + responseBody);
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-
-                        // Check if we need to take a photo
-                        if ("take_photo".equals(jsonResponse.optString("action"))) {
-                            String requestId = jsonResponse.optString("requestId");
-                            boolean save = jsonResponse.optBoolean("save", false);  // Default to false
-
-                            Log.d(TAG, "Server requesting photo with requestId: " + requestId + ", save: " + save);
-
-                            // Take photo and upload directly to server
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
-                            int randomSuffix = (int)(Math.random() * 1000);
-                            String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, null, "", save, "medium", false);
-                        } else {
-                            Log.d(TAG, "Button press handled by server, no photo needed");
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing server response", e);
-                        takePhotoLocally();
-                    } finally {
-                        response.close();
-                    }
-                }
-            });
-        } catch (Exception e) {
-            Log.e(TAG, "Error preparing button press request", e);
-            // Something went wrong, take photo locally
-            takePhotoLocally();
+    private void playShutterSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
         }
     }
 
-    /**
-     * Handles the video button press by toggling video recording
-     * Simple toggle logic - no cloud communication
-     */
-    public void handleVideoButtonPress() {
-        if (isRecordingVideo) {
-            Log.d(TAG, "Stopping video recording");
-            stopVideoRecording();
-        } else {
-            Log.d(TAG, "Starting video recording");
-            startVideoRecording();
+    private void playVideoStartSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_START);
+        }
+    }
+
+    private void playVideoStopSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_STOP);
         }
     }
     
@@ -465,6 +370,9 @@ public class MediaCaptureService {
         currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
+            // Play video start sound
+            playVideoStartSound();
+
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
@@ -500,6 +408,9 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
                     }
+
+                    // Send gallery status update to phone after video recording
+                    sendGalleryStatusUpdate();
 
                     // Call upload stub (which just logs for now)
                     uploadVideo(filePath, requestId);
@@ -561,6 +472,9 @@ public class MediaCaptureService {
         }
 
         try {
+            // Play video stop sound
+            playVideoStopSound();
+
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
@@ -759,6 +673,8 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
+        playShutterSound();
+
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
 
@@ -780,6 +696,9 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
                             mMediaCaptureListener.onPhotoUploading(requestId);
                         }
+                        
+                        // Send gallery status update to phone after photo capture
+                        sendGalleryStatusUpdate();
                     }
 
                     @Override
@@ -818,6 +737,8 @@ public class MediaCaptureService {
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
+            playShutterSound();
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -887,11 +808,14 @@ public class MediaCaptureService {
 
                 Log.d(TAG, "### Sending photo request");
 
-                // Create multipart form request
+                // Create multipart form request with smarter timeouts:
+                // - 1 second to connect (fails fast if no internet)
+                // - 10 seconds to write the photo data
+                // - 5 seconds to read the response
                 OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                        .connectTimeout(1, java.util.concurrent.TimeUnit.SECONDS)  // Fast fail if no internet
+                        .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)   // Time to upload photo data
+                        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)     // Time to get response
                         .build();
 
                 RequestBody fileBody = RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile);
@@ -1313,6 +1237,8 @@ public class MediaCaptureService {
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
+        playShutterSound();
+
         try {
             // Use CameraNeo for photo capture
             CameraNeo.takePictureWithCallback(
@@ -1574,6 +1500,34 @@ public class MediaCaptureService {
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer error", e);
+        }
+    }
+
+    /**
+     * Send gallery status update to phone after photo capture
+     * Uses GalleryStatusHelper to avoid code duplication with GalleryCommandHandler
+     */
+    private void sendGalleryStatusUpdate() {
+        try {
+            Log.d(TAG, "📸 Sending gallery status update after photo capture");
+
+            if (fileManager == null) {
+                Log.w(TAG, "📸 Cannot send gallery status: FileManager not available");
+                return;
+            }
+
+            // Build gallery status using shared utility
+            JSONObject response = com.augmentos.asg_client.utils.GalleryStatusHelper.buildGalleryStatus(fileManager);
+
+            // Send through bluetooth if available
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(response.toString().getBytes());
+                Log.d(TAG, "📸 Gallery status update sent successfully");
+            } else {
+                Log.w(TAG, "📸 Cannot send gallery status update: service callback not available");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "📸 Error creating gallery status update", e);
         }
     }
 

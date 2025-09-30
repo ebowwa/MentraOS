@@ -33,4 +33,7 @@ public abstract class SpeechRecFramework {
 
     public void changeEnforceLocalTranscriptionState(boolean enforceLocalTranscription) {
     }
+
+    public void changeEnableOfflineModeState(boolean enableOfflineMode) {
+    }
 }

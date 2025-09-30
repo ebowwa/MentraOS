@@ -1,11 +1,6 @@
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getRestUrl} from "@/utils/SettingsHelper"
 import {AppletInterface} from "@/contexts/AppletStatusProvider"
-
-interface Callback {
-  onSuccess: (data: any) => void
-  onFailure: (errorCode: number) => void
-}
+import {useSettingsStore} from "@/stores/settings"
 
 interface ApiResponse<T = any> {
   success?: boolean
@@ -81,8 +76,9 @@ class RestComms {
   }
 
   private async makeRequest<T = any>(config: RequestConfig): Promise<T> {
+    const {method, url, headers, data, params} = config
+    let status = 0
     try {
-      const {method, url, headers, data, params} = config
       const fullUrl = this.buildUrlWithParams(url, params)
 
       const fetchConfig: RequestInit = {
@@ -96,6 +92,7 @@ class RestComms {
       }
 
       const response = await fetch(fullUrl, fetchConfig)
+      status = response.status
 
       if (!response.ok) {
         // Try to parse error response
@@ -116,7 +113,7 @@ class RestComms {
       return responseData as T
     } catch (error: any) {
       const errorMessage = error.message || error
-      console.error(`${this.TAG}: Request failed -`, errorMessage)
+      console.error(`${this.TAG}: ${method} to ${url} failed with status ${status}`, errorMessage)
       throw error
     }
   }
@@ -129,7 +126,7 @@ class RestComms {
   ): Promise<T> {
     this.validateToken()
 
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}${endpoint}`
 
     console.log(`${method} request to: ${url}`)
@@ -151,7 +148,7 @@ class RestComms {
     data?: any,
     params?: any,
   ): Promise<T> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}${endpoint}`
     const config: RequestConfig = {
       method,
@@ -168,6 +165,27 @@ class RestComms {
   public async getMinimumClientVersion(): Promise<ApiResponse<{required: string; recommended: string}>> {
     const response = await this.request("GET", "/api/client/min-version")
     return response.data
+  }
+
+  public async checkAppHealthStatus(packageName: string): Promise<boolean> {
+    // GET the app's /health endpoint
+    try {
+      const baseUrl = await useSettingsStore.getState().getRestUrl()
+      // POST /api/app-uptime/app-pkg-health-check with body { "packageName": packageName }
+      const healthUrl = `${baseUrl}/api/app-uptime/app-pkg-health-check`
+      const healthResponse = await fetch(healthUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({packageName}),
+      })
+      const healthData = await healthResponse.json()
+      return healthData.success
+    } catch (error) {
+      console.error("AppStatusProvider: Error checking app health status:", error)
+      return false
+    }
   }
 
   // App Management
@@ -219,7 +237,7 @@ class RestComms {
   }
 
   public async exchangeToken(supabaseToken: string): Promise<string> {
-    const baseUrl = await getRestUrl()
+    const baseUrl = await useSettingsStore.getState().getRestUrl()
     const url = `${baseUrl}/auth/exchange-token`
 
     const config: RequestConfig = {
@@ -307,6 +325,17 @@ class RestComms {
   // Error Reporting
   public async sendErrorReport(reportData: any): Promise<any> {
     return this.authenticatedRequest("POST", "/app/error-report", reportData)
+  }
+
+  // Calendar
+  // { events: any[], calendars: any[] }
+  public async sendCalendarData(data: any): Promise<any> {
+    return this.authenticatedRequest("POST", "/api/client/calendar", data)
+  }
+
+  // Location
+  public async sendLocationData(data: any): Promise<any> {
+    return this.authenticatedRequest("POST", "/api/client/location", data)
   }
 }
 

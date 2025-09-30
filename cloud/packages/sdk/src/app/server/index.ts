@@ -6,8 +6,11 @@
  */
 import express, { type Express } from "express";
 import path from "path";
+import fs from "fs";
 import { AppSession } from "../session/index";
 import { createAuthMiddleware } from "../webview";
+import { newSDKUpdate } from "src/constants/messages";
+
 import {
   WebhookRequest,
   WebhookRequestType,
@@ -18,6 +21,7 @@ import {
   isStopWebhookRequest,
   ToolCall,
 } from "../../types";
+
 import { Logger } from "pino";
 import { logger as rootLogger } from "../../logging/logger";
 import axios from "axios";
@@ -242,7 +246,7 @@ export class AppServer {
    */
   public start(): Promise<void> {
     return new Promise((resolve) => {
-      this.app.listen(this.config.port, () => {
+      this.app.listen(this.config.port, async () => {
         this.logger.info(
           `🎯 App server running at http://localhost:${this.config.port}`,
         );
@@ -251,6 +255,61 @@ export class AppServer {
             `📂 Serving static files from ${this.config.publicDir}`,
           );
         }
+
+        // 🔑 Grab SDK version
+        try {
+          // Look for the actual installed @mentra/sdk package.json in node_modules
+          const sdkPkgPath = path.resolve(
+            process.cwd(),
+            "node_modules/@mentra/sdk/package.json",
+          );
+
+          let currentVersion = "unknown";
+
+          if (fs.existsSync(sdkPkgPath)) {
+            const sdkPkg = JSON.parse(fs.readFileSync(sdkPkgPath, "utf-8"));
+
+            // Get the actual installed version
+            currentVersion = sdkPkg.version || "not-found"; // located in the node module
+          } else {
+            this.logger.debug(
+              { sdkPkgPath },
+              "No @mentra/sdk package.json found at path",
+            );
+          }
+
+          // this.logger.debug(`Developer is using SDK version: ${currentVersion}`);
+
+          // Fetch latest SDK version from the API endpoint
+          let latest = "2.1.20"; // fallback version
+          try {
+            const cloudHost =
+              process.env.CLOUD_PUBLIC_HOST_NAME ||
+              "mentra-cloud-server.ngrok.app";
+            const response = await axios.get(`https://${cloudHost}/api/sdk`);
+            if (response.data && response.data.success && response.data.data) {
+              latest = response.data.data.latest; // Changed from "recommended" to "latest"
+              this.logger.debug(`Latest SDK version from API: ${latest}`);
+              this.logger.debug(`Current SDK version: ${currentVersion}`);
+            }
+          } catch (fetchError) {
+            this.logger.debug(
+              { fetchError },
+              "Failed to fetch latest SDK version from API, using fallback",
+            );
+          }
+
+          if (currentVersion === "not-found") {
+            this.logger.warn(
+              `⚠️ @mentra/sdk not found in your project dependencies. Please install it with: npm install @mentra/sdk`,
+            );
+          } else if (latest && latest !== currentVersion) {
+            this.logger.warn(newSDKUpdate(latest));
+          }
+        } catch (err) {
+          this.logger.debug({ err }, "Version check failed");
+        }
+
         resolve();
       });
     });
@@ -430,16 +489,14 @@ export class AppServer {
 
           // Call onStop with session end reason
           // This allows apps to clean up resources when the user's session ends
-          this.onStop(
-            sessionId,
-            userId,
-            "User session ended",
-          ).catch((error) => {
-            this.logger.error(
-              error,
-              `❌ Error in onStop handler for session end:`,
-            );
-          });
+          this.onStop(sessionId, userId, "User session ended").catch(
+            (error) => {
+              this.logger.error(
+                error,
+                `❌ Error in onStop handler for session end:`,
+              );
+            },
+          );
         }
         // Check if this is a permanent disconnection after exhausted reconnection attempts
         else if (info.permanent === true) {

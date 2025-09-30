@@ -24,6 +24,10 @@ import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 import com.augmentos.augmentoslib.events.CoreToManagerOutputEvent;
 import com.augmentos.augmentoslib.events.ManagerToCoreRequestEvent;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandReceiver;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BleCommandSender;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PreferenceChangedEvent;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONException;
@@ -496,13 +500,14 @@ public class AugmentosBlePeripheral {
         sendDataToAugmentOsManager(message.toString());
     }
 
-    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName) {
-        Log.d(TAG, "sendGlassesSearchResultsToManager");
+    public void sendGlassesBluetoothDiscoverResultToManager(String modelName, String deviceName, String deviceAddress) {
+        Log.d(TAG, "sendGlassesSearchResultsToManager modelName: " + modelName + " deviceName: " + deviceName + " deviceAddress: " + deviceAddress);
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
-        try{
+        try {
             messageObj.put("model_name", modelName);
             messageObj.put("device_name", deviceName);
+            messageObj.put("device_address", deviceAddress);
             data.put("compatible_glasses_search_result", messageObj);
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -532,6 +537,56 @@ public class AugmentosBlePeripheral {
             data.put("app_is_downloaded", messageObj);
         } catch (JSONException e) {
             throw new RuntimeException(e);
+        }
+        sendDataToAugmentOsManager(data.toString());
+    }
+
+    public void sendBleCommandReceiverEventToManager(BleCommandReceiver event) {
+        Log.d(TAG, "sendBleCommandReceiverEventToManager");
+        JSONObject payload = new JSONObject();
+        JSONObject messageObj = new JSONObject();
+        try {
+            messageObj.put("command", event.command);
+            messageObj.put("commandText", event.commandText);
+            payload.put("receive_command_from_ble", messageObj);
+            payload.put("type", "receive_command_from_ble");
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        sendDataToAugmentOsManager(payload.toString());
+    }
+
+    public void sendBleCommandSenderEventToManager(BleCommandSender event) {
+        // Commander, mission objective: pack the outgoing data with a "type" key for clear identification in the field.
+        JSONObject payload = new JSONObject();
+        JSONObject messageObj = new JSONObject();
+        try {
+            messageObj.put("command", event.command);
+            messageObj.put("commandText", event.commandText);
+            payload.put("send_command_to_ble", messageObj);
+            payload.put("type", "send_command_to_ble");
+
+            Log.d(TAG, "sendBleCommandSenderEventToManager: " + payload.toString());
+            sendDataToAugmentOsManager(payload.toString());
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Subscribe
+    public void onPreferenceChanged(PreferenceChangedEvent event) {
+        sendSaveSettingToManager(event.key, event.value);
+    }
+
+    public void sendSaveSettingToManager(String key, String value) {
+        JSONObject data = new JSONObject();
+        try {
+            data.put("type", "save_setting");
+            data.put("key", key);
+            data.put("value", value);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating save_setting message", e);
+            return;
         }
         sendDataToAugmentOsManager(data.toString());
     }

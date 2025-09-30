@@ -8,32 +8,29 @@ import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import HomeIcon from "assets/icons/navbar/HomeIcon"
-import MirrorIcon from "assets/icons/navbar/MirrorIcon"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
 import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/stores/settings"
 import {router, usePathname} from "expo-router"
+import {useSettingsStore} from "@/stores/settings"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
 
-  const {themeScheme} = useThemeProvider()
+  const isNewUi = useSettingsStore(state => state.settings[SETTINGS_KEYS.new_ui])
+  const setSetting = useSettingsStore(state => state.setSetting)
   const {theme, themed} = useAppTheme()
-  const {push, replace} = useNavigationHistory()
+  const {replace} = useNavigationHistory()
 
-  const showLabel = false
-  const iconFocusedColor = theme.colors.tabBarIconActive
-  const whiteColor = "#fff"
+  const iconFocusedColor = theme.colors.primary
+  const iconInactiveColor = theme.colors.textDim
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
   const pressTimeout = useRef<NodeJS.Timeout | null>(null)
-
-  const pathname = usePathname()
 
   const handleQuickPress = () => {
     replace("/settings")
@@ -62,7 +59,7 @@ export default function Layout() {
     if (pressCount.current === maxPressCount) {
       // Show alert on 8th press
       showAlert("Developer Mode", "You are now a developer!", [{text: translate("common:ok")}])
-      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      useSettingsStore.getState().setSetting(SETTINGS_KEYS.dev_mode, true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {
       const remaining = maxPressCount - pressCount.current
@@ -85,8 +82,7 @@ export default function Layout() {
   // enable new home ui if you tap and hold
   const handleHomeLongPress = async () => {
     replace("/home")
-    const isNewUi = await loadSetting(SETTINGS_KEYS.NEW_UI, false)
-    saveSetting(SETTINGS_KEYS.NEW_UI, !isNewUi)
+    await setSetting(SETTINGS_KEYS.new_ui, !isNewUi)
     Toast.show({
       type: "info",
       text1: isNewUi ? "New UI disabled" : "New UI enabled",
@@ -112,8 +108,8 @@ export default function Layout() {
             backgroundColor: "transparent",
           },
         ],
-        tabBarActiveTintColor: theme.colors.tabBarTextActive,
-        tabBarInactiveTintColor: theme.colors.tabBarTextInactive,
+        tabBarActiveTintColor: iconFocusedColor,
+        tabBarInactiveTintColor: iconInactiveColor,
         tabBarLabelStyle: themed($tabBarLabel),
         tabBarItemStyle: themed($tabBarItem),
         tabBarLabelPosition: "below-icon",
@@ -130,11 +126,11 @@ export default function Layout() {
               top: 0,
               bottom: 0,
               borderTopColor: theme.colors.separator,
-              borderTopWidth: 1,
+              // borderTopWidth: 1,
               overflow: "hidden",
             }}>
             <LinearGradient
-              colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
+              colors={[theme.colors.backgroundStart, theme.colors.backgroundEnd]}
               style={{
                 position: "absolute",
                 left: 0,
@@ -156,10 +152,11 @@ export default function Layout() {
           // tabBarIcon: ({focused, color}) => (
           //   <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
           // ),
-          tabBarIcon: ({focused, color}) => {
+          tabBarIcon: ({focused}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
             return (
               <TouchableOpacity onLongPress={handleHomeLongPress} onPress={() => replace("/home")}>
-                <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+                <HomeIcon size={28} color={mColor} />
               </TouchableOpacity>
             )
           },
@@ -171,9 +168,10 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <SolarLineIconsSet4 size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-          ),
+          tabBarIcon: ({focused}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
+            return <SolarLineIconsSet4 size={28} color={mColor} />
+          },
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
@@ -193,9 +191,10 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <StoreIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
-          ),
+          tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
+            return <StoreIcon size={28} color={mColor} />
+          },
           tabBarLabel: translate("navigation:store"),
         }}
       />
@@ -205,9 +204,10 @@ export default function Layout() {
           href: "/settings",
           headerShown: false,
           tabBarIcon: ({focused, color}) => {
+            const mColor = focused ? iconFocusedColor : iconInactiveColor
             return (
               <TouchableOpacity onPress={handleQuickPress}>
-                <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.tabBarIconInactive} />
+                <UserIcon size={28} color={mColor} />
               </TouchableOpacity>
             )
           },
@@ -220,19 +220,19 @@ export default function Layout() {
 }
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  borderTopColor: colors.separator,
-  borderTopWidth: 1,
-  paddingTop: 8,
+  // backgroundColor: colors.background,
+  // borderTopColor: colors.separator,
+  // borderTopWidth: 10,
   height: 90,
+  paddingTop: spacing.sm,
 })
 
-const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBarItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingTop: spacing.sm,
   paddingBottom: spacing.xs,
 })
 
-const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({
+const $tabBarLabel: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 12,
   fontFamily: typography.primary.medium,
   lineHeight: 16,

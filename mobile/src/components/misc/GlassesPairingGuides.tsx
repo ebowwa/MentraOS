@@ -29,6 +29,168 @@ import Animated, {
 } from "react-native-reanimated"
 import {ThemedStyle} from "@/theme"
 
+export function MentraNextGlassesPairingGuide() {
+  const {theme, themed} = useAppTheme()
+
+  // Animation values
+  const glassesOpacity = useSharedValue(1)
+  const glassesTranslateY = useSharedValue(0)
+  const glassesScale = useSharedValue(1)
+  const caseOpacity = useSharedValue(1)
+  const arrowOpacity = useSharedValue(0)
+  const finalImageOpacity = useSharedValue(0)
+
+  // Start animation sequence when component mounts
+  // useEffect(() => {
+  //   const startAnimation = () => {
+  //     // Step 1: Show the case
+  //     caseOpacity.value = withTiming(1, {duration: 800})
+
+  //     // Step 2: Show arrow after case appears
+  //     arrowOpacity.value = withDelay(1000, withTiming(1, {duration: 500}))
+
+  //     // Step 3: Animate glasses moving down and scaling
+  //     glassesTranslateY.value = withDelay(
+  //       1500,
+  //       withTiming(120, {
+  //         duration: 1200,
+  //         easing: Easing.out(Easing.cubic),
+  //       }),
+  //     )
+
+  //     glassesScale.value = withDelay(
+  //       1500,
+  //       withTiming(0.7, {
+  //         duration: 1200,
+  //         easing: Easing.out(Easing.cubic),
+  //       }),
+  //     )
+
+  //     // Step 4: Fade out glasses and arrow, show final image
+  //     glassesOpacity.value = withDelay(2700, withTiming(0, {duration: 400}))
+  //     arrowOpacity.value = withDelay(2700, withTiming(0, {duration: 400}))
+  //     finalImageOpacity.value = withDelay(3100, withTiming(1, {duration: 600}))
+  //   }
+
+  //   // Start animation after a short delay
+  //   const timer = setTimeout(startAnimation, 500)
+  //   return () => clearTimeout(timer)
+  // }, [])
+
+  useEffect(() => {
+    const resetValues = () => {
+      glassesOpacity.value = 1
+      glassesTranslateY.value = 0
+      glassesScale.value = 1
+      caseOpacity.value = 1
+      arrowOpacity.value = 0
+      finalImageOpacity.value = 0
+    }
+
+    const startAnimation = () => {
+      // Reset all values to initial state
+      resetValues()
+
+      // Step 1: Show the case
+      // caseOpacity.value = withTiming(1, {duration: 800})
+
+      // Step 3: Animate glasses moving down and scaling
+      glassesTranslateY.value = withDelay(
+        500,
+        withTiming(160, {
+          duration: 1800,
+          easing: Easing.out(Easing.cubic),
+        }),
+      )
+
+      glassesScale.value = withDelay(
+        500,
+        withTiming(0.7, {
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+        }),
+      )
+
+      // Step 4: Fade out glasses and arrow, show final image
+      glassesOpacity.value = withDelay(1000, withTiming(0, {duration: 400}))
+
+      // Step 5: Show final image briefly, then restart
+      finalImageOpacity.value = withDelay(
+        1000,
+        withTiming(1, {duration: 600}, finished => {
+          if (finished) {
+            // // Hold the final state for 1.5 seconds, then restart
+            finalImageOpacity.value = withDelay(
+              1000,
+              withTiming(0, {duration: 400}, finished => {
+                if (finished) {
+                  runOnJS(startAnimation)()
+                }
+              }),
+            )
+            glassesTranslateY.value = 0
+            glassesScale.value = 1
+            glassesOpacity.value = withDelay(1000, withTiming(1, {duration: 400}))
+          }
+        }),
+      )
+    }
+
+    // short delay before starting the animation
+    const timer = setTimeout(startAnimation, 300)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const animatedGlassesStyle = useAnimatedStyle(() => ({
+    opacity: glassesOpacity.value,
+    transform: [{translateY: glassesTranslateY.value}, {scale: glassesScale.value}],
+  }))
+
+  const animatedCaseStyle = useAnimatedStyle(() => ({
+    opacity: caseOpacity.value,
+  }))
+
+  const animatedArrowStyle = useAnimatedStyle(() => ({
+    opacity: arrowOpacity.value,
+  }))
+
+  const animatedFinalImageStyle = useAnimatedStyle(() => ({
+    opacity: finalImageOpacity.value,
+  }))
+
+  return (
+    <View style={themed($guideContainer)}>
+      <Text
+        text="1. Disconnect your MentraNex from within the MentraNex app, or uninstall the MentraNex app"
+        style={themed($guideStep)}
+      />
+      <Text text="2. Place your MentraNex in the charging case with the lid open." style={themed($guideStep)} />
+
+      <View style={themed($animationContainer)}>
+        {/* Glasses Image - Animated */}
+        <Animated.View style={[themed($glassesContainer), animatedGlassesStyle]}>
+          <Image source={require("../../../assets/glasses/g1.png")} style={themed($glassesImage)} />
+        </Animated.View>
+
+        {/* Case Image - Fades in */}
+        <Animated.View style={[themed($caseContainer), animatedCaseStyle]}>
+          <Image source={require("../../../assets/guide/image_g1_case_closed.png")} style={themed($caseImage)} />
+        </Animated.View>
+
+        {/* Arrow - Appears and disappears */}
+        <Animated.View style={[themed($arrowContainer), animatedArrowStyle]}>
+          <MaterialCommunityIcons name="arrow-down" size={36} color={theme.colors.text} />
+        </Animated.View>
+
+        {/* Final paired image - Fades in at the end */}
+        <Animated.View style={[themed($caseContainer), animatedFinalImageStyle]}>
+          <Image source={require("../../../assets/guide/image_g1_pair.png")} style={themed($caseImage)} />
+        </Animated.View>
+      </View>
+    </View>
+  )
+}
+
 export function EvenRealitiesG1PairingGuide() {
   const {theme, themed} = useAppTheme()
 
@@ -331,7 +493,7 @@ export function MentraLivePairingGuide() {
                 },
                 {
                   text: "Continue",
-                  onPress: () => Linking.openURL("https://mentra.glass/live"),
+                  onPress: () => Linking.openURL("https://mentra.glass"),
                 },
               ])
             }}>

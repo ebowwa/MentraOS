@@ -16,9 +16,23 @@ public class L3cCpp {
 
     public static native long initEncoder();
     public static native void freeEncoder(long encoderPtr);
-    public static native byte[] encodeLC3(long encoderPtr, byte[] pcmData);
+    
+    // Parameterized encoding function with frame size
+    public static native byte[] encodeLC3(long encoderPtr, byte[] pcmData, int frameSize);
+    
+    // Convenience overload with default frame size (20 bytes for backward compatibility)
+    public static byte[] encodeLC3(long encoderPtr, byte[] pcmData) {
+        return encodeLC3(encoderPtr, pcmData, 20);
+    }
 
     public static native long initDecoder();
     public static native void freeDecoder(long decoderPtr);
-    public static native byte[] decodeLC3(long decoderPtr, byte[] lc3Data);
+    
+    // Parameterized decoding function with frame size
+    public static native byte[] decodeLC3(long decoderPtr, byte[] lc3Data, int frameSize);
+    
+    // Convenience overload with default frame size (20 bytes for backward compatibility)
+    public static byte[] decodeLC3(long decoderPtr, byte[] lc3Data) {
+        return decodeLC3(decoderPtr, lc3Data, 20);
+    }
 }

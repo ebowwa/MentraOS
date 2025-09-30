@@ -4,6 +4,7 @@ import {
   AudioWearablePairingGuide,
   BrilliantLabsFramePairingGuide,
   EvenRealitiesG1PairingGuide,
+  MentraNextGlassesPairingGuide,
   MentraLivePairingGuide,
   MentraMach1PairingGuide,
   VirtualWearablePairingGuide,
@@ -20,6 +21,8 @@ export const getPairingGuide = (glassesModelName: string) => {
   switch (glassesModelName) {
     case "Even Realities G1":
       return <EvenRealitiesG1PairingGuide />
+    case "Mentra Nex":
+      return <MentraNextGlassesPairingGuide />
     case "Vuzix Z100":
       return <VuzixZ100PairingGuide />
     case "Mentra Live":

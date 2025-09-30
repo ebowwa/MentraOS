@@ -236,7 +236,7 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void connectToSmartGlasses(){
+    public void connectToSmartGlasses(SmartGlassesDevice device){
         Log.d(TAG, "connectToSmartGlasses running...");
 //        int mCount = 10;
 //        while ((mConnectState != 2) && (!hasUltraliteControl) && (mCount > 0)){
@@ -383,6 +383,19 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
 
     public void displayCustomContent(String json) {
         displayReferenceCardSimple("CustomDisplayNotImplemented", json);
+    }
+
+    @Override
+    public void clearDisplay() {
+        if (!isConnected()) {
+            Log.d(TAG, "Not connected to glasses");
+            return;
+        }
+        Log.d(TAG, "=== SENDING CLEAR DISPLAY COMMAND TO ULTRALITE GLASSES ===");
+        
+        // For Ultralite glasses, we can send an empty text wall to clear the display
+        // This is a stub implementation since Ultralite has limited display capabilities
+        Log.d(TAG, "[STUB] Ultralite glasses display cleared (no actual display)");
     }
 
 

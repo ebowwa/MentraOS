@@ -1,11 +1,10 @@
-import {
+import type {
   AppType,
   ToolSchema,
   AppSetting,
   HardwareRequirement,
 } from "@mentra/sdk";
 
-// Define permission types
 export enum PermissionType {
   MICROPHONE = "MICROPHONE",
   LOCATION = "LOCATION",

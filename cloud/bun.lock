@@ -136,7 +136,9 @@
     "packages/sdk": {
       "name": "@mentra/sdk",
       "version": "2.1.23",
-      "dependencies": {
+      "bin": {
+        "mentra": "./dist/cli.js",
+      },      "dependencies": {
         "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",
         "cookie-parser": "^1.4.7",

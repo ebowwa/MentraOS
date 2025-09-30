@@ -1,32 +1,22 @@
-import React, {useState, useEffect} from "react"
 import {View, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {MaterialCommunityIcons} from "@expo/vector-icons"
-import {translate} from "@/i18n"
-import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/utils/SettingsHelper"
-import {router} from "expo-router"
 import {type ThemeType} from "@/utils/useAppTheme"
+// eslint-disable-next-line
 import {StyleSheet} from "react-native"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
   const {replace} = useNavigationHistory()
 
-  useEffect(() => {
-    // Load saved theme preference
-    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
-      setSelectedTheme(savedTheme as ThemeType)
-    })
-  }, [])
+  const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.theme_preference)
 
   const handleThemeChange = async (newTheme: ThemeType) => {
-    setSelectedTheme(newTheme)
-    await saveSetting(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
+    await setThemePreference(newTheme)
 
     // Apply theme immediately
     if (newTheme === "system") {
@@ -48,7 +38,9 @@ export default function ThemeSettingsPage() {
         <MaterialCommunityIcons
           name="check"
           size={24}
-          color={selectedTheme === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"}
+          color={
+            themePreference === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"
+          }
         />
       </TouchableOpacity>
       {/* @ts-ignore */}
