@@ -30,6 +30,9 @@ import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
 import {Header, Text} from "@/components/ignite"
+import * as Linking from "expo-linking"
+import {MediaLibraryPermissions} from "@/utils/MediaLibraryPermissions"
+import {gallerySettingsService} from "@/services/asg/gallerySettingsService"
 
 // Gallery timing constants
 const TIMING = {
@@ -67,14 +70,14 @@ interface GalleryItem {
 
 export function GalleryScreen() {
   const {status} = useCoreStatus()
-  const {goBack} = useNavigationHistory()
+  const {goBack, push} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
 
-  // Responsive column calculation
+  // Column calculation - 3 per row like Google Photos / Apple Photos
   const screenWidth = Dimensions.get("window").width
-  const MIN_ITEM_WIDTH = 150
-  const numColumns = Math.max(2, Math.min(Math.floor((screenWidth - spacing.lg * 2) / MIN_ITEM_WIDTH), 4))
-  const itemWidth = (screenWidth - spacing.lg * 2 - spacing.lg * (numColumns - 1)) / numColumns
+  const ITEM_SPACING = 2 // Minimal spacing between items (1-2px hairline)
+  const numColumns = screenWidth < 320 ? 2 : 3 // 2 columns for very small screens, otherwise 3
+  const itemWidth = (screenWidth - ITEM_SPACING * (numColumns - 1)) / numColumns
 
   const [networkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
@@ -92,6 +95,10 @@ export function GalleryScreen() {
   }, [status.glasses_info])
 
   const {hotspotSsid, hotspotPassword, hotspotGatewayIp, isHotspotEnabled} = connectionInfo
+
+  // Permission state
+  const [hasMediaLibraryPermission, setHasMediaLibraryPermission] = useState(false)
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false)
 
   // State machine
   const [galleryState, setGalleryState] = useState<GalleryState>(GalleryState.INITIALIZING)
@@ -382,6 +389,29 @@ export function GalleryScreen() {
           glassesModel,
         )
         await localStorageService.saveDownloadedFile(downloadedFile)
+      }
+
+      // Auto-save to camera roll if enabled
+      const shouldAutoSave = await gallerySettingsService.getAutoSaveToCameraRoll()
+      if (shouldAutoSave) {
+        console.log("[GalleryScreen] Auto-saving photos to camera roll...")
+        let savedCount = 0
+        let failedCount = 0
+
+        for (const photoInfo of downloadResult.downloaded) {
+          const filePath = photoInfo.filePath || localStorageService.getPhotoFilePath(photoInfo.name)
+          const success = await MediaLibraryPermissions.saveToLibrary(filePath)
+          if (success) {
+            savedCount++
+          } else {
+            failedCount++
+          }
+        }
+
+        console.log(`[GalleryScreen] Saved ${savedCount}/${downloadResult.downloaded.length} photos to camera roll`)
+        if (failedCount > 0) {
+          console.warn(`[GalleryScreen] Failed to save ${failedCount} photos to camera roll`)
+        }
       }
 
       // Keep all progress states visible for a moment to show completion
@@ -803,28 +833,55 @@ export function GalleryScreen() {
       .catch(error => console.error("[GalleryScreen] Failed to send gallery status query:", error))
   }
 
-  // Initial mount
+  // Initial mount - check permission first
   useEffect(() => {
-    console.log("[GalleryScreen] Component mounted")
-    // console.log("[GalleryScreen] Glasses connection status:", {
-    //   hasGlassesInfo: !!status.glasses_info,
-    //   glassesModel: status.glasses_info?.model_name,
-    //   isHotspotEnabled,
-    //   hotspotGatewayIp,
-    //   connectionAvailable: !!(status.glasses_info && isHotspotEnabled && hotspotGatewayIp)
-    // })
+    const checkAndRequestPermission = async () => {
+      console.log("[GalleryScreen] Component mounted - checking media library permission")
+      const hasPermission = await MediaLibraryPermissions.checkPermission()
 
-    loadDownloadedPhotos()
+      if (!hasPermission) {
+        setIsRequestingPermission(true)
+        const granted = await MediaLibraryPermissions.requestPermission()
+        setIsRequestingPermission(false)
 
-    // Only query glasses if we have glasses info (meaning glasses are connected)
-    if (status.glasses_info?.model_name) {
-      console.log("[GalleryScreen] Glasses connected - querying gallery status", status.glasses_info)
-      transitionToState(GalleryState.QUERYING_GLASSES)
-      queryGlassesGalleryStatus()
-    } else {
-      console.log("[GalleryScreen] No glasses connected - showing local photos only")
-      transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+        if (!granted) {
+          // Show alert and navigate back
+          showAlert(
+            "Permission Required",
+            "MentraOS needs permission to save photos to your camera roll. Please grant permission in Settings.",
+            [
+              {text: "Cancel", onPress: () => goBack()},
+              {
+                text: "Open Settings",
+                onPress: () => {
+                  Linking.openSettings()
+                  goBack()
+                },
+              },
+            ],
+          )
+          return
+        }
+      }
+
+      setHasMediaLibraryPermission(true)
+      console.log("[GalleryScreen] Media library permission granted")
+
+      // Continue with existing mount logic
+      loadDownloadedPhotos()
+
+      // Only query glasses if we have glasses info (meaning glasses are connected)
+      if (status.glasses_info?.model_name) {
+        console.log("[GalleryScreen] Glasses connected - querying gallery status", status.glasses_info)
+        transitionToState(GalleryState.QUERYING_GLASSES)
+        queryGlassesGalleryStatus()
+      } else {
+        console.log("[GalleryScreen] No glasses connected - showing local photos only")
+        transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
+      }
     }
+
+    checkAndRequestPermission()
   }, [])
 
   // Handle back button
@@ -1214,8 +1271,8 @@ export function GalleryScreen() {
             shimmerColors={[theme.colors.border, theme.colors.background, theme.colors.border]}
             shimmerStyle={{
               width: itemWidth,
-              height: itemWidth * 0.8,
-              borderRadius: 8,
+              height: itemWidth, // Square aspect ratio like Google/Apple Photos
+              borderRadius: 0,
             }}
             duration={1500}
           />
@@ -1244,7 +1301,7 @@ export function GalleryScreen() {
         disabled={isDownloading}
         activeOpacity={isDownloading ? 1 : 0.8}>
         <View style={{position: "relative"}}>
-          <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth * 0.8}} />
+          <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth}} />
           {isDownloading && <View style={themed($photoDimmingOverlay)} />}
         </View>
         {item.isOnServer && (
@@ -1314,17 +1371,34 @@ export function GalleryScreen() {
     )
   }
 
+  // Show permission loading state
+  if (isRequestingPermission || !hasMediaLibraryPermission) {
+    return (
+      <>
+        <Header title="Glasses Gallery" leftIcon="caretLeft" onLeftPress={() => goBack()} />
+        <View style={themed($screenContainer)}>
+          <View style={themed($permissionContainer)}>
+            <ActivityIndicator size="large" color={theme.colors.tint} />
+            <Text style={themed($permissionText)}>
+              {isRequestingPermission ? "Requesting photo library permission..." : "Loading gallery..."}
+            </Text>
+          </View>
+        </View>
+      </>
+    )
+  }
+
   return (
     <>
       <Header
         title="Glasses Gallery"
         leftIcon="caretLeft"
         onLeftPress={() => goBack()}
-        // RightActionComponent={
-        //   <TouchableOpacity onPress={handleDeleteAll} style={themed($deleteAllButton)}>
-        //     <MaterialCommunityIcons name="delete-sweep" size={24} color={theme.colors.text} />
-        //   </TouchableOpacity>
-        // }
+        RightActionComponent={
+          <TouchableOpacity onPress={() => push("/asg/gallery-settings")} style={themed($settingsButton)}>
+            <MaterialCommunityIcons name="cog" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+        }
       />
       <View style={themed($screenContainer)}>
         <View style={themed($galleryContainer)}>
@@ -1377,7 +1451,7 @@ export function GalleryScreen() {
                     {paddingBottom: shouldShowSyncButton ? 100 : spacing.lg},
                   ]}
                   columnWrapperStyle={numColumns > 1 ? themed($columnWrapper) : undefined}
-                  ItemSeparatorComponent={() => <View style={{height: spacing.lg}} />}
+                  ItemSeparatorComponent={() => <View style={{height: ITEM_SPACING}} />}
                   initialNumToRender={10}
                   maxToRenderPerBatch={10}
                   windowSize={10}
@@ -1426,13 +1500,14 @@ const $errorText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.sm,
 })
 
-const $photoGridContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.lg,
-  paddingTop: spacing.lg,
+const $photoGridContent: ThemedStyle<ViewStyle> = () => ({
+  paddingHorizontal: 0, // No horizontal padding for edge-to-edge layout
+  paddingTop: 0, // No top padding for edge-to-edge layout
 })
 
 const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
+  gap: 2, // Minimal spacing between columns
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -1456,15 +1531,15 @@ const $emptySubtext: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   paddingHorizontal: spacing.lg,
 })
 
-const $photoItem: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  borderRadius: spacing.xs,
+const $photoItem: ThemedStyle<ViewStyle> = () => ({
+  borderRadius: 0, // No rounding like Google Photos / Apple Photos
   overflow: "hidden",
   backgroundColor: "rgba(0,0,0,0.05)",
 })
 
 const $photoImage: ThemedStyle<ImageStyle> = () => ({
   width: "100%",
-  borderRadius: 8,
+  borderRadius: 0, // No rounding like Google Photos / Apple Photos
 })
 
 const $videoIndicator: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -1490,7 +1565,7 @@ const $progressRingOverlay: ThemedStyle<ViewStyle> = () => ({
   bottom: 0,
   justifyContent: "center",
   alignItems: "center",
-  borderRadius: 8,
+  borderRadius: 0,
 })
 
 const $galleryContainer: ThemedStyle<ViewStyle> = () => ({
@@ -1587,9 +1662,33 @@ const $photoDimmingOverlay: ThemedStyle<ViewStyle> = () => ({
   right: 0,
   bottom: 0,
   backgroundColor: "rgba(0,0,0,0.5)",
-  borderRadius: 8,
+  borderRadius: 0,
 })
 
 const $photoItemDisabled: ThemedStyle<ViewStyle> = () => ({
   // Removed opacity to prevent greyed out appearance during sync
+})
+
+const $permissionContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  padding: spacing.xl,
+})
+
+const $permissionText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  color: colors.textDim,
+  marginTop: spacing.md,
+  textAlign: "center",
+})
+
+const $settingsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.sm,
+  paddingVertical: spacing.xs,
+  borderRadius: spacing.sm,
+  justifyContent: "center",
+  alignItems: "center",
+  minWidth: 44,
+  minHeight: 44,
 })

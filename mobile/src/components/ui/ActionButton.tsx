@@ -1,7 +1,7 @@
-import React from "react"
-import {TouchableOpacity, Text, ViewStyle, TextStyle} from "react-native"
+import {TouchableOpacity, View, ViewStyle, TextStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {Text} from "@/components/ignite"
 
 export type ActionButtonVariant = "default" | "warning" | "destructive" | "secondary"
 
@@ -10,6 +10,11 @@ interface ActionButtonProps {
    * The text to display in the button
    */
   label: string
+
+  /**
+   * Optional subtitle text to display below the label
+   */
+  subtitle?: string
 
   /**
    * The button variant - default (blue), warning (orange), or destructive (red)
@@ -38,6 +43,7 @@ interface ActionButtonProps {
  */
 export default function ActionButton({
   label,
+  subtitle,
   variant = "default",
   onPress,
   disabled = false,
@@ -64,22 +70,38 @@ export default function ActionButton({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}>
-      <Text style={[themed($text), {color: getTextColor()}]}>{label}</Text>
+      <View style={themed($textContainer)}>
+        <Text style={[themed($text), {color: getTextColor()}]} text={label} />
+        {subtitle && <Text style={themed($subtitle)} text={subtitle} />}
+      </View>
     </TouchableOpacity>
   )
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
-  paddingVertical: spacing.sm,
+  paddingVertical: spacing.md,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.md,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
 })
 
-const $text: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: spacing.md,
+const $textContainer: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "flex-start",
+  gap: 4,
+  flex: 1,
+})
+
+const $text: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 15,
   fontWeight: "500",
-  textAlign: "left",
+  color: colors.text,
+})
+
+const $subtitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.textDim,
 })

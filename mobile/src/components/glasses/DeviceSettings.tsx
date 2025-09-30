@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
+import {View, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Icon} from "@/components/ignite"
+import {Icon, Text} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -78,7 +78,7 @@ export default function DeviceSettings() {
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
   const isGlassesConnected = Boolean(status.glasses_info?.model_name)
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   const [buttonMode, setButtonMode] = useSetting(SETTINGS_KEYS.button_mode)
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
@@ -393,7 +393,7 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "photo" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "photo" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
 
@@ -412,7 +412,7 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "apps" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "apps" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
 
@@ -510,47 +510,47 @@ export default function DeviceSettings() {
               {hasMicrophoneSelector && (
                 <View style={themed($settingsGroup)}>
                   <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>Microphone Selection</Text>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        paddingBottom: theme.spacing.xs,
-                        paddingTop: theme.spacing.xs,
-                      }}
-                      onPress={() => setMic("phone")}>
-                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={24}
-                        color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
-                      />
-                    </TouchableOpacity>
-                    {/* divider */}
-                    <View
-                      style={{
-                        height: 1,
-                        backgroundColor: theme.colors.separator,
-                        marginVertical: 4,
-                      }}
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingBottom: theme.spacing.xs,
+                      paddingTop: theme.spacing.xs,
+                    }}
+                    onPress={() => setMic("phone")}>
+                    <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={24}
+                      color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
                     />
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        paddingTop: theme.spacing.xs,
-                      }}
-                      onPress={() => setMic("glasses")}>
-                      <View style={{flexDirection: "column", gap: 4}}>
-                        <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-                      </View>
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={24}
-                        color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  </TouchableOpacity>
+                  {/* divider */}
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: theme.colors.separator,
+                      marginVertical: 4,
+                    }}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      paddingTop: theme.spacing.xs,
+                    }}
+                    onPress={() => setMic("glasses")}>
+                    <View style={{flexDirection: "column", gap: 4}}>
+                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="check"
+                      size={24}
+                      color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* Spacer between sections */}
               <View style={{height: 16}} />

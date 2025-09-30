@@ -117,11 +117,11 @@ export const colors = {
   separator: palette.neutral300,
 
   // Primary colors
-  tint: palette.primary800,
+  tint: palette.primary400,
   tintInactive: palette.neutral300,
 
   // Error states
-  error: palette.angry500,
+  error: palette.angry600,
   errorBackground: palette.angry100,
   warning: palette.accent300,
 
