@@ -35,6 +35,7 @@ typedef enum
     LCD_CMD_GRAYSCALE_HORIZONTAL,  // **NEW: Direct HLS12VGA horizontal grayscale**
     LCD_CMD_GRAYSCALE_VERTICAL,    // **NEW: Direct HLS12VGA vertical grayscale**
     LCD_CMD_CHESS_PATTERN,         // **NEW: Direct HLS12VGA chess pattern**
+    LCD_CMD_SHOW_PATTERN,          // **NEW: Show specific pattern by ID**
 } display_cmd_type_t;
 #define MAX_TEXT_LEN 128
 typedef struct

@@ -791,7 +791,7 @@ static void update_protobuf_text_content(const char *text_content)
     LOG_INF("📱 Protobuf text updated: %.50s%s", text_content, strlen(text_content) > 50 ? "..." : "");
 }
 
-// **NEW: Pattern 5 - Handle XY positioned text with font size control**
+// **NEW: Pattern 4 & 5 - Handle XY positioned text with font size control**
 static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_content, uint16_t font_size,
                                       uint32_t color)
 {
@@ -803,15 +803,29 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
         return;
     }
 
-    // Verify we have valid XY container reference
-    if (!xy_text_container)
+    lv_obj_t *target_container = NULL;
+    
+    // **NEW: Support both Pattern 4 (scrolling container) and Pattern 5 (XY positioning container)**
+    if (xy_text_container)
     {
-        LOG_ERR("XY text container not initialized - must be in Pattern 5");
+        // Pattern 5: XY Text Positioning Area
+        target_container = xy_text_container;
+        LOG_DBG("Using Pattern 5 XY text container");
+    }
+    else if (protobuf_container)
+    {
+        // Pattern 4: Scrolling Text Container
+        target_container = protobuf_container;
+        LOG_DBG("Using Pattern 4 scrolling text container");
+    }
+    else
+    {
+        LOG_ERR("No valid text container available - must be in Pattern 4 or Pattern 5");
         return;
     }
 
     // **CLEAR ALL PREVIOUS TEXT CONTENT** before adding new text
-    lv_obj_clean(xy_text_container);  // Remove all children from container
+    lv_obj_clean(target_container);  // Remove all children from container
     current_xy_text_label = NULL;     // Reset reference since container is now empty
 
     // Validate coordinates within container bounds (580x420 usable area with 10px padding)
@@ -829,21 +843,22 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
         LOG_WRN( "📍 Clamped to: (%u,%u)", x, y);
     }
 
-    // Map font size to available fonts, default to 12pt if invalid
-    const lv_font_t *font = display_manager_map_font(font_size);
+    // **FIXED: Use CJK font for Chinese character support - same as Pattern 4**
+    // Always use the CJK font which supports both English and Chinese characters
+    const lv_font_t *font = display_get_font("cjk");  // Use CJK font for multilingual support
     if (!font)
     {
-        LOG_WRN( "Invalid font size %u, using default 12pt", font_size);
-        font = display_manager_map_font(12);  // Fallback to 12pt
+        LOG_WRN("CJK font not available, falling back to primary font");
+        font = display_get_font("primary");  // Fallback to primary display font
     }
 
     // Create new positioned text label
-    current_xy_text_label = lv_label_create(xy_text_container);
+    current_xy_text_label = lv_label_create(target_container);
     lv_label_set_text(current_xy_text_label, text_content);
 
-    // Apply font and styling - **SAME AS PATTERN 4: Use white text**
+    // Apply font and styling - **SAME AS PATTERN 4: Use black text on white background**
     lv_obj_set_style_text_font(current_xy_text_label, font, 0);
-    lv_obj_set_style_text_color(current_xy_text_label, lv_color_black(), 0);  // White text like Pattern 4
+    lv_obj_set_style_text_color(current_xy_text_label, lv_color_black(), 0);  // Black text for visibility
     lv_obj_set_style_bg_opa(current_xy_text_label, LV_OPA_TRANSP, 0);         // Transparent background
 
     // Set text wrapping and width constraints
@@ -853,8 +868,9 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     // Position the text at specified coordinates (relative to container padding)
     lv_obj_set_pos(current_xy_text_label, x, y);
 
-    LOG_INF("� Cleared all previous text, positioned new at (%u,%u), font:%upt, color:0x%06X: %.30s%s", x, y,
-             font_size, color, text_content, strlen(text_content) > 30 ? "..." : "");
+    const char *pattern_name = (target_container == xy_text_container) ? "Pattern 5" : "Pattern 4";
+    LOG_INF("📝 [%s] Cleared all text, positioned new at (%u,%u), CJK_font, color:0x%06X: %.30s%s", 
+             pattern_name, x, y, color, text_content, strlen(text_content) > 30 ? "..." : "");
 }
 
 void lvgl_dispaly_init(void *p1, void *p2, void *p3)
@@ -1003,6 +1019,12 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     //     LOG_ERR("Failed to draw chess pattern");
                     // }
                     // break;
+                case LCD_CMD_SHOW_PATTERN:
+                    /* **NEW: Handle specific pattern selection** */
+                    LOG_INF("LCD_CMD_SHOW_PATTERN - Showing pattern %d", cmd.p.pattern.pattern_id);
+                    current_pattern = cmd.p.pattern.pattern_id;  // Update current pattern
+                    show_test_pattern(cmd.p.pattern.pattern_id);
+                    break;
                 default:
                     break;
             }
