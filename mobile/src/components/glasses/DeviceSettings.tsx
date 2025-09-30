@@ -430,7 +430,7 @@ export default function DeviceSettings() {
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color={buttonMode === "both" ? theme.colors.checkmark : "transparent"}
+              color={buttonMode === "both" ? theme.colors.icon : "transparent"}
             />
           </TouchableOpacity>
         </View>
@@ -522,7 +522,7 @@ export default function DeviceSettings() {
                     <MaterialCommunityIcons
                       name="check"
                       size={24}
-                      color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
+                      color={preferredMic === "phone" ? theme.colors.icon : "transparent"}
                     />
                   </TouchableOpacity>
                   {/* divider */}
@@ -546,7 +546,7 @@ export default function DeviceSettings() {
                     <MaterialCommunityIcons
                       name="check"
                       size={24}
-                      color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
+                      color={preferredMic === "glasses" ? theme.colors.icon : "transparent"}
                     />
                   </TouchableOpacity>
                 </View>
