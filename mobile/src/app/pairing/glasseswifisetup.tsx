@@ -1,12 +1,13 @@
-import React, {useCallback} from "react"
-import {View, Text, BackHandler} from "react-native"
-import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {useCallback} from "react"
+import {View, BackHandler} from "react-native"
+import {useLocalSearchParams, useFocusEffect} from "expo-router"
+import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ScrollView} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import RouteButton from "@/components/ui/RouteButton"
+import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import bridge from "@/bridge/MantleBridge"
 
@@ -31,7 +32,7 @@ export default function GlassesWifiSetupScreen() {
 
   // Get current WiFi status from glasses
   const currentWifi = status.glasses_info?.glasses_wifi_ssid
-  const isWifiConnected = status.glasses_info?.glasses_wifi_connected
+  const isWifiConnected = Boolean(currentWifi)
 
   const handleScanForNetworks = () => {
     push("/pairing/glasseswifisetup/scan", {deviceModel})
@@ -64,12 +65,6 @@ export default function GlassesWifiSetupScreen() {
           {isWifiConnected && currentWifi && (
             <View style={themed($statusContainer)}>
               <Text style={themed($statusText)}>Currently connected to: {currentWifi}</Text>
-              <RouteButton
-                label="Disconnect from WiFi"
-                subtitle="Disconnect from current network"
-                onPress={handleDisconnectWifi}
-                style={{marginTop: theme.spacing.md}}
-              />
             </View>
           )}
 
@@ -94,6 +89,15 @@ export default function GlassesWifiSetupScreen() {
               subtitle="Type in network name and password"
               onPress={handleManualEntry}
             />
+
+            {isWifiConnected && currentWifi && (
+              <ActionButton
+                label="Disconnect from WiFi"
+                subtitle="Disconnect from current network"
+                variant="destructive"
+                onPress={handleDisconnectWifi}
+              />
+            )}
           </View>
         </View>
       </ScrollView>
