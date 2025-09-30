@@ -13,6 +13,8 @@ import UIKit
 import UltraliteSDK
 
 class Mach1: UltraliteBaseViewController, SGCManager {
+    func sendJson(_: [String: Any], wakeUp _: Bool, requireAck _: Bool) {}
+
     var caseBatteryLevel: Int?
 
     var glassesAppVersion: String?
@@ -69,8 +71,6 @@ class Mach1: UltraliteBaseViewController, SGCManager {
 
     func setSilentMode(_: Bool) {}
 
-    func sendJson(_: [String: Any], wakeUp _: Bool) {}
-
     func requestPhoto(_: String, appId _: String, size _: String?, webhookUrl _: String?) {}
 
     func sendJson(_: [String: Any]) {}
@@ -97,7 +97,7 @@ class Mach1: UltraliteBaseViewController, SGCManager {
 
     func setBrightness(_: Int, autoMode _: Bool) {}
 
-    let type = "mach1"
+    let type = "Mentra Mach1"
     let hasMic: Bool = false
     var caseOpen = false
     var caseRemoved = true

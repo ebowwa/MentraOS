@@ -1,13 +1,12 @@
-import React, {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef} from "react"
-import RestComms from "@/managers/RestComms"
+import {createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef, useMemo} from "react"
 import {useAuth} from "@/contexts/AuthContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {deepCompare} from "@/utils/debugging"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export type AppPermissionType =
   | "ALL"
@@ -76,6 +75,7 @@ interface AppStatusContextType {
   refreshAppStatus: () => Promise<void>
   optimisticallyStartApp: (packageName: string, appType?: string) => void
   optimisticallyStopApp: (packageName: string) => void
+  stopAllApps: () => Promise<void>
   clearPendingOperation: (packageName: string) => void
 }
 
@@ -88,6 +88,8 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Keep track of active operations to prevent race conditions
   const pendingOperations = useRef<{[packageName: string]: "start" | "stop"}>({})
+  // Keep track of refresh timeouts to cancel them
+  const refreshTimeouts = useRef<{[packageName: string]: NodeJS.Timeout}>({})
 
   const refreshAppStatus = useCallback(async () => {
     console.log("AppStatusProvider: refreshAppStatus called - user exists:", !!user, "user email:", user?.email)
@@ -140,6 +142,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         const diff = deepCompare(currentAppStatus, mapped)
         if (diff.length === 0) {
           console.log("AppStatusProvider: Applet status did not change")
+          //console.log(JSON.stringify(currentAppStatus, null, 2));
           return currentAppStatus
         }
         return mapped
@@ -151,6 +154,17 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
   // Optimistically update app status when starting an app
   const optimisticallyStartApp = async (packageName: string, appType?: string) => {
+    // Cancel any pending stop operation for this app
+    if (pendingOperations.current[packageName] === "stop") {
+      delete pendingOperations.current[packageName]
+      // Cancel refresh timeout too
+      if (refreshTimeouts.current[packageName]) {
+        clearTimeout(refreshTimeouts.current[packageName])
+        delete refreshTimeouts.current[packageName]
+      }
+    }
+    // Record that we have a pending start operation
+    pendingOperations.current[packageName] = "start"
     // Handle foreground apps
     if (appType === "standard") {
       const runningStandardApps = appStatus.filter(
@@ -170,14 +184,17 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     }
 
     // check if using new UI:
-    const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
+    const usingNewUI = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.new_ui)
 
     setAppStatus(currentStatus => {
-      // Then update the target app to be running
+      // Update the app to be running immediately in new UI
       if (!usingNewUI) {
         return currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: true} : app))
       }
-      return currentStatus.map(app => (app.packageName === packageName ? {...app, loading: true} : app))
+      // In new UI, set running immediately with subtle loading indicator
+      return currentStatus.map(app =>
+        app.packageName === packageName ? {...app, is_running: true, loading: true} : app,
+      )
     })
 
     // actually start the app:
@@ -185,7 +202,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.startApp(packageName)
         clearPendingOperation(packageName)
-        await settings.set(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.has_ever_activated_app, true)
+        // Clear loading state immediately after successful start
+        setAppStatus(currentStatus =>
+          currentStatus.map(app => (app.packageName === packageName ? {...app, loading: false} : app)),
+        )
       } catch (error: any) {
         console.error("Start app error:", error)
 
@@ -210,14 +231,43 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       }
     }
 
-    // after 3 seconds, refresh the app status:
-    setTimeout(() => {
+    // Cancel any existing refresh timeout for this app
+    if (refreshTimeouts.current[packageName]) {
+      clearTimeout(refreshTimeouts.current[packageName])
+    }
+    // Refresh app status quickly
+    refreshTimeouts.current[packageName] = setTimeout(() => {
+      delete refreshTimeouts.current[packageName]
       refreshAppStatus()
-    }, 2000)
+    }, 500)
+  }
+
+  // Stop all running apps
+  const stopAllApps = async () => {
+    try {
+      const runningApps = appStatus.filter(app => app.is_running)
+      for (const app of runningApps) {
+        await restComms.stopApp(app.packageName)
+      }
+      // Update local state to reflect all apps are stopped
+      setAppStatus(currentStatus => currentStatus.map(app => (app.is_running ? {...app, is_running: false} : app)))
+    } catch (error) {
+      console.error("Error stopping all apps:", error)
+      throw error
+    }
   }
 
   // Optimistically update app status when stopping an app
   const optimisticallyStopApp = async (packageName: string) => {
+    // Cancel any pending start operation for this app
+    if (pendingOperations.current[packageName] === "start") {
+      delete pendingOperations.current[packageName]
+      // Cancel refresh timeout too
+      if (refreshTimeouts.current[packageName]) {
+        clearTimeout(refreshTimeouts.current[packageName])
+        delete refreshTimeouts.current[packageName]
+      }
+    }
     // optimistically stop the app:
     {
       // Record that we have a pending stop operation
@@ -230,17 +280,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         }
       }, 10000)
 
-      const usingNewUI = await settings.get(SETTINGS_KEYS.NEW_UI, false)
-
-      if (!usingNewUI) {
-        setAppStatus(currentStatus =>
-          currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false} : app)),
-        )
-      } else {
-        setAppStatus(currentStatus =>
-          currentStatus.map(app => (app.packageName === packageName ? {...app, loading: true} : app)),
-        )
-      }
+      setAppStatus(currentStatus =>
+        currentStatus.map(app => (app.packageName === packageName ? {...app, is_running: false, loading: false} : app)),
+      )
     }
 
     // actually stop the app:
@@ -248,16 +290,25 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       try {
         await restComms.stopApp(packageName)
         clearPendingOperation(packageName)
+        // Clear loading state immediately after successful stop
+        setAppStatus(currentStatus =>
+          currentStatus.map(app => (app.packageName === packageName ? {...app, loading: false} : app)),
+        )
       } catch (error) {
         refreshAppStatus()
         console.error("Stop app error:", error)
       }
     }
 
-    // after 3 seconds, refresh the app status:
-    setTimeout(() => {
+    // Cancel any existing refresh timeout for this app
+    if (refreshTimeouts.current[packageName]) {
+      clearTimeout(refreshTimeouts.current[packageName])
+    }
+    // Refresh app status quickly
+    refreshTimeouts.current[packageName] = setTimeout(() => {
+      delete refreshTimeouts.current[packageName]
       refreshAppStatus()
-    }, 2000)
+    }, 500)
   }
 
   // When an app start/stop operation succeeds, clear the pending operation
@@ -265,16 +316,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName]
   }
 
-  const onCoreTokenSet = () => {
-    console.log("CORE_TOKEN_SET event received, forcing app refresh with 1.5 second delay")
-    // Add a delay to let the token become valid on the server side
-    setTimeout(() => {
-      console.log("CORE_TOKEN_SET: Delayed refresh executing now")
-      refreshAppStatus()
-    }, 1500)
-  }
-
-  const onAppStateChange = (msg: any) => {
+  const onAppStateChange = () => {
     // console.log("APP_STATE_CHANGE event received, forcing app refresh")
     refreshAppStatus()
   }
@@ -282,11 +324,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Listen for app started/stopped events from bridge
   useEffect(() => {
     // @ts-ignore
-    GlobalEventEmitter.on("CORE_TOKEN_SET", onCoreTokenSet)
     GlobalEventEmitter.on("APP_STATE_CHANGE", onAppStateChange)
     return () => {
       // @ts-ignore
-      GlobalEventEmitter.off("CORE_TOKEN_SET", onCoreTokenSet)
       GlobalEventEmitter.off("APP_STATE_CHANGE", onAppStateChange)
     }
   }, [])
@@ -309,6 +349,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         refreshAppStatus,
         optimisticallyStartApp,
         optimisticallyStopApp,
+        stopAllApps,
         clearPendingOperation,
       }}>
       {children}
@@ -322,4 +363,74 @@ export const useAppStatus = () => {
     throw new Error("useAppStatus must be used within an AppStatusProvider")
   }
   return context
+}
+
+/**
+ * Hook to get only foreground apps (type === "standard")
+ */
+export function useNewUiForegroundApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    // appStatus is an array, not an object with registered_applets
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(
+      app => app.type === "standard" || !app.type, // default to standard if type is missing
+    )
+  }, [appStatus])
+}
+
+/**
+ * Hook to get only background apps (type === "background")
+ */
+export function useBackgroundApps(): {active: AppletInterface[]; inactive: AppletInterface[]} {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    const active = appStatus.filter(app => app.type === "background" && app.is_running)
+    const inactive = appStatus.filter(app => app.type === "background" && !app.is_running)
+    return {active, inactive}
+  }, [appStatus])
+}
+
+/**
+ * Hook to get the currently active foreground app
+ */
+export function useActiveForegroundApp(): AppletInterface | null {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return null
+    return appStatus.find(app => (app.type === "standard" || !app.type) && app.is_running) || null
+  }, [appStatus])
+}
+
+/**
+ * Hook to get count of active background apps
+ */
+export function useActiveBackgroundAppsCount(): number {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return 0
+    return appStatus.filter(app => app.type === "background" && app.is_running).length
+  }, [appStatus])
+}
+
+/**
+ * Hook to get incompatible apps (both foreground and background)
+ */
+export function useIncompatibleApps(): AppletInterface[] {
+  const {appStatus} = useAppStatus()
+
+  return useMemo(() => {
+    if (!appStatus || !Array.isArray(appStatus)) return []
+    return appStatus.filter(app => {
+      // Don't show running apps in incompatible list
+      if (app.is_running) return false
+
+      // Check if app has compatibility info and is marked as incompatible
+      return app.compatibility && !app.compatibility.isCompatible
+    })
+  }, [appStatus])
 }

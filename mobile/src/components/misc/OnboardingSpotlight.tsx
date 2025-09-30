@@ -1,26 +1,25 @@
-import React, {useEffect, useRef, useState} from "react"
+import {useEffect, useRef, useState} from "react"
 import {
   View,
-  Text,
+  // eslint-disable-next-line
   StyleSheet,
   Animated,
   TouchableOpacity,
   Modal,
   Dimensions,
-  ViewStyle,
   TextStyle,
-  Platform,
 } from "react-native"
+import {Text} from "@/components/ignite"
 import {FontAwesome} from "@expo/vector-icons"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import showAlert from "@/utils/AlertUtils"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 interface OnboardingSpotlightProps {
   targetRef: React.RefObject<any>
@@ -47,7 +46,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
     height: number
   } | null>(null)
 
-  const [liveCaptionsPackageName, setLiveCaptionsPackageName] = useState<string | null>(null)
+  const [liveCaptionsPackageName, _setLiveCaptionsPackageName] = useState<string | null>(null)
   const {status} = useCoreStatus()
   const {appStatus} = useAppStatus()
   const {push} = useNavigationHistory()
@@ -55,7 +54,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   // Check onboarding status
   useEffect(() => {
     const checkOnboarding = async () => {
-      const onboardingCompleted = await settings.get(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      const onboardingCompleted = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
       if (!onboardingCompleted) {
         // Check if glasses are connected
         const glassesConnected = status.glasses_info?.model_name != null
@@ -79,7 +78,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
           // }
           // Skip Live Captions spotlight - mark onboarding as complete once glasses are connected                                  │ │
           setVisible(false)
-          await settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+          await useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
         }
       }
     }
@@ -93,7 +92,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   const handleDismiss = () => {
     setVisible(false)
     // Mark onboarding as completed if user skips
-    settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
   }
 
   // Handle spotlight target press
@@ -109,7 +108,7 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
         await restComms.startApp(liveCaptionsPackageName)
 
         // Mark onboarding as completed
-        await settings.set(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        await useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
 
         // Show the success message after a short delay
         setTimeout(() => {
@@ -156,7 +155,6 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   if (!visible || !targetMeasurements) return null
 
   const screenHeight = Dimensions.get("window").height
-  const screenWidth = Dimensions.get("window").width
 
   // Calculate spotlight hole position with padding
   const padding = 8
@@ -314,12 +312,6 @@ const styles = StyleSheet.create({
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.8)",
   },
-  spotlight: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.5)",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
   messageContainer: {
     position: "absolute",
     alignItems: "center",
@@ -339,37 +331,13 @@ const styles = StyleSheet.create({
   arrowContainer: {
     alignItems: "center",
   },
-  arrow: {
-    // Arrow styles will be set inline
-  },
-  skipButton: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 60 : 40,
-    right: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
 })
 
-const $messageText: ThemedStyle<TextStyle> = ({typography, spacing}) => ({
+const $messageText: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 16,
   fontFamily: typography.primary.medium,
   textAlign: "center",
   lineHeight: 24,
-})
-
-const $skipText: ThemedStyle<TextStyle> = ({typography}) => ({
-  fontSize: 14,
-  fontFamily: typography.primary.medium,
 })
 
 export default OnboardingSpotlight

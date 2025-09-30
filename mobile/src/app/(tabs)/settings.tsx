@@ -11,7 +11,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
@@ -21,12 +21,13 @@ export default function SettingsPage() {
   const {logout, user} = useAuth()
   const {theme, themed} = useAppTheme()
   const {push, replace} = useNavigationHistory()
-  const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
+
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   useEffect(() => {
     const checkDevMode = async () => {
-      const devModeSetting = await settings.get(SETTINGS_KEYS.DEV_MODE, false)
+      const devModeSetting = devMode
       setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
@@ -67,7 +68,6 @@ export default function SettingsPage() {
     // Handle different press counts
     if (pressCount.current === maxPressCount) {
       showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
-      settings.set(SETTINGS_KEYS.DEV_MODE, true)
       setDevMode(true)
       pressCount.current = 0
     } else if (pressCount.current >= showAlertAtPressCount) {

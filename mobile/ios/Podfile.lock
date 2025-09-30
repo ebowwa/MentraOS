@@ -6,11 +6,16 @@ PODS:
   - DoubleConversion (1.1.6)
   - EXApplication (6.0.2):
     - ExpoModulesCore
+  - EXAV (15.0.2):
+    - ExpoModulesCore
+    - ReactCommon/turbomodule/core
   - EXConstants (17.0.8):
     - ExpoModulesCore
   - Expo (52.0.47):
     - ExpoModulesCore
   - ExpoAsset (11.0.5):
+    - ExpoModulesCore
+  - ExpoAudio (0.3.5):
     - ExpoModulesCore
   - ExpoCalendar (14.0.6):
     - ExpoModulesCore
@@ -1450,7 +1455,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller (1.17.5):
+  - react-native-keyboard-controller (1.18.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1463,7 +1468,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-keyboard-controller/common (= 1.17.5)
+    - react-native-keyboard-controller/common (= 1.18.2)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1472,7 +1477,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller/common (1.17.5):
+  - react-native-keyboard-controller/common (1.18.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2156,7 +2161,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNPermissions (5.4.1):
+  - RNPermissions (5.4.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2464,9 +2469,11 @@ DEPENDENCIES:
   - BVLinearGradient (from `../node_modules/react-native-linear-gradient`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EXApplication (from `../node_modules/expo-application/ios`)
+  - EXAV (from `../node_modules/expo-av/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoAudio (from `../node_modules/expo-audio/ios`)
   - ExpoCalendar (from `../node_modules/expo-calendar/ios`)
   - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
@@ -2611,12 +2618,16 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EXApplication:
     :path: "../node_modules/expo-application/ios"
+  EXAV:
+    :path: "../node_modules/expo-av/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   Expo:
     :path: "../node_modules/expo"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
+  ExpoAudio:
+    :path: "../node_modules/expo-audio/ios"
   ExpoCalendar:
     :path: "../node_modules/expo-calendar/ios"
   ExpoCamera:
@@ -2845,9 +2856,11 @@ SPEC CHECKSUMS:
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EXApplication: 4c72f6017a14a65e338c5e74fca418f35141e819
+  EXAV: 4c41f0a6ae54a0b96597abc90e37962ab2ee0d85
   EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
   Expo: 1687edb10c76b0c0f135306d6ae245379f50ed54
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
+  ExpoAudio: 5fe5fc98236b820c4affd09e0631de1c7a7c299b
   ExpoCalendar: 12208702ad2461776a5a59b6e51e37ef23f9efac
   ExpoCamera: 0a3e78de7b1ca8c438ee6784fa6f22c5b1b36966
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
@@ -2911,7 +2924,7 @@ SPEC CHECKSUMS:
   react-native-bottom-tabs: 4e29ba5631b9890b9d15d3f1ef35c03a89a1bc2e
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-image-picker: c5da8aa14fdffbd4d77338c352f52a8d85fcacec
-  react-native-keyboard-controller: b3d68f377e97666bf539ee7d8d6d77ac7a50f9ca
+  react-native-keyboard-controller: c7b394ca5fa3bca2264d4bd37bd4ab1aeb62a991
   react-native-mmkv: 5c69dce0d439e1791a884f6b166e76fc7fadaca6
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-pager-view: 9517b214fb7321493339fbcf53a30abd54fea07b
@@ -2954,7 +2967,7 @@ SPEC CHECKSUMS:
   RNGestureHandler: fffddeb8af59709c6d8de11b6461a6af63cad532
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
   RNLocalize: 9b5bc41c885b6138233c9ce6de8affb22cbc1e4f
-  RNPermissions: 66e7065dd1826bf37f8d180248b2cb2c4ae26aca
+  RNPermissions: 166b6880aa94483ac566c35f3d7ec9b999239e7e
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: c7c659490e59cb0887cb098a9c9e9431392c05b2
   RNSentry: 39b6ae6ce58dafc766ae3704c50a420d79e6a999

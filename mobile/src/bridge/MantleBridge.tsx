@@ -12,10 +12,10 @@ import BleManager from "react-native-ble-manager"
 import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
 import socketComms from "@/managers/SocketComms"
-import livekitManager from "@/managers/LivekitManager"
+// import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
+import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 const {BridgeModule, CoreCommsService} = NativeModules
 const coreBridge = new NativeEventEmitter(BridgeModule)
@@ -168,9 +168,11 @@ export class MantleBridge extends EventEmitter {
    */
   async initialize() {
     setTimeout(async () => {
-      const defaultWearable = await settings.get(SETTINGS_KEYS.default_wearable)
-      const deviceName = await settings.get(SETTINGS_KEYS.device_name)
-      this.sendConnectWearable(defaultWearable, deviceName)
+      const defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
+      const deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
+      if (defaultWearable && defaultWearable != "" && deviceName && deviceName != "") {
+        this.sendConnectWearable(defaultWearable, deviceName)
+      }
     }, 3000)
 
     // Start the external service
@@ -179,16 +181,9 @@ export class MantleBridge extends EventEmitter {
     // Initialize message event listener
     this.initializeMessageEventListener()
 
-    if (Platform.OS === "android") {
-      // Set up audio play response callback
-      AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
-        this.sendAudioPlayResponse(response)
-      })
-    }
-
     // set the backend server url
     if (Platform.OS === "android") {
-      const backendServerUrl = await settings.getRestUrl() // TODO: config: remove
+      const backendServerUrl = await useSettingsStore.getState().getRestUrl() // TODO: config: remove
       await this.setServerUrl(backendServerUrl) // TODO: config: remove
     }
 
@@ -394,7 +389,7 @@ export class MantleBridge extends EventEmitter {
           })
           break
         case "save_setting":
-          await settings.set(data.key, data.value, false)
+          await useSettingsStore.getState().setSetting(data.key, data.value, false)
           break
         case "head_up":
           socketComms.sendHeadPosition(data.position)
@@ -439,7 +434,7 @@ export class MantleBridge extends EventEmitter {
   private async sendSettings() {
     this.sendData({
       command: "update_settings",
-      params: {...(await settings.getCoreSettings())},
+      params: {...(await useSettingsStore.getState().getCoreSettings())},
     })
   }
 
@@ -478,7 +473,7 @@ export class MantleBridge extends EventEmitter {
       return this.validationInProgress ?? true
     }
 
-    this.validationInProgress = new Promise<boolean>((resolve, reject) => {
+    this.validationInProgress = new Promise<boolean>((resolve, _reject) => {
       const dataReceivedListener = () => {
         resolve(true)
       }
@@ -734,6 +729,16 @@ export class MantleBridge extends EventEmitter {
   async sendToggleEnforceLocalTranscription(enabled: boolean) {
     return await this.sendData({
       command: "enforce_local_transcription",
+      params: {
+        enabled: enabled,
+      },
+    })
+  }
+
+  async toggleOfflineApps(enabled: boolean) {
+    console.log("toggleOfflineApss", enabled)
+    return await this.sendData({
+      command: "enable_offline_mode",
       params: {
         enabled: enabled,
       },

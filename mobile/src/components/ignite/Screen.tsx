@@ -17,6 +17,7 @@ import {ExtendedEdge, useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsSty
 import {KeyboardAwareScrollView} from "react-native-keyboard-controller"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
+import BackgroundGradient from "../misc/BackgroundGradient"
 
 export const DEFAULT_BOTTOM_OFFSET = 50
 
@@ -254,21 +255,9 @@ export function Screen(props: ScreenProps) {
   const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
   const {theme} = useAppTheme()
 
-  const gradientColors = props.gradientColors ?? [colors.tabBarBackground1, colors.tabBarBackground2]
-
   return (
     <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background} /*, $containerInsets*/]}>
-      <LinearGradient
-        colors={gradientColors as [string, string]}
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-        }}
-        start={{x: 0, y: 1}}
-        end={{x: 0, y: 0}}>
+      <BackgroundGradient colors={props.gradientColors}>
         <View style={[$containerInsets, {flex: 1}]}>
           <StatusBar style={statusBarStyle || (themeContext === "dark" ? "light" : "dark")} {...StatusBarProps} />
           <KeyboardAvoidingView
@@ -279,7 +268,7 @@ export function Screen(props: ScreenProps) {
             {isNonScrolling(props.preset) ? <ScreenWithoutScrolling {...props} /> : <ScreenWithScrolling {...props} />}
           </KeyboardAvoidingView>
         </View>
-      </LinearGradient>
+      </BackgroundGradient>
     </View>
   )
 }

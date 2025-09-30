@@ -95,9 +95,10 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     // if text contains $GBATT$, replace with battery level
     if (text.includes("$GBATT$")) {
       const batteryLevel = status.glasses_info?.battery_level
-      if (batteryLevel) {
-        return text.replace("$GBATT$", batteryLevel.toString() + "%")
+      if (typeof batteryLevel === "number" && batteryLevel >= 0) {
+        return text.replace("$GBATT$", `${batteryLevel}%`)
       }
+      return text.replace("$GBATT$", "")
     }
     return text
   }
@@ -200,7 +201,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 140,
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
   borderRadius: 10,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,

@@ -36,7 +36,7 @@ export const getGlassesImage = (glasses: string | null) => {
     case "frame":
       return require("../../assets/glasses/frame.png")
     default:
-      return require("../../assets/glasses/unknown_wearable.png")
+      return require("../../assets/glasses/g1.png")
   }
 }
 

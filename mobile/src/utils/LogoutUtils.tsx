@@ -3,8 +3,8 @@ import {supabase} from "@/supabase/supabaseClient"
 import bridge from "@/bridge/MantleBridge"
 import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {SETTINGS_KEYS} from "@/managers/Settings"
 import restComms from "@/managers/RestComms"
+import {SETTINGS_KEYS} from "@/stores/settings"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"
@@ -157,8 +157,8 @@ export class LogoutUtils {
     try {
       // Clear specific settings that should be reset on logout
       const settingsToKeep = [
-        SETTINGS_KEYS.THEME_PREFERENCE, // Keep theme preference
-        SETTINGS_KEYS.CUSTOM_BACKEND_URL, // Keep custom backend URL if set
+        SETTINGS_KEYS.theme_preference, // Keep theme preference
+        SETTINGS_KEYS.custom_backend_url, // Keep custom backend URL if set
       ]
 
       const settingsToClear = Object.values(SETTINGS_KEYS).filter(key => !settingsToKeep.includes(key))

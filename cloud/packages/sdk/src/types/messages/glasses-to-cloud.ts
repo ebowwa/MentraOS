@@ -221,7 +221,7 @@ export interface PhotoResponse extends BaseMessage {
 export interface RtmpStreamStatus extends BaseMessage {
   type: GlassesToCloudMessageType.RTMP_STREAM_STATUS;
   streamId?: string;  // Unique identifier for the stream
-  status: "initializing" | "connecting" | "reconnecting" | "streaming" | "error" | "stopped" | "active" | "stopping" | "disconnected" | "timeout";
+  status: "initializing" | "connecting" | "reconnecting" | "streaming" | "error" | "stopped" | "active" | "stopping" | "disconnected" | "timeout" | "reconnected" | "reconnect_failed";
   errorDetails?: string;
   appId?: string;  // ID of the app that requested the stream
   stats?: {

@@ -25,38 +25,32 @@ import {translate} from "@/i18n/translate"
 import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
   const {themed, theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(false)
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
-  const [headUpAngle, setHeadUpAngle] = useState<number | null>(null)
-  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(false)
-
-  // load settings:
-  useEffect(() => {
-    settings.get(SETTINGS_KEYS.contextual_dashboard_enabled).then(setIsContextualDashboardEnabled)
-    settings.get(SETTINGS_KEYS.metric_system_enabled).then(setIsMetricSystemEnabled)
-    settings.get(SETTINGS_KEYS.head_up_angle).then(setHeadUpAngle)
-  }, [])
+  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [headUpAngle, setHeadUpAngle] = useSetting(SETTINGS_KEYS.head_up_angle)
+  const [contextualDashboardEnabled, setContextualDashboardEnabled] = useSetting(
+    SETTINGS_KEYS.contextual_dashboard_enabled,
+  )
+  const [metricSystemEnabled, setMetricSystemEnabled] = useSetting(SETTINGS_KEYS.metric_system_enabled)
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
-    const newVal = !isContextualDashboardEnabled
+    const newVal = !contextualDashboardEnabled
+    await setContextualDashboardEnabled(newVal)
     await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.contextual_dashboard_enabled, newVal)
-    setIsContextualDashboardEnabled(newVal)
   }
 
   const toggleMetricSystem = async () => {
-    const newVal = !isMetricSystemEnabled
+    const newVal = !metricSystemEnabled
     try {
+      await setMetricSystemEnabled(newVal)
       await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
-      await settings.set(SETTINGS_KEYS.metric_system_enabled, newVal)
-      setIsMetricSystemEnabled(newVal)
     } catch (error) {
       console.error("Error toggling metric system:", error)
     }
@@ -73,8 +67,7 @@ export default function DashboardSettingsScreen() {
 
     setHeadUpAngleComponentVisible(false)
     await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
-    await settings.set(SETTINGS_KEYS.head_up_angle, newHeadUpAngle)
-    setHeadUpAngle(newHeadUpAngle)
+    await setHeadUpAngle(newHeadUpAngle)
   }
 
   const onCancelHeadUpAngle = () => {
@@ -109,7 +102,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:contextualDashboardLabel")}
           subtitle={translate("settings:contextualDashboardSubtitle")}
-          value={isContextualDashboardEnabled}
+          value={contextualDashboardEnabled}
           onValueChange={toggleContextualDashboard}
         />
 
@@ -118,7 +111,7 @@ export default function DashboardSettingsScreen() {
         <ToggleSetting
           label={translate("settings:metricSystemLabel")}
           subtitle={translate("settings:metricSystemSubtitle")}
-          value={isMetricSystemEnabled}
+          value={metricSystemEnabled}
           onValueChange={toggleMetricSystem}
         />
 
@@ -161,7 +154,7 @@ export default function DashboardSettingsScreen() {
             )}
           </TouchableOpacity>
         </View> */}
-        {status.core_info.default_wearable && glassesFeatures[status.core_info.default_wearable]?.imu && (
+        {defaultWearable && glassesFeatures[defaultWearable]?.imu && (
           <RouteButton
             label={translate("settings:adjustHeadAngleLabel")}
             subtitle={translate("settings:adjustHeadAngleSubtitle")}
@@ -201,7 +194,6 @@ const $pickerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   maxHeight: "80%",
   borderRadius: 16,
   overflow: "hidden",
-  backgroundColor: colors.modalBackground,
 })
 
 const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -210,8 +202,6 @@ const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
   alignItems: "center",
   padding: 16,
   borderBottomWidth: 1,
-  borderBottomColor: colors.borderLight,
-  backgroundColor: colors.modalBackground,
 })
 
 const $pickerTitle: ThemedStyle<TextStyle> = ({colors}) => ({

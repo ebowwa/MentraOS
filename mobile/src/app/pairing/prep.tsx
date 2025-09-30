@@ -7,14 +7,12 @@ import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {Button, Header} from "@/components/ignite"
-import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {LinearGradient} from "expo-linear-gradient"
-import settings, {SETTINGS_KEYS} from "@/managers/Settings"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -278,7 +276,7 @@ export default function PairingPrepScreen() {
 
     // skip pairing for simulated glasses:
     if (glassesModelName.startsWith("Simulated")) {
-      await settings.set(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
+      await useSettingsStore.getState().setSetting(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
       bridge.sendSearchForCompatibleDeviceNames("Simulated Glasses")
       bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses", "")
       clearHistoryAndGoHome()
