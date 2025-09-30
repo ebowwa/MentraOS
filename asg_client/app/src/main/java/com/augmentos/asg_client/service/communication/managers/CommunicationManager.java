@@ -70,6 +70,7 @@ public class CommunicationManager implements ICommunicationManager {
                 JSONObject wifiStatus = new JSONObject();
                 // Use proper type for reliable sending
                 wifiStatus.put("type", "wifi_status");
+                wifiStatus.put("connected", isConnected);
                 if (isConnected && serviceManager.getNetworkManager() != null) {
                     String ssid = serviceManager.getNetworkManager().getCurrentWifiSsid();
                     String localIp = serviceManager.getNetworkManager().getLocalIpAddress();
