@@ -1433,8 +1433,8 @@ export class AppSession {
           // Legacy photo response handling - now photos come directly via webhook
           // This branch can be removed in the future as all photos now go through /photo-upload
           this.logger.warn(
-            "Received legacy photo response - photos should now come via /photo-upload webhook:",
-            message,
+            { message },
+            "Received legacy photo response - photos should now come via /photo-upload webhook",
           );
         }
         // Handle unrecognized message types gracefully
