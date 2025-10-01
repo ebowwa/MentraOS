@@ -1762,22 +1762,8 @@ class MentraLive: NSObject, SGCManager {
         }
     }
 
-    private func requestMissingPackets(fileName: String, missingPackets: [Int]) {
-        guard !missingPackets.isEmpty else {
-            Bridge.log("✅ No missing packets for \(fileName) - skipping request")
-            return
-        }
-
-        Bridge.log("🔍 Requesting retransmission due to missing packets for \(fileName): \(missingPackets)")
-
-        let payload: [String: Any] = [
-            "type": "request_missing_packets",
-            "fileName": fileName,
-            "missingPackets": missingPackets,
-        ]
-
-        sendJson(payload, wakeUp: true)
-    }
+    // requestMissingPackets() removed - no longer used with ACK system
+    // Phone now sends transfer_complete with success=false to trigger full retry
 
     // MARK: - File Transfer Processing
 
@@ -1833,8 +1819,12 @@ class MentraLive: NSObject, SGCManager {
                     } else if session.isFinalPacket(Int(packetInfo.packIndex)) {
                         let missingPackets = session.missingPacketIndices()
                         if !missingPackets.isEmpty {
-                            Bridge.log("📦 BLE transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
-                            requestMissingPackets(fileName: packetInfo.fileName, missingPackets: missingPackets)
+                            Bridge.log("❌ BLE photo transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
+                            Bridge.log("❌ Telling glasses to retry entire transfer")
+
+                            // Tell glasses transfer failed, they will retry
+                            sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: false)
+                            blePhotoTransfers.removeValue(forKey: bleImgId)
                         }
                     }
                 }
@@ -1873,8 +1863,12 @@ class MentraLive: NSObject, SGCManager {
                 } else if sess.isFinalPacket(Int(packetInfo.packIndex)) {
                     let missingPackets = sess.missingPacketIndices()
                     if !missingPackets.isEmpty {
-                        Bridge.log("📦 Transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
-                        requestMissingPackets(fileName: packetInfo.fileName, missingPackets: missingPackets)
+                        Bridge.log("❌ File transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
+                        Bridge.log("❌ Telling glasses to retry entire transfer")
+
+                        // Tell glasses transfer failed, they will retry
+                        sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: false)
+                        activeFileTransfers.removeValue(forKey: packetInfo.fileName)
                     }
                 }
             } else {
