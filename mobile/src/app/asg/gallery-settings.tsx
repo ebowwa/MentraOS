@@ -74,15 +74,15 @@ export default function GallerySettingsScreen() {
   }
 
   const handleDeleteAll = async () => {
-    const totalLocalPhotos = localPhotoCount + localVideoCount
+    const totalLocalMedia = localPhotoCount + localVideoCount
 
-    if (totalLocalPhotos === 0) {
+    if (totalLocalMedia === 0) {
       showAlert("No Photos", "There are no photos to delete", [{text: translate("common:ok")}])
       return
     }
 
-    const itemText = totalLocalPhotos === 1 ? "item" : "items"
-    const message = `This will permanently delete all ${totalLocalPhotos} ${itemText} from your device. Photos saved to your camera roll will not be affected. This action cannot be undone.`
+    const itemText = totalLocalMedia === 1 ? "item" : "items"
+    const message = `This will permanently delete all ${totalLocalMedia} ${itemText} from your device. Photos saved to your camera roll will not be affected. This action cannot be undone.`
 
     showAlert("Delete All Photos", message, [
       {text: translate("common:cancel"), style: "cancel"},
@@ -114,7 +114,7 @@ export default function GallerySettingsScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Gallery Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
       <ScrollView>
-        <View style={themed($section)}>
+        <View style={themed($sectionCompact)}>
           <Text style={themed($sectionTitle)}>Automatic Sync</Text>
 
           <ToggleSetting
@@ -125,15 +125,8 @@ export default function GallerySettingsScreen() {
           />
         </View>
 
-        <View style={themed($section)}>
+        <View style={themed($sectionTitleOnly)}>
           <Text style={themed($sectionTitle)}>Storage</Text>
-
-          <ActionButton
-            label={translate("glasses:deleteAllPhotos")}
-            //subtitle="Remove all photos from device storage (camera roll photos are not affected)"
-            onPress={handleDeleteAll}
-            variant="destructive"
-          />
         </View>
 
         <View style={themed($section)}>
@@ -163,13 +156,31 @@ export default function GallerySettingsScreen() {
             ]}
           />
         </View>
+
+        <View style={themed($section)}>
+          <ActionButton
+            label={translate("glasses:deleteAllPhotos")}
+            //subtitle="Remove all photos from device storage (camera roll photos are not affected)"
+            onPress={handleDeleteAll}
+            variant="destructive"
+            disabled={localPhotoCount + localVideoCount === 0}
+          />
+        </View>
       </ScrollView>
     </Screen>
   )
 }
 
 const $section: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginBottom: spacing.xl,
+  marginBottom: spacing.lg,
+})
+
+const $sectionCompact: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.sm,
+})
+
+const $sectionTitleOnly: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  marginBottom: spacing.xs,
 })
 
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -180,5 +191,5 @@ const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   letterSpacing: 0.5,
   marginBottom: spacing.xs,
   marginHorizontal: spacing.lg,
-  marginTop: spacing.md,
+  marginTop: spacing.sm,
 })
