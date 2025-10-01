@@ -320,8 +320,8 @@ public class CommandProcessor {
             commandHandlerRegistry.registerHandler(new GalleryCommandHandler(serviceManager, communicationManager));
             Log.d(TAG, "✅ Registered GalleryCommandHandler");
 
-            commandHandlerRegistry.registerHandler(new com.augmentos.asg_client.service.core.handlers.MissingPacketCommandHandler(serviceManager));
-            Log.d(TAG, "✅ Registered MissingPacketCommandHandler");
+            commandHandlerRegistry.registerHandler(new com.augmentos.asg_client.service.core.handlers.TransferCompleteCommandHandler(serviceManager));
+            Log.d(TAG, "✅ Registered TransferCompleteCommandHandler");
 
             Log.i(TAG, "✅ Successfully registered " + commandHandlerRegistry.getHandlerCount() + " command handlers");
 

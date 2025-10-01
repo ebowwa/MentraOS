@@ -2,6 +2,7 @@ package com.augmentos.asg_client.service.core.handlers;
 
 import android.util.Log;
 
+import com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.settings.AsgSettings;
 import com.augmentos.asg_client.settings.VideoSettings;
@@ -62,8 +63,8 @@ public class K900CommandHandler {
                     break;
 
                 case "cs_flts":
-                    // BES chip still sends ACKs but we ignore them in new protocol
-                    Log.d(TAG, "📦 BES ACK received (ignored in new fire-and-forget protocol)");
+                    // File transfer ACK - pass to K900BluetoothManager
+                    handleFileTransferAck(bData);
                     break;
 
                 default:
@@ -126,6 +127,27 @@ public class K900CommandHandler {
         }
     }
 
+    /**
+     * Handle file transfer ACK from glasses
+     */
+    private void handleFileTransferAck(JSONObject bData) {
+        if (bData != null && serviceManager != null) {
+            int state = bData.optInt("state", -1);
+            int index = bData.optInt("index", -1);
+
+            if (state != -1 && index != -1) {
+                Log.d(TAG, "📦 File transfer ACK: state=" + state + ", index=" + index);
+
+                // Get K900BluetoothManager and forward the ACK
+                K900BluetoothManager bluetoothManager = (K900BluetoothManager) serviceManager.getBluetoothManager();
+                if (bluetoothManager != null) {
+                    bluetoothManager.handleFileTransferAck(state, index);
+                }
+            } else {
+                Log.w(TAG, "cs_flts received but missing state or index");
+            }
+        }
+    }
 
     /**
      * Handle button press based on configured mode
