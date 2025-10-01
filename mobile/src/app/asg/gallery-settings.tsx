@@ -22,6 +22,7 @@ export default function GallerySettingsScreen() {
   const [glassesPhotoCount, setGlassesPhotoCount] = useState(0)
   const [glassesVideoCount, setGlassesVideoCount] = useState(0)
   const [totalStorageSize, setTotalStorageSize] = useState(0)
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
 
   // Load settings and stats on mount
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function GallerySettingsScreen() {
 
   const loadStats = async () => {
     try {
+      setIsLoadingStats(true)
       // Get local photos
       const files = await localStorageService.getDownloadedFiles()
       const fileArray = Object.values(files)
@@ -65,6 +67,8 @@ export default function GallerySettingsScreen() {
       setGlassesVideoCount(0)
     } catch (error) {
       console.error("[GallerySettings] Error loading stats:", error)
+    } finally {
+      setIsLoadingStats(false)
     }
   }
 
@@ -163,7 +167,7 @@ export default function GallerySettingsScreen() {
             //subtitle="Remove all photos from device storage (camera roll photos are not affected)"
             onPress={handleDeleteAll}
             variant="destructive"
-            disabled={localPhotoCount + localVideoCount === 0}
+            disabled={isLoadingStats || localPhotoCount + localVideoCount === 0}
           />
         </View>
       </ScrollView>

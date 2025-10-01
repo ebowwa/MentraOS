@@ -884,6 +884,14 @@ export function GalleryScreen() {
     checkAndRequestPermission()
   }, [])
 
+  // Refresh downloaded photos when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[GalleryScreen] Screen focused - refreshing downloaded photos")
+      loadDownloadedPhotos()
+    }, []),
+  )
+
   // Handle back button
   useFocusEffect(
     useCallback(() => {
