@@ -15,7 +15,7 @@ import {PermissionFeatures, requestFeaturePermissions} from "@/utils/Permissions
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasBrightness, hasCustomMic, hasGallery} from "@/config/glassesFeatures"
+import {glassesFeatures, hasBrightness, hasCustomMic} from "@/config/glassesFeatures"
 import {localStorageService} from "@/services/asg/localStorageService"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
@@ -84,7 +84,7 @@ export default function DeviceSettings() {
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
   const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
   const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
-  const [hasLocalPhotos, setHasLocalPhotos] = useState(false)
+  const [_hasLocalPhotos, setHasLocalPhotos] = useState(false)
 
   const {push} = useNavigationHistory()
 
@@ -313,13 +313,11 @@ export default function DeviceSettings() {
           </View>
         )}
 
-      {(hasGallery(defaultWearable) || hasLocalPhotos) && (
-        <RouteButton
-          label={translate("glasses:gallery")}
-          subtitle={translate("glasses:galleryDescription")}
-          onPress={() => push("/asg/gallery")}
-        />
-      )}
+      <RouteButton
+        label={translate("glasses:gallery")}
+        subtitle={translate("glasses:galleryDescription")}
+        onPress={() => push("/asg/gallery")}
+      />
 
       {hasBrightness(defaultWearable) && isGlassesConnected && (
         <View style={themed($settingsGroup)}>
@@ -463,11 +461,14 @@ export default function DeviceSettings() {
         <OtaProgressSection otaProgress={status.ota_progress} />
       )}
 
-      <RouteButton
-        label={translate("settings:dashboardSettings")}
-        subtitle={translate("settings:dashboardDescription")}
-        onPress={() => push("/settings/dashboard")}
-      />
+      {/* Only show dashboard settings if glasses have display capability */}
+      {defaultWearable && glassesFeatures[defaultWearable]?.display && (
+        <RouteButton
+          label={translate("settings:dashboardSettings")}
+          subtitle={translate("settings:dashboardDescription")}
+          onPress={() => push("/settings/dashboard")}
+        />
+      )}
 
       {defaultWearable && isGlassesConnected && defaultWearable !== "Simulated Glasses" && (
         <ActionButton

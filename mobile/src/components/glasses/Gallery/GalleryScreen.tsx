@@ -33,6 +33,7 @@ import {Header, Text} from "@/components/ignite"
 import * as Linking from "expo-linking"
 import {MediaLibraryPermissions} from "@/utils/MediaLibraryPermissions"
 import {gallerySettingsService} from "@/services/asg/gallerySettingsService"
+import {hasGallery} from "@/config/glassesFeatures"
 
 // Gallery timing constants
 const TIMING = {
@@ -870,13 +871,18 @@ export function GalleryScreen() {
       // Continue with existing mount logic
       loadDownloadedPhotos()
 
-      // Only query glasses if we have glasses info (meaning glasses are connected)
-      if (status.glasses_info?.model_name) {
-        console.log("[GalleryScreen] Glasses connected - querying gallery status", status.glasses_info)
+      // Only query glasses if we have glasses info (meaning glasses are connected) AND glasses have gallery capability
+      if (status.glasses_info?.model_name && hasGallery(status.glasses_info.model_name)) {
+        console.log(
+          "[GalleryScreen] Glasses connected with gallery capability - querying gallery status",
+          status.glasses_info,
+        )
         transitionToState(GalleryState.QUERYING_GLASSES)
         queryGlassesGalleryStatus()
       } else {
-        console.log("[GalleryScreen] No glasses connected - showing local photos only")
+        console.log(
+          "[GalleryScreen] No glasses connected or glasses don't have gallery capability - showing local photos only",
+        )
         transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
       }
     }
