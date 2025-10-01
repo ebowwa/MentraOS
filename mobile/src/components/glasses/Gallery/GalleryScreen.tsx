@@ -1514,7 +1514,7 @@ const $photoGridContent: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $columnWrapper: ThemedStyle<ViewStyle> = () => ({
-  justifyContent: "space-between",
+  justifyContent: "flex-start",
   gap: 2, // Minimal spacing between columns
 })
 
