@@ -285,11 +285,10 @@ export class AppServer {
             const cloudHost =
               process.env.CLOUD_PUBLIC_HOST_NAME ||
               "mentra-cloud-server.ngrok.app";
-            const response = await axios.get(`https://${cloudHost}/api/sdk`);
+            const response = await axios.get(`https://${cloudHost}/api/sdk/version`);
             if (response.data && response.data.success && response.data.data) {
               latest = response.data.data.latest; // Changed from "recommended" to "latest"
-              this.logger.debug(`Latest SDK version from API: ${latest}`);
-              this.logger.debug(`Current SDK version: ${currentVersion}`);
+
             }
           } catch (fetchError) {
             this.logger.debug(
@@ -306,7 +305,7 @@ export class AppServer {
             this.logger.warn(newSDKUpdate(latest));
           }
         } catch (err) {
-          this.logger.debug({ err }, "Version check failed");
+          this.logger.error(err , "Version check failed");
         }
 
         resolve();
