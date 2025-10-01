@@ -13,32 +13,24 @@
  *   Keep a legacy fallback (/api/orgs) until migration completes.
  * - When the selected org changes, we set axios.defaults.headers["x-org-id"]
  *   to avoid breaking existing /api/dev/* routes during migration.
+ *
+ * Debug logging:
+ * - This store logs important lifecycle events (bootstrap, loadOrgs, selection changes)
+ *   to help diagnose issues where the app list does not refresh on org switch.
  */
 
+import api, { Organization } from "@/services/api.service";
 import axios from "axios";
 import { create } from "zustand";
 
 const PERSIST_KEY = "console:selectedOrgId";
-
-export type Organization = {
-  id: string;
-  name: string;
-  slug?: string;
-  profile?: {
-    contactEmail?: string;
-    website?: string;
-    description?: string;
-    logo?: string;
-  };
-  createdAt?: string;
-  updatedAt?: string;
-};
 
 export type OrgState = {
   orgs: Organization[];
   selectedOrgId: string | null;
   loading: boolean;
   error: string | null;
+  _debugLog: (...args: unknown[]) => void;
 };
 
 export type OrgActions = {
@@ -106,6 +98,8 @@ function readPersistedSelectedOrgId(): string | null {
 }
 
 export const useOrgStore = create<OrgStore>((set, get) => ({
+  // Debug helper
+  _debugLog: (...args: unknown[]) => console.log("[orgs.store]", ...args),
   // State
   orgs: [],
   selectedOrgId: null,
@@ -114,105 +108,80 @@ export const useOrgStore = create<OrgStore>((set, get) => ({
 
   // Actions
   bootstrap: async () => {
+    get()._debugLog("bootstrap:start");
     set({ loading: true, error: null });
     try {
       await get().loadOrgs();
 
       const state = get();
       const persisted = readPersistedSelectedOrgId();
+      get()._debugLog("bootstrap:loadedOrgs", {
+        count: state.orgs.length,
+        persisted,
+      });
 
       let selected: string | null = null;
       if (persisted && state.orgs.some((o) => o.id === persisted)) {
         selected = persisted;
+        get()._debugLog("bootstrap:selectingPersisted", selected);
       } else {
         selected = state.orgs.length > 0 ? state.orgs[0].id : null;
+        get()._debugLog("bootstrap:selectingDefaultFirst", selected);
       }
 
       set({ selectedOrgId: selected, loading: false });
       setGlobalOrgHeader(selected);
       persistSelectedOrgId(selected);
-    } catch (error: any) {
+      get()._debugLog("bootstrap:done", { selected });
+    } catch (error: unknown) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to initialize organizations";
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize organizations";
       set({ loading: false, error: message });
+      get()._debugLog("bootstrap:error", message);
     }
   },
 
   loadOrgs: async () => {
+    get()._debugLog("loadOrgs:start");
     set({ loading: true, error: null });
     try {
-      // Prefer target route; fallback to legacy during migration
-      const res = await axios.get("/api/console/orgs").catch((err) => {
-        if (err?.response?.status === 404) {
-          return axios.get("/api/orgs");
-        }
-        throw err;
-      });
-
-      // Normalize response: either { success, data: [...] } or [...]
-      const data = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
-      const orgs: Organization[] = (data as any[]).map((raw: any) => ({
-        id: raw.id || raw._id || raw.orgId || "",
-        name: raw.name || "Unnamed Org",
-        slug: raw.slug,
-        profile: raw.profile,
-        createdAt: raw.createdAt,
-        updatedAt: raw.updatedAt,
-      }));
+      const orgs = await api.console.orgs.list();
 
       set({ orgs, loading: false, error: null });
-    } catch (error: any) {
+      get()._debugLog("loadOrgs:done", { count: orgs.length });
+    } catch (error: unknown) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to load organizations";
+        error instanceof Error ? error.message : "Failed to load organizations";
       set({ loading: false, error: message, orgs: [] });
+      get()._debugLog("loadOrgs:error", message);
       // Do not clear selected header here; selection may still be valid for legacy calls
     }
   },
 
   setSelectedOrgId: (orgId: string | null) => {
+    const prev = get().selectedOrgId;
     set({ selectedOrgId: orgId });
     setGlobalOrgHeader(orgId);
     persistSelectedOrgId(orgId);
+    get()._debugLog("setSelectedOrgId", { prev, next: orgId });
   },
 
   createOrg: async (name: string) => {
     set({ loading: true, error: null });
     try {
-      const body = { name };
-      const res = await axios.post("/api/console/orgs", body).catch((err) => {
-        if (err?.response?.status === 404) {
-          return axios.post("/api/orgs", body);
-        }
-        throw err;
-      });
-
-      // Normalize single org response: either { success, data: {...} } or {...}
-      const raw = res.data?.data ?? res.data ?? {};
-      const newOrg: Organization = {
-        id: raw.id || raw._id || raw.orgId || "",
-        name: raw.name || name,
-        slug: raw.slug,
-        profile: raw.profile,
-        createdAt: raw.createdAt,
-        updatedAt: raw.updatedAt,
-      };
+      const newOrg = await api.console.orgs.create(name);
 
       const orgs = [...get().orgs, newOrg];
       set({ orgs, selectedOrgId: newOrg.id, loading: false, error: null });
       setGlobalOrgHeader(newOrg.id);
       persistSelectedOrgId(newOrg.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to create organization";
+        error instanceof Error
+          ? error.message
+          : "Failed to create organization";
       set({ loading: false, error: message });
     }
   },

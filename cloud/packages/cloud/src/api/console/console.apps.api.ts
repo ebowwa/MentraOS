@@ -57,68 +57,232 @@ router.post("/:packageName/move", authenticateConsole, moveApp);
  * Replace with service-backed implementations (e.g., services/console/console.app.service).
  */
 
-function listApps(req: Request, res: Response) {
-  // Example: const { orgId } = req.query;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "GET /api/console/apps",
-  });
+async function listApps(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+
+    const orgId =
+      typeof req.query?.orgId === "string"
+        ? (req.query.orgId as string)
+        : undefined;
+
+    const mod = await import("../../services/console/console.apps.service");
+    const apps = await mod.listApps(email, { orgId });
+
+    return res.json({ success: true, data: apps });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to list apps",
+    });
+  }
 }
 
-function createApp(req: Request, res: Response) {
-  // Example: const { orgId, ...appData } = req.body;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "POST /api/console/apps",
-  });
+async function createApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+    const orgId =
+      typeof body["orgId"] === "string" ? (body["orgId"] as string) : undefined;
+
+    // Separate orgId from the rest of the app input
+    const { orgId: _omit, ...appInput } = body;
+
+    const mod = await import("../../services/console/console.apps.service");
+    const result = await mod.createApp(email, appInput, {
+      orgId,
+      allowBootstrap: true,
+    });
+
+    return res.status(201).json({ success: true, data: result });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to create app",
+    });
+  }
 }
 
-function getApp(req: Request, res: Response) {
-  // Example: const { packageName } = req.params;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "GET /api/console/apps/:packageName",
-  });
+async function getApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+
+    const mod = await import("../../services/console/console.apps.service");
+    const app = await mod.getApp(email, packageName);
+
+    return res.json({ success: true, data: app });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to get app",
+    });
+  }
 }
 
-function updateApp(req: Request, res: Response) {
-  // Example: const { packageName } = req.params; const data = req.body;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "PUT /api/console/apps/:packageName",
-  });
+async function updateApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+    const data = req.body ?? {};
+
+    const mod = await import("../../services/console/console.apps.service");
+    const app = await mod.updateApp(email, packageName, data);
+
+    return res.json({ success: true, data: app });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to update app",
+    });
+  }
 }
 
-function deleteApp(req: Request, res: Response) {
-  // Example: const { packageName } = req.params;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "DELETE /api/console/apps/:packageName",
-  });
+async function deleteApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+
+    const mod = await import("../../services/console/console.apps.service");
+    await mod.deleteApp(email, packageName);
+
+    return res.json({ success: true, message: "App deleted" });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to delete app",
+    });
+  }
 }
 
-function publishApp(req: Request, res: Response) {
-  // Example: const { packageName } = req.params;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "POST /api/console/apps/:packageName/publish",
-  });
+async function publishApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+
+    const mod = await import("../../services/console/console.apps.service");
+    const app = await mod.publishApp(email, packageName);
+
+    return res.json({ success: true, data: app });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to publish app",
+    });
+  }
 }
 
-function regenerateApiKey(req: Request, res: Response) {
-  // Example: const { packageName } = req.params;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "POST /api/console/apps/:packageName/api-key",
-  });
+async function regenerateApiKey(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+
+    const mod = await import("../../services/console/console.apps.service");
+    const result = await mod.regenerateApiKey(email, packageName);
+
+    return res.json({ success: true, data: result });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to regenerate API key",
+    });
+  }
 }
 
-function moveApp(req: Request, res: Response) {
-  // Example: const { packageName } = req.params; const { targetOrgId } = req.body;
-  return res.status(501).json({
-    error: "Not implemented",
-    message: "POST /api/console/apps/:packageName/move",
-  });
+async function moveApp(req: Request, res: Response) {
+  try {
+    const email = req.console?.email;
+    if (!email) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Missing console email",
+      });
+    }
+    const { packageName } = req.params;
+    const { targetOrgId } = req.body || {};
+    if (!packageName) {
+      return res.status(400).json({ error: "Missing packageName" });
+    }
+    if (!targetOrgId || typeof targetOrgId !== "string") {
+      return res.status(400).json({ error: "Missing targetOrgId" });
+    }
+
+    const mod = await import("../../services/console/console.apps.service");
+    const app = await mod.moveApp(email, packageName, targetOrgId);
+
+    return res.json({ success: true, data: app });
+  } catch (e: any) {
+    const status =
+      e?.statusCode && Number.isInteger(e.statusCode) ? e.statusCode : 500;
+    return res.status(status).json({
+      error: e?.message || "Failed to move app",
+    });
+  }
 }
 
 export default router;

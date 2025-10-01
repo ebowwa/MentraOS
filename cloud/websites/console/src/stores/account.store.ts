@@ -11,11 +11,12 @@
  * Notes:
  * - The Cloud backend is responsible for ensuring a default org exists at auth and/or org-required actions.
  * - This store should NOT create organizations. It only reflects account state on the client.
- * - While migrating to /api/console, prefer GET /api/console/auth/me; keep a legacy fallback if needed.
+ * - While migrating to /api/console, prefer GET /api/console/account; keep a legacy fallback if needed.
  */
 
 import axios from "axios";
 import { create } from "zustand";
+import api from "@/services/api.service";
 
 export type AccountState = {
   email: string | null;
@@ -33,8 +34,9 @@ export type AccountActions = {
 
   /**
    * Fetch the currently authenticated user.
-   * TODO: Confirm final endpoint under /api/console/auth/me and remove legacy fallback.
+   * TODO: Confirm final endpoint under /api/console/account and remove legacy fallback.
    */
+  fetchAccount: () => Promise<void>;
   fetchMe: () => Promise<void>;
 
   /**
@@ -51,7 +53,7 @@ export type AccountActions = {
 
 export type AccountStore = AccountState & AccountActions;
 
-export const useAccountStore = create<AccountStore>((set, _get) => ({
+export const useAccountStore = create<AccountStore>((set, get) => ({
   // State
   email: null,
   signedIn: false,
@@ -69,25 +71,11 @@ export const useAccountStore = create<AccountStore>((set, _get) => ({
   },
 
   fetchMe: async () => {
-    // TODO:
-    // - Prefer /api/console/auth/me once available server-side
-    // - Remove legacy fallback (/api/dev/auth/me)
-    // - Align response shape (email, organizations, defaultOrg, etc)
     set({ loading: true, error: null });
     try {
-      // Try the target route first
-      const res = await axios.get("/api/console/auth/me").catch((err) => {
-        // Legacy fallback (remove once /api/console is live)
-        if (err?.response?.status === 404) {
-          return axios.get("/api/dev/auth/me");
-        }
-        throw err;
-      });
-
-      const email: string | null =
-        res?.data?.email ??
-        res?.data?.data?.email ?? // in case of different shapes
-        null;
+      // Prefer new console endpoint
+      const account = await api.console.account.get();
+      const email = account?.email ?? null;
 
       set({
         email,
@@ -95,19 +83,36 @@ export const useAccountStore = create<AccountStore>((set, _get) => ({
         loading: false,
         error: null,
       });
-    } catch (error: any) {
-      // TODO: unify error formatting
-      const message =
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to fetch account";
-      set({
-        loading: false,
-        signedIn: false,
-        email: null,
-        error: message,
-      });
+    } catch (err) {
+      // Fallback to legacy auth if console account endpoint is not available
+      console.error("Failed to fetch account", err);
+      try {
+        const me = await api.auth.me();
+        const email = me?.email ?? null;
+
+        set({
+          email,
+          signedIn: Boolean(email),
+          loading: false,
+          error: null,
+        });
+      } catch (fallbackErr) {
+        const message =
+          fallbackErr instanceof Error
+            ? fallbackErr.message
+            : "Failed to fetch account";
+        set({
+          loading: false,
+          signedIn: false,
+          email: null,
+          error: message,
+        });
+      }
     }
+  },
+
+  fetchAccount: async () => {
+    await get().fetchMe();
   },
 
   signOut: () => {
@@ -138,5 +143,5 @@ export const useAccountStore = create<AccountStore>((set, _get) => ({
  *
  * Initialization (example):
  * - Call useAccountStore.getState().setToken(token) after login.
- * - Then await useAccountStore.getState().fetchMe() to populate account state.
+ * - Then await useAccountStore.getState().fetchAccount() to populate account state.
  */

@@ -42,7 +42,7 @@ export interface PendingInvite {
 /**
  * Interface for Organization document in MongoDB
  */
-export interface OrganizationDocument extends Document {
+export interface OrganizationI extends Document {
   /** Organization name, displayed in UI */
   name: string;
   /** URL-safe unique identifier for organization */
@@ -71,7 +71,7 @@ export interface OrganizationDocument extends Document {
 /**
  * Mongoose schema for Organizations
  */
-const OrganizationSchema = new Schema<OrganizationDocument>(
+const OrganizationSchema = new Schema<OrganizationI>(
   {
     name: {
       type: String,
@@ -217,7 +217,7 @@ OrganizationSchema.statics.generateSlug = function (name: string): string {
  */
 OrganizationSchema.statics.findByMember = async function (
   userId: Types.ObjectId,
-): Promise<OrganizationDocument[]> {
+): Promise<OrganizationI[]> {
   return this.find({ "members.user": userId });
 };
 
@@ -257,9 +257,9 @@ OrganizationSchema.statics.hasRole = async function (
 };
 
 // Define interface for static methods
-interface OrganizationModel extends Model<OrganizationDocument> {
+interface OrganizationModel extends Model<OrganizationI> {
   generateSlug(name: string): string;
-  findByMember(userId: Types.ObjectId): Promise<OrganizationDocument[]>;
+  findByMember(userId: Types.ObjectId): Promise<OrganizationI[]>;
   isMember(
     orgId: Types.ObjectId | string,
     userId: Types.ObjectId | string,
@@ -273,7 +273,7 @@ interface OrganizationModel extends Model<OrganizationDocument> {
 
 // Create and export the model
 export const Organization = (mongoose.models.Organization ||
-  model<OrganizationDocument, OrganizationModel>(
+  model<OrganizationI, OrganizationModel>(
     "Organization",
     OrganizationSchema,
   )) as OrganizationModel;
