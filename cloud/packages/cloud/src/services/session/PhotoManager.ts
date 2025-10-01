@@ -9,7 +9,6 @@ import {
   PhotoResponse, // SDK type from Glasses
   PhotoRequest, // SDK type for App's request
   PhotoErrorCode,
-  PhotoStage,
   // Define AppPhotoResult in SDK or use a generic message structure
 } from "@mentra/sdk";
 import { Logger } from "pino";
@@ -212,10 +211,15 @@ export class PhotoManager {
     const { requestId, success } = normalizedResponse;
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
 
-    console.log("pendingPhotoRequest", this.pendingPhotoRequests);
-    console.log("glassesResponse", glassesResponse);
-    console.log("success", success);
-    console.log("requestId", requestId);
+    this.logger.debug(
+      {
+        pendingPhotoRequests: Array.from(this.pendingPhotoRequests.keys()),
+        glassesResponse,
+        success,
+        requestId,
+      },
+      "Photo response processing debug info",
+    );
 
     if (!pendingPhotoRequest) {
       this.logger.warn(
