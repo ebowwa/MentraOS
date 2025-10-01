@@ -96,7 +96,7 @@ const en = {
     doYouHaveGlasses: "Do you have smart glasses?",
     getStarted: "Let's get Started",
     haveGlasses: "I have glasses",
-    dontHaveGlasses: "I don't have glasses",
+    dontHaveGlasses: "I don't have glasses yet",
     welcome: "Welcome to MentraOS",
   },
   home: {
