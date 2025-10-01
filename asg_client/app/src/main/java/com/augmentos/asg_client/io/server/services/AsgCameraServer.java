@@ -512,6 +512,102 @@ public class AsgCameraServer extends AsgServer {
                lowerFilename.endsWith(".mkv") || 
                lowerFilename.endsWith(".3gp");
     }
+    
+    /**
+     * Check if a file is an AVIF transfer artifact that should be excluded from sync
+     * AVIF files are temporary transfer artifacts created during BLE photo transfers
+     * and should not be synced to mobile devices.
+     */
+    private boolean isAvifTransferArtifact(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            logger.debug(TAG, "🔄 File is null or empty, returning false");
+            return false;
+        }
+
+        logger.debug(TAG, "🔄 Checking if file is an AVIF transfer artifact: " + filename);
+        
+        // AVIF transfer artifacts have specific naming patterns:
+        // 1. Files without extensions (BLE limitation) - pattern: "I" + digits or "ble_" + digits
+        // 2. Files with .avif extension
+        // 3. Files matching BLE image ID patterns
+        
+        String lowerFilename = filename.toLowerCase();
+        
+        // Check for .avif extension
+        if (lowerFilename.endsWith(".avif") || lowerFilename.endsWith(".avifs")) {
+            logger.debug(TAG, "🔄 Detected AVIF by extension: " + filename);
+            return true;
+        }
+
+        // Check for BLE transfer patterns (no extension due to 16-char limit)
+        // Pattern 1: "I" followed by digits (e.g., "I634744046")
+        if (filename.matches("^I\\d+$")) {
+            logger.debug(TAG, "🔄 Detected AVIF by BLE ID pattern (I+digits): " + filename);
+            return true;
+        }
+        
+        // Pattern 2: "ble_" followed by digits (e.g., "ble_1234567890")
+        if (filename.matches("^ble_\\d+$")) {
+            logger.debug(TAG, "🔄 Detected AVIF by BLE transfer pattern (ble_+digits): " + filename);
+            return true;
+        }
+        
+        // Pattern 3: Files that are just digits (potential BLE image IDs)
+        if (filename.matches("^\\d+$")) {
+            logger.debug(TAG, "🔄 Detected AVIF by pure digit pattern: " + filename);
+            return true;
+        }
+        
+        // Check file content signature for AVIF detection
+        if (hasAvifSignature(filename)) {
+            logger.debug(TAG, "🔄 Detected AVIF by content signature: " + filename);
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if a file has AVIF signature by reading file content
+     * AVIF files start with ISOBMFF container format and have "ftypavif" signature
+     */
+    private boolean hasAvifSignature(String filename) {
+        try {
+            // Get the file from the file manager
+            File file = fileManager.getFile(fileManager.getDefaultPackageName(), filename);
+            if (file == null || !file.exists()) {
+                logger.debug(TAG, "🔄 File not found for signature check: " + filename);
+                return false;
+            }
+            
+            // Read first 20 bytes to check file signature
+            try (FileInputStream fis = new FileInputStream(file)) {
+                byte[] header = new byte[20];
+                int bytesRead = fis.read(header);
+                
+                if (bytesRead < 12) {
+                    logger.debug(TAG, "🔄 File too small for AVIF signature check: " + filename);
+                    return false;
+                }
+                
+                // Check for AVIF signature at positions 4-12
+                // AVIF files have "ftypavif" signature in ISOBMFF container
+                String signature = new String(header, 4, 8, StandardCharsets.UTF_8);
+                
+                if ("ftypavif".equals(signature)) {
+                    logger.debug(TAG, "🔄 AVIF signature detected in file: " + filename);
+                    return true;
+                }
+                
+                logger.debug(TAG, "🔄 No AVIF signature found in file: " + filename + " (signature: " + signature + ")");
+                return false;
+            }
+            
+        } catch (Exception e) {
+            logger.warn(TAG, "🔄 Error checking AVIF signature for file: " + filename + " - " + e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * Serve photo download with proper headers using the file management system.
@@ -968,6 +1064,24 @@ public class AsgCameraServer extends AsgServer {
             // In a more sophisticated implementation, you'd track deletions separately
             for (FileMetadata fileMetadata : allFiles) {
                 if (fileMetadata.getLastModified() > lastSyncTime) {
+                    // Skip and delete AVIF transfer artifacts - these should not be synced to mobile
+                    if (isAvifTransferArtifact(fileMetadata.getFileName())) {
+                        logger.debug(TAG, "🔄 Found AVIF transfer artifact, deleting: " + fileMetadata.getFileName());
+
+                        // Delete the AVIF file to clean up storage
+                        try {
+                            FileOperationResult deleteResult = fileManager.deleteFile(fileManager.getDefaultPackageName(), fileMetadata.getFileName());
+                            if (deleteResult.isSuccess()) {
+                                logger.info(TAG, "🗑️ Successfully deleted AVIF transfer artifact: " + fileMetadata.getFileName() + " (" + fileMetadata.getFileSize() + " bytes)");
+                            } else {
+                                logger.warn(TAG, "⚠️ Failed to delete AVIF transfer artifact: " + fileMetadata.getFileName() + " - " + deleteResult.getMessage());
+                            }
+                        } catch (Exception e) {
+                            logger.error(TAG, "💥 Error deleting AVIF transfer artifact: " + fileMetadata.getFileName(), e);
+                        }
+                        continue;
+                    }
+
                     Map<String, Object> fileInfo = new HashMap<>();
                     fileInfo.put("name", fileMetadata.getFileName());
                     fileInfo.put("size", fileMetadata.getFileSize());
