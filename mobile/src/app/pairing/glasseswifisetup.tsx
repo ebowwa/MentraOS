@@ -7,9 +7,7 @@ import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ScrollView} from "react-native"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import RouteButton from "@/components/ui/RouteButton"
-import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import bridge from "@/bridge/MantleBridge"
 
 export default function GlassesWifiSetupScreen() {
   const {deviceModel = "Glasses"} = useLocalSearchParams()
@@ -42,15 +40,15 @@ export default function GlassesWifiSetupScreen() {
     push("/pairing/glasseswifisetup/password", {deviceModel, ssid: ""})
   }
 
-  const handleDisconnectWifi = async () => {
-    try {
-      console.log("Disconnecting from WiFi...")
-      await bridge.disconnectFromWifi()
-      console.log("WiFi disconnect command sent successfully")
-    } catch (error) {
-      console.error("Failed to disconnect from WiFi:", error)
-    }
-  }
+  // const handleDisconnectWifi = async () => {
+  //   try {
+  //     console.log("Disconnecting from WiFi...")
+  //     await bridge.disconnectFromWifi()
+  //     console.log("WiFi disconnect command sent successfully")
+  //   } catch (error) {
+  //     console.error("Failed to disconnect from WiFi:", error)
+  //   }
+  // }
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)} safeAreaEdges={[]}>
@@ -90,14 +88,14 @@ export default function GlassesWifiSetupScreen() {
               onPress={handleManualEntry}
             />
 
-            {isWifiConnected && currentWifi && (
+            {/* {isWifiConnected && currentWifi && (
               <ActionButton
                 label="Disconnect from WiFi"
                 subtitle="Disconnect from current network"
                 variant="destructive"
                 onPress={handleDisconnectWifi}
               />
-            )}
+            )} */}
           </View>
         </View>
       </ScrollView>
@@ -123,7 +121,7 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const $statusContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.backgroundDim,
+  backgroundColor: colors.backgroundAlt,
   padding: spacing.md,
   borderRadius: spacing.xs,
   marginBottom: spacing.xl,
