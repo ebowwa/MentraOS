@@ -912,7 +912,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
             boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID) && supportsLC3Audio;
             boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID) && supportsLC3Audio;
-            boolean isFileReadCharacteristic = uuid.equals(FILE_READ_UUID);
 
             if (isRxCharacteristic) {
                 Log.d(TAG, "Received data on RX characteristic");
@@ -927,8 +926,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
             } else if (isLc3WriteCharacteristic) {
                 Log.d(TAG, "Received data on LC3_WRITE characteristic");
-            } else if (isFileReadCharacteristic) {
-                Log.d(TAG, "Received data on FILE_READ characteristic");
             } else {
                 Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
@@ -1437,27 +1434,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
 
     /**
-     * Send ACK to glasses for their messages that have mId
-     */
-    private void sendAckToGlasses(long messageId) {
-        try {
-            JSONObject ack = new JSONObject();
-            ack.put("type", "msg_ack");
-            ack.put("mId", messageId);
-            ack.put("timestamp", System.currentTimeMillis());
-
-            String ackStr = ack.toString();
-            Log.d(TAG, "📤 Sending ACK to glasses for message: " + messageId);
-
-            // Send without retry (ACKs are never retried)
-            sendDataToGlasses(ackStr, false);
-
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating ACK for glasses", e);
-        }
-    }
-
-    /**
      * Process data received from the glasses
      */
     private void processReceivedData(byte[] data, int size) {
@@ -1567,23 +1543,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void processJsonMessage(JSONObject json) {
         Log.d(TAG, "Got some JSON from glasses: " + json.toString());
 
-        // Check if this is an ACK response first (for our phone → glasses messages)
+        // Check if this is an ACK response
         String type = json.optString("type", "");
         if ("msg_ack".equals(type)) {
             long messageId = json.optLong("mId", -1);
             if (messageId != -1) {
                 processAckResponse(messageId);
-                return; // Don't send ACK for ACKs!
-            }
-        }
-
-        // Check for message ID that needs ACK (glasses → phone)
-        // But only if it's NOT an ACK message
-        if (json.has("mId")) {
-            long messageId = json.optLong("mId", -1);
-            if (messageId != -1) {
-                // Send ACK back to glasses
-                sendAckToGlasses(messageId);
+                return;
             }
         }
 
@@ -1599,9 +1565,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 break;
             case "transfer_timeout":
                 handleTransferTimeout(json);
-                break;
-            case "transfer_failed":
-                handleTransferFailed(json);
                 break;
             case "ble_photo_ready":
                 processBlePhotoReady(json);
@@ -1728,12 +1691,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "BLE photo transfer complete - requestId: " + bleRequestId +
                      ", bleImgId: " + bleBleImgId + ", success: " + bleSuccess);
 
-                // Send completion notification back to glasses using unified transfer_complete
+                // Send completion notification back to glasses
                 if (bleSuccess) {
-                    sendTransferCompleteConfirmation(bleBleImgId, true);
+                    sendBleTransferComplete(bleRequestId, bleBleImgId, true);
                 } else {
                     Log.e(TAG, "BLE photo transfer failed for requestId: " + bleRequestId);
-                    sendTransferCompleteConfirmation(bleBleImgId, false);
                 }
                 break;
 
@@ -2103,49 +2065,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "⏰ Error processing transfer timeout notification", e);
         }
     }
-
-    /**
-     * Handle transfer failed notification from glasses (max retries exceeded)
-     */
-    private void handleTransferFailed(JSONObject json) {
-        try {
-            String fileName = json.optString("fileName", "");
-            String reason = json.optString("reason", "unknown");
-
-            Log.e(TAG, "❌ Transfer failed notification received for: " + fileName + " (reason: " + reason + ")");
-
-            if (!fileName.isEmpty()) {
-                // Clean up any active transfer for this file
-                FileTransferSession session = activeFileTransfers.remove(fileName);
-                if (session != null) {
-                    Log.d(TAG, "🧹 Cleaned up failed transfer session for: " + fileName);
-                    Log.d(TAG, "📊 Transfer stats - Received: " + session.receivedPackets.size() + "/" + session.totalPackets + " packets");
-                    Log.d(TAG, "❌ Failure reason: " + reason);
-                }
-
-                // Clean up any BLE photo transfer
-                String bleImgId = fileName;
-                int dotIndex = bleImgId.lastIndexOf('.');
-                if (dotIndex > 0) {
-                    bleImgId = bleImgId.substring(0, dotIndex);
-                }
-                BlePhotoTransfer photoTransfer = blePhotoTransfers.remove(bleImgId);
-                if (photoTransfer != null) {
-                    Log.d(TAG, "🧹 Cleaned up failed BLE photo transfer for: " + bleImgId);
-
-                    // Notify that BLE photo transfer failed if we have a requestId
-                    if (photoTransfer.requestId != null) {
-                        // Could send failure notification to any listeners if needed
-                        Log.e(TAG, "❌ BLE photo transfer failed for requestId: " + photoTransfer.requestId);
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Error processing transfer failed notification", e);
-        }
-    }
-
+    
     /**
      * Handle file transfer announcement from glasses
      */
@@ -2163,23 +2083,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 return;
             }
             
-            // Check if we already have a session for this file (restart scenario)
-            FileTransferSession existingSession = activeFileTransfers.get(fileName);
-            if (existingSession != null) {
-                Log.d(TAG, "📢 RESTART detected - clearing existing session for " + fileName);
-                Log.d(TAG, "📊 Previous session had " + existingSession.receivedPackets.size() + "/" + existingSession.totalPackets + " packets");
-                // Clear existing session for fresh start
-                activeFileTransfers.remove(fileName);
-            }
-            
-            // Create new announced file transfer session
+            // Create announced file transfer session
             FileTransferSession session = new FileTransferSession(fileName, fileSize);
             // Override calculated packet count with announced count for accuracy
             session.totalPackets = totalPackets;
-            session.isAnnounced = true;
             activeFileTransfers.put(fileName, session);
             
-            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName + (existingSession != null ? " (RESTART)" : " (NEW)"));
+            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName);
             
         } catch (Exception e) {
             Log.e(TAG, "📢 Error processing file transfer announcement", e);
@@ -3771,12 +3681,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Clean up - use the bleImgId without extension
                     blePhotoTransfers.remove(bleImgId);
                 } else {
-                    // Final packet received but transfer incomplete - request missing packets
+                    // Final packet received but transfer incomplete - tell glasses to retry
                     List<Integer> missingPackets = photoTransfer.session.getMissingPackets();
-                    Log.w(TAG, "📦 BLE photo transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
-                    
-                    // Request missing packets from glasses
-                    requestMissingPackets(packetInfo.fileName, missingPackets);
+                    Log.e(TAG, "❌ BLE photo transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
+                    Log.e(TAG, "❌ Telling glasses to retry entire transfer");
+
+                    // Tell glasses transfer failed, they will retry
+                    sendTransferCompleteConfirmation(packetInfo.fileName, false);
+                    blePhotoTransfers.remove(bleImgId);
                 }
             }
 
@@ -3819,12 +3731,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         // Remove from active transfers
                         activeFileTransfers.remove(packetInfo.fileName);
                     } else {
-                        // Final packet received but transfer incomplete - request missing packets
+                        // Final packet received but transfer incomplete - tell glasses to retry
                         List<Integer> missingPackets = session.getMissingPackets();
-                        Log.w(TAG, "📦 File transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
-                        
-                        // Request missing packets from glasses
-                        requestMissingPackets(packetInfo.fileName, missingPackets);
+                        Log.e(TAG, "❌ File transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
+                        Log.e(TAG, "❌ Telling glasses to retry entire transfer");
+
+                        // Tell glasses transfer failed, they will retry
+                        sendTransferCompleteConfirmation(packetInfo.fileName, false);
+                        activeFileTransfers.remove(packetInfo.fileName);
                     }
                 }
             } else {
@@ -3842,10 +3756,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.d(TAG, "✅ No missing packets for " + fileName + " - should not have been called");
             return;
         }
-
-        // ANY missing packets trigger a full restart (for now)
-        // TODO: In future, implement selective packet retransmission instead of full restart
-        Log.d(TAG, "🔍 Requesting full retransmission due to " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
+        
+        // Check if too many packets are missing (>50% = likely failure)
+        FileTransferSession session = activeFileTransfers.get(fileName);
+        if (session != null && missingPackets.size() > session.totalPackets / 2) {
+            Log.e(TAG, "❌ Too many missing packets (" + missingPackets.size() + "/" + session.totalPackets + ") for " + fileName + " - treating as failed transfer");
+            
+            // Send failure confirmation to glasses
+            sendTransferCompleteConfirmation(fileName, false);
+            
+            // Clean up the failed session
+            activeFileTransfers.remove(fileName);
+            return;
+        }
+        
+        Log.d(TAG, "🔍 Requesting retransmission of " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
         
         try {
             // Send missing packets request to glasses
@@ -4075,6 +4000,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         return prefs.getString(KEY_CORE_TOKEN, "");
     }
 
+    /**
+     * Send BLE transfer completion notification
+     */
+    private void sendBleTransferComplete(String requestId, String bleImgId, boolean success) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "ble_photo_transfer_complete");
+            json.put("requestId", requestId);
+            json.put("bleImgId", bleImgId);
+            json.put("success", success);
+
+            sendJson(json, true);
+            Log.d(TAG, "Sent BLE transfer complete notification: " + json.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating BLE transfer complete message", e);
+        }
+    }
 
     /**
      * Send button mode setting to the smart glasses

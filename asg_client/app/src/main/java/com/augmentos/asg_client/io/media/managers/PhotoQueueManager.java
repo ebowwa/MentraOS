@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.augmentos.asg_client.io.media.upload.PhotoUploadService;
+import com.augmentos.asg_client.camera.CameraNeo;
 
 /**
  * Manages a queue of photos to be uploaded to AugmentOS Cloud.
@@ -120,10 +121,10 @@ public class PhotoQueueManager {
         String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
         String photoFilePath = mContext.getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
         
-        com.augmentos.asg_client.camera.CameraNeo.takePictureWithCallback(
+        CameraNeo.takePictureWithCallback(
                 mContext,
                 photoFilePath,
-                new com.augmentos.asg_client.camera.CameraNeo.PhotoCaptureCallback() {
+                new CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         callback.onPhotoCaptured(filePath);
