@@ -116,8 +116,8 @@ const $infoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontFamily: "Montserrat-Bold",
-  fontSize: 32,
+  fontSize: spacing.xl,
+  lineHeight: 32,
   fontWeight: "bold",
   marginBottom: spacing.md,
   textAlign: "center",
@@ -130,11 +130,11 @@ const $description: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xl,
   paddingHorizontal: spacing.lg,
   textAlign: "center",
-  color: colors.text,
+  color: colors.textDim,
 })
 
 const $question: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 20,
+  fontSize: spacing.lg,
   fontWeight: "600",
   textAlign: "center",
   marginBottom: spacing.sm,
