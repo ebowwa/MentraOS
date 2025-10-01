@@ -92,6 +92,13 @@ const en = {
     grantPermission: "Grant Permission",
     openSettings: "Open Settings",
   },
+  onboarding: {
+    doYouHaveGlasses: "Do you have smart glasses?",
+    getStarted: "Let's get Started",
+    haveGlasses: "I have glasses",
+    dontHaveGlasses: "I don't have glasses",
+    welcome: "Welcome to MentraOS",
+  },
   home: {
     title: "MentraOS",
     pairGlasses: "Pair Glasses",

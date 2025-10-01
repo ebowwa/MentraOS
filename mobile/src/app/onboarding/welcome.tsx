@@ -8,10 +8,12 @@ import {MaterialCommunityIcons, FontAwesome} from "@expo/vector-icons"
 import {Spacer} from "@/components/misc/Spacer"
 import restComms from "@/managers/RestComms"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
+import {ViewStyle, TextStyle} from "react-native"
 
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
 
   const stopAllApps = async () => {
@@ -55,8 +57,8 @@ export default function OnboardingWelcome() {
   }
 
   return (
-    <Screen preset="fixed" style={{backgroundColor: theme.colors.background}}>
-      <View style={styles.mainContainer}>
+    <Screen preset="fixed" style={themed($screenContainer)}>
+      <View style={themed($mainContainer)}>
         {/* <View style={styles.logoContainer}>
           <Icon
             name="augmented-reality"
@@ -65,14 +67,14 @@ export default function OnboardingWelcome() {
           />
         </View> */}
 
-        <View style={styles.infoContainer}>
-          <Text style={[styles.title, {color: theme.colors.text}]}>Welcome to MentraOS</Text>
+        <View style={themed($infoContainer)}>
+          <Text style={themed($title)} tx="onboarding:welcome" />
 
-          <Text style={[styles.description, {color: theme.colors.text}]}>Let&apos;s get started.</Text>
+          <Text style={themed($description)} tx="onboarding:getStarted" />
 
           <Spacer height={20} />
 
-          <Text style={[styles.question, {color: theme.colors.text}]}>Do you have smart glasses?</Text>
+          <Text style={themed($question)} tx="onboarding:doYouHaveGlasses" />
         </View>
 
         <Button
@@ -94,38 +96,47 @@ export default function OnboardingWelcome() {
   )
 }
 
-const styles = {
-  description: {
-    fontSize: 18,
-    lineHeight: 26,
-    marginBottom: 32,
-    paddingHorizontal: 24,
-    textAlign: "center",
-  },
-  infoContainer: {
-    alignItems: "center",
-    flex: 0,
-    justifyContent: "center",
-    marginBottom: 40,
-    width: "100%",
-  },
-  mainContainer: {
-    flex: 1,
-    flexDirection: "column",
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  question: {
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-}
+const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $mainContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  flexDirection: "column",
+  justifyContent: "center",
+  padding: spacing.lg,
+})
+
+const $infoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  alignItems: "center",
+  flex: 0,
+  justifyContent: "center",
+  marginBottom: spacing.xxl,
+  width: "100%",
+})
+
+const $title: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontFamily: "Montserrat-Bold",
+  fontSize: 32,
+  fontWeight: "bold",
+  marginBottom: spacing.md,
+  textAlign: "center",
+  color: colors.text,
+})
+
+const $description: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 18,
+  lineHeight: 26,
+  marginBottom: spacing.xl,
+  paddingHorizontal: spacing.lg,
+  textAlign: "center",
+  color: colors.text,
+})
+
+const $question: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 20,
+  fontWeight: "600",
+  textAlign: "center",
+  marginBottom: spacing.sm,
+  color: colors.text,
+})
