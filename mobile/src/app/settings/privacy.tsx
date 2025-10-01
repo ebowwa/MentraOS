@@ -29,7 +29,7 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import {SETTINGS_KEYS, useSettings, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function PrivacySettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -40,7 +40,7 @@ export default function PrivacySettingsScreen() {
   const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
-  const settings = useSettings([SETTINGS_KEYS.sensing_enabled])
+  const [sensingEnabled, setSensingEnabled] = useSetting(SETTINGS_KEYS.sensing_enabled)
   const setSetting = useSettingsStore(state => state.setSetting)
 
   // Check permissions when screen loads
@@ -266,7 +266,7 @@ export default function PrivacySettingsScreen() {
         <ToggleSetting
           label={translate("settings:sensingLabel")}
           subtitle={translate("settings:sensingSubtitle")}
-          value={settings.sensing_enabled}
+          value={sensingEnabled}
           onValueChange={toggleSensing}
         />
       </ScrollView>
