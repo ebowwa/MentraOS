@@ -921,6 +921,13 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
+  async disconnectFromWifi() {
+    console.log("Sending WiFi disconnect command to Core")
+    return await this.sendData({
+      command: "disconnect_wifi",
+    })
+  }
+
   async stopService() {
     // Clean up any active listeners
     this.cleanup()

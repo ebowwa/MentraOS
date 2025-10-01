@@ -3521,6 +3521,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
+    /**
+     * Disconnect from WiFi on the glasses
+     */
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "📶 Sending WiFi disconnect command to glasses");
+
+        try {
+            // Send WiFi disconnect command to the ASG client
+            JSONObject wifiCommand = new JSONObject();
+            wifiCommand.put("type", "disconnect_wifi");
+            sendJson(wifiCommand, true);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi disconnect JSON", e);
+        }
+    }
+
     @Override
     public void sendHotspotState(boolean enabled) {
         Log.d(TAG, "🔥 Sending hotspot state to glasses - enabled: " + enabled);

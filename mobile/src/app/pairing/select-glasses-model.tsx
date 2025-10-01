@@ -1,16 +1,6 @@
-import React, {useState, useEffect, useCallback} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  ScrollView,
-  Image,
-  ViewStyle,
-  BackHandler,
-  ImageStyle,
-} from "react-native"
+import {useState, useCallback} from "react"
+import {View, TouchableOpacity, Platform, ScrollView, Image, ViewStyle, ImageStyle} from "react-native"
+import {Text} from "@/components/ignite"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {getGlassesImage} from "@/utils/getGlassesImage"
@@ -24,7 +14,6 @@ import Svg, {Defs, RadialGradient, Rect, Stop} from "react-native-svg"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
 export default function SelectGlassesModelScreen() {
-  const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null)
   const [isOnboarding, setIsOnboarding] = useState(false)
   const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
@@ -62,24 +51,11 @@ export default function SelectGlassesModelScreen() {
       }
 
       checkOnboardingStatus()
-
-      // Handle Android back button
-      const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
-        // If in onboarding, prevent going back
-        if (isOnboarding) {
-          return true // This prevents the default back action
-        }
-        return false // Allow default back action
-      })
-
-      return () => backHandler.remove()
-    }, [isOnboarding]),
+    }, []),
   )
 
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {
     // No need for Bluetooth permissions anymore as we're using direct communication
-
-    setGlassesModelNameToPair(glassesModelName)
     console.log("TRIGGERING SEARCH SCREEN FOR: " + glassesModelName)
     push("/pairing/prep", {glassesModelName: glassesModelName})
   }
@@ -127,79 +103,57 @@ export default function SelectGlassesModelScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header
         titleTx="pairing:selectModel"
-        leftIcon={isOnboarding ? undefined : "caretLeft"}
-        onLeftPress={
-          isOnboarding
-            ? undefined
-            : () => {
-                router.replace({pathname: "/(tabs)/home"})
-              }
-        }
+        leftIcon="caretLeft"
+        onLeftPress={() => {
+          if (isOnboarding) {
+            router.back()
+          } else {
+            router.replace({pathname: "/(tabs)/home"})
+          }
+        }}
       />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
-        {isOnboarding && (
-          <View
-            style={[
-              styles.onboardingBanner,
-              {backgroundColor: theme.colors.palette.blue500, borderColor: theme.colors.buttonPrimary},
-            ]}>
-            <Icon name="info-circle" size={20} color={theme.colors.icon} style={{marginRight: 8}} />
-
-            <Text
-              style={{
-                color: "white",
-                fontWeight: "bold",
-                textAlign: "center",
-                fontSize: 16,
-                flex: 1,
-              }}>
-              {"If you don't have smart glasses yet, you can select 'Simulated Glasses'."}
-            </Text>
-          </View>
-        )}
         {/** RENDER EACH GLASSES OPTION */}
-        {glassesOptions.map(glasses => (
-          <TouchableOpacity
-            key={glasses.key}
-            style={themed($settingItem)}
-            onPress={() => {
-              triggerGlassesPairingGuide(glasses.modelName)
-            }}>
-            <View
-              style={{
-                position: "relative",
-                marginLeft: -theme.spacing.xxxs,
-                marginTop: -theme.spacing.xxxs,
-                marginBottom: -theme.spacing.xxxs,
+        {glassesOptions
+          .filter(glasses => {
+            // Hide simulated glasses during onboarding (users get there via "I don't have glasses yet")
+            if (isOnboarding && glasses.modelName === "Simulated Glasses") {
+              return false
+            }
+            return true
+          })
+          .map(glasses => (
+            <TouchableOpacity
+              key={glasses.key}
+              style={themed($settingItem)}
+              onPress={() => {
+                triggerGlassesPairingGuide(glasses.modelName)
               }}>
-              {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
-              <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
-            </View>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  {
-                    color:
-                      isOnboarding && glasses.modelName === "Simulated Glasses"
-                        ? theme.colors.buttonPrimary
-                        : theme.colors.text,
-                    fontWeight: isOnboarding && glasses.modelName === "Simulated Glasses" ? "800" : "600",
-                  },
-                ]}>
-                {glasses.modelName}
-              </Text>
-            </View>
-            {isOnboarding && glasses.modelName === "Simulated Glasses" ? (
-              <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Text style={{color: theme.colors.buttonPrimary, marginRight: 5, fontWeight: "bold"}}>Select</Text>
-                <Icon name="angle-right" size={24} color={theme.colors.buttonPrimary} />
+              <View
+                style={{
+                  position: "relative",
+                  marginLeft: -theme.spacing.xxxs,
+                  marginTop: -theme.spacing.xxxs,
+                  marginBottom: -theme.spacing.xxxs,
+                }}>
+                {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
+                <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
               </View>
-            ) : (
+              <View style={styles.settingTextContainer}>
+                <Text
+                  style={[
+                    styles.label,
+                    {
+                      color: theme.colors.text,
+                      fontWeight: "600",
+                    },
+                  ]}>
+                  {glasses.modelName}
+                </Text>
+              </View>
               <Icon name="angle-right" size={24} color={theme.colors.text} />
-            )}
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))}
       </ScrollView>
     </Screen>
   )
@@ -232,7 +186,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) =
   backgroundColor: colors.background,
 })
 
-const $glassesImage: ThemedStyle<ImageStyle> = ({colors, spacing}) => ({
+const $glassesImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
   width: 80,
   height: 80,
   resizeMode: "contain",
@@ -243,57 +197,7 @@ const $glassesImage: ThemedStyle<ImageStyle> = ({colors, spacing}) => ({
   left: 10,
 })
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20, // Increased top padding for more consistent spacing
-    overflow: "hidden", // Prevent content from creating visual lines
-  },
-  onboardingBanner: {
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    marginBottom: 20,
-    borderRadius: 8,
-    elevation: 5,
-    shadowColor: "#000", // Universal shadow color
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    // backgroundColor and borderColor moved to dynamic styling
-  },
-  titleContainer: {
-    marginBottom: 10,
-    marginHorizontal: -20,
-    marginTop: -20,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  // Removed hardcoded theme colors - using dynamic styling
-  // titleContainerDark and titleContainerLight removed - use dynamic styling
-  title: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
-    textAlign: "left",
-    // color moved to dynamic styling
-  },
-  // Removed hardcoded theme colors - using dynamic styling
-  // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
-  backButton: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginBottom: 20,
-  },
-  backButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
+const styles = {
   settingTextContainer: {
     flex: 1,
     paddingLeft: 20,
@@ -304,20 +208,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     flexWrap: "wrap",
   },
-  value: {
-    flexWrap: "wrap",
-    fontSize: 12,
-    marginTop: 5,
-  },
-  headerContainer: {
-    borderBottomWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    // backgroundColor and borderBottomColor moved to dynamic styling
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "600",
-    // color moved to dynamic styling
-  },
-})
+}

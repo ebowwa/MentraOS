@@ -16,6 +16,7 @@ export const customFontsToLoad = {
   spaceGroteskMedium,
   spaceGroteskSemiBold,
   spaceGroteskBold,
+  glassesMirror: require("../../assets/fonts/glassesmirror.ttf"),
 }
 
 const fonts = {
@@ -56,6 +57,10 @@ const fonts = {
   monospace: {
     // Android only font.
     normal: "monospace",
+  },
+  glassesMirror: {
+    // Custom font for glasses display mirror
+    normal: "glassesMirror",
   },
 }
 
