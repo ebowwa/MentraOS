@@ -1,10 +1,9 @@
 import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
-import {TarBz2Extractor} from "./TarBz2Extractor"
 import bridge from "@/bridge/MantleBridge"
 
-const {BridgeModule, FileProviderModule} = NativeModules
+const {FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string

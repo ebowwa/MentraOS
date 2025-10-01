@@ -1,21 +1,18 @@
-import React from "react"
-import {View, Text, StyleSheet} from "react-native"
-import {Screen} from "@/components/ignite"
+import {View} from "react-native"
+import {Screen, Text} from "@/components/ignite"
 import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import RestComms from "@/managers/RestComms"
-import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Button} from "@/components/ignite/Button"
-import {FontAwesome} from "@expo/vector-icons"
+import {MaterialCommunityIcons, FontAwesome} from "@expo/vector-icons"
 import {Spacer} from "@/components/misc/Spacer"
 import restComms from "@/managers/RestComms"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const {theme, themed} = useAppTheme()
-  const {goBack, push, replace} = useNavigationHistory()
+  const {theme} = useAppTheme()
+  const {push} = useNavigationHistory()
 
   const stopAllApps = async () => {
     const runningApps = appStatus.filter(app => app.is_running)
@@ -31,22 +28,30 @@ export default function OnboardingWelcome() {
     }
   }
 
-  // Skip onboarding and go directly to home
-  const handleSkip = () => {
-    // Mark onboarding as completed when skipped
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
-    replace("/(tabs)/home")
-  }
+  // User has smart glasses - go to glasses selection screen
+  const handleHasGlasses = async () => {
+    // TODO: Track analytics event - user has glasses
+    // analytics.track('onboarding_has_glasses_selected')
 
-  // Continue to glasses selection screen
-  const handleContinue = async () => {
     // Mark that onboarding should be shown on Home screen
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
 
     // deactivate all running apps:
     await stopAllApps()
 
     push("/pairing/select-glasses-model")
+  }
+
+  // User doesn't have glasses yet - go directly to simulated glasses
+  const handleNoGlasses = () => {
+    // TODO: Track analytics event - user doesn't have glasses
+    // analytics.track('onboarding_no_glasses_selected')
+
+    // Mark that onboarding should be shown on Home screen
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
+
+    // Go directly to simulated glasses pairing screen
+    push("/pairing/prep", {glassesModelName: "Simulated Glasses"})
   }
 
   return (
@@ -63,46 +68,33 @@ export default function OnboardingWelcome() {
         <View style={styles.infoContainer}>
           <Text style={[styles.title, {color: theme.colors.text}]}>Welcome to MentraOS</Text>
 
-          <Text style={[styles.description, {color: theme.colors.text}]}>
-            Let's go through a quick tutorial to get you started with MentraOS.
-          </Text>
+          <Text style={[styles.description, {color: theme.colors.text}]}>Let&apos;s get started.</Text>
+
+          <Spacer height={20} />
+
+          <Text style={[styles.question, {color: theme.colors.text}]}>Do you have smart glasses?</Text>
         </View>
 
         <Button
-          onPress={handleContinue}
-          tx="common:continue"
+          onPress={handleHasGlasses}
+          text="I have smart glasses"
           textAlignment="center"
-          LeftAccessory={() => <FontAwesome name="chevron-right" size={16} color={theme.colors.textAlt} />}
+          LeftAccessory={() => <MaterialCommunityIcons name="glasses" size={16} color={theme.colors.textAlt} />}
         />
 
         <Spacer height={10} />
         <Button
-          onPress={handleSkip}
-          tx="welcomeScreen:skipOnboarding"
-          LeftAccessory={() => <FontAwesome name="step-forward" size={16} color={theme.colors.textAlt} />}
+          onPress={handleNoGlasses}
+          text="I don't have glasses yet"
+          preset="default"
+          LeftAccessory={() => <FontAwesome name="mobile" size={16} color={theme.colors.textAlt} />}
         />
       </View>
     </Screen>
   )
 }
 
-const styles = StyleSheet.create({
-  buttonContainer: {
-    alignItems: "center",
-    flex: 0,
-    justifyContent: "flex-end",
-    paddingBottom: 40,
-    width: "100%",
-  },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  darkSubtext: {
-    color: "#4a4a4a",
-  },
-  darkText: {
-    color: "#1a1a1a",
-  },
+const styles = {
   description: {
     fontSize: 18,
     lineHeight: 26,
@@ -117,31 +109,11 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     width: "100%",
   },
-  lightBackground: {
-    backgroundColor: "#f8f9fa",
-  },
-  lightSubtext: {
-    color: "#e0e0e0",
-  },
-  lightText: {
-    color: "#FFFFFF",
-  },
-  logoContainer: {
-    alignItems: "center",
-    flex: 0,
-    justifyContent: "flex-end",
-    paddingBottom: 40,
-  },
   mainContainer: {
     flex: 1,
     flexDirection: "column",
     justifyContent: "center",
     padding: 24,
-  },
-  skipButtonContainer: {
-    alignItems: "center",
-    marginTop: 16,
-    width: "100%",
   },
   title: {
     fontFamily: "Montserrat-Bold",
@@ -150,4 +122,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
-})
+  question: {
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+}

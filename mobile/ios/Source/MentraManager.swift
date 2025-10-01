@@ -449,7 +449,9 @@ struct ViewState {
         // this must be done before the requiredData is modified by offlineStt:
         currentRequiredData = requiredData
 
-        if offlineModeEnabled, !requiredData.contains(.PCM_OR_TRANSCRIPTION), !requiredData.contains(.TRANSCRIPTION) {
+        if offlineModeEnabled, !requiredData.contains(.PCM_OR_TRANSCRIPTION),
+           !requiredData.contains(.TRANSCRIPTION)
+        {
             requiredData.append(.TRANSCRIPTION)
         }
 
@@ -516,6 +518,24 @@ struct ViewState {
                 }
             }
 
+            let appState = UIApplication.shared.applicationState
+            if appState == .background {
+                Bridge.log("App is in background - onboard mic unavailable to start!")
+                if useOnboardMic {
+                    // if we're using the onboard mic and already recording, simply return as we shouldn't interrupt
+                    // the audio session
+                    if PhoneMic.shared.isRecording {
+                        return
+                    }
+
+                    // if we want to use the onboard mic but aren't currently recording, switch to using the glasses mic
+                    // instead since we won't be able to start the mic from the background
+                    useGlassesMic = true
+                    useOnboardMic = false
+                }
+            }
+
+            // preferred state:
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
@@ -540,7 +560,9 @@ struct ViewState {
         sgc?.sendJson(message, wakeUp: false)
     }
 
-    func handle_photo_request(_ requestId: String, _ appId: String, _ size: String, _ webhookUrl: String?) {
+    func handle_photo_request(
+        _ requestId: String, _ appId: String, _ size: String, _ webhookUrl: String?
+    ) {
         Bridge.log("Mentra: onPhotoRequest: \(requestId), \(appId), \(webhookUrl), size=\(size)")
         sgc?.requestPhoto(requestId, appId: appId, size: size, webhookUrl: webhookUrl)
     }
@@ -1377,7 +1399,7 @@ struct ViewState {
         // save the default_wearable now that we're connected:
         Bridge.saveSetting("default_wearable", defaultWearable)
         Bridge.saveSetting("device_name", deviceName)
-//        Bridge.saveSetting("device_address", deviceAddress)
+        //        Bridge.saveSetting("device_address", deviceAddress)
     }
 
     private func handleG1Ready() {

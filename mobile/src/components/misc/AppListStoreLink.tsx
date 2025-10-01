@@ -48,7 +48,7 @@ export const AppListStoreLink = ({onPress}: AppListStoreLinkProps) => {
       </View>
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
         <TouchableOpacity onPress={handlePress} hitSlop={12} style={themed($chevronHitbox)}>
-          <ChevronRight color={theme.colors.chevron} />
+          <ChevronRight color={theme.colors.textDim} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

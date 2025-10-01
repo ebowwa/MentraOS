@@ -5,6 +5,7 @@ import * as TaskManager from "expo-task-manager"
 import * as Location from "expo-location"
 import TranscriptProcessor from "@/utils/TranscriptProcessor"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import bridge from "@/bridge/MantleBridge"
 
 const LOCATION_TASK_NAME = "handleLocationUpdates"
 
@@ -45,7 +46,17 @@ class MantleManager {
     this.transcriptProcessor = new TranscriptProcessor(this.MAX_CHARS_PER_LINE, this.MAX_LINES)
   }
 
-  public init() {
+  // run at app start on the init.tsx screen:
+  // should only ever be run once
+  public async init() {
+    try {
+      const loadedSettings = await restComms.loadUserSettings() // get settings from server
+      await useSettingsStore.getState().setManyLocally(loadedSettings) // write settings to local storage
+      await useSettingsStore.getState().initUserSettings() // initialize user settings
+    } catch (e) {
+      console.error(`Failed to get settings from server: ${e}`)
+    }
+    bridge.updateSettings(await useSettingsStore.getState().getCoreSettings()) // send settings to core
     this.setupPeriodicTasks()
   }
 
@@ -152,10 +163,7 @@ class MantleManager {
     const offlineStt = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.offline_captions_app_running)
     if (offlineStt) {
       this.transcriptProcessor.changeLanguage(data.transcribeLanguage)
-      const processedText = this.transcriptProcessor.processString(
-        data.text,
-        data.isFinal ?? false
-      )
+      const processedText = this.transcriptProcessor.processString(data.text, data.isFinal ?? false)
 
       // Scheduling timeout to clear text from wall. In case of online STT online dashboard manager will handle it.
       if (data.isFinal) {

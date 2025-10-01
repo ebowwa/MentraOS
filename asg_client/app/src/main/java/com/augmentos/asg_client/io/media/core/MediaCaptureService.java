@@ -19,6 +19,7 @@ import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
+import com.augmentos.asg_client.audio.AudioAssets;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -179,6 +181,9 @@ public class MediaCaptureService {
                     // Use a special ID for buffer saves
                     mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
                 }
+                
+                // Send gallery status update to phone after buffer video save
+                sendGalleryStatusUpdate();
             }
 
             @Override
@@ -206,6 +211,24 @@ public class MediaCaptureService {
      */
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
+    }
+
+    private void playShutterSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
+        }
+    }
+
+    private void playVideoStartSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_START);
+        }
+    }
+
+    private void playVideoStopSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_STOP);
+        }
     }
     
     /**
@@ -347,6 +370,9 @@ public class MediaCaptureService {
         currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
+            // Play video start sound
+            playVideoStartSound();
+
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
@@ -382,6 +408,9 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
                     }
+
+                    // Send gallery status update to phone after video recording
+                    sendGalleryStatusUpdate();
 
                     // Call upload stub (which just logs for now)
                     uploadVideo(filePath, requestId);
@@ -443,6 +472,9 @@ public class MediaCaptureService {
         }
 
         try {
+            // Play video stop sound
+            playVideoStopSound();
+
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
@@ -641,6 +673,8 @@ public class MediaCaptureService {
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
 
+        playShutterSound();
+
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
 
@@ -662,6 +696,9 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
                             mMediaCaptureListener.onPhotoUploading(requestId);
                         }
+                        
+                        // Send gallery status update to phone after photo capture
+                        sendGalleryStatusUpdate();
                     }
 
                     @Override
@@ -700,6 +737,8 @@ public class MediaCaptureService {
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
         try {
+            playShutterSound();
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -1198,6 +1237,8 @@ public class MediaCaptureService {
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
+        playShutterSound();
+
         try {
             // Use CameraNeo for photo capture
             CameraNeo.takePictureWithCallback(
@@ -1459,6 +1500,34 @@ public class MediaCaptureService {
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer error", e);
+        }
+    }
+
+    /**
+     * Send gallery status update to phone after photo capture
+     * Uses GalleryStatusHelper to avoid code duplication with GalleryCommandHandler
+     */
+    private void sendGalleryStatusUpdate() {
+        try {
+            Log.d(TAG, "📸 Sending gallery status update after photo capture");
+
+            if (fileManager == null) {
+                Log.w(TAG, "📸 Cannot send gallery status: FileManager not available");
+                return;
+            }
+
+            // Build gallery status using shared utility
+            JSONObject response = com.augmentos.asg_client.utils.GalleryStatusHelper.buildGalleryStatus(fileManager);
+
+            // Send through bluetooth if available
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(response.toString().getBytes());
+                Log.d(TAG, "📸 Gallery status update sent successfully");
+            } else {
+                Log.w(TAG, "📸 Cannot send gallery status update: service callback not available");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "📸 Error creating gallery status update", e);
         }
     }
 

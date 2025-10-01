@@ -28,7 +28,7 @@ export class NotificationPreferences {
    */
   static async getAppPreferences(): Promise<Record<string, NotificationAppPreference>> {
     try {
-      const prefsJson = await AsyncStorage.getItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES)
+      const prefsJson = await AsyncStorage.getItem(SETTINGS_KEYS.notification_app_preferences)
       return prefsJson ? JSON.parse(prefsJson) : {}
     } catch (error) {
       console.error("Error getting app preferences:", error)
@@ -49,7 +49,7 @@ export class NotificationPreferences {
         lastUpdated: Date.now(),
       }
 
-      await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(preferences))
+      await AsyncStorage.setItem(SETTINGS_KEYS.notification_app_preferences, JSON.stringify(preferences))
 
       // Also store a simple app name -> blocked mapping for Android to read easily
       const simpleBlacklist: Record<string, boolean> = {}
@@ -90,7 +90,7 @@ export class NotificationPreferences {
       const preferences = await this.getAppPreferences()
       delete preferences[packageName]
 
-      await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(preferences))
+      await AsyncStorage.setItem(SETTINGS_KEYS.notification_app_preferences, JSON.stringify(preferences))
     } catch (error) {
       console.error("Error removing app preference:", error)
     }
@@ -114,7 +114,7 @@ export class NotificationPreferences {
         }
       })
 
-      await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(preferences))
+      await AsyncStorage.setItem(SETTINGS_KEYS.notification_app_preferences, JSON.stringify(preferences))
     } catch (error) {
       console.error("Error bulk updating app preferences:", error)
     }
@@ -125,7 +125,7 @@ export class NotificationPreferences {
    */
   static async resetToDefaults(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES)
+      await AsyncStorage.removeItem(SETTINGS_KEYS.notification_app_preferences)
     } catch (error) {
       console.error("Error resetting preferences:", error)
     }
@@ -171,7 +171,7 @@ export class NotificationPreferences {
    */
   static async importPreferences(data: {apps: Record<string, NotificationAppPreference>}): Promise<void> {
     try {
-      await AsyncStorage.setItem(SETTINGS_KEYS.NOTIFICATION_APP_PREFERENCES, JSON.stringify(data.apps))
+      await AsyncStorage.setItem(SETTINGS_KEYS.notification_app_preferences, JSON.stringify(data.apps))
     } catch (error) {
       console.error("Error importing preferences:", error)
     }

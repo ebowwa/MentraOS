@@ -1,18 +1,8 @@
 // GlassesPairingGuides.tsx
 
 import {useAppTheme} from "@/utils/useAppTheme"
-import React, {useEffect} from "react"
-import {
-  View,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Linking,
-  ImageStyle,
-  ViewStyle,
-  TextStyle,
-  Platform,
-} from "react-native"
+import {useEffect} from "react"
+import {View, Image, TouchableOpacity, Linking, ImageStyle, ViewStyle, TextStyle} from "react-native"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {showAlert} from "@/utils/AlertUtils"
@@ -28,6 +18,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated"
 import {ThemedStyle} from "@/theme"
+import GlassesDisplayMirror from "./GlassesDisplayMirror"
 
 export function MentraNextGlassesPairingGuide() {
   const {theme, themed} = useAppTheme()
@@ -410,20 +401,6 @@ const $arrowContainer: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
 })
 
-const $finalImageContainer: ThemedStyle<ViewStyle> = () => ({
-  position: "absolute",
-  bottom: 0,
-  zIndex: 4,
-  alignItems: "center",
-  width: "100%",
-})
-
-const $finalImage: ThemedStyle<ImageStyle> = () => ({
-  width: "100%",
-  height: 200,
-  resizeMode: "contain",
-})
-
 export function MentraMach1PairingGuide() {
   const {theme} = useAppTheme()
   const textColor = theme.isDark ? "white" : "black"
@@ -468,7 +445,7 @@ export function MentraLivePairingGuide() {
           source={require("../../../assets/glasses/mentra_live.png")}
           style={[styles.guideImage, {marginVertical: 0}]}
           // Fallback if image doesn't exist
-          onError={e => console.log("Image failed to load")}
+          onError={() => console.log("Image failed to load")}
         />
 
         {/* Feature list */}
@@ -567,8 +544,27 @@ export function VirtualWearablePairingGuide() {
   const {theme} = useAppTheme()
   return (
     <View style={styles.guideContainer}>
-      <Text text="Simulated Glasses" style={[styles.guideTitle, {color: theme.colors.text}]} />
-      <Text tx="pairing:simulatedGlassesDescription" style={[styles.guideStep, {color: theme.colors.text}]} />
+      <Text text="Preview MentraOS" style={[styles.guideTitle, {color: theme.colors.text}]} />
+
+      {/* Hero description */}
+      <Text
+        text="Experience the full power of MentraOS without physical glasses. Simulated Glasses provides a virtual display that mirrors exactly what you would see on real smart glasses."
+        style={[styles.guideDescription, {color: theme.colors.text}]}
+      />
+
+      {/* Glasses Display Mirror in demo mode */}
+      <View style={styles.mirrorWrapper}>
+        <GlassesDisplayMirror demo={true} demoText="Simulated Glasses Display" />
+      </View>
+
+      {/* Note about upgrading */}
+      <View style={[styles.noteSection, {backgroundColor: theme.colors.palette.blue500}]}>
+        <MaterialCommunityIcons name="information" size={20} color="white" style={{marginRight: 8}} />
+        <Text
+          text="Ready to upgrade? You can pair physical glasses anytime from Settings."
+          style={[styles.noteText, {color: "white"}]}
+        />
+      </View>
     </View>
   )
 }
@@ -612,33 +608,7 @@ export function BrilliantLabsFramePairingGuide() {
   )
 }
 
-const styles = StyleSheet.create({
-  // guideContainer: {
-  //   marginTop: 20,
-  //   width: '90%',
-  // },
-  // guideTitle: {
-  //   fontSize: 18,
-  //   fontWeight: 'bold',
-  //   marginBottom: 10,
-  // },
-  // guideStep: {
-  //   fontSize: 16,
-  //   marginBottom: 8,
-  // },
-  // guideDescription: {
-  //   fontSize: 14,
-  //   marginTop: 12,
-  //   marginBottom: 8,
-  //   fontStyle: 'italic',
-  // },
-  // guideImage: {
-  //   width: '100%',
-  //   height: 200, // Adjust height as needed
-  //   resizeMode: 'contain',
-  //   marginVertical: 10,
-  // },
-
+const styles = {
   guideContainer: {
     marginTop: 20,
     width: "100%",
@@ -648,20 +618,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 10,
-  },
-  marketingBanner: {
-    borderRadius: 8,
-    marginBottom: 15,
-    padding: 12,
-  },
-  marketingTag: {
-    fontSize: 12,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  marketingText: {
-    fontSize: 16,
-    fontWeight: "500",
   },
   guideStep: {
     fontSize: 16,
@@ -678,29 +634,6 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     resizeMode: "contain",
     width: "100%",
-  },
-  featuresContainer: {
-    alignItems: "center",
-    borderRadius: 16,
-    flexDirection: "column",
-    padding: 12,
-    paddingLeft: 36,
-  },
-  featuresRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  featureItem: {
-    alignItems: "center",
-    alignSelf: "center",
-    flexDirection: "row",
-    flex: 1,
-    marginBottom: 12,
-  },
-  featureText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 10,
   },
   buySection: {
     marginTop: 20,
@@ -722,4 +655,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-})
+  mirrorWrapper: {
+    width: "100%",
+    marginVertical: 20,
+  },
+  noteSection: {
+    width: "100%",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 15,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  noteText: {
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
+  },
+}

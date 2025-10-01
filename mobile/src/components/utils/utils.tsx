@@ -1,48 +1,43 @@
-import {useEffect, useState, ReactNode} from "react"
-import {useRouter} from "expo-router"
+import {useEffect, useState} from "react"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {fetchVersionInfo, isUpdateAvailable, getLatestVersionInfo} from "@/utils/otaVersionChecker"
 import {glassesFeatures} from "@/config/glassesFeatures"
-import showAlert from "@/utils/AlertUtils"
+import showAlert, {showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 
 export function OtaUpdateChecker() {
   const {status} = useCoreStatus()
-  const router = useRouter()
   const [isChecking, setIsChecking] = useState(false)
   const [hasChecked, setHasChecked] = useState(false)
-  const [latestVersion, setLatestVersion] = useState<string | null>(null)
+  const [_latestVersion, setLatestVersion] = useState<string | null>(null)
+  const {push} = useNavigationHistory()
+
+  // Extract only the specific values we need to watch to avoid re-renders
+  const glassesModel = status.glasses_info?.model_name
+  const otaVersionUrl = status.glasses_info?.glasses_ota_version_url
+  const currentBuildNumber = status.glasses_info?.glasses_build_number
+  const glassesWifiConnected = status.glasses_info?.glasses_wifi_connected
 
   useEffect(() => {
     const checkForOtaUpdate = async () => {
       // Only check for glasses that support WiFi self OTA updates
-      if (!status.glasses_info || hasChecked || isChecking) {
-        return
-      }
-
-      const glassesModel = status.glasses_info.model_name
-      if (!glassesModel) {
+      if (!glassesModel || hasChecked || isChecking) {
         return
       }
 
       const features = glassesFeatures[glassesModel]
       if (!features || !features.wifiSelfOtaUpdate) {
-        console.log(`Skipping OTA check for ${glassesModel} - does not support WiFi self OTA updates`)
+        // Remove console log to reduce spam
         return
       }
 
       // Skip if already connected to WiFi
-      if (status.glasses_info.glasses_wifi_connected) {
-        console.log(`Skipping ASG OTA CHECK, already on wifi`)
+      if (glassesWifiConnected) {
+        // Remove console log to reduce spam
         return
       }
 
-      const otaVersionUrl = status.glasses_info.glasses_ota_version_url
-      const currentBuildNumber = status.glasses_info.glasses_build_number
-      console.log(`OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`)
       if (!otaVersionUrl || !currentBuildNumber) {
-        console.log(
-          `Skipping wifi ota check- one is null: OTA VERSION URL: ${otaVersionUrl}, currentBuildNumber: ${currentBuildNumber}`,
-        )
+        // Remove console log to reduce spam
         return
       }
 
@@ -67,7 +62,7 @@ export function OtaUpdateChecker() {
               {
                 text: "Setup WiFi",
                 onPress: () => {
-                  router.push("/pairing/glasseswifisetup")
+                  push("/pairing/glasseswifisetup")
                 },
               },
             ],
@@ -85,7 +80,7 @@ export function OtaUpdateChecker() {
       }
     }
     checkForOtaUpdate()
-  }, [status.glasses_info, hasChecked, isChecking, router])
+  }, [glassesModel, otaVersionUrl, currentBuildNumber, glassesWifiConnected, hasChecked, isChecking])
 
   return null
 }
@@ -93,6 +88,8 @@ export function OtaUpdateChecker() {
 import bridge from "@/bridge/MantleBridge"
 import {AppState} from "react-native"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n"
 
 export function Reconnect() {
   // Add a listener for app state changes to detect when the app comes back from background
@@ -103,9 +100,39 @@ export function Reconnect() {
       if (nextAppState === "active") {
         const reconnectOnAppForeground = await useSettingsStore
           .getState()
-          .getSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND)
+          .getSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
         if (!reconnectOnAppForeground) {
           return
+        }
+        // check if we have bluetooth perms in case they got removed:
+        const requirementsCheck = await bridge.checkConnectivityRequirements()
+        if (!requirementsCheck.isReady) {
+          switch (requirementsCheck.requirement) {
+            case "bluetooth":
+              showBluetoothAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "location":
+              showLocationAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "locationServices":
+              showLocationServicesAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            default:
+              showAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+                [{text: translate("common:ok")}],
+              )
+          }
         }
         let defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
         let deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)

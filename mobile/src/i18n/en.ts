@@ -135,6 +135,11 @@ const en = {
     incompatible: "Incompatible",
     noAppsInstalled: "No apps installed",
     swipeToView: "Swipe to view {{target}}",
+    backgroundApps: "Background Apps",
+    backgroundAppsActive: "active",
+    tapAnAppSwitch: "Tap an app's switch to activate it",
+    activeBackgroundApps: "Active Background Apps",
+    inactiveBackgroundApps: "Inactive Background Apps",
   },
   glasses: {
     title: "Glasses",
@@ -150,6 +155,8 @@ const en = {
     noPhotos: "No photos yet",
     takeFirstPhoto: "Take your first photo to get started!",
     loadingPhotos: "Loading photos...",
+    loadingVideos: "Loading videos...",
+    loadingItems: "Loading items...",
     success: "Success",
     photoTaken: "Photo taken! Refreshing gallery...",
     error: "Error",
@@ -161,6 +168,17 @@ const en = {
     serverInfo: "Server: Port {{port}}, Photos: {{photos}}, Uptime: {{uptime}}m",
     photoInfo: "Size: {{size}} • Date: {{date}}",
     connectToTakePicture: "Connect to take pictures",
+    gallerySettings: "Gallery Settings",
+    saveToLibrary: "Save to Camera Roll",
+    saveToLibraryDescription: "Automatically save new photos to your device's camera roll when syncing",
+    deleteAllPhotos: "Delete All Photos",
+    deleteAllPhotosDescription: "Remove all photos from device storage (camera roll photos are not affected)",
+    galleryStats: "Gallery Statistics",
+    photosOnDevice: "Photos on Device",
+    videosOnDevice: "Videos on Device",
+    photosOnGlasses: "Photos on Glasses",
+    videosOnGlasses: "Videos on Glasses",
+    storageUsed: "Storage Used",
   },
   store: {
     title: "Store",
@@ -342,6 +360,15 @@ const en = {
     settings: "Settings",
     openWebView: "Open Web View",
     version: "MentraOS v{{number}}",
+    reset: "Reset",
+  },
+  developer: {
+    dev: "Dev",
+    usCentral: "US Central",
+    france: "France",
+    asiaEast: "Asia East",
+    global: "Global",
+    debug: "Debug",
   },
   welcomeScreen: {
     postscript:
@@ -379,6 +406,15 @@ const en = {
     shareYourThoughts: "Share your thoughts, suggestions, or report issues...",
     giveFeedback: "Give Feedback",
     errorSendingFeedback: "There was an error sending your feedback. Please try again.",
+  },
+  offlineMode: {
+    enableOfflineMode: "Enable Offline Mode?",
+    disableOfflineMode: "Disable Offline Mode?",
+    goOnline: "Go Online",
+    goOffline: "Go Offline",
+    goOnlineMessage: "Switching to online mode will close all offline-only apps and allow you to use all online apps.",
+    goOfflineMessage:
+      "Enabling offline mode will close all running online apps. You'll only be able to use apps that work without an internet connection, and all other apps will be shut down.",
   },
 }
 

@@ -86,6 +86,14 @@
       "expo-localization",
       "expo-font",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow MentraOS to save photos from your glasses.",
+          "savePhotosPermission": "Allow MentraOS to save photos from your glasses.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash/splash.png",

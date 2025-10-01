@@ -1,5 +1,5 @@
 import React, {useState} from "react"
-import {Alert, BackHandler, Platform, StyleSheet, View} from "react-native"
+import {Alert, BackHandler, Platform, StyleSheet, View, Animated} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "./useAppTheme"
@@ -7,6 +7,8 @@ import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
 import {StatusBar} from "expo-status-bar"
 import * as NavigationBar from "expo-navigation-bar"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {useEffect, useRef} from "react"
+// eslint-disable-next-line
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -66,7 +68,7 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 // Global component that will be rendered once at the app root
 export function ModalProvider({children}: {children: React.ReactNode}) {
   const {theme} = useAppTheme()
-  const [showNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [showNewUi] = useSetting(SETTINGS_KEYS.new_ui)
   const [visible, setVisible] = useState(false)
   const [title, setTitle] = useState("")
   const [message, setMessage] = useState("")
@@ -77,9 +79,13 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     iconColor?: string
     icon?: React.ReactNode
   }>({})
-  const [originalNavBarColor, setOriginalNavBarColor] = React.useState<string | null>(null)
+  const [originalNavBarColor, setOriginalNavBarColor] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  // Animation values - start at final values if not using new UI
+  const fadeAnim = useRef(new Animated.Value(showNewUi ? 0 : 1)).current
+  const scaleAnim = useRef(new Animated.Value(showNewUi ? 0.93 : 1)).current
+
+  useEffect(() => {
     const backHandler = () => {
       if (visible) {
         return true // prevent default back behavior
@@ -93,7 +99,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   }, [visible])
 
   // Handle navigation bar color changes when modal visibility changes
-  React.useEffect(() => {
+  useEffect(() => {
     const updateNavigationBarColor = async () => {
       if (Platform.OS === "android") {
         try {
@@ -126,7 +132,49 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     updateNavigationBarColor()
   }, [visible, theme, originalNavBarColor])
 
-  React.useEffect(() => {
+  // Handle animations when visibility changes
+  useEffect(() => {
+    // Skip animations if not using new UI
+    if (!showNewUi) {
+      // Set values immediately without animation
+      fadeAnim.setValue(visible ? 1 : 0)
+      scaleAnim.setValue(1)
+      return
+    }
+
+    if (visible) {
+      // Animate in (only for new UI)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    } else {
+      // Animate out (only for new UI)
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.93,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }
+  }, [visible, fadeAnim, scaleAnim, showNewUi])
+
+  useEffect(() => {
     // Register the modal functions for global access
     setModalRef({
       showModal: (title, message, alertButtons = [], opts = {}) => {
@@ -159,7 +207,27 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   }, [])
 
   const handleDismiss = () => {
-    setVisible(false)
+    if (!showNewUi) {
+      // No animation for old UI - hide immediately
+      setVisible(false)
+      return
+    }
+
+    // Animate out before hiding (only for new UI)
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.93,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setVisible(false)
+    })
   }
 
   return (
@@ -168,19 +236,22 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
       {visible && (
         <>
           <StatusBar style="light" />
-          <View
+          <Animated.View
             style={{
               ...StyleSheet.absoluteFillObject,
               zIndex: 10,
               justifyContent: "center",
               alignItems: "center",
-              backgroundColor: theme.colors.modalOverlay,
+              backgroundColor: theme.colors.background + "60",
               paddingHorizontal: 24,
+              opacity: fadeAnim,
             }}>
-            <View
+            <Animated.View
               style={{
                 width: "100%",
                 maxWidth: 400,
+                transform: [{scale: scaleAnim}],
+                opacity: fadeAnim,
               }}>
               <BasicDialog
                 title={title}
@@ -196,7 +267,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
                   buttons.length > 1
                     ? () => {
                         buttons[0].onPress?.()
-                        setVisible(false)
+                        handleDismiss()
                       }
                     : undefined
                 }
@@ -207,11 +278,11 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
                   } else {
                     buttons[0].onPress?.()
                   }
-                  setVisible(false)
+                  handleDismiss()
                 }}
               />
-            </View>
-          </View>
+            </Animated.View>
+          </Animated.View>
         </>
       )}
     </>

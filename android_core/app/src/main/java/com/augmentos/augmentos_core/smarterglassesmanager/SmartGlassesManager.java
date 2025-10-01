@@ -879,6 +879,12 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void disconnectFromWifi() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.disconnectFromWifi();
+        }
+    }
+
     public void sendHotspotState(boolean enabled) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.sendHotspotState(enabled);

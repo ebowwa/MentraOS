@@ -24,6 +24,8 @@ public class AsgClientApplication extends Application {
         AppModule.initialize(this);
         ReportingModule.initialize(this);
 
+        SysControl.setI2SAudioPlayReceiverPackage(this, getPackageName());
+
         Log.i(TAG, "ASG Client Application initialized");
     }
 

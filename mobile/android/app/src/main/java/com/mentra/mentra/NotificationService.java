@@ -306,7 +306,7 @@ public class NotificationService extends NotificationListenerService {
             SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
             
             // AsyncStorage stores data with a key prefix
-            String prefsJson = prefs.getString("NOTIFICATION_APP_PREFERENCES", "{}");
+            String prefsJson = prefs.getString("notification_app_preferences", "{}");
             
             if (prefsJson.equals("{}")) {
                 // No preferences set, default to enabled
@@ -336,7 +336,7 @@ public class NotificationService extends NotificationListenerService {
     private boolean isGlobalNotificationEnabled() {
         try {
             SharedPreferences prefs = getSharedPreferences("RCTAsyncLocalStorage_V1", MODE_PRIVATE);
-            String globalSetting = prefs.getString("ENABLE_PHONE_NOTIFICATIONS", "true");
+            String globalSetting = prefs.getString("enable_phone_notifications", "true");
             return Boolean.parseBoolean(globalSetting);
         } catch (Exception e) {
             Log.w(TAG, "Error checking global notification setting: " + e.getMessage());
@@ -374,9 +374,9 @@ public class NotificationService extends NotificationListenerService {
             
             // Try different key formats
             String[] possibleKeys = {
-                "NOTIFICATION_APP_PREFERENCES",
-                "@RCTAsyncLocalStorage_V1:NOTIFICATION_APP_PREFERENCES",
-                "RCTAsyncLocalStorage_V1:NOTIFICATION_APP_PREFERENCES"
+                "notification_app_preferences",
+                "@RCTAsyncLocalStorage_V1:notification_app_preferences",
+                "RCTAsyncLocalStorage_V1:notification_app_preferences"
             };
             
             String prefsJson = "{}";

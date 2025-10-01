@@ -245,6 +245,35 @@ public class SystemNetworkManager extends BaseNetworkManager {
         }
     }
     
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "Disconnecting from current WiFi network");
+        
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Modern Android - limited disconnect options due to security restrictions
+                Log.w(TAG, "Android 10+ has limited WiFi disconnect capabilities");
+                notificationManager.showDebugNotification(
+                        "WiFi Disconnect", 
+                        "Please disconnect manually via system settings");
+            } else {
+                // Legacy Android - can disconnect programmatically
+                if (wifiManager != null) {
+                    wifiManager.disconnect();
+                    notificationManager.showDebugNotification(
+                            "WiFi Disconnect", 
+                            "Disconnected from WiFi network");
+                    Log.d(TAG, "WiFi disconnect command sent");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error disconnecting from WiFi", e);
+            notificationManager.showDebugNotification(
+                    "WiFi Error", 
+                    "Error disconnecting from WiFi: " + e.getMessage());
+        }
+    }
+    
     @SuppressLint("MissingPermission")
     private void connectWifiLegacy(String ssid, String password) {
         try {

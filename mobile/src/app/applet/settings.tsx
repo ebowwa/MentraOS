@@ -50,6 +50,7 @@ import {
 } from "@/utils/PermissionsUtils"
 import {translate} from "@/i18n"
 import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
@@ -84,7 +85,7 @@ export default function AppSettings() {
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.NEW_UI)
+  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
 
   if (!packageName || typeof packageName !== "string") {
     console.error("No packageName found in params")
@@ -106,14 +107,14 @@ export default function AppSettings() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        replace("/(tabs)/home")
+        goBack()
         return true
       }
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
       return () => {
         BackHandler.removeEventListener("hardwareBackPress", onBackPress)
       }
-    }, []),
+    }, [goBack]),
   )
 
   // Handle app start/stop actions with debouncing
@@ -267,7 +268,7 @@ export default function AppSettings() {
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         // Get cached settings to preserve user values for existing settings
-        const cached = await useSettingsStore.getState().loadSetting(SETTINGS_CACHE_KEY(packageName))
+        const cached = JSON.parse((await AsyncStorage.getItem(SETTINGS_CACHE_KEY(packageName))) ?? "{}")
         const cachedState = cached?.settingsState || {}
 
         const initialState: {[key: string]: any} = {}
@@ -280,10 +281,13 @@ export default function AppSettings() {
         })
         setSettingsState(initialState)
         // Cache the settings
-        useSettingsStore.getState().setSetting(SETTINGS_CACHE_KEY(packageName), {
-          serverAppInfo: data,
-          settingsState: initialState,
-        })
+        AsyncStorage.setItem(
+          SETTINGS_CACHE_KEY(packageName),
+          JSON.stringify({
+            serverAppInfo: data,
+            settingsState: initialState,
+          }),
+        )
         setHasCachedSettings(data.settings.length > 0)
       } else {
         setHasCachedSettings(false)
@@ -647,7 +651,7 @@ export default function AppSettings() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: theme.spacing.xs,
-                backgroundColor: (theme as any).colors?.errorBackground || "#FDECEA",
+                backgroundColor: theme.colors.errorBackground,
                 borderRadius: 8,
                 paddingHorizontal: theme.spacing.sm,
                 paddingVertical: theme.spacing.xs,

@@ -1,15 +1,27 @@
 import React from "react"
-import {TouchableOpacity, Text, StyleSheet, TouchableOpacityProps, TextStyle, ViewStyle} from "react-native"
+import {TouchableOpacity, TouchableOpacityProps, TextStyle, ViewStyle, StyleProp} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {ThemedStyle, ThemedStyleArray} from "@/theme"
+import {TOptions} from "i18next"
+import {TxKeyPath} from "@/i18n"
+import {Text} from "@/components/ignite/Text"
 
 export type PillButtonVariant = "primary" | "secondary" | "icon"
 
 interface PillButtonProps extends Omit<TouchableOpacityProps, "style"> {
   /**
-   * The text to display in the button
+   * Text which is looked up via i18n.
    */
-  text: string
-
+  tx?: TxKeyPath
+  /**
+   * The text to display if not using `tx` or nested components.
+   */
+  text?: string
+  /**
+   * Optional options to pass to i18n. Useful for interpolation
+   * as well as explicitly setting locale or translation fallbacks.
+   */
+  txOptions?: TOptions
   /**
    * The button variant - primary (solid color), secondary (transparent with border), or icon (gray background)
    */
@@ -46,73 +58,69 @@ export function PillButton({
   buttonStyle,
   textStyle,
   disabled = false,
+  tx,
+  txOptions,
   ...touchableProps
 }: PillButtonProps) {
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
 
   const isPrimary = variant === "primary"
   const isSecondary = variant === "secondary"
-  const isIcon = variant === "icon"
 
   const getBackgroundColor = () => {
-    if (isPrimary) return theme.colors.buttonPillPrimary
-    if (isSecondary) return theme.colors.buttonPillSecondary
-    return theme.colors.buttonPillIcon
+    if (isPrimary) return theme.colors.tint
+    if (isSecondary) return theme.colors.palette.transparent
+    return theme.colors.tint
   }
 
   const getTextColor = () => {
-    if (isPrimary) return theme.colors.buttonPillPrimaryText
-    if (isSecondary) return theme.colors.buttonPillSecondaryText
-    return theme.colors.buttonPillIconText
+    return theme.colors.text
   }
 
-  const buttonStyles = [
-    styles.button,
+  const buttonStyles: StyleProp<ViewStyle> = [
+    themed($button),
     {
       backgroundColor: getBackgroundColor(),
-      ...(isSecondary && {
-        borderWidth: 1,
-        borderColor: theme.colors.buttonPillSecondaryBorder,
-      }),
     },
-    disabled && styles.disabled,
+    disabled && themed($disabled),
     buttonStyle,
   ]
 
-  const textStyles = [
-    styles.text,
+  const textStyles: StyleProp<TextStyle> = [
+    themed($text),
     {
       color: getTextColor(),
     },
-    disabled && styles.disabledText,
+    disabled && themed($disabledText),
     textStyle,
   ]
 
   return (
     <TouchableOpacity style={buttonStyles} disabled={disabled} hitSlop={10} {...touchableProps}>
-      <Text style={textStyles}>{text}</Text>
+      <Text style={textStyles} tx={tx} text={text} txOptions={txOptions}></Text>
     </TouchableOpacity>
   )
 }
 
-const styles = StyleSheet.create({
-  button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 100, // Pill shape
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  disabled: {
-    opacity: 0.4,
-  },
-  disabledText: {
-    // Text color will be automatically dimmed by the container opacity
-  },
-  text: {
-    fontSize: 14,
-    fontWeight: "normal",
-    textAlign: "center",
-  },
+const $button: ThemedStyle<ViewStyle> = ({colors}) => ({
+  paddingVertical: 8,
+  paddingHorizontal: 16,
+  borderRadius: 100, // Pill shape
+  height: 36,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $disabled: ThemedStyle<ViewStyle> = ({colors}) => ({
+  opacity: 0.4,
+})
+
+const $disabledText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textDim,
+})
+
+const $text: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "normal",
+  textAlign: "center",
 })

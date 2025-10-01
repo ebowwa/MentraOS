@@ -1,5 +1,4 @@
-import React, {useRef, PropsWithChildren, useState, useEffect} from "react"
-import {Animated, ScrollView} from "react-native"
+import {ScrollView} from "react-native"
 import {Header, Screen} from "@/components/ignite"
 import {ConnectDeviceButton, ConnectedGlasses} from "@/components/misc/ConnectedDeviceInfo"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
@@ -34,12 +33,13 @@ export default function Homepage() {
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic">
         <CloudConnection />
-        {defaultWearable && status.glasses_info?.model_name && glassesFeatures[defaultWearable].display && (
+        {defaultWearable && status.glasses_info?.model_name && glassesFeatures[defaultWearable]?.display && (
           <ConnectedSimulatedGlassesInfo />
         )}
-        {defaultWearable && status.glasses_info?.model_name && !glassesFeatures[defaultWearable].display && (
-          <ConnectedGlasses showTitle={false} />
-        )}
+        {defaultWearable &&
+          status.glasses_info?.model_name &&
+          glassesFeatures[defaultWearable] &&
+          !glassesFeatures[defaultWearable].display && <ConnectedGlasses showTitle={false} />}
         <Spacer height={theme.spacing.lg} />
         <ConnectDeviceButton />
         <DeviceSettings />

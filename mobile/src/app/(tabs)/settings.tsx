@@ -23,7 +23,7 @@ export default function SettingsPage() {
   const {push, replace} = useNavigationHistory()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   useEffect(() => {
     const checkDevMode = async () => {
