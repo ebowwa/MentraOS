@@ -129,7 +129,7 @@ export default function GallerySettingsScreen() {
           <Text style={themed($sectionTitle)}>Storage</Text>
 
           <ActionButton
-            label="Delete All Photos"
+            label={translate("glasses:deleteAllPhotos")}
             //subtitle="Remove all photos from device storage (camera roll photos are not affected)"
             onPress={handleDeleteAll}
             variant="destructive"
