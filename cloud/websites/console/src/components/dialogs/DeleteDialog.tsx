@@ -43,6 +43,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
       }
 
       // Close dialog after deletion
+      setIsDeleting(false)
       onOpenChange(false);
     } catch (err) {
       console.error("Error deleting App:", err);
