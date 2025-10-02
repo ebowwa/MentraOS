@@ -777,10 +777,7 @@ public class MediaCaptureService {
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
-            if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError("local", "Camera busy with streaming", 
-                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-            }
+            sendPhotoErrorResponse("local", "CAMERA_BUSY", "Camera busy with RTMP streaming");
             return;
         }
         
@@ -890,14 +887,21 @@ public class MediaCaptureService {
      * @param save Whether to keep the photo on device after upload
      */
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
         // Check if already uploading - skip request if busy
         synchronized (uploadLock) {
             if (isUploadingPhoto) {
                 Log.w(TAG, "🚫 Upload busy - skipping photo request: " + requestId);
-                
+
                 // Send error response to phone using existing photo error function
                 sendPhotoErrorResponse(requestId, "UPLOAD_SYSTEM_BUSY", "Upload system busy - request skipped");
-                
+
                 // Also notify local listener
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload system busy - request skipped", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);

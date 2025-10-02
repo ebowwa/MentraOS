@@ -925,6 +925,11 @@ public class RtmpStreamingService extends Service {
                             // Report stream stop failure
                             StreamingReporting.reportStreamStopFailure(RtmpStreamingService.this,
                                 "stream_stop_error", (Throwable) o);
+
+                            // Notify TPA developer of cleanup failure
+                            if (sStatusCallback != null) {
+                                sStatusCallback.onStreamError("Failed to stop stream: " + ((Throwable) o).getMessage());
+                            }
                         }
                         Log.d(TAG, "Stream stop completed");
                     }
@@ -943,6 +948,11 @@ public class RtmpStreamingService extends Service {
                 // Report preview stop failure
                 StreamingReporting.reportPreviewStartFailure(RtmpStreamingService.this,
                     "stop_preview_error", e);
+
+                // Notify TPA developer of cleanup failure
+                if (sStatusCallback != null) {
+                    sStatusCallback.onStreamError("Failed to stop camera preview: " + e.getMessage());
+                }
             }
 
             // Release the streamer completely
@@ -955,6 +965,11 @@ public class RtmpStreamingService extends Service {
                 // Report resource cleanup failure
                 StreamingReporting.reportResourceCleanupFailure(RtmpStreamingService.this,
                     "streamer", "release_error", e);
+
+                // Notify TPA developer of cleanup failure
+                if (sStatusCallback != null) {
+                    sStatusCallback.onStreamError("Failed to release streaming resources: " + e.getMessage());
+                }
             }
 
             mStreamer = null;
