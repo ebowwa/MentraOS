@@ -105,7 +105,6 @@ async function createApp(req: Request, res: Response) {
     const mod = await import("../../services/console/console.apps.service");
     const result = await mod.createApp(email, appInput, {
       orgId,
-      allowBootstrap: true,
     });
 
     return res.status(201).json({ success: true, data: result });
