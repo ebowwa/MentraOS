@@ -1,5 +1,5 @@
 // pages/EditApp.tsx
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,9 +27,7 @@ import {
   AlertCircle,
   Loader2,
   KeyRound,
-  Copy,
   RefreshCw,
-  Share2,
   LinkIcon,
   Upload,
   MoveIcon,
@@ -37,7 +35,8 @@ import {
   Files,
 } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import api, { Organization } from "@/services/api.service";
+import { useAppStore } from "@/stores/apps.store";
+import { useOrgStore } from "@/stores/orgs.store";
 import { App, Permission, Setting, Tool } from "@/types/app";
 import { HardwareRequirement } from "@mentra/sdk";
 import { toast } from "sonner";
@@ -50,12 +49,13 @@ import PermissionsForm from "../components/forms/PermissionsForm";
 import SettingsEditor from "../components/forms/SettingsEditor";
 import ToolsEditor from "../components/forms/ToolsEditor";
 import HardwareRequirementsForm from "../components/forms/HardwareRequirementsForm";
-import { useAuth } from "../hooks/useAuth";
-import { useOrganization } from "@/context/OrganizationContext";
+
 // import publicEmailDomains from 'email-providers/all.json';
 import MoveOrgDialog from "../components/dialogs/MoveOrgDialog";
 import ImageUpload from "../components/forms/ImageUpload";
 import AppTypeTooltip from "../components/forms/AppTypeTooltip";
+import api, { Organization } from "@/services/api.service";
+import { useAccountStore } from "@/stores/account.store";
 // import { AppType } from '@mentra/sdk';
 
 enum AppType {
@@ -67,15 +67,36 @@ interface EditableApp extends App {
   sharedWithOrganization?: boolean;
 }
 
-const EditApp: React.FC = () => {
+interface ImportConfigData {
+  name?: string;
+  description?: string;
+  onboardingInstructions?: string;
+  publicUrl?: string;
+  logoURL?: string;
+  webviewURL?: string;
+  appType?: AppType;
+  permissions?: Permission[];
+  settings?: Setting[];
+  tools?: Tool[];
+  version?: string;
+}
+
+export default function EditApp() {
   const navigate = useNavigate();
   const { packageName } = useParams<{ packageName: string }>();
-  const { user } = useAuth();
-  const { currentOrg } = useOrganization();
+  const selectedOrgId = useOrgStore((s) => s.selectedOrgId);
+  const orgs = useOrgStore((s) => s.orgs);
+  const getApp = useAppStore((s) => s.getApp);
+  const updateApp = useAppStore((s) => s.updateApp);
+
+  const regenerateApiKeyStore = useAppStore((s) => s.regenerateApiKey);
+  const moveAppStore = useAppStore((s) => s.moveApp);
+
+  const accountEmail = useAccountStore((s) => s.email);
+  const currentOrg = orgs.find((o) => o.id === selectedOrgId);
 
   // Form state
   const [formData, setFormData] = useState<EditableApp>({
-    id: "",
     packageName: "",
     name: "",
     description: "",
@@ -91,9 +112,6 @@ const EditApp: React.FC = () => {
     hardwareRequirements: [], // Initialize hardware requirements as empty array
   });
 
-  // Permissions state
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,62 +123,49 @@ const EditApp: React.FC = () => {
   const [shareLink, setShareLink] = useState("");
   const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
   const [isLoadingShareLink, setIsLoadingShareLink] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-
-  // Add sharedWithEmails state
-  const [sharedWithEmails, setSharedWithEmails] = useState<string[]>([]);
-  const [newShareEmail, setNewShareEmail] = useState("");
-  const [isUpdatingEmails, setIsUpdatingEmails] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
 
   // State for organization transfer
   const [isMoveOrgDialogOpen, setIsMoveOrgDialogOpen] = useState(false);
   const [eligibleOrgs, setEligibleOrgs] = useState<Organization[]>([]);
-  const [isMovingOrg, setIsMovingOrg] = useState(false);
 
   // State for import functionality
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [importConfigData, setImportConfigData] = useState<any>(null);
+  const [importConfigData, setImportConfigData] =
+    useState<ImportConfigData | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
 
   // File input ref for import
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to get org domain from user email
-  const orgDomain = user?.email?.split("@")[1] || "";
-  // Check if orgDomain is a public email provider
-  // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
-
   // Track the previous organization to detect org switches
   const prevOrgRef = useRef<string | null>(null);
 
-  // Fetch App data and permissions from API + check for eligible orgs for transfer
+  // Fetch App data and check for eligible orgs for transfer
   useEffect(() => {
     const fetchData = async () => {
-      if (!packageName || !currentOrg) return;
+      if (!packageName || !selectedOrgId) return;
 
       // If organization changed from a previous one, we're switching orgs
       const isOrgSwitch =
-        prevOrgRef.current && prevOrgRef.current !== currentOrg.id;
-      prevOrgRef.current = currentOrg.id;
+        prevOrgRef.current && prevOrgRef.current !== selectedOrgId;
+      prevOrgRef.current = selectedOrgId || null;
 
       try {
         setIsLoading(true);
-        setIsLoadingPermissions(true);
+
         setError(null);
 
-        // Fetch App data using organization ID
-        const appData = await api.apps.getByPackageName(
-          packageName,
-          currentOrg.id,
-        );
+        // Fetch App data using store (org resolved server-side)
+        const appData = await getApp(packageName);
+        if (!appData) {
+          throw new Error("App not found");
+        }
 
         // Convert API response to App type
         const app: EditableApp = {
-          id: appData.packageName, // Using packageName as id since API doesn't return id
           packageName: appData.packageName,
-          name: appData.name,
+          name: appData.name || "",
           description: appData.description || "",
           onboardingInstructions: appData.onboardingInstructions || "",
           publicUrl: appData.publicUrl || "",
@@ -176,88 +181,52 @@ const EditApp: React.FC = () => {
           reviewedAt: appData.reviewedAt,
           tools: appData.tools || [],
           settings: appData.settings || [],
+          permissions: appData.permissions || [],
           hardwareRequirements: appData.hardwareRequirements || [],
         };
 
         setFormData(app);
 
-        // Fetch permissions
-        try {
-          const permissionsData = await api.apps.permissions.get(packageName);
-          if (permissionsData.permissions) {
-            setFormData((prev) => ({
-              ...prev,
-              permissions: permissionsData.permissions,
-            }));
-          }
-        } catch (permError) {
-          console.error("Error fetching permissions:", permError);
-          // Don't fail the whole form load if permissions fail
-        } finally {
-          setIsLoadingPermissions(false);
-        }
-
-        // Set sharedWithEmails
-        if (Array.isArray(appData.sharedWithEmails)) {
-          setSharedWithEmails(appData.sharedWithEmails);
-        }
-
         // Fetch all orgs where the user has admin access
         try {
           const allOrgs = await api.orgs.list();
 
-          // Get the user's full profile to access ID
-          let userId = "";
-          try {
-            const userProfile = await api.auth.me();
-            userId = userProfile.id;
-            console.log("Current user ID:", userId);
-          } catch (err) {
-            console.error("Failed to fetch user profile:", err);
-          }
-
-          // Filter to only include orgs where the user has admin/owner access
+          // Filter to only include orgs where the current account email is a member (admin or member)
+          const email = accountEmail?.toLowerCase();
           const adminOrgs = allOrgs.filter((org) => {
-            // Handle member structure
-            if (Array.isArray(org.members)) {
-              for (const member of org.members) {
-                const role = member.role;
-
-                // Case 1: Direct string comparison with user ID
-                if (
-                  userId &&
-                  typeof member.user === "string" &&
-                  member.user === userId
-                ) {
-                  return role === "admin" || role === "member";
-                }
-
-                // Case 2: Compare with user object with email
-                if (
-                  typeof member.user === "object" &&
-                  member.user &&
-                  member.user.email === user?.email
-                ) {
-                  return role === "admin" || role === "member";
-                }
-              }
-            }
-            return false;
+            if (!Array.isArray(org.members) || !email) return false;
+            return org.members.some((member) => {
+              const role = member.role;
+              const memberEmail =
+                typeof member.user === "object" && member.user?.email
+                  ? member.user.email.toLowerCase()
+                  : null;
+              return (
+                memberEmail === email && (role === "admin" || role === "member")
+              );
+            });
           });
           setEligibleOrgs(adminOrgs);
         } catch (orgError) {
           console.error("Error fetching organizations:", orgError);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching App:", err);
 
         // Check if the error indicates the app doesn't exist in this organization
         // This can happen when user switches orgs while editing an app
+        const errObj = err as Record<string, unknown>;
+        const resp = errObj["response"] as Record<string, unknown> | undefined;
+        const status = resp?.["status"] as number | undefined;
+        const data = resp?.["data"] as Record<string, unknown> | undefined;
+        const respError = data?.["error"] as string | undefined;
+        const msg = (errObj["message"] as string | undefined) ?? undefined;
         const isNotFoundError =
-          err?.response?.status === 404 ||
-          err?.response?.data?.error?.includes("not found") ||
-          err?.response?.data?.error?.includes("does not exist") ||
-          err?.message?.includes("not found");
+          status === 404 ||
+          (typeof respError === "string" &&
+            (respError.includes("not found") ||
+              respError.includes("does not exist"))) ||
+          (typeof msg === "string" && msg.includes("not found"));
 
         if (isNotFoundError) {
           console.log(
@@ -283,7 +252,7 @@ const EditApp: React.FC = () => {
     };
 
     fetchData();
-  }, [packageName, currentOrg?.id, user?.email]);
+  }, [packageName, selectedOrgId, getApp, navigate, accountEmail]);
 
   // Handle form changes
   const handleChange = (
@@ -368,12 +337,17 @@ const EditApp: React.FC = () => {
    * @param isSettingsArray - Whether we're currently processing the settings array
    * @returns The cleaned object without unwanted fields and empty options/enum arrays
    */
-  const removeIdFields = (obj: any, isSettingsArray: boolean = false): any => {
+  const removeIdFields = (
+    obj: unknown,
+    isSettingsArray: boolean = false,
+  ): unknown => {
     if (Array.isArray(obj)) {
       return obj.map((item) => removeIdFields(item, isSettingsArray));
     } else if (obj !== null && typeof obj === "object") {
-      const cleaned: any = {};
-      for (const [key, value] of Object.entries(obj)) {
+      const cleaned: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(
+        obj as Record<string, unknown>,
+      )) {
         // Always skip _id fields
         // Skip id fields only if we're in a settings array
         if (key === "_id" || (key === "id" && isSettingsArray)) {
@@ -403,7 +377,7 @@ const EditApp: React.FC = () => {
 
   // Export to app_config.json
   const handleExportConfig = () => {
-    const config: any = {
+    const config: Record<string, unknown> = {
       name: formData.name,
       description: formData.description,
       onboardingInstructions: formData.onboardingInstructions,
@@ -442,7 +416,6 @@ const EditApp: React.FC = () => {
 
     try {
       if (!packageName) throw new Error("Package name is missing");
-      if (!currentOrg) throw new Error("No organization selected");
 
       // Normalize URLs before submission
       const normalizedData = {
@@ -458,15 +431,11 @@ const EditApp: React.FC = () => {
         settings: formData.settings || [],
         tools: formData.tools || [],
         hardwareRequirements: formData.hardwareRequirements || [],
+        permissions: formData.permissions || [],
       };
 
-      // Update App data
-      await api.apps.update(packageName, normalizedData, currentOrg.id);
-
-      // Update permissions
-      if (formData.permissions) {
-        await api.apps.permissions.update(packageName, formData.permissions);
-      }
+      // Update App data via store action (server resolves org/admin)
+      await updateApp(packageName, normalizedData);
 
       // Show success message
       setIsSaved(true);
@@ -476,18 +445,24 @@ const EditApp: React.FC = () => {
       setTimeout(() => {
         setIsSaved(false);
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating App:", err);
 
       // Extract the specific error message from the API response
       let errorMessage = "Failed to update app. Please try again.";
 
-      if (err?.response?.data?.error) {
-        // API returned a specific error message
-        errorMessage = err.response.data.error;
-      } else if (err?.message) {
-        // Use the error message if available
-        errorMessage = err.message;
+      // Safely narrow common HTTP error shapes
+      if (typeof err === "object" && err !== null) {
+        const maybeResponse = (
+          err as { response?: { data?: { error?: string } } }
+        ).response;
+        const maybeMessage = (err as { message?: string }).message;
+
+        if (maybeResponse?.data?.error) {
+          errorMessage = maybeResponse.data.error;
+        } else if (typeof maybeMessage === "string" && maybeMessage) {
+          errorMessage = maybeMessage;
+        }
       }
 
       setError(errorMessage);
@@ -501,16 +476,12 @@ const EditApp: React.FC = () => {
   const handleRegenerateApiKey = async () => {
     try {
       if (!packageName) throw new Error("Package name is missing");
-      if (!currentOrg) throw new Error("No organization selected");
 
       setIsRegeneratingKey(true);
       setError(null);
 
-      // Regenerate API key via API
-      const response = await api.apps.apiKey.regenerate(
-        packageName,
-        currentOrg.id,
-      );
+      // Regenerate API key via store
+      const response = await regenerateApiKeyStore(packageName);
 
       // Update local state with new API key
       setApiKey(response.apiKey);
@@ -553,19 +524,16 @@ const EditApp: React.FC = () => {
   const handleGetShareLink = async () => {
     try {
       if (!packageName) throw new Error("Package name is missing");
-      if (!currentOrg) throw new Error("No organization selected");
 
       setIsLoadingShareLink(true);
       setError(null);
 
-      // Get share link via API
-      const shareUrl = await api.sharing.getInstallLink(
-        packageName,
-        currentOrg.id,
-      );
+      // TODO: Replace with apps.store getShareLink when wired
+      // const { installUrl } = await getShareLinkStore(packageName);
+      // setShareLink(installUrl);
 
-      // Update local state with share link
-      setShareLink(shareUrl);
+      // Temporary: keep empty link until wired
+      setShareLink("");
 
       // Open sharing dialog
       setIsSharingDialogOpen(true);
@@ -584,19 +552,20 @@ const EditApp: React.FC = () => {
 
   // Handle successful publish (called after dialog completes)
   const handlePublishComplete = async () => {
-    if (!packageName || !currentOrg) return;
+    if (!packageName) return;
 
     try {
       // Refresh App data to get updated app status
-      const updatedApp = await api.apps.getByPackageName(
-        packageName,
-        currentOrg.id,
-      );
+      // Fetch App data using store (org resolved server-side)
+      const appData = await getApp(packageName);
+      if (!appData) {
+        throw new Error("App not found");
+      }
 
       // Update form data with new app status
       setFormData((prev) => ({
         ...prev,
-        appStoreStatus: updatedApp.appStoreStatus || prev.appStoreStatus,
+        appStoreStatus: appData.appStoreStatus || prev.appStoreStatus,
       }));
 
       toast.success("Publication status updated");
@@ -605,90 +574,13 @@ const EditApp: React.FC = () => {
     }
   };
 
-  // Handler to add a new email to the share list
-  const handleAddShareEmail = async () => {
-    try {
-      if (!packageName) throw new Error("Package name is missing");
-      if (!currentOrg) throw new Error("No organization selected");
-      if (!newShareEmail.trim()) return;
-
-      setIsUpdatingEmails(true);
-      setEmailError(null);
-
-      // Validate email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(newShareEmail)) {
-        setEmailError("Please enter a valid email address");
-        setIsUpdatingEmails(false);
-        return;
-      }
-
-      // Check if email already in list
-      if (sharedWithEmails.includes(newShareEmail)) {
-        setEmailError("This email is already in the list");
-        setIsUpdatingEmails(false);
-        return;
-      }
-
-      // Update emails via API
-      const updatedEmails = [...sharedWithEmails, newShareEmail];
-      await api.apps.updateSharedEmails(packageName, updatedEmails);
-
-      // Update local state
-      setSharedWithEmails(updatedEmails);
-      setNewShareEmail("");
-
-      toast.success(`Shared with ${newShareEmail}`);
-
-      // Also track via the sharing API
-      await api.sharing.trackSharing(
-        packageName,
-        [newShareEmail],
-        currentOrg.id,
-      );
-    } catch (err) {
-      console.error("Error adding share email:", err);
-      toast.error("Failed to add email");
-    } finally {
-      setIsUpdatingEmails(false);
-    }
-  };
-
-  // Handler to remove an email from the share list
-  const handleRemoveShareEmail = async (email: string) => {
-    try {
-      if (!packageName) throw new Error("Package name is missing");
-      if (!currentOrg) throw new Error("No organization selected");
-
-      setIsUpdatingEmails(true);
-
-      // Filter out the email to remove
-      const updatedEmails = sharedWithEmails.filter((e) => e !== email);
-
-      // Update emails via API
-      await api.apps.updateSharedEmails(packageName, updatedEmails);
-
-      // Update local state
-      setSharedWithEmails(updatedEmails);
-
-      toast.success(`Removed ${email} from shared list`);
-    } catch (err) {
-      console.error("Error removing share email:", err);
-      toast.error("Failed to remove email");
-    } finally {
-      setIsUpdatingEmails(false);
-    }
-  };
-
   // Handle App organization move
-  const handleMoveToOrg = async (targetOrgId: string) => {
-    if (!packageName || !currentOrg) return;
+  const handleMoveToOrg = async (targetOrgId: string): Promise<void> => {
+    if (!packageName) return;
 
     try {
-      setIsMovingOrg(true);
-
-      // Call API to move App to the target organization
-      await api.apps.moveToOrg(packageName, targetOrgId, currentOrg.id);
+      // Move App via store
+      await moveAppStore(packageName, targetOrgId);
 
       // Show success message
       toast.success(`App moved to new organization successfully`);
@@ -702,8 +594,6 @@ const EditApp: React.FC = () => {
       throw new Error(
         "Failed to move app to the new organization. Please try again.",
       );
-    } finally {
-      setIsMovingOrg(false);
     }
   };
 
@@ -713,7 +603,7 @@ const EditApp: React.FC = () => {
    * @returns Object with validation result and specific error message
    */
   const validateAppConfig = (
-    config: any,
+    config: Partial<ImportConfigData>,
   ): { isValid: boolean; error?: string } => {
     console.log("Validating config:", config);
 
@@ -860,8 +750,13 @@ const EditApp: React.FC = () => {
         }
 
         // TITLE_VALUE settings just need label and value
-        if (setting.type === "titleValue") {
-          if (typeof setting.label !== "string") {
+        const s = setting as {
+          type?: string;
+          label?: unknown;
+          value?: unknown;
+        };
+        if (s.type === "titleValue") {
+          if (typeof s.label !== "string") {
             console.log(
               `Validation failed: setting ${index} is titleValue but has invalid label`,
             );
@@ -870,7 +765,7 @@ const EditApp: React.FC = () => {
               error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.`,
             };
           }
-          if (!("value" in setting)) {
+          if (!("value" in s)) {
             console.log(
               `Validation failed: setting ${index} is titleValue but has no value`,
             );
@@ -1042,7 +937,7 @@ const EditApp: React.FC = () => {
 
     // Trigger file input
     if (fileInputRef.current) {
-      (fileInputRef.current as any).click();
+      (fileInputRef.current as HTMLInputElement).click();
     }
   };
 
@@ -1066,18 +961,18 @@ const EditApp: React.FC = () => {
     }
 
     // Read file content
-    const reader = new (window as any).FileReader();
+    const reader = new FileReader();
 
-    reader.onload = (e: any) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
-        const content = e.target.result as string;
+        const content = (e.target?.result as string) || "";
 
         if (!content || content.trim() === "") {
           setImportError("The selected file is empty.");
           return;
         }
 
-        let config;
+        let config: ImportConfigData;
         try {
           config = JSON.parse(content);
         } catch (parseError) {
@@ -1107,7 +1002,7 @@ const EditApp: React.FC = () => {
       }
     };
 
-    reader.onerror = (error: any) => {
+    reader.onerror = (error: ProgressEvent<FileReader>) => {
       console.error("FileReader error:", error);
       setImportError("Failed to read the file. Please try again.");
     };
@@ -1155,7 +1050,7 @@ const EditApp: React.FC = () => {
             importConfigData.logoURL.trim() !== ""
               ? importConfigData.logoURL.trim()
               : prev.logoURL,
-          // For webviewURL, treat empty strings as "not there at all" - only update if it has actual content
+          // For webviewURL, treat empty strings as &quot;not there at all&quot; - only update if it has actual content
           webviewURL:
             importConfigData.webviewURL !== undefined &&
             typeof importConfigData.webviewURL === "string" &&
@@ -1166,7 +1061,7 @@ const EditApp: React.FC = () => {
           // Update appType if provided, otherwise keep existing (defaults to BACKGROUND in form)
           appType:
             importConfigData.appType !== undefined
-              ? importConfigData.appType
+              ? (importConfigData.appType as AppType)
               : prev.appType,
 
           // Replace permissions if provided, otherwise keep existing
@@ -1222,7 +1117,7 @@ const EditApp: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-2xl">Edit App</CardTitle>
                 <CardDescription>
-                  Update your app's configuration.
+                  Update your app&apos;s configuration.
                 </CardDescription>
                 {currentOrg && (
                   <div className="mt-2 mb-2 text-sm flex items-center justify-between">
@@ -1304,8 +1199,8 @@ const EditApp: React.FC = () => {
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
-                    Provide a clear, concise description of your application's
-                    functionality.
+                    Provide a clear, concise description of your
+                    application&apos;s functionality.
                   </p>
                 </div>
 
@@ -1342,10 +1237,11 @@ const EditApp: React.FC = () => {
                   />
                   <p className="text-xs text-gray-500">
                     The base URL of your server where MentraOS will communicate
-                    with your app. We'll automatically append "/webhook" to
-                    handle events when your app is activated. HTTPS is required
-                    and will be added automatically if not specified. Do not
-                    include a trailing slash - it will be automatically removed.
+                    with your app. We&apos;ll automatically append
+                    &quot;/webhook&quot; to handle events when your app is
+                    activated. HTTPS is required and will be added automatically
+                    if not specified. Do not include a trailing slash - it will
+                    be automatically removed.
                   </p>
                 </div>
 
@@ -1364,7 +1260,7 @@ const EditApp: React.FC = () => {
                   />
                   {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                   <p className="text-xs text-gray-500">
-                    Upload an image that will be used as your app's icon
+                    Upload an image that will be used as your app&apos;s icon
                     (recommended: 512x512 PNG).
                   </p>
                 </div>
@@ -1714,7 +1610,9 @@ const EditApp: React.FC = () => {
               onMoveComplete={() => {
                 // Handled by redirect in handleMoveToOrg
               }}
-              onMove={handleMoveToOrg}
+              onMove={async (targetOrgId) => {
+                await handleMoveToOrg(targetOrgId);
+              }}
             />
           )}
         </>
@@ -1731,6 +1629,6 @@ const EditApp: React.FC = () => {
       />
     </DashboardLayout>
   );
-};
+}
 
-export default EditApp;
+// default export moved to function declaration above

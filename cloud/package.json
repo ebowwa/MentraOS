@@ -14,6 +14,10 @@
     "logs": "docker compose -f docker-compose.dev.yml -p dev logs -f --tail=50",
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:bun": "bun test",
+
+    "console": "cd websites/console && bun run dev",
+    "store": "cd websites/store && bun run dev",
+
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
     "ngrok:isaiah2": "ngrok http --url=isaiah.mentra.glass 8002",
     "ngrok:israelov": "ngrok http --url=israelovpuddle.ngrok.app 8002"
