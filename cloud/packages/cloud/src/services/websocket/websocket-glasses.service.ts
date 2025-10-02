@@ -24,7 +24,6 @@ import {
   RequestSettings,
   RtmpStreamStatus,
   LocalTranscription,
-  SettingsUpdate,
   Vad,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
@@ -143,7 +142,9 @@ export class GlassesWebSocketService {
             // Handle connection initialization message
             const connectionInitMessage = message as ConnectionInit;
             userSession.logger.info(
-              `Received connection init message from glasses: ${JSON.stringify(connectionInitMessage)}`,
+              `Received connection init message from glasses: ${JSON.stringify(
+                connectionInitMessage,
+              )}`,
             );
             // If this is a reconnection, we can skip the initialization logic
             this.handleConnectionInit(userSession, reconnection)
@@ -400,8 +401,14 @@ export class GlassesWebSocketService {
                 {
                   changedFields: changedKeys.map((key) => ({
                     key,
-                    from: `${(currentSettingsBeforeUpdate as Record<string, any>)[key]} (${typeof (currentSettingsBeforeUpdate as Record<string, any>)[key]})`,
-                    to: `${(newSettings as Record<string, any>)[key]} (${typeof (newSettings as Record<string, any>)[key]})`,
+                    from: `${
+                      (currentSettingsBeforeUpdate as Record<string, any>)[key]
+                    } (${typeof (
+                      currentSettingsBeforeUpdate as Record<string, any>
+                    )[key]})`,
+                    to: `${
+                      (newSettings as Record<string, any>)[key]
+                    } (${typeof (newSettings as Record<string, any>)[key]})`,
                   })),
                 },
                 "Changes detected in settings from core status update:",
@@ -561,7 +568,7 @@ export class GlassesWebSocketService {
     const ackMessage: ConnectionAck = {
       type: CloudToGlassesMessageType.CONNECTION_ACK,
       sessionId: userSession.sessionId,
-      userSession: await userSession.snapshotForClient(),
+      // userSession: await userSession.snapshotForClient(),
       timestamp: new Date(),
     };
 

@@ -5,10 +5,8 @@
 
 import WebSocket from "ws";
 import { IncomingMessage } from "http";
-import jwt from "jsonwebtoken";
 import {
   AppConnectionInit,
-  AppConnectionAck,
   AppConnectionError,
   AppToCloudMessage,
   AppToCloudMessageType,
@@ -16,7 +14,6 @@ import {
   AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
-  ExtendedStreamType,
   DataStream,
   LocationUpdate,
   GlassesToCloudMessageType,
@@ -33,12 +30,7 @@ import {
   PermissionType,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
-import * as developerService from "../core/developer.service";
-// sessionService has been consolidated into UserSession methods
-// import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from "../logging/pino-logger";
-import photoRequestService from "../core/photo-request.service";
-import e from "express";
 import { locationService } from "../core/location.service";
 import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
 import App from "../../models/app.model";
@@ -88,7 +80,7 @@ export class AppWebSocketService {
   private subscriptionChangeTimers = new Map<string, NodeJS.Timeout>();
   private readonly SUBSCRIPTION_DEBOUNCE_MS = 500; // 500ms debounce
 
-  constructor() { }
+  constructor() {}
 
   /**
    * Get the singleton instance of AppWebSocketService
@@ -392,6 +384,7 @@ export class AppWebSocketService {
             // Delegate to PhotoManager
             const requestId =
               await userSession.photoManager.requestPhoto(photoRequestMsg);
+
             this.logger.info(
               { requestId, packageName: photoRequestMsg.packageName },
               "Photo request processed by PhotoManager.",
@@ -785,7 +778,7 @@ export class AppWebSocketService {
     // Check if language subscriptions have changed
     const languageSubscriptionsChanged =
       previousLanguageSubscriptions.length !==
-      newLanguageSubscriptions.length ||
+        newLanguageSubscriptions.length ||
       !previousLanguageSubscriptions.every((sub) =>
         newLanguageSubscriptions.includes(sub),
       );
@@ -936,7 +929,7 @@ export class AppWebSocketService {
     const clientResponse: AppStateChange = {
       type: CloudToGlassesMessageType.APP_STATE_CHANGE,
       sessionId: userSession.sessionId,
-      userSession: await userSession.snapshotForClient(),
+      // userSession: await userSession.snapshotForClient(),
       timestamp: new Date(),
     };
 

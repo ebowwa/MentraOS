@@ -6,8 +6,8 @@ import {
   ResponseTypes,
   UpdateTypes,
 } from "../message-types";
-import { UserSession } from "../user-session";
 import { Layout } from "../layouts";
+// import { UserSession } from "../user-session";
 
 //===========================================================
 // Responses
@@ -18,7 +18,7 @@ import { Layout } from "../layouts";
  */
 export interface ConnectionAck extends BaseMessage {
   type: CloudToGlassesMessageType.CONNECTION_ACK;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   sessionId: string;
 }
 
@@ -57,7 +57,7 @@ export interface DisplayEvent extends BaseMessage {
  */
 export interface AppStateChange extends BaseMessage {
   type: CloudToGlassesMessageType.APP_STATE_CHANGE;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   error?: string;
 }
 
@@ -66,7 +66,7 @@ export interface AppStateChange extends BaseMessage {
  */
 export interface MicrophoneStateChange extends BaseMessage {
   type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   isMicrophoneEnabled: boolean;
   requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">;
   bypassVad?: boolean; // NEW: PCM subscription bypass
@@ -77,7 +77,7 @@ export interface MicrophoneStateChange extends BaseMessage {
  */
 export interface PhotoRequestToGlasses extends BaseMessage {
   type: CloudToGlassesMessageType.PHOTO_REQUEST;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   requestId: string;
   appId: string;
   saveToGallery?: boolean;
@@ -87,6 +87,7 @@ export interface PhotoRequestToGlasses extends BaseMessage {
   size?: "small" | "medium" | "large";
 }
 
+// TODO(isaiah): Deprecated, remove this after new mobile client refactor complete, and we migrate to SettingsStateChange.
 /**
  * Settings update to glasses
  */
@@ -176,7 +177,7 @@ export interface RequestSingleLocation extends BaseMessage {
  */
 export interface AudioPlayRequestToGlasses extends BaseMessage {
   type: CloudToGlassesMessageType.AUDIO_PLAY_REQUEST;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   requestId: string;
   appId: string;
   audioUrl: string; // URL to audio file for download and play
@@ -189,7 +190,7 @@ export interface AudioPlayRequestToGlasses extends BaseMessage {
  */
 export interface AudioStopRequestToGlasses extends BaseMessage {
   type: CloudToGlassesMessageType.AUDIO_STOP_REQUEST;
-  userSession: Partial<UserSession>;
+  // userSession: Partial<UserSession>;
   appId: string;
 }
 
