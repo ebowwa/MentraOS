@@ -16,9 +16,8 @@ import {
   WebhookResponse,
   SessionWebhookRequest,
   StopWebhookRequest,
-  isSessionWebhookRequest,
-  isStopWebhookRequest,
   ToolCall,
+  WebhookRequestType,
 } from "../../types";
 
 import { Logger } from "pino";
@@ -136,7 +135,10 @@ export class AppServer {
     this.app.use(
       cookieParser(
         this.config.cookieSecret ||
-          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(
+            0,
+            8,
+          )}`,
       ),
     );
 
@@ -150,7 +152,10 @@ export class AppServer {
         },
         cookieSecret:
           this.config.cookieSecret ||
-          `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`,
+          `AOS_${this.config.packageName}_${this.config.apiKey.substring(
+            0,
+            8,
+          )}`,
       }) as any,
     );
 
@@ -285,10 +290,11 @@ export class AppServer {
             const cloudHost =
               process.env.CLOUD_PUBLIC_HOST_NAME ||
               "mentra-cloud-server.ngrok.app";
-            const response = await axios.get(`https://${cloudHost}/api/sdk/version`);
+            const response = await axios.get(
+              `https://${cloudHost}/api/sdk/version`,
+            );
             if (response.data && response.data.success && response.data.data) {
               latest = response.data.data.latest; // Changed from "recommended" to "latest"
-
             }
           } catch (fetchError) {
             this.logger.debug(
@@ -305,7 +311,7 @@ export class AppServer {
             this.logger.warn(newSDKUpdate(latest));
           }
         } catch (err) {
-          this.logger.error(err , "Version check failed");
+          this.logger.error(err, "Version check failed");
         }
 
         resolve();
@@ -373,11 +379,11 @@ export class AppServer {
         const webhookRequest = req.body as WebhookRequest;
 
         // Handle session request
-        if (isSessionWebhookRequest(webhookRequest)) {
+        if (webhookRequest.type === WebhookRequestType.SESSION_REQUEST) {
           await this.handleSessionRequest(webhookRequest, res);
         }
         // Handle stop request
-        else if (isStopWebhookRequest(webhookRequest)) {
+        else if (webhookRequest.type === WebhookRequestType.STOP_REQUEST) {
           await this.handleStopRequest(webhookRequest, res);
         }
         // Unknown webhook type
@@ -503,6 +509,7 @@ export class AppServer {
           );
 
           // Keep track of the original session before removal
+          // const session = this.activeSessions.get(sessionId);
           const _session = this.activeSessions.get(sessionId);
 
           // Call onStop with a reconnection failure reason
@@ -823,7 +830,9 @@ export class AppServer {
   private setupMentraAuthRedirect(): void {
     this.app.get("/mentra-auth", (req, res) => {
       // Redirect to the account.mentra.glass OAuth flow with the app's package name
-      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(this.config.packageName)}`;
+      const authUrl = `https://account.mentra.glass/auth?packagename=${encodeURIComponent(
+        this.config.packageName,
+      )}`;
 
       this.logger.info(`🔐 Redirecting to MentraOS OAuth flow: ${authUrl}`);
 

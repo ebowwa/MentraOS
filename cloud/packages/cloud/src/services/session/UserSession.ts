@@ -10,7 +10,6 @@ import {
   CloudToAppMessageType,
   CloudToGlassesMessageType,
   ConnectionError,
-  TranscriptSegment,
 } from "@mentra/sdk";
 import { logger as rootLogger } from "../logging/pino-logger";
 import { Capabilities } from "@mentra/sdk";
@@ -454,7 +453,11 @@ export class UserSession {
                 capabilities: this.capabilities,
                 modelName: this.currentGlassesModel,
               },
-              `[UserSession:stopIncompatibleApps] App ${packageName} is now incompatible with ${this.currentGlassesModel} - missing required hardware: ${compatibilityResult.missingRequired.map((req) => req.type).join(", ")}`,
+              `[UserSession:stopIncompatibleApps] App ${packageName} is now incompatible with ${
+                this.currentGlassesModel
+              } - missing required hardware: ${compatibilityResult.missingRequired
+                .map((req) => req.type)
+                .join(", ")}`,
             );
           }
         } catch (error) {
@@ -718,7 +721,9 @@ export class UserSession {
       const packageName = this.audioPlayRequestMapping.get(requestId);
       if (!packageName) {
         this.logger.warn(
-          `🔊 [UserSession] No app mapping found for audio request ${requestId}. Available: ${Array.from(this.audioPlayRequestMapping.keys()).join(", ")}`,
+          `🔊 [UserSession] No app mapping found for audio request ${requestId}. Available: ${Array.from(
+            this.audioPlayRequestMapping.keys(),
+          ).join(", ")}`,
         );
         return;
       }

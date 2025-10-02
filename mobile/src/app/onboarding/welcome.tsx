@@ -79,7 +79,7 @@ export default function OnboardingWelcome() {
 
         <Button
           onPress={handleHasGlasses}
-          text="I have smart glasses"
+          tx="onboarding:haveGlasses"
           textAlignment="center"
           LeftAccessory={() => <MaterialCommunityIcons name="glasses" size={16} color={theme.colors.textAlt} />}
         />
@@ -87,7 +87,7 @@ export default function OnboardingWelcome() {
         <Spacer height={10} />
         <Button
           onPress={handleNoGlasses}
-          text="I don't have glasses yet"
+          tx="onboarding:dontHaveGlasses"
           preset="default"
           LeftAccessory={() => <FontAwesome name="mobile" size={16} color={theme.colors.textAlt} />}
         />

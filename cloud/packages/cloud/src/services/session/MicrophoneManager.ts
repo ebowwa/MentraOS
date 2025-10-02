@@ -7,11 +7,7 @@
  */
 
 import WebSocket from "ws";
-import {
-  CloudToGlassesMessageType,
-  MicrophoneStateChange,
-  StreamType,
-} from "@mentra/sdk";
+import { CloudToGlassesMessageType, MicrophoneStateChange } from "@mentra/sdk";
 // import subscriptionService from "./subscription.service";
 import { Logger } from "pino";
 import UserSession from "./UserSession";
@@ -182,16 +178,16 @@ export class MicrophoneManager {
       } = {
         type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
         sessionId: this.session.sessionId,
-        userSession: {
-          sessionId: this.session.sessionId,
-          userId: this.session.userId,
-          startTime: this.session.startTime,
-          // activeAppSessions: this.session.activeAppSessions || [],
-          activeAppSessions: Array.from(this.session.runningApps),
-          // loadingApps: Array.from(this.session.loadingApps),
-          loadingApps: this.session.loadingApps,
-          isTranscribing: this.session.isTranscribing || false,
-        },
+        // userSession: {
+        //   sessionId: this.session.sessionId,
+        //   userId: this.session.userId,
+        //   startTime: this.session.startTime,
+        //   // activeAppSessions: this.session.activeAppSessions || [],
+        //   activeAppSessions: Array.from(this.session.runningApps),
+        //   // loadingApps: Array.from(this.session.loadingApps),
+        //   loadingApps: this.session.loadingApps,
+        //   isTranscribing: this.session.isTranscribing || false,
+        // },
         isMicrophoneEnabled: isEnabled,
         requiredData: isEnabled ? requiredData : [],
         bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag

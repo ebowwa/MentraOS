@@ -5,7 +5,6 @@
  * The dashboard provides contextual information to users through various modes:
  * - Main: Full dashboard experience with comprehensive information
  * - Expanded: More space for App content while maintaining essential info
- * - Always-on: Persistent minimal dashboard overlay on regular content
  */
 import {
   DashboardMode,
@@ -14,13 +13,11 @@ import {
   DashboardModeChange,
   DashboardSystemUpdate,
   AppToCloudMessageType,
-  CloudToGlassesMessageType,
   CloudToAppMessageType,
   LayoutType,
   ViewType,
   DisplayRequest,
   AppToCloudMessage,
-  // UserSession
 } from "@mentra/sdk";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../../core/app.service";
 import { Logger } from "pino";
@@ -250,7 +247,7 @@ export class DashboardManager {
     );
 
     // Track if we need to update the always-on dashboard
-    const alwaysOnUpdated = false;
+    // const alwaysOnUpdated = false;
 
     // Add content to each requested mode's queue
     modes.forEach((mode) => {
@@ -282,9 +279,9 @@ export class DashboardManager {
     }
 
     // Update always-on dashboard separately if its content was updated and it's enabled
-    if (alwaysOnUpdated && this.alwaysOnEnabled) {
-      this.updateAlwaysOnDashboard();
-    }
+    // if (alwaysOnUpdated && this.alwaysOnEnabled) {
+    //   this.updateAlwaysOnDashboard();
+    // }
   }
 
   /**
@@ -410,86 +407,9 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      const logger = this.userSession.logger.child({
-        currentMode: this.currentMode,
-        systemContentIsEmpty: Object.values(this.systemContent).every(
-          (v) => !v,
-        ),
-        systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
-        systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
-        mainContentCount: this.mainContent.size,
-        expandedContentCount: this.expandedContent.size,
-      });
       this.logger.error(
         error,
         "Error updating dashboard for user session " + this.userSession.userId,
-      );
-    }
-  }
-
-  /**
-   * Update the always-on dashboard overlay
-   * This runs independently of the regular dashboard views
-   */
-  private updateAlwaysOnDashboard(): void {
-    this.logger.info(
-      {
-        sessionId: this.userSession.sessionId,
-        alwaysOnEnabled: this.alwaysOnEnabled,
-        alwaysOnContentCount: this.alwaysOnContent.size,
-      },
-      "Always-on dashboard update triggered",
-    );
-
-    // Skip if always-on is disabled
-    if (!this.alwaysOnEnabled) {
-      this.logger.info(
-        {},
-        `[${this.userSession.userId}] Always-on dashboard update skipped - disabled`,
-      );
-      return;
-    }
-
-    try {
-      // Generate always-on layout
-      this.logger.info(
-        {},
-        `[${this.userSession.userId}] Generating ALWAYS_ON dashboard layout`,
-      );
-      const layout = this.generateAlwaysOnLayout();
-
-      // Create a display request specifically for always-on with the new view type
-      const displayRequest: DisplayRequest = {
-        type: AppToCloudMessageType.DISPLAY_REQUEST,
-        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
-        view: ViewType.ALWAYS_ON, // Use the new view type
-        layout,
-        timestamp: new Date(),
-        // We don't set a durationMs to keep it displayed indefinitely
-      };
-
-      // TODO: if we send this now, it would constantly clear screen an override what the display manager is sending.
-      // The client should take this always on dashboard, and combine it with the main view display requests from the display manaer.
-      // To build what the user sees.
-
-      // Send the display request using the session's DisplayManager
-      // this.sendDisplayRequest(displayRequest);
-      // this.logger.info(`✅ Always-on dashboard updated successfully`);
-      this.logger.warn(
-        {},
-        "Always-on dashboard update is not yet implemented in the client",
-      );
-    } catch (error) {
-      const logger = this.userSession.logger.child({
-        alwaysOnEnabled: this.alwaysOnEnabled,
-        systemContentTopLeft: this.systemContent.topLeft,
-        systemContentTopRight: this.systemContent.topRight,
-        alwaysOnContentCount: this.alwaysOnContent.size,
-      });
-      logger.error(
-        error,
-        "Error updating always-on dashboard for user session " +
-          this.userSession.userId,
       );
     }
   }
@@ -941,9 +861,9 @@ export class DashboardManager {
     this.updateDashboard();
 
     // Update the always-on dashboard separately if needed
-    if (hadAlwaysOnContent && this.alwaysOnEnabled) {
-      this.updateAlwaysOnDashboard();
-    }
+    // if (hadAlwaysOnContent && this.alwaysOnEnabled) {
+    //   this.updateAlwaysOnDashboard();
+    // }
 
     // Log the final state after cleanup
     const afterState = {
@@ -984,61 +904,6 @@ export class DashboardManager {
   }
 
   /**
-   * Set the always-on dashboard state
-   * @param enabled Whether always-on dashboard is enabled
-   */
-  public setAlwaysOnEnabled(enabled: boolean): void {
-    // Update state
-    this.alwaysOnEnabled = enabled;
-
-    this.logger.info(
-      { enabled, sessionId: this.userSession.sessionId },
-      `Always-on dashboard ${enabled ? "enabled" : "disabled"}`,
-    );
-
-    // Notify Apps of state change
-    const alwaysOnMessage = {
-      type: CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED,
-      enabled,
-      timestamp: new Date(),
-    };
-
-    // Broadcast always-on state change to all connected Apps
-    this.broadcastToAllApps(alwaysOnMessage);
-
-    // Update the regular dashboard
-    this.updateDashboard();
-
-    // If enabled, update the always-on dashboard immediately
-    if (enabled) {
-      this.updateAlwaysOnDashboard();
-    } else {
-      // If disabled, send a clear command for the always-on view
-      // This ensures the always-on dashboard is removed from display
-      this.logger.info(
-        { sessionId: this.userSession.sessionId },
-        "Clearing always-on dashboard",
-      );
-
-      // Send an empty layout to clear the always-on view
-      const clearRequest: DisplayRequest = {
-        type: AppToCloudMessageType.DISPLAY_REQUEST,
-        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
-        view: ViewType.ALWAYS_ON,
-        layout: {
-          layoutType: LayoutType.DASHBOARD_CARD,
-          leftText: "",
-          rightText: "",
-        },
-        timestamp: new Date(),
-        durationMs: 0, // Clear immediately
-      };
-
-      this.sendDisplayRequest(clearRequest);
-    }
-  }
-
-  /**
    * Broadcast a message to all Apps connected to this user session
    * @param message Message to broadcast
    */
@@ -1064,7 +929,6 @@ export class DashboardManager {
         }
       });
     } catch (error) {
-      const logger = this.userSession.logger.child({ message });
       this.logger.error(error, "Error broadcasting dashboard message");
     }
   }

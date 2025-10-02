@@ -9,8 +9,6 @@ export enum GlassesToCloudMessageType {
   // Control actions
   CONNECTION_INIT = "connection_init",
   REQUEST_SETTINGS = "request_settings",
-  // START_APP = 'start_app',
-  // STOP_APP = 'stop_app',
 
   START_APP = StreamType.START_APP,
   STOP_APP = StreamType.STOP_APP,
@@ -28,30 +26,28 @@ export enum GlassesToCloudMessageType {
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
   KEEP_ALIVE_ACK = "keep_alive_ack",
 
-  // OPEN_DASHBOARD = 'open_dashboard',
-  // Events and data
-  // BUTTON_PRESS = 'button_press',
-  // HEAD_POSITION = 'head_position',
-  // GLASSES_BATTERY_UPDATE = 'glasses_battery_update',
-  // PHONE_BATTERY_UPDATE = 'phone_battery_update',
-  // GLASSES_CONNECTION_STATE = 'glasses_connection_state',
-  // LOCATION_UPDATE = 'location_update',
-  // PHONE_NOTIFICATION = 'phone_notification',
-  // PHONE_NOTIFICATION_DISMISSED = 'phone_notification_dismissed'
-
   BUTTON_PRESS = StreamType.BUTTON_PRESS,
   HEAD_POSITION = StreamType.HEAD_POSITION,
   GLASSES_BATTERY_UPDATE = StreamType.GLASSES_BATTERY_UPDATE,
   PHONE_BATTERY_UPDATE = StreamType.PHONE_BATTERY_UPDATE,
   GLASSES_CONNECTION_STATE = StreamType.GLASSES_CONNECTION_STATE,
   LOCATION_UPDATE = StreamType.LOCATION_UPDATE,
+
+  // TODO(isaiah): Remove VPS_COORDINATES once confirmed we don't use this system.
   VPS_COORDINATES = StreamType.VPS_COORDINATES,
   VAD = StreamType.VAD,
+
+  // TODO(isaiah): Remove PHONE_NOTIFICATION, and PHONE_NOTIFICATION_DISMISSED after moving to REST request.
   PHONE_NOTIFICATION = StreamType.PHONE_NOTIFICATION,
   PHONE_NOTIFICATION_DISMISSED = StreamType.PHONE_NOTIFICATION_DISMISSED,
+
+  // TODO(isaiah): Remove CALENDAR_EVENT after moving to REST request.
   CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
   MENTRAOS_SETTINGS_UPDATE_REQUEST = StreamType.MENTRAOS_SETTINGS_UPDATE_REQUEST,
+
+  // TODO(isaiah): Remove CORE_STATUS_UPDATE after moving to REST request.
   CORE_STATUS_UPDATE = StreamType.CORE_STATUS_UPDATE,
+
   PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
   AUDIO_PLAY_RESPONSE = "audio_play_response",
 }
@@ -69,10 +65,12 @@ export enum CloudToGlassesMessageType {
   DISPLAY_EVENT = "display_event",
   APP_STATE_CHANGE = "app_state_change",
   MICROPHONE_STATE_CHANGE = "microphone_state_change",
+  SETTINGS_UPDATE = "settings_update",
+
+  // Requests
   PHOTO_REQUEST = "photo_request",
   AUDIO_PLAY_REQUEST = "audio_play_request",
   AUDIO_STOP_REQUEST = "audio_stop_request",
-  SETTINGS_UPDATE = "settings_update",
 
   // RTMP streaming
   START_RTMP_STREAM = "start_rtmp_stream",
@@ -121,6 +119,7 @@ export enum AppToCloudMessageType {
   DASHBOARD_MODE_CHANGE = "dashboard_mode_change",
   DASHBOARD_SYSTEM_UPDATE = "dashboard_system_update",
 
+  // TODO(isaiah): Remove after confirming not in use.
   // App-to-App Communication
   APP_BROADCAST_MESSAGE = "app_broadcast_message",
   APP_DIRECT_MESSAGE = "app_direct_message",
@@ -164,6 +163,7 @@ export enum CloudToAppMessageType {
   // General purpose messaging
   CUSTOM_MESSAGE = "custom_message",
 
+  // TODO(isaiah): Remove after confirming not in use.
   // App-to-App Communication Responses
   APP_MESSAGE_RECEIVED = "app_message_received",
   APP_USER_JOINED = "app_user_joined",
