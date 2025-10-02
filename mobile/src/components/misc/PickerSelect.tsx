@@ -1,5 +1,6 @@
-import React, {useState} from "react"
-import {Modal, View, Text, TouchableOpacity, StyleSheet, FlatList, SafeAreaView, Pressable} from "react-native"
+import {useState} from "react"
+import {Modal, View, TouchableOpacity, FlatList, SafeAreaView, Pressable} from "react-native"
+import {Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 
 export type PickerItem = {
@@ -94,7 +95,7 @@ const PickerSelect: React.FC<PickerSelectProps> = ({
                         styles.itemText,
                         {color: theme.colors.text},
                         style.itemText,
-                        isSelected && [{color: theme.colors.buttonPrimary, fontWeight: "bold"}, style.selectedItemText],
+                        isSelected && [{color: theme.colors.primary, fontWeight: "bold"}, style.selectedItemText],
                       ]}>
                       {item.label}
                     </Text>
@@ -123,9 +124,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 16,
-  },
-  selectedItemText: {
-    // Colors handled dynamically with theme
   },
   touchable: {
     padding: 12,

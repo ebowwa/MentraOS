@@ -1,7 +1,8 @@
-import React, {useEffect} from "react"
-import {View, Text, StyleSheet, Platform, Pressable} from "react-native"
+import {View, Platform, Pressable} from "react-native"
+import {Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useFocusEffect} from "expo-router"
+import {useFocusEffect} from "expo-router"
+import {useCallback} from "react"
 import {textEditorStore} from "@/utils/TextEditorStore"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -18,7 +19,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
 
   // Check for pending value when component gets focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       // Only process if there's actually a pending value (meaning we just returned from text editor)
       const pendingValue = textEditorStore.getPendingValue()
       if (pendingValue && pendingValue.key === settingKey) {
@@ -40,7 +41,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.colors.backgroundAlt,
           borderWidth: theme.spacing.xxxs,
           borderColor: theme.colors.border,
           borderRadius: theme.borderRadius.md,
@@ -62,7 +63,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   button: {
     backgroundColor: "transparent",
     borderRadius: Platform.OS === "ios" ? 8 : 4,
@@ -85,6 +86,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
   },
-})
+} as const
 
 export default TextSettingNoSave

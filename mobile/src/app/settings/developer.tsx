@@ -1,5 +1,5 @@
 import {useState} from "react"
-import {View, StyleSheet, Platform, ScrollView, TextInput} from "react-native"
+import {View, Platform, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import bridge from "@/bridge/MantleBridge"
 import showAlert from "@/utils/AlertUtils"
@@ -253,7 +253,7 @@ export default function DeveloperSettingsScreen() {
           style={[
             styles.settingContainer,
             {
-              backgroundColor: theme.colors.background,
+              backgroundColor: theme.colors.backgroundAlt,
               borderWidth: theme.spacing.xxxs,
               borderColor: theme.colors.border,
             },
@@ -350,7 +350,7 @@ export default function DeveloperSettingsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   sectionTitle: {
     fontSize: 14,
     fontWeight: "600",
@@ -426,4 +426,4 @@ const styles = StyleSheet.create({
   resetButton: {
     flex: 1,
   },
-})
+} as const

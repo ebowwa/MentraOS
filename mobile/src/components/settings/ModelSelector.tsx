@@ -1,7 +1,6 @@
-import React, {useState} from "react"
+import {useState} from "react"
 import {
   View,
-  StyleSheet,
   TouchableOpacity,
   Modal,
   FlatList,
@@ -33,11 +32,11 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   models,
   onModelChange,
   onDownload,
-  onDelete,
+  onDelete: _onDelete,
   isDownloading,
   downloadProgress,
   extractionProgress,
-  currentModelInfo,
+  currentModelInfo: _currentModelInfo,
 }) => {
   const {theme} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
@@ -122,7 +121,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         style={[
           styles.selector,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.backgroundAlt,
             borderRadius: theme.borderRadius.md,
             borderWidth: theme.spacing.xxxs,
             borderColor: theme.colors.border,
@@ -178,7 +177,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                   style={[
                     styles.modalContent,
                     {
-                      backgroundColor: theme.colors.background,
+                      backgroundColor: theme.colors.backgroundAlt,
                       borderColor: theme.colors.border,
                       borderWidth: theme.spacing.xxxs,
                       borderRadius: theme.borderRadius.md,
@@ -200,7 +199,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                     data={models}
                     keyExtractor={item => item.modelId}
                     renderItem={renderModelOption}
-                    style={[styles.optionsList, {backgroundColor: theme.colors.background}]}
+                    style={[styles.optionsList, {backgroundColor: theme.colors.backgroundAlt}]}
                     contentContainerStyle={{paddingBottom: theme.spacing.md}}
                   />
                 </View>
@@ -213,7 +212,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
     width: "100%",
   },
@@ -259,7 +258,7 @@ const styles = StyleSheet.create({
     width: "90%",
   },
   modalHeader: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
   },
   modalLabel: {
     fontSize: 18,
@@ -291,6 +290,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-})
+} as const
 
 export default ModelSelector

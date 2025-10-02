@@ -74,14 +74,8 @@ export default function SelectGlassesModelScreen() {
             ry="0.9978"
             gradientUnits="objectBoundingBox"
             gradientTransform={`rotate(${rotation} 10 10)`}>
-            <Stop
-              offset="0"
-              stopColor={theme.isDark ? theme.colors.palette.primary500 : theme.colors.palette.primary300}
-            />
-            <Stop
-              offset="1"
-              stopColor={theme.isDark ? theme.colors.palette.primary200 : theme.colors.palette.primary100}
-            />
+            <Stop offset="0" stopColor={theme.colors.tint} />
+            <Stop offset="1" stopColor={theme.colors.accent} />
           </RadialGradient>
         </Defs>
         <Rect
@@ -183,7 +177,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) =
   // More subtle elevation for Android
   elevation: 2,
 
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
 })
 
 const $glassesImage: ThemedStyle<ImageStyle> = ({spacing}) => ({

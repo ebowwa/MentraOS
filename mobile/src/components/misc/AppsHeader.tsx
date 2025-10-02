@@ -1,11 +1,10 @@
 import {translate, TxKeyPath} from "@/i18n"
-import {colors, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/component/SearchIcon"
-import {router} from "expo-router"
-import * as React from "react"
+import {router as _router} from "expo-router"
 import {View, TextStyle, ViewStyle, Pressable} from "react-native"
-import {SafeAreaView} from "react-native-safe-area-context"
+
 import {Text} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -24,7 +23,7 @@ const AppsHeader = ({showSearchIcon = true, title}: {showSearchIcon?: boolean; t
           onPress={() => {
             push("/search/search")
           }}>
-          <SearchIcon color={theme.colors.searchIcon} />
+          <SearchIcon color={theme.colors.icon} />
         </Pressable>
       )}
     </View>

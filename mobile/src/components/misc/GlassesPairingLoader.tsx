@@ -1,21 +1,9 @@
-import React, {useEffect, useRef} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-  useWindowDimensions,
-  ViewStyle,
-  TextStyle,
-  Image,
-  Platform,
-} from "react-native"
+import {useEffect, useRef, useState} from "react"
+import {View, Animated, Easing, useWindowDimensions, ViewStyle, TextStyle, Image, Platform} from "react-native"
+import {Text} from "@/components/ignite"
 import {getModelSpecificTips} from "./GlassesTroubleshootingModal"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {Header} from "../ignite/Header"
-import {router} from "expo-router"
 import {getGlassesImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
 import {translate} from "@/i18n"
 
@@ -24,7 +12,7 @@ interface GlassesPairingLoaderProps {
 }
 
 const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModelName}) => {
-  const {width} = useWindowDimensions()
+  const {width: _width} = useWindowDimensions()
   const {theme, themed} = useAppTheme()
 
   // Animation values
@@ -32,7 +20,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   const connectionBarOpacity = useRef(new Animated.Value(0)).current
   const connectionBarScale = useRef(new Animated.Value(0.8)).current
 
-  const [currentTipIndex, setCurrentTipIndex] = React.useState(0)
+  const [currentTipIndex, setCurrentTipIndex] = useState(0)
   const progressValue = useRef(0)
   const tipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -153,17 +141,17 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $imagesContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $imagesContainer: ThemedStyle<ViewStyle> = () => ({
   height: 250,
   width: "100%",
   position: "relative",
 })
 
-const $phoneImage: ThemedStyle<any> = ({colors}) => ({
+const $phoneImage: ThemedStyle<any> = () => ({
   position: "absolute",
   left: -100, // Push left more so only right 2/3 shows
   top: "50%",
@@ -172,7 +160,7 @@ const $phoneImage: ThemedStyle<any> = ({colors}) => ({
   height: 240,
 })
 
-const $glassesImage: ThemedStyle<any> = ({colors}) => ({
+const $glassesImage: ThemedStyle<any> = () => ({
   position: "absolute",
   right: -120, // Push right so only left 1/2 shows
   top: "50%",
@@ -181,7 +169,7 @@ const $glassesImage: ThemedStyle<any> = ({colors}) => ({
   height: 180,
 })
 
-const $textContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $textContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginTop: spacing.xl,
   alignItems: "center",
   paddingHorizontal: spacing.md,
@@ -205,7 +193,7 @@ const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
   opacity: 0.8,
 })
 
-const $progressBarWrapper: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $progressBarWrapper: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.md,
   marginBottom: 80, // Push up from bottom to match button positioning
 })
@@ -224,7 +212,7 @@ const $progressBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.palette.primary300,
 })
 
-const $connectionBar: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $connectionBar: ThemedStyle<ViewStyle> = () => ({
   position: "absolute",
   flexDirection: "row",
   alignItems: "center",
@@ -238,16 +226,14 @@ const $connectionBar: ThemedStyle<ViewStyle> = ({colors}) => ({
 const $connectionLine: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
   height: 4,
-  backgroundColor: colors.buttonPrimary,
+  backgroundColor: colors.primary,
 })
 
 const $connectionDiamond: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 12,
   height: 12,
-  backgroundColor: colors.buttonPrimary,
+  backgroundColor: colors.primary,
   transform: [{rotate: "45deg"}],
 })
-
-const styles = StyleSheet.create({})
 
 export default GlassesPairingLoader

@@ -209,7 +209,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 140,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderRadius: 10,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,

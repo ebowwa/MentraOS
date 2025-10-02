@@ -1,10 +1,9 @@
-import React from "react"
 import {TouchableOpacity, View, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {Text} from "@/components/ignite"
-import {router} from "expo-router"
+import {router as _router} from "expo-router"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
 import {Icon} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
@@ -77,7 +76,7 @@ const $appDescription: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $appIcon: ThemedStyle<ViewStyle> = () => ({
+const _$appIcon: ThemedStyle<ViewStyle> = () => ({
   width: 48,
   height: 48,
 })
@@ -86,7 +85,7 @@ const $iconContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 48,
   height: 48,
   borderRadius: 24,
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.backgroundAlt,
   justifyContent: "center",
   alignItems: "center",
   position: "relative",
@@ -99,7 +98,7 @@ const $plusBadge: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 18,
   height: 18,
   borderRadius: 9,
-  backgroundColor: colors.palette.primary500,
+  backgroundColor: colors.primary,
   justifyContent: "center",
   alignItems: "center",
   borderWidth: 2,

@@ -1,5 +1,5 @@
-import React from "react"
-import {View, Text, TouchableOpacity, StyleSheet} from "react-native"
+import {View, TouchableOpacity} from "react-native"
+import {Text} from "@/components/ignite"
 import CheckBox from "@/components/misc/CheckBox"
 import {useAppTheme} from "@/utils/useAppTheme"
 
@@ -16,7 +16,7 @@ type MultiSelectSettingProps = {
 }
 
 const MultiSelectSetting: React.FC<MultiSelectSettingProps> = ({label, values = [], options, onValueChange}) => {
-  const {theme, themed} = useAppTheme()
+  const {theme} = useAppTheme()
   const toggleValue = (value: string) => {
     if (values.includes(value)) {
       onValueChange(values.filter(v => v !== value))
@@ -30,7 +30,7 @@ const MultiSelectSetting: React.FC<MultiSelectSettingProps> = ({label, values = 
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.colors.backgroundAlt,
           borderWidth: theme.spacing.xxxs,
           borderColor: theme.colors.border,
           borderRadius: theme.borderRadius.md,

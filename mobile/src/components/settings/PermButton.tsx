@@ -1,8 +1,7 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
-import {View, StyleSheet, Platform, ViewStyle, TextStyle} from "react-native"
-import {Button, Switch, Text} from "@/components/ignite"
+import {View, ViewStyle, TextStyle} from "react-native"
+import {Button, Text} from "@/components/ignite"
 
 type ToggleSettingProps = {
   label: string
@@ -12,8 +11,8 @@ type ToggleSettingProps = {
   containerStyle?: ViewStyle
 }
 
-const PermissionButton: React.FC<ToggleSettingProps> = ({label, subtitle, value, onPress, containerStyle}) => {
-  const {theme, themed} = useAppTheme()
+const PermissionButton: React.FC<ToggleSettingProps> = ({label, subtitle, value: _value, onPress, containerStyle}) => {
+  const {themed} = useAppTheme()
 
   return (
     <View style={[themed($container), containerStyle]}>
@@ -26,7 +25,7 @@ const PermissionButton: React.FC<ToggleSettingProps> = ({label, subtitle, value,
   )
 }
 
-const $button: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $button: ThemedStyle<ViewStyle> = ({spacing}) => ({
   fontSize: spacing.xs,
   width: 90,
   padding: spacing.xs,
@@ -38,7 +37,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   justifyContent: "space-between",
   alignItems: "center",
   width: "100%",
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.md,
   borderRadius: borderRadius.md,
@@ -46,7 +45,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   borderColor: colors.border,
 })
 
-const $textContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $textContainer: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "column",
   alignItems: "flex-start",
   justifyContent: "flex-start",

@@ -1,7 +1,6 @@
 // CheckBox.tsx
 
-import React from "react"
-import {Pressable, View, StyleSheet} from "react-native"
+import {Pressable, View} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 
@@ -39,8 +38,8 @@ const CheckBox: React.FC<CheckBoxProps> = ({
           checked && [
             styles.boxChecked,
             {
-              backgroundColor: theme.colors.buttonPrimary,
-              borderColor: theme.colors.buttonPrimary,
+              backgroundColor: theme.colors.primary,
+              borderColor: theme.colors.primary,
             },
           ],
         ]}>

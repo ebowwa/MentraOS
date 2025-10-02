@@ -1,7 +1,7 @@
-import {TouchableOpacity, View, ViewStyle, TextStyle} from "react-native"
+import {TouchableOpacity, View} from "react-native"
+import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Text} from "@/components/ignite"
 
 export type ActionButtonVariant = "default" | "warning" | "destructive" | "secondary"
 
@@ -65,38 +65,57 @@ export default function ActionButton({
   }
 
   return (
-    <TouchableOpacity
-      style={[themed($container), disabled && {opacity: 0.4}, containerStyle]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}>
-      <View style={themed($textContainer)}>
-        <Text style={[themed($text), {color: getTextColor()}]} text={label} />
-        {subtitle && <Text style={themed($subtitle)} text={subtitle} />}
-      </View>
-    </TouchableOpacity>
+    <View style={[themed($container), {paddingVertical: 0}]}>
+      <TouchableOpacity
+        style={[disabled && {opacity: 0.4}, containerStyle]}
+        onPress={onPress}
+        disabled={disabled}
+        activeOpacity={0.7}>
+        <View style={themed($innerRow)}>
+          <View style={themed($textContainer)}>
+            <Text style={[themed($text), {color: getTextColor()}]}>{label}</Text>
+            {subtitle && <Text style={themed($subtitle)}>{subtitle}</Text>}
+          </View>
+          {/* Invisible spacer to match RouteButton's chevron */}
+          <View style={themed($invisibleIcon)} />
+        </View>
+      </TouchableOpacity>
+    </View>
   )
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  paddingVertical: spacing.md,
+  backgroundColor: colors.backgroundAlt,
+  paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.md,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
 })
 
-const $textContainer: ThemedStyle<ViewStyle> = () => ({
+const $innerRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  paddingVertical: 8,
+  alignItems: "center",
+})
+
+const $textContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "column",
-  alignItems: "flex-start",
-  justifyContent: "flex-start",
-  gap: 4,
+  justifyContent: "center",
+  maxWidth: "90%",
+  gap: spacing.xxs,
   flex: 1,
 })
 
-const $text: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 15,
+const $invisibleIcon: ThemedStyle<ViewStyle> = () => ({
+  width: 24,
+  height: 24,
+  opacity: 0,
+})
+
+const $text: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: spacing.md,
   fontWeight: "500",
   color: colors.text,
 })

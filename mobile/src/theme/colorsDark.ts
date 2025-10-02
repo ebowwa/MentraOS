@@ -111,6 +111,7 @@ export const colors = {
   // Backgrounds
   background: palette.primary100,
   backgroundAlt: palette.primary300,
+  modalOverlay: "rgba(0, 0, 0, 0.7)",
 
   // Borders
   border: palette.primary200,
@@ -123,6 +124,7 @@ export const colors = {
   // Error states
   error: palette.angry600,
   errorBackground: palette.angry100,
+  success: palette.success500,
   warning: palette.accent300,
 
   // Common:

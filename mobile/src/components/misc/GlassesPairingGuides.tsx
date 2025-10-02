@@ -558,10 +558,10 @@ export function VirtualWearablePairingGuide() {
       </View>
 
       {/* Note about upgrading */}
-      <View style={[styles.noteSection, {backgroundColor: theme.colors.palette.blue500}]}>
+      <View style={[styles.noteSection, {backgroundColor: theme.colors.primary}]}>
         <MaterialCommunityIcons name="information" size={20} color="white" style={{marginRight: 8}} />
         <Text
-          text="Ready to upgrade? You can pair physical glasses anytime from Settings."
+          text="Ready to upgrade? You can connect real smart glasses later from the Glasses menu."
           style={[styles.noteText, {color: "white"}]}
         />
       </View>

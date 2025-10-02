@@ -1,6 +1,6 @@
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
-import {View, Text, Modal, TouchableOpacity, StyleSheet} from "react-native"
+import {View, Modal, TouchableOpacity} from "react-native"
+import {Text} from "@/components/ignite"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface ButtonProps {
@@ -49,7 +49,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
       // Fallback to default button
       return (
         <TouchableOpacity
-          style={[styles.modalButton, styles.singleButton, {backgroundColor: theme.colors.buttonPrimary}]}
+          style={[styles.modalButton, styles.singleButton, {backgroundColor: theme.colors.primary}]}
           onPress={() => handleButtonPress(undefined)}>
           <Text style={[styles.modalButtonText, {color: theme.colors.palette.neutral100}]}>OK</Text>
         </TouchableOpacity>
@@ -58,7 +58,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
       // Single button - full width with minimum width
       return (
         <TouchableOpacity
-          style={[styles.modalButton, styles.singleButton, {backgroundColor: theme.colors.buttonPrimary}]}
+          style={[styles.modalButton, styles.singleButton, {backgroundColor: theme.colors.primary}]}
           onPress={() => handleButtonPress(buttons[0].onPress)}>
           <Text style={[styles.modalButtonText, {color: theme.colors.palette.neutral100}]}>{buttons[0].text}</Text>
         </TouchableOpacity>
@@ -78,10 +78,10 @@ const MessageModal: React.FC<MessageModalProps> = ({
                   styles.modalButton,
                   {
                     backgroundColor: isDestructive
-                      ? theme.colors.buttonDanger
+                      ? theme.colors.error
                       : isCancel
-                        ? theme.colors.palette.gray500
-                        : theme.colors.buttonPrimary,
+                        ? theme.colors.border
+                        : theme.colors.primary,
                   },
                   buttons.length > 2 ? styles.buttonFullWidth : styles.buttonHalfWidth,
                   index < buttons.length - 1 && buttons.length > 2 && styles.buttonMarginBottom,
@@ -103,7 +103,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
         <View
           style={[
             styles.modalContent,
-            {backgroundColor: theme.isDark ? theme.colors.modalBackground : theme.colors.palette.neutral100},
+            {backgroundColor: theme.isDark ? theme.colors.backgroundAlt : theme.colors.palette.neutral100},
           ]}>
           {iconName && <Icon name={iconName} size={iconSize} color={defaultIconColor} />}
           <Text style={[styles.modalTitle, theme.isDark ? styles.lightText : styles.darkText]}>{title}</Text>
@@ -129,12 +129,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     width: "85%",
-  },
-  modalContentLight: {
-    // backgroundColor moved to dynamic styling with theme
-  },
-  modalContentDark: {
-    // backgroundColor moved to dynamic styling with theme
   },
   modalTitle: {
     fontSize: 20,
