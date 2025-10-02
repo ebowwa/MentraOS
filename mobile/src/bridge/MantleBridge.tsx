@@ -13,7 +13,7 @@ import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
 import {translate} from "@/i18n"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import socketComms from "@/managers/SocketComms"
-// import livekitManager from "@/managers/LivekitManager"
+import livekitManager from "@/managers/LivekitManager"
 import mantle from "@/managers/MantleManager"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 
@@ -418,8 +418,8 @@ export class MantleBridge extends EventEmitter {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          socketComms.sendBinary(bytes)
-          // livekitManager.addPcm(bytes)
+          // socketComms.sendBinary(bytes)
+          livekitManager.addPcm(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)
