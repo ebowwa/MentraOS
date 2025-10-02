@@ -1,14 +1,14 @@
-import * as React from "react"
+import {useState} from "react"
 import {View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {Icon, Text} from "../ignite"
-import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {Switch} from "../ignite/Toggle/Switch"
 
 const TempActivateAppWindow = () => {
   const {themed, theme} = useAppTheme()
 
-  const [visible, setVisible] = React.useState(true)
+  const [visible, setVisible] = useState(true)
 
   if (!visible) return null
 
@@ -19,10 +19,7 @@ const TempActivateAppWindow = () => {
           <Text tx="home:activateAnApp" style={[themed($appName), themed($appFlexBox)]} numberOfLines={1} />
           <Text tx="home:activateAnAppMessage" style={[themed($appName1), themed($appFlexBox)]} numberOfLines={2} />
         </View>
-        <View style={themed($animatedToggle)}>
-          <View style={themed($toggleBarIcon)} />
-          <View style={[themed($toggleCircleIcon), {backgroundColor: theme.colors.switchThumbOff}]} />
-        </View>
+        <Switch value={false} onValueChange={() => {}} disabled={true} />
       </View>
       <TouchableOpacity onPress={() => setVisible(false)} style={[themed($xIcon), {display: "none"}]}>
         <Icon icon={"x"} size={theme.spacing.md} />
@@ -38,13 +35,13 @@ const $appFlexBox: ThemedStyle<TextStyle> = ({colors}) => ({
   alignSelf: "stretch",
 })
 
-const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
+const _$toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
   maxWidth: "100%",
   position: "absolute",
   overflow: "hidden",
 })
 
-const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
+const $appName: ThemedStyle<TextStyle> = () => ({
   fontSize: 15,
   letterSpacing: 0.6,
   lineHeight: 20,
@@ -52,7 +49,7 @@ const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
   // color: "#f9f8fe",
 })
 
-const $appName1: ThemedStyle<TextStyle> = ({colors}) => ({
+const $appName1: ThemedStyle<TextStyle> = () => ({
   fontSize: 13,
   letterSpacing: 0.5,
   lineHeight: 18,
@@ -60,40 +57,8 @@ const $appName1: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $appNameParent: ThemedStyle<ViewStyle> = () => ({
-  // width: 210,
-  // gap: 12,
-  // zIndex: 0,
   flexDirection: "column",
-  // height: 100,
   flex: 1,
-})
-
-const $toggleBarIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: 16,
-  width: 32,
-  borderRadius: 16,
-  backgroundColor: colors.switchTrackOff,
-  borderColor: colors.switchBorder,
-  borderWidth: colors.switchBorderWidth,
-  position: "absolute",
-})
-
-const $toggleCircleIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
-  width: 24,
-  height: 24,
-  top: -4,
-  left: -4,
-  borderRadius: 12,
-  position: "absolute",
-  borderColor: colors.switchBorder,
-  borderWidth: colors.switchBorderWidth,
-})
-
-const $animatedToggle: ThemedStyle<ViewStyle> = () => ({
-  width: 32,
-  height: 16,
-  zIndex: 1,
-  position: "relative",
 })
 
 const $xIcon: ThemedStyle<ViewStyle> = () => ({
@@ -106,7 +71,7 @@ const $xIcon: ThemedStyle<ViewStyle> = () => ({
 const $tempWindow: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   borderRadius: borderRadius.md,
   // backgroundColor: colors.background + "E6",
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   // flex: 1,
   // width: "100%",
   flexDirection: "row",

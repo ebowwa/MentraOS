@@ -14,6 +14,7 @@
 		6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */; };
 		6DDF1F572E2BED9800EAD638 /* SherpaOnnx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */; };
+		C5F7A1012E6C111500123456 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = C5F7A1002E6C111500123456 /* libbz2.tbd */; };
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -63,6 +64,7 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = AOS/main.m; sourceTree = "<group>"; };
 		14C4353E097941A5AC9B6A09 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "AOS/noop-file.swift"; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5F7A1002E6C111500123456 /* libbz2.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libbz2.tbd; path = usr/lib/libbz2.tbd; sourceTree = SDKROOT; };
 		6C2E3173556A471DD304B334 /* Pods-AOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.debug.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.debug.xcconfig"; sourceTree = "<group>"; };
 		6D62BA742E2BDFD100140E04 /* SherpaOnnx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaOnnx.swift; sourceTree = "<group>"; };
 		6DCD26AF2E2BF6B00086760F /* sherpa-onnx.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = "sherpa-onnx.xcframework"; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 				96905EF65AED1B983A6B3ABC /* libPods-AOS.a in Frameworks */,
 				6D5628382E2C062700C872F3 /* sherpa-onnx.xcframework in Frameworks */,
 				C5033F1F2E568874006A0718 /* LiveKit in Frameworks */,
+				C5F7A1012E6C111500123456 /* libbz2.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,6 +201,7 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				58EEBF8E8E6FB1BC6CAF49B5 /* libPods-AOS.a */,
+				C5F7A1002E6C111500123456 /* libbz2.tbd */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -801,7 +805,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -809,7 +813,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -960,14 +964,14 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.mentra.mentra;
-				PRODUCT_NAME = MentraOS;
+				PRODUCT_NAME = "MentraOS";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Source/Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;

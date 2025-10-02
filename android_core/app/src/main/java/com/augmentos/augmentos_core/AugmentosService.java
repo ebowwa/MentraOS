@@ -395,7 +395,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (smartGlassesManager != null) {
             transcriptProcessor.modifyLanguage(event.language);
             String processedText = transcriptProcessor.processString(event.text, event.isFinal);
+            JSONObject displayJson = new JSONObject();
+            JSONObject layoutJson = new JSONObject();
+            try {
+                layoutJson.put("layoutType", "text_wall");
+                layoutJson.put("text", processedText);
+                displayJson.put("layout", layoutJson);
+                displayJson.put("type", "display_event");
+                displayJson.put("view", "main");
+            } catch (JSONException e) {
+                Log.e(TAG, "Failed to construct transcription display JSON", e);
+            }
             if (processedText != null) {
+                blePeripheral.sendGlassesDisplayEventToManager(displayJson);
                 smartGlassesManager.sendTextWall(processedText);
                 // Schedule screen clear after 10 seconds, cancelling previous if pending
                 // In case of online captions cloud takes care of this
@@ -404,6 +416,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
                 clearScreenRunnable = () -> {
                     if (smartGlassesManager != null) {
+                        JSONObject displayJsonScheduled = new JSONObject();
+                        JSONObject layoutJsonScheduled = new JSONObject();
+                        try {
+                            layoutJsonScheduled.put("layoutType", "text_wall");
+                            layoutJsonScheduled.put("text", "");
+                            displayJsonScheduled.put("layout", layoutJsonScheduled);
+                            displayJsonScheduled.put("type", "display_event");
+                            displayJsonScheduled.put("view", "main");
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Failed to construct transcription display JSON", e);
+                        }   
+                        blePeripheral.sendGlassesDisplayEventToManager(displayJsonScheduled);
                         smartGlassesManager.sendTextWall("");
                     }
                 };
@@ -476,6 +500,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public ArrayList<String> notificationList = new ArrayList<String>();
     public JSONArray latestNewsArray = new JSONArray();
     private int latestNewsIndex = 0;
+    
+    // Photo request tracking for webhook URLs (for error responses)
+    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+    
+    private static class PhotoRequestInfo {
+        String requestId;
+        String webhookUrl;
+        String authToken;
+        long timestamp;
+
+        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
+            this.authToken = authToken != null ? authToken : "";
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
 
     @Subscribe
     public void displayGlassesDashboardEvent() throws JSONException {
@@ -1910,14 +1951,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onPhotoRequest(String requestId, String appId, String webhookUrl, String authToken, String size) {
                 Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", authToken=" + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
+                // Track photo request info for potential error responses
+                if (webhookUrl != null && !webhookUrl.isEmpty()) {
+                    photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
+                    
+                    // Set up cleanup timeout (5 minutes)
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        photoRequestInfo.remove(requestId);
+                    }, 300000); // 5 minutes
+                }
+
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId, webhookUrl, authToken, size);
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send photo request to glasses");
+                        // Error response will be sent by SmartGlassesManager
                     }
                 } else {
                     Log.e(TAG, "Cannot process photo request: smartGlassesManager is null");
+                    
+                    // Send error response for service unavailable via webhook if available
+                    sendPhotoErrorResponse(requestId, "PHONE_GLASSES_NOT_CONNECTED", 
+                        "SmartGlassesManager service not available");
                 }
             }
 
@@ -2158,6 +2214,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         JSONObject status = generateStatusJson();
         Log.d(TAG, "Sending status to backend: " + status.toString());
         ServerComms.getInstance().sendCoreStatus(status);
+    }
+
+    /**
+     * Send photo error response via SmartGlassesManager centralized handler
+     */
+    private void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        Log.d(TAG, "12 📡 Delegating photo error to SmartGlassesManager for requestId: " + requestId);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+        } else {
+            Log.e(TAG, "❌ Cannot send photo error - SmartGlassesManager not available");
+        }
     }
 
     public void sendStatusToAugmentOsManager() {
@@ -2698,6 +2766,38 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         sendStatusToAugmentOsManager();
 
+    }
+
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "📶 Disconnecting glasses from WiFi");
+
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to disconnect WiFi", "error");
+            return;
+        }
+
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
+            return;
+        }
+
+        // Send WiFi disconnect command to glasses
+        smartGlassesManager.disconnectFromWifi();
+
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+                "system",
+                () -> smartGlassesManager.sendReferenceCard("WiFi Disconnect",
+                        "Disconnecting from WiFi..."),
+                5
+        );
+
+        // Notify manager app
+        blePeripheral.sendNotifyManager("WiFi disconnect command sent to glasses", "success");
+
+        Log.d(TAG, "📶 WiFi disconnect command sent to glasses");
     }
 
     @Override

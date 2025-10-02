@@ -1,7 +1,7 @@
-import React, {useCallback, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle} from "react-native"
+import {useCallback, useRef, useState} from "react"
+import {View, TouchableOpacity, ActivityIndicator, Animated, ViewStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Button, Icon} from "@/components/ignite"
+import {Button, Icon, Text} from "@/components/ignite"
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {
@@ -26,10 +26,10 @@ import {SETTINGS_KEYS} from "@/stores/settings"
 
 export const ConnectDeviceButton = () => {
   const {status} = useCoreStatus()
-  const {themed, theme} = useAppTheme()
+  const {theme} = useAppTheme()
   const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
   const {push} = useNavigationHistory()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   const connectGlasses = async () => {
     if (!defaultWearable) {
@@ -85,8 +85,8 @@ export const ConnectDeviceButton = () => {
       if (defaultWearable && defaultWearable != "") {
         await bridge.sendConnectWearable(defaultWearable, deviceName, "")
       }
-    } catch (error) {
-      console.error("connect to glasses error:", error)
+    } catch (err) {
+      console.error("connect to glasses error:", err)
       showAlert("Connection Error", "Failed to connect to glasses. Please try again.", [{text: "OK"}])
     } finally {
       setIsCheckingConnectivity(false)
@@ -98,7 +98,9 @@ export const ConnectDeviceButton = () => {
 
     try {
       await bridge.sendDisconnectWearable()
-    } catch (error) {}
+    } catch (err) {
+      console.error("disconnect error:", err)
+    }
   }
 
   // New handler: if already connecting, pressing the button calls disconnect.
@@ -118,8 +120,9 @@ export const ConnectDeviceButton = () => {
   // Debug the conditional logic
   const defaultWearableNull = defaultWearable == null
   const defaultWearableStringNull = defaultWearable == "null"
+  const defaultWearableEmpty = defaultWearable === ""
 
-  if (defaultWearableNull || defaultWearableStringNull) {
+  if (defaultWearableNull || defaultWearableStringNull || defaultWearableEmpty) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
@@ -167,12 +170,12 @@ interface ConnectedGlassesProps {
   showTitle: boolean
 }
 
-export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) => {
+export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle: _showTitle}) => {
   const {status} = useCoreStatus()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const {themed, theme} = useAppTheme()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const {theme} = useAppTheme()
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   useFocusEffect(
     useCallback(() => {
@@ -250,8 +253,8 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 
 export function SplitDeviceInfo() {
   const {status} = useCoreStatus()
-  const {themed, theme} = useAppTheme()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const {theme} = useAppTheme()
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   // Show image if we have either connected glasses or a default wearable
 
@@ -311,10 +314,14 @@ export function SplitDeviceInfo() {
 
 export function DeviceToolbar() {
   const {status} = useCoreStatus()
-  const {themed, theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   if (!defaultWearable) {
+    return null
+  }
+
+  if (!status.glasses_info?.model_name) {
     return null
   }
 
@@ -329,18 +336,21 @@ export function DeviceToolbar() {
   const hasWifi = glassesFeatures[modelName]?.wifi ?? false // Default to false if model not found
   const wifiSsid = status.glasses_info?.glasses_wifi_ssid
 
+  const textColor = theme.colors.textDim
+  const iconColor = theme.colors.tint
+
   return (
     <View style={themed($deviceToolbar)}>
       {/* battery - always shown */}
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {status.glasses_info?.battery_level != -1 ? (
           <>
-            <Icon icon="battery" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText}}>{status.glasses_info?.battery_level}%</Text>
+            <Icon icon="battery" size={18} color={iconColor} />
+            <Text style={{color: textColor}}>{status.glasses_info?.battery_level}%</Text>
           </>
         ) : (
           // <Text style={{color: theme.colors.text}}>No battery</Text>
-          <ActivityIndicator size="small" color={theme.colors.statusText} />
+          <ActivityIndicator size="small" color={textColor} />
         )}
       </View>
 
@@ -348,13 +358,12 @@ export function DeviceToolbar() {
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {hasDisplay ? (
           <>
-            <SunIcon size={18} color={theme.colors.statusIcon} />
+            <SunIcon size={18} color={iconColor} />
             {autoBrightness ? (
-              <Text style={{color: theme.colors.statusText}}>Auto</Text>
+              <Text style={{color: textColor}}>Auto</Text>
             ) : (
               <>
-                <Text
-                  style={{color: theme.colors.statusText, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                <Text style={{color: textColor, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
                   {status.glasses_settings.brightness}%
                 </Text>
               </>
@@ -373,15 +382,15 @@ export function DeviceToolbar() {
             onPress={() => {
               push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
             }}>
-            <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            <MaterialCommunityIcons name="wifi" size={18} color={iconColor} />
+            <Text style={{color: textColor, fontSize: 16, fontFamily: "Inter-Regular"}}>
               {wifiSsid || "Disconnected"}
             </Text>
           </TouchableOpacity>
         ) : (
           <>
-            <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.statusIcon} />
-            <Text style={{color: theme.colors.statusText, fontSize: 16, fontFamily: "Inter-Regular"}}>Connected</Text>
+            <MaterialCommunityIcons name="bluetooth" size={18} color={iconColor} />
+            <Text style={{color: textColor, fontSize: 16, fontFamily: "Inter-Regular"}}>Connected</Text>
           </>
         )}
       </View>
@@ -389,7 +398,7 @@ export function DeviceToolbar() {
   )
 }
 
-const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $deviceToolbar: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
   justifyContent: "space-between",
   alignItems: "center",
@@ -400,15 +409,7 @@ const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginTop: spacing.md,
 })
 
-const styles = StyleSheet.create({
-  batteryContainer: {
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  batteryIcon: {
-    alignSelf: "center",
-    marginRight: 4,
-  },
+const styles = {
   buttonText: {
     color: "#fff",
     fontFamily: "Montserrat-Bold",
@@ -563,4 +564,4 @@ const styles = StyleSheet.create({
     marginRight: 5,
     maxWidth: 120,
   },
-})
+}

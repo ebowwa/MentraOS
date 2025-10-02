@@ -89,11 +89,11 @@ interface AppStartResult {
   success: boolean;
   error?: {
     stage:
-    | "WEBHOOK"
-    | "CONNECTION"
-    | "AUTHENTICATION"
-    | "TIMEOUT"
-    | "HARDWARE_CHECK";
+      | "WEBHOOK"
+      | "CONNECTION"
+      | "AUTHENTICATION"
+      | "TIMEOUT"
+      | "HARDWARE_CHECK";
     message: string;
     details?: any;
   };
@@ -672,7 +672,9 @@ export class AppManager {
             );
           }
           throw new Error(
-            `Webhook failed after ${maxRetries} attempts: ${(error as AxiosError).message || "Unknown error"}`,
+            `Webhook failed after ${maxRetries} attempts: ${
+              (error as AxiosError).message || "Unknown error"
+            }`,
           );
         }
         // Exponential backoff
@@ -1122,7 +1124,7 @@ export class AppManager {
       const appStateChange: AppStateChange = {
         type: CloudToGlassesMessageType.APP_STATE_CHANGE,
         sessionId: this.userSession.sessionId,
-        userSession: clientSessionData,
+        // userSession: clientSessionData,
         timestamp: new Date(),
       };
 

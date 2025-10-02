@@ -1,7 +1,7 @@
-import React, {useCallback} from "react"
-import {View, Text, BackHandler} from "react-native"
-import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
-import {Screen, Header} from "@/components/ignite"
+import {useCallback} from "react"
+import {View, BackHandler} from "react-native"
+import {useLocalSearchParams, useFocusEffect} from "expo-router"
+import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle, ScrollView} from "react-native"
@@ -30,7 +30,7 @@ export default function GlassesWifiSetupScreen() {
 
   // Get current WiFi status from glasses
   const currentWifi = status.glasses_info?.glasses_wifi_ssid
-  const isWifiConnected = status.glasses_info?.glasses_wifi_connected
+  const isWifiConnected = Boolean(currentWifi)
 
   const handleScanForNetworks = () => {
     push("/pairing/glasseswifisetup/scan", {deviceModel})
@@ -39,6 +39,16 @@ export default function GlassesWifiSetupScreen() {
   const handleManualEntry = () => {
     push("/pairing/glasseswifisetup/password", {deviceModel, ssid: ""})
   }
+
+  // const handleDisconnectWifi = async () => {
+  //   try {
+  //     console.log("Disconnecting from WiFi...")
+  //     await bridge.disconnectFromWifi()
+  //     console.log("WiFi disconnect command sent successfully")
+  //   } catch (error) {
+  //     console.error("Failed to disconnect from WiFi:", error)
+  //   }
+  // }
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)} safeAreaEdges={[]}>
@@ -77,6 +87,15 @@ export default function GlassesWifiSetupScreen() {
               subtitle="Type in network name and password"
               onPress={handleManualEntry}
             />
+
+            {/* {isWifiConnected && currentWifi && (
+              <ActionButton
+                label="Disconnect from WiFi"
+                subtitle="Disconnect from current network"
+                variant="destructive"
+                onPress={handleDisconnectWifi}
+              />
+            )} */}
           </View>
         </View>
       </ScrollView>
@@ -102,7 +121,7 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const $statusContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.backgroundDim,
+  backgroundColor: colors.backgroundAlt,
   padding: spacing.md,
   borderRadius: spacing.xs,
   marginBottom: spacing.xl,

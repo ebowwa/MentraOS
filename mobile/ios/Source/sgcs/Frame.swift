@@ -33,6 +33,8 @@ struct FrameCommand {
 // MARK: - FrameManager
 
 @objc(FrameManager) class FrameManager: NSObject, SGCManager {
+    func sendJson(_: [String: Any], wakeUp _: Bool, requireAck _: Bool) {}
+
     var wifiSsid: String?
 
     var wifiConnected: Bool?
@@ -120,8 +122,6 @@ struct FrameCommand {
     var caseCharging = false
 
     func setMicEnabled(_: Bool) {}
-
-    func sendJson(_: [String: Any]) {}
 
     func startRtmpStream(_: [String: Any]) {}
 

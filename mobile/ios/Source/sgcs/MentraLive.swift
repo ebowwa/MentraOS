@@ -347,34 +347,64 @@ private enum K900ProtocolUtils {
 private struct FileTransferSession {
     let fileName: String
     let fileSize: Int
-    let totalPackets: Int
+    var totalPackets: Int
     var expectedNextPacket: Int = 0
     var receivedPackets: [Int: Data] = [:]
     let startTime: Date
     var isComplete: Bool = false
+    var isAnnounced: Bool = false
 
-    init(fileName: String, fileSize: Int) {
+    init(fileName: String, fileSize: Int, announcedPackets: Int? = nil) {
         self.fileName = fileName
         self.fileSize = fileSize
-        totalPackets = (fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE
+        let computedPackets = (fileSize + K900ProtocolUtils.FILE_PACK_SIZE - 1) / K900ProtocolUtils.FILE_PACK_SIZE
+        if let announced = announcedPackets, announced > 0 {
+            totalPackets = announced
+            isAnnounced = true
+        } else {
+            totalPackets = computedPackets
+            isAnnounced = false
+        }
         startTime = Date()
     }
 
+    mutating func updateAnnouncedPackets(_ announced: Int) {
+        guard announced > 0 else { return }
+        totalPackets = announced
+        isAnnounced = true
+        if expectedNextPacket >= totalPackets {
+            expectedNextPacket = min(expectedNextPacket, max(totalPackets - 1, 0))
+        }
+    }
+
     mutating func addPacket(_ index: Int, data: Data) -> Bool {
-        guard index >= 0, index < totalPackets, receivedPackets[index] == nil else {
+        guard index >= 0 else { return false }
+
+        if index >= totalPackets {
+            totalPackets = index + 1
+        }
+
+        guard receivedPackets[index] == nil else {
             return false
         }
 
         receivedPackets[index] = data
 
-        // Update expected next packet
-        while receivedPackets[expectedNextPacket] != nil {
+        while receivedPackets[expectedNextPacket] != nil, expectedNextPacket < totalPackets {
             expectedNextPacket += 1
         }
 
-        // Check if complete
         isComplete = (receivedPackets.count == totalPackets)
         return true
+    }
+
+    func isFinalPacket(_ index: Int) -> Bool {
+        index == totalPackets - 1
+    }
+
+    func missingPacketIndices() -> [Int] {
+        guard totalPackets > receivedPackets.count else { return [] }
+        return (0 ..< totalPackets).compactMap { receivedPackets[$0] == nil ? $0 : nil }
     }
 
     func assembleFile() -> Data? {
@@ -388,7 +418,6 @@ private struct FileTransferSession {
             }
         }
 
-        // Trim to exact file size
         return fileData.prefix(fileSize)
     }
 }
@@ -882,16 +911,6 @@ class MentraLive: NSObject, SGCManager {
     private var readinessCheckCounter = 0
     private var connectionTimeoutTimer: Timer?
 
-    // Callbacks
-    var jsonObservable: ((JSONObject) -> Void)?
-
-    // onButtonPress (buttonId: String, pressType: String)
-    var onButtonPress: ((String, String) -> Void)?
-    // onPhotoRequest (requestId: String, appId: String, webhookUrl: String?)
-    var onPhotoRequest: ((String, String) -> Void)?
-    // onVideoStreamResponse (appId: String, streamUrl: String)
-    var onVideoStreamResponse: ((String, String) -> Void)?
-
     // MARK: - Initialization
 
     override init() {
@@ -1326,17 +1345,28 @@ class MentraLive: NSObject, SGCManager {
             return
         }
 
-        if let mId = json["mId"] as? Int {
-            Bridge.log("Received message with mId: \(mId)")
-            if String(mId) == pending?.id {
-                Bridge.log("Received expected response! clearing pending")
-                pending = nil
-                // Cancel the retry timer
-                pendingMessageTimer?.invalidate()
-                pendingMessageTimer = nil
-            } else if pending?.id != nil {
-                Bridge.log("Received unexpected response! expected: \(pending!.id), received: \(mId) global: \(globalMessageId)")
+        // Check if this is an ACK response first (for our phone → glasses messages)
+        if type == "msg_ack" {
+            if let mId = json["mId"] as? Int {
+                Bridge.log("Received msg_ack for mId: \(mId)")
+                if String(mId) == pending?.id {
+                    Bridge.log("Received expected ACK! clearing pending")
+                    pending = nil
+                    // Cancel the retry timer
+                    pendingMessageTimer?.invalidate()
+                    pendingMessageTimer = nil
+                } else if pending?.id != nil {
+                    Bridge.log("Received unexpected ACK! expected: \(pending!.id), received: \(mId)")
+                }
             }
+            return // Don't send ACK for ACKs!
+        }
+
+        // Check for message ID that needs ACK (glasses → phone)
+        // But only if it's NOT an ACK message
+        if let mId = json["mId"] as? Int {
+            Bridge.log("Received message with mId: \(mId) - sending ACK back to glasses")
+            sendAckToGlasses(messageId: mId)
         }
 
         switch type {
@@ -1394,18 +1424,22 @@ class MentraLive: NSObject, SGCManager {
         case "keep_alive_ack":
             emitKeepAliveAck(json)
 
-        case "msg_ack":
-            Bridge.log("Received msg_ack")
-
         case "ble_photo_ready":
             processBlePhotoReady(json)
 
         case "ble_photo_complete":
             processBlePhotoComplete(json)
 
+        case "file_announce":
+            handleFileTransferAnnouncement(json)
+
+        case "transfer_timeout":
+            handleTransferTimeout(json)
+
+        case "transfer_failed":
+            handleTransferFailed(json)
+
         default:
-            // Forward unknown types to observable
-            //      jsonObservable?(json)
             Bridge.log("Unhandled message type: \(type)")
         }
     }
@@ -1473,7 +1507,6 @@ class MentraLive: NSObject, SGCManager {
 
         default:
             Bridge.log("Unknown K900 command: \(command)")
-            jsonObservable?(json)
         }
     }
 
@@ -1582,7 +1615,7 @@ class MentraLive: NSObject, SGCManager {
         let pressType = json["pressType"] as? String ?? "short"
 
         Bridge.log("Received button press - buttonId: \(buttonId), pressType: \(pressType)")
-        onButtonPress?(buttonId, pressType)
+        Bridge.sendButtonPress(buttonId: buttonId, pressType: pressType)
     }
 
     private func handleVersionInfo(_ json: [String: Any]) {
@@ -1638,13 +1671,86 @@ class MentraLive: NSObject, SGCManager {
 
         Bridge.log("BLE photo transfer complete - requestId: \(bleRequestId), bleImgId: \(bleBleImgId), success: \(bleSuccess)")
 
-        // Send completion notification back to glasses
+        // Send completion notification back to glasses using unified transfer_complete
         if bleSuccess {
-            sendBleTransferComplete(requestId: bleRequestId, bleImgId: bleBleImgId, success: true)
+            sendTransferCompleteConfirmation(fileName: bleBleImgId, success: true)
         } else {
             Bridge.log("BLE photo transfer failed for requestId: \(bleRequestId)")
+            sendTransferCompleteConfirmation(fileName: bleBleImgId, success: false)
         }
     }
+
+    private func handleFileTransferAnnouncement(_ json: [String: Any]) {
+        let fileName = json["fileName"] as? String ?? ""
+        let totalPackets = json["totalPackets"] as? Int ?? 0
+        let fileSize = json["fileSize"] as? Int ?? 0
+
+        guard !fileName.isEmpty, totalPackets > 0 else {
+            Bridge.log("📢 Invalid file transfer announcement: \(json)")
+            return
+        }
+
+        Bridge.log("📢 File transfer announcement: \(fileName), \(totalPackets) packets, \(fileSize) bytes")
+
+        if var existing = activeFileTransfers[fileName] {
+            Bridge.log("📢 Restart detected - clearing existing session for \(fileName)")
+            Bridge.log("📊 Previous session had \(existing.receivedPackets.count)/\(existing.totalPackets) packets")
+            activeFileTransfers.removeValue(forKey: fileName)
+        }
+
+        var session = FileTransferSession(fileName: fileName, fileSize: fileSize, announcedPackets: totalPackets)
+        session.isAnnounced = true
+        activeFileTransfers[fileName] = session
+
+        let bleImgId = fileName.split(separator: ".").first.map(String.init) ?? ""
+        if var bleTransfer = blePhotoTransfers[bleImgId] {
+            var bleSession = bleTransfer.session ?? FileTransferSession(fileName: fileName, fileSize: fileSize, announcedPackets: totalPackets)
+            bleSession.updateAnnouncedPackets(totalPackets)
+            bleTransfer.session = bleSession
+            blePhotoTransfers[bleImgId] = bleTransfer
+        }
+    }
+
+    private func handleTransferTimeout(_ json: [String: Any]) {
+        let fileName = json["fileName"] as? String ?? ""
+        guard !fileName.isEmpty else {
+            Bridge.log("⏰ Transfer timeout notification missing fileName: \(json)")
+            return
+        }
+
+        Bridge.log("⏰ Transfer timeout for: \(fileName)")
+
+        activeFileTransfers.removeValue(forKey: fileName)
+
+        let bleImgId = fileName.split(separator: ".").first.map(String.init) ?? ""
+        if blePhotoTransfers.removeValue(forKey: bleImgId) != nil {
+            Bridge.log("🧹 Cleaned up timed out BLE photo transfer for: \(bleImgId)")
+        }
+    }
+
+    private func handleTransferFailed(_ json: [String: Any]) {
+        let fileName = json["fileName"] as? String ?? ""
+        let reason = json["reason"] as? String ?? "unknown"
+
+        guard !fileName.isEmpty else {
+            Bridge.log("❌ Transfer failed notification missing fileName: \(json)")
+            return
+        }
+
+        Bridge.log("❌ Transfer failed for: \(fileName) (reason: \(reason))")
+
+        if let session = activeFileTransfers.removeValue(forKey: fileName) {
+            Bridge.log("📊 Transfer stats - Received: \(session.receivedPackets.count)/\(session.totalPackets) packets")
+        }
+
+        let bleImgId = fileName.split(separator: ".").first.map(String.init) ?? ""
+        if let transfer = blePhotoTransfers.removeValue(forKey: bleImgId) {
+            Bridge.log("🧹 Cleaned up failed BLE photo transfer for: \(bleImgId) (requestId: \(transfer.requestId))")
+        }
+    }
+
+    // requestMissingPackets() removed - no longer used with ACK system
+    // Phone now sends transfer_complete with success=false to trigger full retry
 
     // MARK: - File Transfer Processing
 
@@ -1663,7 +1769,8 @@ class MentraLive: NSObject, SGCManager {
 
             // Get or create session for this transfer
             if photoTransfer.session == nil {
-                var session = FileTransferSession(fileName: packetInfo.fileName, fileSize: Int(packetInfo.fileSize))
+                var session = FileTransferSession(fileName: packetInfo.fileName,
+                                                  fileSize: Int(packetInfo.fileSize))
                 photoTransfer.session = session
                 blePhotoTransfers[bleImgId] = photoTransfer
                 Bridge.log("📦 Started BLE photo transfer: \(packetInfo.fileName) (\(packetInfo.fileSize) bytes, \(session.totalPackets) packets)")
@@ -1675,28 +1782,38 @@ class MentraLive: NSObject, SGCManager {
                 photoTransfer.session = session
                 blePhotoTransfers[bleImgId] = photoTransfer
 
-                if added, session.isComplete {
-                    let transferEndTime = Date()
-                    let totalDuration = transferEndTime.timeIntervalSince(photoTransfer.phoneStartTime) * 1000
-                    let bleTransferDuration = photoTransfer.bleTransferStartTime != nil ?
-                        transferEndTime.timeIntervalSince(photoTransfer.bleTransferStartTime!) * 1000 : 0
+                if added {
+                    if session.isComplete {
+                        let transferEndTime = Date()
+                        let totalDuration = transferEndTime.timeIntervalSince(photoTransfer.phoneStartTime) * 1000
+                        let bleTransferDuration = photoTransfer.bleTransferStartTime != nil ?
+                            transferEndTime.timeIntervalSince(photoTransfer.bleTransferStartTime!) * 1000 : 0
 
-                    Bridge.log("✅ BLE photo transfer complete: \(packetInfo.fileName)")
-                    Bridge.log("⏱️ Total duration (request to complete): \(Int(totalDuration))ms")
-                    Bridge.log("⏱️ Glasses compression: \(photoTransfer.glassesCompressionDurationMs)ms")
-                    if bleTransferDuration > 0 {
-                        Bridge.log("⏱️ BLE transfer duration: \(Int(bleTransferDuration))ms")
-                        Bridge.log("📊 Transfer rate: \(Int(packetInfo.fileSize) * 1000 / Int(bleTransferDuration)) bytes/sec")
+                        Bridge.log("✅ BLE photo transfer complete: \(packetInfo.fileName)")
+                        Bridge.log("⏱️ Total duration (request to complete): \(Int(totalDuration))ms")
+                        Bridge.log("⏱️ Glasses compression: \(photoTransfer.glassesCompressionDurationMs)ms")
+                        if bleTransferDuration > 0 {
+                            Bridge.log("⏱️ BLE transfer duration: \(Int(bleTransferDuration))ms")
+                            Bridge.log("📊 Transfer rate: \(Int(packetInfo.fileSize) * 1000 / Int(bleTransferDuration)) bytes/sec")
+                        }
+
+                        if let imageData = session.assembleFile() {
+                            processAndUploadBlePhoto(photoTransfer, imageData: imageData)
+                        }
+
+                        sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: true)
+                        blePhotoTransfers.removeValue(forKey: bleImgId)
+                    } else if session.isFinalPacket(Int(packetInfo.packIndex)) {
+                        let missingPackets = session.missingPacketIndices()
+                        if !missingPackets.isEmpty {
+                            Bridge.log("❌ BLE photo transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
+                            Bridge.log("❌ Telling glasses to retry entire transfer")
+
+                            // Tell glasses transfer failed, they will retry
+                            sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: false)
+                            blePhotoTransfers.removeValue(forKey: bleImgId)
+                        }
                     }
-
-                    // Get complete image data (AVIF or JPEG)
-                    if let imageData = session.assembleFile() {
-                        // Process and upload the photo
-                        processAndUploadBlePhoto(photoTransfer, imageData: imageData)
-                    }
-
-                    // Clean up
-                    blePhotoTransfers.removeValue(forKey: bleImgId)
                 }
             }
 
@@ -1721,17 +1838,25 @@ class MentraLive: NSObject, SGCManager {
             if added {
                 Bridge.log("📦 Packet \(packetInfo.packIndex) received successfully (BES will auto-ACK)")
 
-                // Check if transfer is complete
                 if sess.isComplete {
                     Bridge.log("📦 File transfer complete: \(packetInfo.fileName)")
 
-                    // Assemble and save the file
                     if let fileData = sess.assembleFile() {
                         saveReceivedFile(fileName: packetInfo.fileName, fileData: fileData, fileType: packetInfo.fileType)
                     }
 
-                    // Remove from active transfers
+                    sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: true)
                     activeFileTransfers.removeValue(forKey: packetInfo.fileName)
+                } else if sess.isFinalPacket(Int(packetInfo.packIndex)) {
+                    let missingPackets = sess.missingPacketIndices()
+                    if !missingPackets.isEmpty {
+                        Bridge.log("❌ File transfer incomplete after final packet. Missing \(missingPackets.count) packets: \(missingPackets)")
+                        Bridge.log("❌ Telling glasses to retry entire transfer")
+
+                        // Tell glasses transfer failed, they will retry
+                        sendTransferCompleteConfirmation(fileName: packetInfo.fileName, success: false)
+                        activeFileTransfers.removeValue(forKey: packetInfo.fileName)
+                    }
                 }
             } else {
                 Bridge.log("📦 Duplicate or invalid packet: \(packetInfo.packIndex)")
@@ -1804,9 +1929,6 @@ class MentraLive: NSObject, SGCManager {
             "fileType": String(format: "0x%02X", fileType),
             "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
         ]
-
-        // Emit event through data observable
-        jsonObservable?(event)
     }
 
     private func processAndUploadBlePhoto(_ transfer: BlePhotoTransfer, imageData: Data) {
@@ -1841,16 +1963,26 @@ class MentraLive: NSObject, SGCManager {
         BlePhotoUploadService.processAndUploadPhoto(imageData: imageData, requestId: transfer.requestId, webhookUrl: transfer.webhookUrl, authToken: coreToken)
     }
 
-    private func sendBleTransferComplete(requestId: String, bleImgId: String, success: Bool) {
+    private func sendAckToGlasses(messageId: Int) {
         let json: [String: Any] = [
-            "type": "ble_photo_transfer_complete",
-            "requestId": requestId,
-            "bleImgId": bleImgId,
+            "type": "msg_ack",
+            "mId": messageId,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+        ]
+
+        sendJson(json, requireAck: false)
+    }
+
+    private func sendTransferCompleteConfirmation(fileName: String, success: Bool) {
+        let json: [String: Any] = [
+            "type": "transfer_complete",
+            "fileName": fileName,
             "success": success,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
         ]
 
         sendJson(json, wakeUp: true)
-        Bridge.log("Sent BLE transfer complete notification: \(json)")
+        Bridge.log("\(success ? "✅" : "❌") Sent transfer completion confirmation for: \(fileName) (success: \(success))")
     }
 
     // MARK: - Sending Data
@@ -1861,11 +1993,11 @@ class MentraLive: NSObject, SGCManager {
         }
     }
 
-    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool = false) {
+    func sendJson(_ jsonOriginal: [String: Any], wakeUp: Bool = false, requireAck: Bool = true) {
         do {
             var json = jsonOriginal
             var messageId: Int64 = -1
-            if isNewVersion {
+            if isNewVersion, requireAck {
                 messageId = Int64(globalMessageId)
                 json["mId"] = globalMessageId
                 globalMessageId += 1

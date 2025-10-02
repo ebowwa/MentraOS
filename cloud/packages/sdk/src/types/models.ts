@@ -3,8 +3,6 @@
 
 import {
   AppSettingType,
-  AppState,
-  Language,
   AppType,
   HardwareType,
   HardwareRequirementLevel,

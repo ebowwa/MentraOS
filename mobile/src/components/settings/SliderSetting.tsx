@@ -1,14 +1,8 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
-import {View, StyleSheet, ViewStyle, TextStyle} from "react-native"
+import {View, ViewStyle, TextStyle} from "react-native"
 import {Slider} from "react-native-elements"
 import {Text} from "@/components/ignite"
-
-type Theme = {
-  backgroundColor: string
-  textColor: string
-}
 
 type SliderSettingProps = {
   label: string
@@ -74,7 +68,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
               // Add purple border in light theme to match toggle styling
               ...(!theme.isDark && {
                 borderColor: theme.colors.switchBorder,
-                borderWidth: theme.colors.switchBorderWidth,
+                borderWidth: 2,
                 shadowColor: "#000",
                 shadowOffset: {
                   width: 0,
@@ -98,7 +92,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   justifyContent: "flex-start",
   alignItems: "flex-start",
   width: "100%",
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
   borderRadius: borderRadius.md,
@@ -106,7 +100,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   borderColor: colors.border,
 })
 
-const $textContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $textContainer: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "column",
   alignItems: "flex-start",
   justifyContent: "flex-start",
@@ -132,11 +126,11 @@ const $sliderRow: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
 })
 
-const $sliderContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $sliderContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $slider: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $slider: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
   height: 40,
 })

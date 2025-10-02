@@ -1,5 +1,5 @@
-import React from "react"
-import {TouchableOpacity, Text, ViewStyle, TextStyle} from "react-native"
+import {TouchableOpacity, View} from "react-native"
+import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 
@@ -10,6 +10,11 @@ interface ActionButtonProps {
    * The text to display in the button
    */
   label: string
+
+  /**
+   * Optional subtitle text to display below the label
+   */
+  subtitle?: string
 
   /**
    * The button variant - default (blue), warning (orange), or destructive (red)
@@ -38,6 +43,7 @@ interface ActionButtonProps {
  */
 export default function ActionButton({
   label,
+  subtitle,
   variant = "default",
   onPress,
   disabled = false,
@@ -48,9 +54,9 @@ export default function ActionButton({
   const getTextColor = () => {
     switch (variant) {
       case "warning":
-        return theme.colors.palette.accent100
+        return theme.colors.warning
       case "destructive":
-        return theme.colors.palette.angry600
+        return theme.colors.error
       case "secondary":
         return theme.colors.textDim
       default:
@@ -59,18 +65,27 @@ export default function ActionButton({
   }
 
   return (
-    <TouchableOpacity
-      style={[themed($container), disabled && {opacity: 0.4}, containerStyle]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}>
-      <Text style={[themed($text), {color: getTextColor()}]}>{label}</Text>
-    </TouchableOpacity>
+    <View style={[themed($container), {paddingVertical: 0}]}>
+      <TouchableOpacity
+        style={[disabled && {opacity: 0.4}, containerStyle]}
+        onPress={onPress}
+        disabled={disabled}
+        activeOpacity={0.7}>
+        <View style={themed($innerRow)}>
+          <View style={themed($textContainer)}>
+            <Text style={[themed($text), {color: getTextColor()}]}>{label}</Text>
+            {subtitle && <Text style={themed($subtitle)}>{subtitle}</Text>}
+          </View>
+          {/* Invisible spacer to match RouteButton's chevron */}
+          <View style={themed($invisibleIcon)} />
+        </View>
+      </TouchableOpacity>
+    </View>
   )
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.md,
@@ -78,8 +93,34 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderColor: colors.border,
 })
 
+const $innerRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  paddingVertical: 8,
+  alignItems: "center",
+})
+
+const $textContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "column",
+  justifyContent: "center",
+  maxWidth: "90%",
+  gap: spacing.xxs,
+  flex: 1,
+})
+
+const $invisibleIcon: ThemedStyle<ViewStyle> = () => ({
+  width: 24,
+  height: 24,
+  opacity: 0,
+})
+
 const $text: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: spacing.md,
   fontWeight: "500",
-  textAlign: "left",
+  color: colors.text,
+})
+
+const $subtitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  color: colors.textDim,
 })

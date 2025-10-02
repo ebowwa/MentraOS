@@ -1,12 +1,10 @@
-import React from "react"
-import {View, Text, StyleSheet, Platform, Linking, ViewStyle, ScrollView} from "react-native"
+import {View, Platform, Linking, ScrollView} from "react-native"
 import {useRoute} from "@react-navigation/native"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
-import {Button, Header} from "@/components/ignite"
+import {Button, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
 import bridge from "@/bridge/MantleBridge"
@@ -20,7 +18,6 @@ import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 // This simplifies our code and avoids making redundant permission requests
 
 export default function PairingPrepScreen() {
-  const {status} = useCoreStatus()
   const route = useRoute()
   const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -301,7 +298,7 @@ export default function PairingPrepScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
     flex: 1,
   },
@@ -335,4 +332,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
   },
-})
+} as const

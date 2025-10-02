@@ -1,5 +1,5 @@
 // YourAppsList.tsx
-import React, {useEffect, useRef, useState} from "react"
+import {useEffect, useRef, useState, useCallback, Fragment} from "react"
 import {View, TouchableOpacity, Animated, Platform, ViewStyle, TextStyle, Easing, Keyboard} from "react-native"
 import {Text} from "@/components/ignite"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
@@ -31,29 +31,29 @@ export default function InactiveAppList({
   onClearSearch?: () => void
 }) {
   const {appStatus, optimisticallyStartApp} = useAppStatus()
-  const {status} = useCoreStatus()
-  const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
+  const {status: _status} = useCoreStatus()
+  const [_onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
-  const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
-  const [showSettingsHint, setShowSettingsHint] = useState(false)
+  const [_inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
+  const [_showSettingsHint, setShowSettingsHint] = useState(false)
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [_isLoading, _setIsLoading] = useState(true)
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
 
   // Static values instead of animations
-  const bounceAnim = React.useRef(new Animated.Value(0)).current
-  const pulseAnim = React.useRef(new Animated.Value(0)).current
+  const bounceAnim = useRef(new Animated.Value(0)).current
+  const pulseAnim = useRef(new Animated.Value(0)).current
 
-  const [containerWidth, setContainerWidth] = React.useState(0)
+  const [_containerWidth, _setContainerWidth] = useState(0)
 
   // Reference for the Live Captions list item (use provided ref or create new one)
   const internalLiveCaptionsRef = useRef<any>(null)
   const actualLiveCaptionsRef = liveCaptionsRef || internalLiveCaptionsRef
 
   // Constants for grid item sizing
-  const GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
-  const numColumns = 4 // Desired number of columns
+  const _GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
+  const _numColumns = 4 // Desired number of columns
 
   // Calculate the item width based on container width and margins
 
@@ -61,9 +61,9 @@ export default function InactiveAppList({
 
   // Check onboarding status whenever the screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+        const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
         setOnboardingCompleted(completed)
 
         if (!completed) {
@@ -74,7 +74,7 @@ export default function InactiveAppList({
           setShowOnboardingTip(false)
 
           // If onboarding is completed, check how many times settings have been accessed
-          const settingsAccessCount = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT)
+          const settingsAccessCount = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.settings_access_count)
           // Only show hint if they've accessed settings less than 1 times
           setShowSettingsHint(settingsAccessCount < 1)
         }
@@ -87,7 +87,7 @@ export default function InactiveAppList({
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+      const completed = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.onboarding_completed)
       setOnboardingCompleted(completed)
       setShowOnboardingTip(!completed)
     }
@@ -108,7 +108,7 @@ export default function InactiveAppList({
   }, [showOnboardingTip])
 
   const completeOnboarding = () => {
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, true)
     setOnboardingCompleted(true)
     setShowOnboardingTip(false)
     setInLiveCaptionsPhase(false) // Reset any live captions phase state
@@ -181,7 +181,7 @@ export default function InactiveAppList({
 
     // If the app appears offline, confirm before proceeding
     if (appInfo.isOnline === false) {
-      const developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
+      const _developerName = (" " + (appInfo.developerName || "") + " ").replace("  ", " ")
       const shouldProceed = await new Promise<boolean>(resolve => {
         showAlert(
           `${appInfo.name} can't be reached`,
@@ -352,7 +352,7 @@ export default function InactiveAppList({
         const itemOpacity = opacities[app.packageName]
 
         return (
-          <React.Fragment key={app.packageName}>
+          <Fragment key={app.packageName}>
             <AppListItem
               app={app}
               isActive={false}
@@ -375,7 +375,7 @@ export default function InactiveAppList({
                 <Spacer height={8} />
               </>
             )}
-          </React.Fragment>
+          </Fragment>
         )
       })}
 
@@ -431,7 +431,7 @@ const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $clearSearchButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.buttonPrimary,
+  backgroundColor: colors.primary,
   paddingHorizontal: spacing.lg,
   paddingVertical: spacing.sm,
   borderRadius: 8,

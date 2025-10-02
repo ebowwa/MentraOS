@@ -1,8 +1,9 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {Text} from "@/components/ignite"
 import ChevronRight from "assets/icons/component/ChevronRight"
-import {router} from "expo-router"
-import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {router as _router} from "expo-router"
+import {View, TouchableOpacity} from "react-native"
 
 interface RouteButtonProps {
   label: string
@@ -41,7 +42,7 @@ const $label: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.md,

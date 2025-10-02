@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, ActivityIndicator, Platform, Linking} from "react-native"
+import {useState, useEffect} from "react"
+import {View, ActivityIndicator, Platform, Linking} from "react-native"
 import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
@@ -9,7 +9,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useSettingsStore, SETTINGS_KEYS, initializeSettings, useSetting} from "@/stores/settings"
+import {useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
@@ -17,6 +17,7 @@ import {ThemedStyle} from "@/theme"
 import restComms from "@/managers/RestComms"
 import socketComms from "@/managers/SocketComms"
 import mantle from "@/managers/MantleManager"
+import {Text} from "@/components/ignite"
 
 // Types
 type ScreenState = "loading" | "error" | "outdated" | "success"
@@ -53,8 +54,8 @@ export default function InitScreen() {
   const [loadingStatus, setLoadingStatus] = useState<string>(translate("versionCheck:checkingForUpdates"))
   const [isRetrying, setIsRetrying] = useState(false)
   // Zustand store hooks
-  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
-  const [onboardingCompleted, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED)
+  const [customBackendUrl, setCustomBackendUrl] = useSetting(SETTINGS_KEYS.custom_backend_url)
+  const [onboardingCompleted, _setOnboardingCompleted] = useSetting(SETTINGS_KEYS.onboarding_completed)
 
   // Helper Functions
   const getLocalVersion = (): string | null => {
@@ -67,7 +68,7 @@ export default function InitScreen() {
   }
 
   const checkCustomUrl = async (): Promise<boolean> => {
-    const defaultUrl = useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)
+    const defaultUrl = useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.custom_backend_url)
     const isCustom = customBackendUrl !== defaultUrl
     setIsUsingCustomUrl(isCustom)
     return isCustom
@@ -124,17 +125,7 @@ export default function InitScreen() {
     if (useNewWsManager) {
       bridge.setup()
       socketComms.setAuthCreds(coreToken, uid)
-
-      try {
-        const loadedSettings = await restComms.loadUserSettings() // get settings from server
-        await useSettingsStore.getState().setManyLocally(loadedSettings) // write settings to local storage
-        await useSettingsStore.getState().initUserSettings() // initialize user settings
-        await mantle.init()
-      } catch (error) {
-        console.error("Failed to load user settings from server:", error)
-      }
-
-      bridge.updateSettings(await useSettingsStore.getState().getCoreSettings()) // send settings to core
+      await mantle.init()
     } else {
       bridge.setAuthCreds(coreToken, uid)
     }
@@ -211,7 +202,7 @@ export default function InitScreen() {
 
   const handleResetUrl = async (): Promise<void> => {
     try {
-      const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.CUSTOM_BACKEND_URL)) as string
+      const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.custom_backend_url)) as string
       await setCustomBackendUrl(defaultUrl)
       await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)
@@ -273,7 +264,7 @@ export default function InitScreen() {
     return (
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={themed($centerContainer)}>
-          <ActivityIndicator size="large" color={theme.colors.text} />
+          <ActivityIndicator size="large" color={theme.colors.tint} />
           <Text style={themed($loadingText)}>{loadingStatus}</Text>
         </View>
       </Screen>
@@ -314,36 +305,29 @@ export default function InitScreen() {
             )}
 
             {state === "outdated" && (
-              <Button
-                onPress={handleUpdate}
-                disabled={isUpdating}
-                style={themed($primaryButton)}
-                text={translate("versionCheck:update")}
-              />
+              <Button preset="primary" onPress={handleUpdate} disabled={isUpdating} tx="versionCheck:update" />
             )}
 
             {state === "error" && isUsingCustomUrl && (
               <Button
                 onPress={handleResetUrl}
                 style={themed($secondaryButton)}
-                text={isRetrying ? translate("versionCheck:resetting") : translate("versionCheck:resetUrl")}
-                preset="reversed"
+                tx={isRetrying ? "versionCheck:resetting" : "versionCheck:resetUrl"}
+                preset="secondary"
                 disabled={isRetrying}
                 LeftAccessory={
-                  isRetrying
-                    ? () => <ActivityIndicator size="small" color={theme.colors.buttonPillIconText} />
-                    : undefined
+                  isRetrying ? () => <ActivityIndicator size="small" color={theme.colors.text} /> : undefined
                 }
               />
             )}
 
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
+                preset="accent"
                 style={themed($secondaryButton)}
-                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.buttonPillIconText} />}
+                RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
                 onPress={navigateToDestination}
                 tx="versionCheck:continueAnyway"
-                preset="reversed"
               />
             )}
           </View>
@@ -410,7 +394,7 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   alignItems: "center",
   paddingBottom: spacing.xl,
-  gap: spacing.md,
+  gap: spacing.xl,
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = () => ({

@@ -75,8 +75,6 @@ export * from "./types/rtmp-stream";
 // Other system enums
 export {
   AppType,
-  AppState,
-  Language,
   LayoutType,
   ViewType,
   AppSettingType,
@@ -86,9 +84,6 @@ export {
 
 // Core model interfaces
 export * from "./types/models";
-
-// Session-related interfaces
-export * from "./types/user-session";
 
 // Webhook interfaces
 export * from "./types/webhooks";
@@ -125,6 +120,10 @@ export {
   OpenDashboard,
   GlassesToCloudMessage,
   PhotoResponse,
+  PhotoErrorCode,
+  PhotoStage,
+  ConnectionState,
+  PhotoErrorDetails,
   RtmpStreamStatus,
   KeepAliveAck,
 } from "./types/messages/glasses-to-cloud";

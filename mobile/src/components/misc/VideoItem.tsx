@@ -1,5 +1,5 @@
-import React from "react"
-import {View, Text, StyleSheet, TouchableOpacity} from "react-native"
+import {View, TouchableOpacity} from "react-native"
+import {Text} from "@/components/ignite"
 import Icon from "react-native-vector-icons/MaterialIcons"
 import VideoThumbnail from "./VideoThumbnail"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -23,17 +23,17 @@ const VideoItem: React.FC<VideoItemProps> = ({
   // Extract filename from path
   const filename = videoPath.split("/").pop() || ""
   // Convert timestamp in filename to readable date
-  let dateString = "Unknown date"
+  let _dateString = "Unknown date"
   let timestamp = 0
   const match = filename.match(/glasses-recording-(\d+)\.mp4/)
   if (match && match[1]) {
     timestamp = parseInt(match[1])
-    dateString = new Date(timestamp).toLocaleString()
+    _dateString = new Date(timestamp).toLocaleString()
   }
 
   return (
     <TouchableOpacity
-      style={[styles.videoItem, {backgroundColor: theme.colors.background, borderColor: theme.colors.border}]}
+      style={[styles.videoItem, {backgroundColor: theme.colors.backgroundAlt, borderColor: theme.colors.border}]}
       onPress={() => onPlayVideo(videoPath)}
       activeOpacity={0.7}>
       <View style={styles.videoItemContent}>
@@ -67,7 +67,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
           {/* Action Buttons */}
           <View style={styles.videoActions}>
             <TouchableOpacity
-              style={[styles.videoActionButton, {backgroundColor: theme.colors.buttonPrimary}]}
+              style={[styles.videoActionButton, {backgroundColor: theme.colors.primary}]}
               onPress={e => {
                 e.stopPropagation() // Prevent triggering the card's onPress
                 onShareVideo(videoPath)
@@ -75,7 +75,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
               <Icon name="share" size={16} color={theme.colors.palette.neutral100} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.videoActionButton, {backgroundColor: theme.colors.buttonDanger}]}
+              style={[styles.videoActionButton, {backgroundColor: theme.colors.error}]}
               onPress={e => {
                 e.stopPropagation() // Prevent triggering the card's onPress
                 onDeleteVideo(videoPath)

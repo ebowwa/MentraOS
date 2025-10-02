@@ -1,11 +1,11 @@
 import {useAppTheme} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
 
-export default function BackgroundGradient({children}: {children: React.ReactNode}) {
+export default function BackgroundGradient({children, colors}: {children: React.ReactNode; colors?: [string, string]}) {
   const {themed, theme} = useAppTheme()
   return (
     <LinearGradient
-      colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
+      colors={colors ?? [theme.colors.backgroundStart, theme.colors.backgroundEnd]}
       style={{
         position: "absolute",
         left: 0,

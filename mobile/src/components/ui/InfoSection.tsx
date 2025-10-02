@@ -1,5 +1,5 @@
-import React from "react"
-import {View, Text, ViewStyle, TextStyle} from "react-native"
+import {View, ViewStyle, TextStyle} from "react-native"
+import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 
@@ -54,7 +54,7 @@ const InfoSection: React.FC<InfoSectionProps> = ({title, items, style}) => {
 }
 
 const $infoSectionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: 12,
   paddingHorizontal: 16,
   borderRadius: spacing.md,

@@ -19,6 +19,7 @@ import com.augmentos.asg_client.settings.VideoSettings;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
+import com.augmentos.asg_client.audio.AudioAssets;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,11 +31,14 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -46,6 +50,140 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import com.radzivon.bartoshyk.avif.coder.HeifCoder;
 import com.radzivon.bartoshyk.avif.coder.PreciseMode;
+
+/**
+ * PHOTO CAPTURE TESTING FRAMEWORK
+ * 
+ * Master controls for testing error scenarios in real-time
+ * Set these variables to test different failure points
+ */
+class PhotoCaptureTestFramework {
+    // ===== MASTER CONTROLS =====
+    public static final boolean ENABLE_FAKE_FAILURES = false;  // Master switch
+    public static final boolean ENABLE_FAKE_DELAYS = false;    // Add artificial delays
+    
+    // ===== FAILURE TYPES =====
+    public static final String FAILURE_TYPE_CAMERA_INIT = "CAMERA_INIT_FAILED";
+    public static final String FAILURE_TYPE_CAMERA_CAPTURE = "CAMERA_CAPTURE_FAILED";
+    public static final String FAILURE_TYPE_BLE_TRANSFER = "BLE_TRANSFER_FAILED";
+    public static final String FAILURE_TYPE_UPLOAD = "UPLOAD_FAILED";
+    public static final String FAILURE_TYPE_COMPRESSION = "COMPRESSION_FAILED";
+    public static final String FAILURE_TYPE_RANDOM = "RANDOM_FAILURE";
+    
+    // ===== CURRENT TEST CONFIGURATION =====
+    public static String FAILURE_TYPE = FAILURE_TYPE_CAMERA_CAPTURE;  // Which failure to simulate
+    public static final double FAILURE_PROBABILITY = 1.0;          // 0.0 to 1.0 (100% when enabled)
+    public static final int FAKE_DELAY_MS = 5000;                  // Artificial delay in milliseconds
+    
+    // ===== STEP-SPECIFIC CONTROLS =====
+    public static final boolean FAIL_CAMERA_INIT = false;          // Camera initialization
+    public static final boolean FAIL_CAMERA_CAPTURE = false;        // Photo capture
+    public static final boolean FAIL_IMAGE_COMPRESSION = false;    // Image compression
+    public static final boolean FAIL_BLE_TRANSFER = false;         // BLE file transfer
+    public static final boolean FAIL_CLOUD_UPLOAD = false;         // Cloud upload
+    public static final boolean FAIL_RANDOM_STEP = false;          // Random failure
+    
+    private static final Random random = new Random();
+    
+    /**
+     * Check if we should simulate a failure at this step
+     */
+    public static boolean shouldFail(String step) {
+        if (!ENABLE_FAKE_FAILURES) return false;
+        
+        // Check step-specific controls first
+        switch (step) {
+            case "CAMERA_INIT":
+                return FAIL_CAMERA_INIT || FAILURE_TYPE.equals(FAILURE_TYPE_CAMERA_INIT);
+            case "CAMERA_CAPTURE":
+                return FAIL_CAMERA_CAPTURE || FAILURE_TYPE.equals(FAILURE_TYPE_CAMERA_CAPTURE);
+            case "COMPRESSION":
+                return FAIL_IMAGE_COMPRESSION || FAILURE_TYPE.equals(FAILURE_TYPE_COMPRESSION);
+            case "BLE_TRANSFER":
+                return FAIL_BLE_TRANSFER || FAILURE_TYPE.equals(FAILURE_TYPE_BLE_TRANSFER);
+            case "UPLOAD":
+                return FAIL_CLOUD_UPLOAD || FAILURE_TYPE.equals(FAILURE_TYPE_UPLOAD);
+            case "RANDOM":
+                return FAIL_RANDOM_STEP || FAILURE_TYPE.equals(FAILURE_TYPE_RANDOM);
+            default:
+                return false;
+        }
+    }
+    
+    /**
+     * Get the error code for the current failure type based on which flag is enabled
+     */
+    public static String getErrorCode() {
+        if (FAIL_CAMERA_INIT) return FAILURE_TYPE_CAMERA_INIT;
+        if (FAIL_CAMERA_CAPTURE) return FAILURE_TYPE_CAMERA_CAPTURE;
+        if (FAIL_IMAGE_COMPRESSION) return FAILURE_TYPE_COMPRESSION;
+        if (FAIL_BLE_TRANSFER) return FAILURE_TYPE_BLE_TRANSFER;
+        if (FAIL_CLOUD_UPLOAD) return FAILURE_TYPE_UPLOAD;
+        if (FAIL_RANDOM_STEP) return FAILURE_TYPE_RANDOM;
+        return FAILURE_TYPE; // Fallback to manual setting
+    }
+    
+    /**
+     * Get a descriptive error message based on which flag is enabled
+     */
+    public static String getErrorMessage() {
+        if (FAIL_CAMERA_INIT) return "TESTING: Fake camera initialization failure";
+        if (FAIL_CAMERA_CAPTURE) return "TESTING: Fake photo capture failure";
+        if (FAIL_IMAGE_COMPRESSION) return "TESTING: Fake compression failure";
+        if (FAIL_BLE_TRANSFER) return "TESTING: Fake BLE transfer failure";
+        if (FAIL_CLOUD_UPLOAD) return "TESTING: Fake upload failure";
+        if (FAIL_RANDOM_STEP) return "TESTING: Random fake failure";
+        
+        // Fallback to manual setting
+        switch (FAILURE_TYPE) {
+            case FAILURE_TYPE_CAMERA_INIT:
+                return "TESTING: Fake camera initialization failure";
+            case FAILURE_TYPE_CAMERA_CAPTURE:
+                return "TESTING: Fake photo capture failure";
+            case FAILURE_TYPE_BLE_TRANSFER:
+                return "TESTING: Fake BLE transfer failure";
+            case FAILURE_TYPE_UPLOAD:
+                return "TESTING: Fake upload failure";
+            case FAILURE_TYPE_COMPRESSION:
+                return "TESTING: Fake compression failure";
+            case FAILURE_TYPE_RANDOM:
+                return "TESTING: Random fake failure";
+            default:
+                return "TESTING: Unknown fake failure";
+        }
+    }
+    
+    /**
+     * Add artificial delay for testing timeout scenarios
+     */
+    public static void addFakeDelay(String step) {
+        if (ENABLE_FAKE_DELAYS) {
+            Log.d("PhotoTest", "Adding " + FAKE_DELAY_MS + "ms delay at step: " + step);
+            try {
+                Thread.sleep(FAKE_DELAY_MS);
+            } catch (InterruptedException e) {
+                Log.e("PhotoTest", "Delay interrupted", e);
+            }
+        }
+    }
+    
+    /**
+     * Log current test configuration
+     */
+    public static void logTestConfig() {
+        Log.d("PhotoTest", "=== PHOTO CAPTURE TEST CONFIG ===");
+        Log.d("PhotoTest", "ENABLE_FAKE_FAILURES: " + ENABLE_FAKE_FAILURES);
+        Log.d("PhotoTest", "ENABLE_FAKE_DELAYS: " + ENABLE_FAKE_DELAYS);
+        Log.d("PhotoTest", "FAILURE_TYPE: " + FAILURE_TYPE);
+        Log.d("PhotoTest", "FAIL_CAMERA_INIT: " + FAIL_CAMERA_INIT);
+        Log.d("PhotoTest", "FAIL_CAMERA_CAPTURE: " + FAIL_CAMERA_CAPTURE);
+        Log.d("PhotoTest", "FAIL_IMAGE_COMPRESSION: " + FAIL_IMAGE_COMPRESSION);
+        Log.d("PhotoTest", "FAIL_BLE_TRANSFER: " + FAIL_BLE_TRANSFER);
+        Log.d("PhotoTest", "FAIL_CLOUD_UPLOAD: " + FAIL_CLOUD_UPLOAD);
+        Log.d("PhotoTest", "FAIL_RANDOM_STEP: " + FAIL_RANDOM_STEP);
+        Log.d("PhotoTest", "================================");
+    }
+}
 
 /**
  * Service that handles media capturing (photo and video) and uploading functionality.
@@ -110,6 +248,11 @@ public class MediaCaptureService {
     private Map<String, String> photoOriginalPaths = new HashMap<>();
     // Track requested photo size per request for proper fallback handling
     private Map<String, String> photoRequestedSizes = new HashMap<>();
+    
+    // Upload state tracking - prevent concurrent uploads
+    private volatile boolean isUploadingPhoto = false;
+    private final Object uploadLock = new Object();
+    
     private final FileManager fileManager;
 
     /**
@@ -179,6 +322,9 @@ public class MediaCaptureService {
                     // Use a special ID for buffer saves
                     mMediaCaptureListener.onVideoUploaded("buffer_save", outputPath);
                 }
+                
+                // Send gallery status update to phone after buffer video save
+                sendGalleryStatusUpdate();
             }
 
             @Override
@@ -206,6 +352,24 @@ public class MediaCaptureService {
      */
     public void setServiceCallback(ServiceCallbackInterface callback) {
         this.mServiceCallback = callback;
+    }
+
+    private void playShutterSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
+        }
+    }
+
+    private void playVideoStartSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_START);
+        }
+    }
+
+    private void playVideoStopSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_STOP);
+        }
     }
     
     /**
@@ -347,6 +511,9 @@ public class MediaCaptureService {
         currentVideoLedEnabled = enableLed; // Track LED state for this recording
 
         try {
+            // Play video start sound
+            playVideoStartSound();
+
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
                 @Override
@@ -382,6 +549,9 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStopped(requestId, filePath);
                     }
+
+                    // Send gallery status update to phone after video recording
+                    sendGalleryStatusUpdate();
 
                     // Call upload stub (which just logs for now)
                     uploadVideo(filePath, requestId);
@@ -443,6 +613,9 @@ public class MediaCaptureService {
         }
 
         try {
+            // Play video stop sound
+            playVideoStopSound();
+
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
@@ -604,10 +777,7 @@ public class MediaCaptureService {
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
-            if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError("local", "Camera busy with streaming", 
-                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-            }
+            sendPhotoErrorResponse("local", "CAMERA_BUSY", "Camera busy with RTMP streaming");
             return;
         }
         
@@ -637,12 +807,39 @@ public class MediaCaptureService {
         String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
 
         Log.d(TAG, "Taking photo locally at: " + photoFilePath + " with size: " + size + ", LED: " + enableLed);
-
-        // Generate a temporary requestId
+        
+        // Log test configuration for debugging
+        PhotoCaptureTestFramework.logTestConfig();
+        
+        // Generate a temporary requestId first
         String requestId = "local_" + timeStamp;
+        
+        // TESTING: Check for fake camera initialization failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_INIT")) {
+            Log.e(TAG, "TESTING: Simulating camera initialization failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera init
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_INIT");
+
+        playShutterSound();
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
+
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         // Use the new enqueuePhotoRequest for thread-safe rapid capture
         CameraNeo.enqueuePhotoRequest(
@@ -662,6 +859,9 @@ public class MediaCaptureService {
                             mMediaCaptureListener.onPhotoCaptured(requestId, filePath);
                             mMediaCaptureListener.onPhotoUploading(requestId);
                         }
+                        
+                        // Send gallery status update to phone after photo capture
+                        sendGalleryStatusUpdate();
                     }
 
                     @Override
@@ -687,10 +887,38 @@ public class MediaCaptureService {
      * @param save Whether to keep the photo on device after upload
      */
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
+        // Check if already uploading - skip request if busy
+        synchronized (uploadLock) {
+            if (isUploadingPhoto) {
+                Log.w(TAG, "🚫 Upload busy - skipping photo request: " + requestId);
+
+                // Send error response to phone using existing photo error function
+                sendPhotoErrorResponse(requestId, "UPLOAD_SYSTEM_BUSY", "Upload system busy - request skipped");
+
+                // Also notify local listener
+                if (mMediaCaptureListener != null) {
+                    mMediaCaptureListener.onMediaError(requestId, "Upload system busy - request skipped", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                }
+                return;
+            }
+        }
+        
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for potential fallbacks
         photoRequestedSizes.put(requestId, size);
+
+        Log.d(TAG, "Taking photo and uploading to " + webhookUrl);
+
+        // Proceed directly with upload attempt (internet test removed due to unreliability)
+        Log.d(TAG, "Proceeding with photo upload for " + requestId);
 
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
@@ -699,7 +927,22 @@ public class MediaCaptureService {
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
 
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        } else {
+            Log.d(TAG, "Camera capture failure not simulated");
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
+
         try {
+            playShutterSound();
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -752,9 +995,36 @@ public class MediaCaptureService {
     }
 
     /**
+     * Check if currently uploading a photo
+     * @return true if upload is in progress, false otherwise
+     */
+    public boolean isUploadingPhoto() {
+        synchronized (uploadLock) {
+            return isUploadingPhoto;
+        }
+    }
+
+    /**
      * Upload photo directly to app webhook
      */
     private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken) {
+        // TESTING: Check for fake upload failure
+        if (PhotoCaptureTestFramework.shouldFail("UPLOAD")) {
+            Log.e(TAG, "TESTING: Simulating upload failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for upload
+        PhotoCaptureTestFramework.addFakeDelay("UPLOAD");
+
+        // Set upload state to busy
+        synchronized (uploadLock) {
+            isUploadingPhoto = true;
+            Log.d(TAG, "📤 Starting upload - system marked as busy: " + requestId);
+        }
+
         // Create a new thread for the upload
         new Thread(() -> {
             try {
@@ -785,6 +1055,7 @@ public class MediaCaptureService {
                         .addFormDataPart("photo", photoFile.getName(), fileBody)
                         .addFormDataPart("requestId", requestId)
                         .addFormDataPart("type", "photo_upload")
+                        .addFormDataPart("success", "true")
                         .build();
 
                 // Build request with optional Authorization header
@@ -834,6 +1105,12 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onPhotoUploaded(requestId, webhookUrl);
                     }
+                    
+                    // Reset upload state
+                    synchronized (uploadLock) {
+                        isUploadingPhoto = false;
+                        Log.d(TAG, "✅ Upload completed - system marked as available: " + requestId);
+                    }
                 } else {
                     String errorMessage = "Upload failed with status: " + response.code();
                     Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
@@ -853,6 +1130,13 @@ public class MediaCaptureService {
                         if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
                         // Reuse the existing photo file that was already captured
                         Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                        
+                        // Reset upload state before BLE fallback
+                        synchronized (uploadLock) {
+                            isUploadingPhoto = false;
+                            Log.d(TAG, "🔄 Upload failed, switching to BLE - system marked as available: " + requestId);
+                        }
+                        
                         reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
                         return; // Exit early - BLE transfer will handle cleanup
                     }
@@ -884,6 +1168,12 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                     }
+                    
+                    // Reset upload state
+                    synchronized (uploadLock) {
+                        isUploadingPhoto = false;
+                        Log.d(TAG, "❌ Upload failed - system marked as available: " + requestId);
+                    }
                 }
 
                 response.close();
@@ -906,6 +1196,13 @@ public class MediaCaptureService {
                     if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
                     // Reuse the existing photo file that was already captured
                     Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                    
+                    // Reset upload state before BLE fallback
+                    synchronized (uploadLock) {
+                        isUploadingPhoto = false;
+                        Log.d(TAG, "🔄 Upload exception, switching to BLE - system marked as available: " + requestId);
+                    }
+                    
                     reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
                     return; // Exit early - BLE transfer will handle cleanup
                 }
@@ -938,6 +1235,12 @@ public class MediaCaptureService {
 
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                }
+                
+                // Reset upload state
+                synchronized (uploadLock) {
+                    isUploadingPhoto = false;
+                    Log.d(TAG, "💥 Upload exception - system marked as available: " + requestId);
                 }
             }
         }).start();
@@ -1152,6 +1455,8 @@ public class MediaCaptureService {
         }
     }
 
+
+
     /**
      * Take a photo with auto transfer (WiFi with BLE fallback)
      * @param photoFilePath Path to save the original photo
@@ -1167,16 +1472,12 @@ public class MediaCaptureService {
         photoOriginalPaths.put(requestId, photoFilePath);
         photoRequestedSizes.put(requestId, size);
 
-        // Check WiFi connectivity
-        if (isWiFiConnected()) {
-            Log.d(TAG, "📶 WiFi connected, attempting direct upload for " + requestId);
-            // Try WiFi upload (with automatic BLE fallback on failure)
+        // Attempt direct upload (internet test removed due to unreliability)
+        Log.d(TAG, "Attempting direct upload for " + requestId);
             takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
-        } else {
-            Log.d(TAG, "📵 No WiFi connection, using BLE transfer for " + requestId);
-            // No WiFi, go straight to BLE
-            takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);
-        }
+        
+        // Note: BLE fallback will be handled automatically by upload failure detection
+        Log.d(TAG, "BLE fallback will be used if upload fails");
     }
 
     /**
@@ -1197,6 +1498,20 @@ public class MediaCaptureService {
         }
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
+
+        // TESTING: Check for fake camera capture failure
+        if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
+            Log.e(TAG, "TESTING: Simulating camera capture failure for BLE transfer - " + 
+                PhotoCaptureTestFramework.getErrorCode() + ": " + PhotoCaptureTestFramework.getErrorMessage());
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for camera capture
+        PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
+
+        playShutterSound();
 
         try {
             // Use CameraNeo for photo capture
@@ -1225,7 +1540,7 @@ public class MediaCaptureService {
                             
                             // LED is now managed by CameraNeo and will turn off when camera closes
                             
-                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
 
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1244,7 +1559,6 @@ public class MediaCaptureService {
             }
         }
     }
-
 
     /**
      * Reuse existing photo for BLE transfer (when webhook fails)
@@ -1274,6 +1588,17 @@ public class MediaCaptureService {
         new Thread(() -> {
             long startTime = System.currentTimeMillis();
             Log.d(TAG, "🚀 BLE photo transfer started for " + bleImgId);
+
+            // TESTING: Check for fake compression failure
+            if (PhotoCaptureTestFramework.shouldFail("COMPRESSION")) {
+                Log.e(TAG, "TESTING: Simulating compression failure");
+                sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                    PhotoCaptureTestFramework.getErrorMessage());
+                return;
+            }
+            
+            // TESTING: Add fake delay for compression
+            PhotoCaptureTestFramework.addFakeDelay("COMPRESSION");
 
             try {
                 // 1. Load original image
@@ -1360,7 +1685,7 @@ public class MediaCaptureService {
                 photoSaveFlags.remove(requestId);
             } catch (Exception e) {
                 Log.e(TAG, "Error compressing photo for BLE", e);
-                sendBleTransferError(requestId, e.getMessage());
+                sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED", e.getMessage());
 
                 // Clean up flag on error too
                 photoSaveFlags.remove(requestId);
@@ -1374,13 +1699,31 @@ public class MediaCaptureService {
     private void sendCompressedPhotoViaBle(String compressedPath, String bleImgId, String requestId, long transferStartTime) {
         Log.d(TAG, "Ready to send compressed photo via BLE: " + compressedPath + " with ID: " + bleImgId);
 
+        // TESTING: Check for fake BLE transfer failure
+        if (PhotoCaptureTestFramework.shouldFail("BLE_TRANSFER")) {
+            Log.e(TAG, "TESTING: Simulating BLE transfer failure");
+            sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
+                PhotoCaptureTestFramework.getErrorMessage());
+            return;
+        }
+        
+        // TESTING: Add fake delay for BLE transfer
+        PhotoCaptureTestFramework.addFakeDelay("BLE_TRANSFER");
+
         boolean transferStarted = false;
         try {
             if (mServiceCallback != null) {
                 // CRITICAL: Check if BLE is busy BEFORE sending ANY data to BES2700
                 if (mServiceCallback.isBleTransferInProgress()) {
-                    Log.e(TAG, "❌ BLE transfer already in progress - NOT sending any data to avoid BES2700 overload");
-                    sendBleTransferError(requestId, "BLE transfer busy - another transfer in progress");
+                    Log.e(TAG, "❌ BLE transfer already in progress - queuing error message to avoid BES2700 overload");
+                    
+                    // Send error response immediately
+                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_BUSY", "BLE transfer busy - another transfer in progress");
+                    
+                    // Also notify local listener
+                    if (mMediaCaptureListener != null) {
+                        mMediaCaptureListener.onMediaError(requestId, "BLE transfer busy - another transfer in progress", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                    }
                     return;
                 }
                 
@@ -1395,11 +1738,11 @@ public class MediaCaptureService {
                 } else {
                     // This shouldn't happen since we checked above, but handle it anyway
                     Log.e(TAG, "Failed to start BLE file transfer despite availability check");
-                    sendBleTransferError(requestId, "BLE transfer failed to start");
+                    sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED_TO_START", "BLE transfer failed to start");
                 }
             } else {
                 Log.e(TAG, "Service callback not available for BLE file transfer");
-                sendBleTransferError(requestId, "Service callback not available");
+                sendPhotoErrorResponse(requestId, "BLE_TRANSFER_FAILED", "Service callback not available");
             }
         } finally {
             // Critical: Clean up compressed file if transfer didn't start
@@ -1459,6 +1802,89 @@ public class MediaCaptureService {
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating BLE transfer error", e);
+        }
+    }
+
+    /**
+     * Send simplified photo error response with only essential fields
+     */
+    public void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "photo_response");
+            json.put("requestId", requestId);
+            json.put("success", false);
+            json.put("errorCode", errorCode);
+            json.put("errorMessage", errorMessage);
+
+            Log.e(TAG, "📸 SENDING PHOTO ERROR: " + errorCode + " - " + errorMessage + " for requestId: " + requestId);
+            
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(json.toString().getBytes());
+                Log.e(TAG, "📸 SENT VIA BLE: " + json.toString());
+            } else {
+                Log.e(TAG, "❌ Service callback not available for BLE file transfer");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "❌ Error creating photo error response", e);
+        }
+    }
+
+
+    /**
+     * Check if BLE transfer is currently in progress.
+     * Used for cooldown mechanism to reject new photo requests.
+     */
+    public boolean isBleTransferInProgress() {
+        return mServiceCallback != null && mServiceCallback.isBleTransferInProgress();
+    }
+
+    /**
+     * Get BLE connection state for error diagnostics
+     */
+    private JSONObject getBleConnectionState() {
+        JSONObject ble = new JSONObject();
+        try {
+            boolean transferInProgress = mServiceCallback != null && mServiceCallback.isBleTransferInProgress();
+            ble.put("connected", mServiceCallback != null); // Assume connected if callback exists
+            ble.put("transferInProgress", transferInProgress);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting BLE state", e);
+            try {
+                ble.put("connected", false);
+                ble.put("transferInProgress", false);
+            } catch (JSONException jsonE) {
+                Log.e(TAG, "Error creating fallback BLE state JSON", jsonE);
+            }
+        }
+        return ble;
+    }
+
+    /**
+     * Send gallery status update to phone after photo capture
+     * Uses GalleryStatusHelper to avoid code duplication with GalleryCommandHandler
+     */
+    private void sendGalleryStatusUpdate() {
+        try {
+            Log.d(TAG, "📸 Sending gallery status update after photo capture");
+
+            if (fileManager == null) {
+                Log.w(TAG, "📸 Cannot send gallery status: FileManager not available");
+                return;
+            }
+
+            // Build gallery status using shared utility
+            JSONObject response = com.augmentos.asg_client.utils.GalleryStatusHelper.buildGalleryStatus(fileManager);
+
+            // Send through bluetooth if available
+            if (mServiceCallback != null) {
+                mServiceCallback.sendThroughBluetooth(response.toString().getBytes());
+                Log.d(TAG, "📸 Gallery status update sent successfully");
+            } else {
+                Log.w(TAG, "📸 Cannot send gallery status update: service callback not available");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "📸 Error creating gallery status update", e);
         }
     }
 

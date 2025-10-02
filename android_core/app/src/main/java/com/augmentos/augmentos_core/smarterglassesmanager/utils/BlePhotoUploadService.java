@@ -128,6 +128,7 @@ public class BlePhotoUploadService {
         RequestBody requestBody = new MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("requestId", requestId)
+            .addFormDataPart("success", "true")
             .addFormDataPart("source", "ble_transfer")
             .addFormDataPart("photo", requestId + ".jpg",
                 RequestBody.create(MediaType.parse("image/jpeg"), jpegData))

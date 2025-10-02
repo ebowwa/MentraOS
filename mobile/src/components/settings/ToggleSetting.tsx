@@ -1,7 +1,6 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React from "react"
-import {View, StyleSheet, Platform, ViewStyle, TextStyle} from "react-native"
+import {View, ViewStyle, TextStyle} from "react-native"
 import {Switch, Text} from "@/components/ignite"
 
 type ToggleSettingProps = {
@@ -21,7 +20,7 @@ const ToggleSetting: React.FC<ToggleSettingProps> = ({
   containerStyle,
   disabled = false,
 }) => {
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
 
   return (
     <View style={[themed($container), containerStyle, disabled && {opacity: 0.5}]}>
@@ -39,7 +38,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   justifyContent: "space-between",
   alignItems: "center",
   width: "100%",
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.md,
   borderRadius: borderRadius.md,
@@ -47,7 +46,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => 
   borderColor: colors.border,
 })
 
-const $textContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $textContainer: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "column",
   alignItems: "flex-start",
   justifyContent: "flex-start",

@@ -1,24 +1,12 @@
 // SelectGlassesBluetoothScreen.tsx
 
-import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Platform,
-  Alert,
-  ViewStyle,
-  BackHandler,
-} from "react-native"
-import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
+import {useEffect, useMemo, useRef, useState, useCallback} from "react"
+import {View, TouchableOpacity, ScrollView, Platform, ViewStyle, BackHandler} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import bridge from "@/bridge/MantleBridge"
 import {MOCK_CONNECTION} from "@/consts"
-import {NavigationProps} from "@/components/misc/types"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -40,7 +28,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push, clearHistory, navigate, replace} = useNavigationHistory()
+  const {goBack, push, clearHistory, replace} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<SearchResultDevice[]>(searchResults)
@@ -257,7 +245,7 @@ export default function SelectGlassesBluetoothScreen() {
     push("/pairing/loading", {glassesModelName: glassesModelName})
   }
 
-  const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
+  const _glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
@@ -342,82 +330,24 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 
   // More subtle elevation for Android
   elevation: 2,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
 })
 
-const styles = StyleSheet.create({
+const styles = {
   contentContainer: {
     // alignItems: "center",
     // justifyContent: "center",
     height: 320,
     // backgroundColor: "red",
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20, // Consistent spacing at the top
-    overflow: "hidden", // Prevent content from creating visual lines
-  },
-  titleContainer: {
-    marginBottom: 10,
-    marginHorizontal: -20,
-    marginTop: -20,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  // Removed hardcoded theme colors - using dynamic styling
-  // titleContainerDark and titleContainerLight removed
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
-    textAlign: "left",
-    // color moved to dynamic styling
-  },
-  // Removed hardcoded theme colors - using dynamic styling
-  // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
-  backButton: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginBottom: 20,
-  },
-  backButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginLeft: 10,
-  },
   settingTextContainer: {
     flex: 1,
     paddingHorizontal: 10,
   },
   label: {
-    fontSize: 16, // bigger text size
+    fontSize: 12,
     fontWeight: "600",
     flexWrap: "wrap",
-  },
-  value: {
-    flexWrap: "wrap",
-    fontSize: 12,
     marginTop: 5,
   },
-  headerContainer: {
-    borderBottomWidth: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    // backgroundColor and borderBottomColor moved to dynamic styling
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "600",
-    // color moved to dynamic styling
-  },
-  /**
-   * BIGGER, SEXIER IMAGES
-   */
-  glassesImage: {
-    width: 80, // bigger width
-    height: 50, // bigger height
-    resizeMode: "contain",
-    marginRight: 10,
-  },
-})
+} as const

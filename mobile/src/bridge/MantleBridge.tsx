@@ -181,13 +181,6 @@ export class MantleBridge extends EventEmitter {
     // Initialize message event listener
     this.initializeMessageEventListener()
 
-    if (Platform.OS === "android") {
-      // Set up audio play response callback
-      AudioPlayService.setResponseCallback((response: AudioPlayResponse) => {
-        this.sendAudioPlayResponse(response)
-      })
-    }
-
     // set the backend server url
     if (Platform.OS === "android") {
       const backendServerUrl = await useSettingsStore.getState().getRestUrl() // TODO: config: remove
@@ -425,8 +418,8 @@ export class MantleBridge extends EventEmitter {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          socketComms.sendBinary(bytes)
-          // livekitManager.addPcm(bytes)
+          // socketComms.sendBinary(bytes)
+          livekitManager.addPcm(bytes)
           break
         default:
           console.log("Unknown event type:", data.type)
@@ -480,7 +473,7 @@ export class MantleBridge extends EventEmitter {
       return this.validationInProgress ?? true
     }
 
-    this.validationInProgress = new Promise<boolean>((resolve, reject) => {
+    this.validationInProgress = new Promise<boolean>((resolve, _reject) => {
       const dataReceivedListener = () => {
         resolve(true)
       }
@@ -925,6 +918,13 @@ export class MantleBridge extends EventEmitter {
   async requestWifiScan() {
     return await this.sendData({
       command: "request_wifi_scan",
+    })
+  }
+
+  async disconnectFromWifi() {
+    console.log("Sending WiFi disconnect command to Core")
+    return await this.sendData({
+      command: "disconnect_wifi",
     })
   }
 

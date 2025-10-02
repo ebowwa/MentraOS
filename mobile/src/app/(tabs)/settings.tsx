@@ -1,12 +1,10 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Modal, ActivityIndicator, Platform, ViewStyle} from "react-native"
+import {useEffect, useRef} from "react"
+import {View, Platform, ViewStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
-import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
-import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
@@ -16,14 +14,14 @@ import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
 import {ScrollView} from "react-native-gesture-handler"
+import {useAuth} from "@/contexts/AuthContext"
 
 export default function SettingsPage() {
-  const {logout, user} = useAuth()
+  const {user} = useAuth()
   const {theme, themed} = useAppTheme()
-  const {push, replace} = useNavigationHistory()
-  const [isSigningOut, setIsSigningOut] = useState(false)
+  const {push} = useNavigationHistory()
 
-  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.DEV_MODE)
+  const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
 
   useEffect(() => {
     const checkDevMode = async () => {
@@ -88,47 +86,6 @@ export default function SettingsPage() {
     }, maxTimeDiff)
   }
 
-  const handleSignOut = async () => {
-    try {
-      console.log("Settings: Starting sign-out process")
-      setIsSigningOut(true)
-
-      await logout()
-
-      console.log("Settings: Logout completed, navigating to login")
-
-      // Reset the loading state before navigation
-      setIsSigningOut(false)
-
-      // Navigate to Login screen directly instead of SplashScreen
-      // This ensures we skip the SplashScreen logic that might detect stale user data
-      replace("/")
-    } catch (err) {
-      console.error("Settings: Error during sign-out:", err)
-      setIsSigningOut(false)
-
-      // Show user-friendly error but still navigate to login to prevent stuck state
-      showAlert(translate("common:error"), translate("settings:signOutError"), [
-        {
-          text: translate("common:ok"),
-          onPress: () => replace("/"),
-        },
-      ])
-    }
-  }
-
-  const confirmSignOut = () => {
-    showAlert(
-      translate("settings:signOut"),
-      translate("settings:signOutConfirm"),
-      [
-        {text: translate("common:cancel"), style: "cancel"},
-        {text: translate("common:yes"), onPress: handleSignOut},
-      ],
-      {cancelable: false},
-    )
-  }
-
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="settings:title" onLeftPress={handleQuickPress} />
@@ -165,8 +122,6 @@ export default function SettingsPage() {
               />
             </>
           )}
-
-          <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
         </View>
       </ScrollView>
 
@@ -176,39 +131,11 @@ export default function SettingsPage() {
           style={{color: theme.colors.textDim}}
         />
       </View>
-
-      {/* <Button text="Disconnect Livekit" onPress={() => livekitManager.disconnect()} />
-      <Button text="Connect Livekit" onPress={() => livekitManager.connect()} /> */}
-
-      {/* Loading overlay for sign out */}
-      <Modal visible={isSigningOut} transparent={true} animationType="fade">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}>
-          <View
-            style={{
-              backgroundColor: theme.colors.background,
-              padding: theme.spacing.xl,
-              borderRadius: theme.spacing.md,
-              alignItems: "center",
-              minWidth: 200,
-            }}>
-            <ActivityIndicator size="large" color={theme.colors.tint} style={{marginBottom: theme.spacing.md}} />
-            <Text preset="bold" style={{color: theme.colors.text}}>
-              {translate("settings:loggingOutMessage")}
-            </Text>
-          </View>
-        </View>
-      </Modal>
     </Screen>
   )
 }
 
-const $versionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $versionContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   bottom: spacing.xs,
   width: "100%",

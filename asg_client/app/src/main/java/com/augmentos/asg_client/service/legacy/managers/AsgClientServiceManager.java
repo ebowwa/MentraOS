@@ -221,6 +221,13 @@ public class AsgClientServiceManager {
             bluetoothManager.addBluetoothListener(service);
             Log.d(TAG, "📡 Bluetooth listener added to bluetooth manager");
 
+            // Set up file transfer completion callback for error queue processing
+            if (bluetoothManager instanceof com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) {
+                com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager k900Manager = 
+                    (com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager) bluetoothManager;
+                Log.d(TAG, "📋 K900 Bluetooth manager configured");
+            }
+
             bluetoothManager.initialize();
             Log.d(TAG, "✅ Bluetooth manager initialized successfully");
 

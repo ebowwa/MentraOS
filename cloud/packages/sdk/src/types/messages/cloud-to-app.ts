@@ -6,7 +6,7 @@ import {
   GlassesToCloudMessageType,
 } from "../message-types";
 import { ExtendedStreamType, StreamType } from "../streams";
-import { AppSettings, AppConfig, PermissionType } from "../models";
+import { AppSettings, AppConfig } from "../models";
 import { DashboardMode } from "../dashboard";
 import { Capabilities } from "../capabilities";
 import {

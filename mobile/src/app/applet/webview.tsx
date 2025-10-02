@@ -1,27 +1,19 @@
-import React, {useRef, useState, useEffect, useCallback} from "react"
-import {View, StyleSheet, Text, BackHandler} from "react-native"
+import {useRef, useState, useEffect, useCallback} from "react"
+import {View, Text, BackHandler} from "react-native"
 import {WebView} from "react-native-webview"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
-import {SafeAreaView} from "react-native-safe-area-context"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
-import RestComms from "@/managers/RestComms"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
+import {useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import restComms from "@/managers/RestComms"
 
+
 export default function AppWebView() {
-  //   const webviewURL = route.params?.webviewURL;
-  //   const appName = route.params?.appName || 'App';
-  //   const packageName = route.params?.packageName;
-  //   const fromSettings = route.params?.fromSettings === true;
-  const {themed, theme} = useAppTheme()
-  const {webviewURL, appName, packageName, fromSettings} = useLocalSearchParams()
-  const isFromSettings = fromSettings === "true"
-  const [isLoading, setIsLoading] = useState(true) // For WebView loading itself
+  const {theme} = useAppTheme()
+  const {webviewURL, appName, packageName} = useLocalSearchParams()
   const [hasError, setHasError] = useState(false)
   const webViewRef = useRef<WebView>(null)
 
@@ -29,7 +21,7 @@ export default function AppWebView() {
   const [isLoadingToken, setIsLoadingToken] = useState(true)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const [retryTrigger, setRetryTrigger] = useState(0) // Trigger for retrying token generation
-  const {replace, goBack, push, navigate, clearHistoryAndGoHome} = useNavigationHistory()
+  const {goBack, push} = useNavigationHistory()
 
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
@@ -39,15 +31,15 @@ export default function AppWebView() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        // Always go back to home when back is pressed
-        clearHistoryAndGoHome()
+        // Go back to previous screen
+        goBack()
         return true
       }
 
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
       return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
-    }, []),
+    }, [goBack]),
   )
 
   // Set up the header with settings button if we came from app settings
@@ -162,16 +154,17 @@ export default function AppWebView() {
   }, [packageName, webviewURL, appName, retryTrigger]) // Dependencies
 
   // Handle WebView loading events
-  const handleLoadStart = () => setIsLoading(true)
+  const handleLoadStart = () => {
+    // Called when the WebView starts loading
+  }
+
   const handleLoadEnd = () => {
-    setIsLoading(false)
     setHasError(false)
   }
   const handleError = (syntheticEvent: any) => {
     // Use any for syntheticEvent
     const {nativeEvent} = syntheticEvent
     console.warn("WebView error: ", nativeEvent)
-    setIsLoading(false)
     setHasError(true)
 
     // Parse error message to show user-friendly text
@@ -202,7 +195,7 @@ export default function AppWebView() {
   // Render loading state while fetching token
   if (isLoadingToken) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <LoadingOverlay message={`Preparing secure access to ${appName}...`} />
       </View>
     )
@@ -211,7 +204,7 @@ export default function AppWebView() {
   // Render error state if token generation failed
   if (tokenError && !isLoadingToken) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             // Reset state and retry token generation
@@ -227,7 +220,7 @@ export default function AppWebView() {
   // Render error state if WebView loading failed after token success
   if (hasError) {
     return (
-      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             setHasError(false)
@@ -249,7 +242,7 @@ export default function AppWebView() {
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        onLeftPress={() => clearHistoryAndGoHome()}
+        onLeftPress={() => goBack()}
         rightIcon="settings"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
@@ -262,12 +255,12 @@ export default function AppWebView() {
         style={{height: 44}}
         containerStyle={{paddingTop: 0}}
       />
-      <View style={styles.container}>
+      <View style={{flex: 1}}>
         {finalUrl ? (
           <WebView
             ref={webViewRef}
             source={{uri: finalUrl}} // Use the final URL with the token
-            style={styles.webView}
+            style={{flex: 1}}
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             onError={handleError}
@@ -307,17 +300,3 @@ export default function AppWebView() {
     </Screen>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  errorText: {
-    marginTop: -40,
-    paddingHorizontal: 20,
-    textAlign: "center",
-  },
-  webView: {
-    flex: 1,
-  },
-})
