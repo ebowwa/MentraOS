@@ -9,7 +9,7 @@ import path from "path";
 import fs from "fs";
 import { AppSession } from "../session/index";
 import { createAuthMiddleware } from "../webview";
-import { newSDKUpdate } from "src/constants/messages";
+import { newSDKUpdate } from "../../constants/messages";
 
 import {
   WebhookRequest,
@@ -47,6 +47,9 @@ export interface AppServerConfig {
   apiKey: string;
   /** 🌐 Port number for the server (default: 7010) */
   port?: number;
+
+  /** Cloud API URL (default: 'api.mentra.glass') */
+  cloudApiUrl?: string;
 
   /** 🛣️ [DEPRECATED] do not set: The SDK will automatically expose an endpoint at '/webhook' */
   webhookPath?: string;
@@ -285,11 +288,9 @@ export class AppServer {
           // this.logger.debug(`Developer is using SDK version: ${currentVersion}`);
 
           // Fetch latest SDK version from the API endpoint
-          let latest = "2.1.20"; // fallback version
+          let latest = "2.1.25"; // fallback version
           try {
-            const cloudHost =
-              process.env.CLOUD_PUBLIC_HOST_NAME ||
-              "mentra-cloud-server.ngrok.app";
+            const cloudHost = "api.mentra.glass";
             const response = await axios.get(
               `https://${cloudHost}/api/sdk/version`,
             );
