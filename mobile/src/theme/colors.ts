@@ -106,7 +106,7 @@ const unique = {
   // Slider states
   sliderThumb: palette.neutral300,
   sliderTrackActive: palette.primary300,
-  sliderTrackInactive: palette.neutral300,
+  sliderTrackInactive: palette.lightPurple1,
 } as const
 
 export const colors = {
@@ -118,8 +118,9 @@ export const colors = {
   textAlt: palette.neutral800,
 
   // Backgrounds
-  background: palette.neutral800,
-  backgroundAlt: palette.neutral700,
+  background: palette.neutral900,
+  backgroundAlt: palette.neutral800,
+  modalOverlay: "rgba(0, 0, 0, 0.7)",
 
   // Borders
   border: palette.neutral700,
@@ -127,15 +128,17 @@ export const colors = {
   // Primary colors
   tint: palette.primary500,
   tintInactive: palette.neutral700,
+  buttonIconBackground: palette.neutral700, // Icon pill buttons - same as tintInactive for light theme
   separator: palette.neutral700,
 
   // Error states
   error: palette.angry500,
   errorBackground: palette.angry100,
+  success: palette.success500,
   warning: palette.accent300,
 
   // Common:
-  primary: palette.primary300,
+  primary: palette.purpleBlue4,
   secondary: palette.secondary600,
   accent: palette.accent500,
 

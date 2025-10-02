@@ -1,4 +1,4 @@
-import React, {PropsWithChildren} from "react"
+import {PropsWithChildren} from "react"
 import {View, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -14,7 +14,7 @@ export function SettingsGroup({children, style}: SettingsGroupProps) {
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: borderRadius.md,

@@ -1,4 +1,3 @@
-import React from "react"
 import {View, ViewStyle} from "react-native"
 import {Icon} from "@/components/ignite"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
@@ -65,7 +64,7 @@ export const GetMoreAppsIcon: React.FC<GetMoreAppsIconProps> = ({size = "medium"
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.backgroundAlt,
   alignItems: "center",
   justifyContent: "center",
   position: "relative",
@@ -75,7 +74,7 @@ const $plusBadge: ThemedStyle<ViewStyle> = ({colors}) => ({
   position: "absolute",
   top: -2,
   right: -2,
-  backgroundColor: colors.palette.primary500,
+  backgroundColor: colors.primary,
   justifyContent: "center",
   alignItems: "center",
   borderWidth: 2,

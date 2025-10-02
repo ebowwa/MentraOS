@@ -1,8 +1,7 @@
 // SelectSetting.tsx
-import React, {useEffect, useState} from "react"
+import {useEffect, useState} from "react"
 import {
   View,
-  StyleSheet,
   TouchableOpacity,
   Modal,
   FlatList,
@@ -18,11 +17,6 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 type Option = {
   label: string
   value: string
-}
-
-type Theme = {
-  backgroundColor: string
-  textColor: string
 }
 
 type SelectSettingProps = {
@@ -43,7 +37,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
   description,
   defaultValue,
 }) => {
-  const {theme, themed} = useAppTheme()
+  const {theme} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
 
   // If the current value doesn't match any option, use the defaultValue
@@ -71,7 +65,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
         style={[
           layout === "horizontal" ? styles.selectRow : styles.selectColumn,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.backgroundAlt,
             borderRadius: theme.borderRadius.md,
             borderWidth: theme.spacing.xxxs,
             borderColor: theme.colors.border,
@@ -105,7 +99,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
                   style={[
                     styles.modalContent,
                     {
-                      backgroundColor: theme.colors.background,
+                      backgroundColor: theme.colors.backgroundAlt,
                       borderColor: theme.colors.border,
                       borderWidth: theme.spacing.xxxs,
                       padding: theme.spacing.md,
@@ -120,8 +114,8 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
                     data={options}
                     keyExtractor={item => item.value}
                     keyboardShouldPersistTaps="always"
-                    style={[styles.optionsList, {backgroundColor: theme.colors.background}]}
-                    contentContainerStyle={{backgroundColor: theme.colors.background}}
+                    style={[styles.optionsList, {backgroundColor: theme.colors.backgroundAlt}]}
+                    contentContainerStyle={{backgroundColor: theme.colors.backgroundAlt}}
                     renderItem={({item}) => (
                       <Pressable
                         style={[
@@ -138,11 +132,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
                         <MaterialCommunityIcons
                           name="check"
                           size={24}
-                          color={
-                            item.value === value
-                              ? theme.colors.checkmark || theme.colors.palette.primary300
-                              : "transparent"
-                          }
+                          color={item.value === value ? theme.colors.primary : "transparent"}
                         />
                         <Text
                           text={item.label}
@@ -161,14 +151,9 @@ const SelectSetting: React.FC<SelectSettingProps> = ({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   chevron: {
     marginLeft: 2,
-  },
-  closeButton: {
-    fontSize: 22,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
   },
   container: {
     width: "100%",
@@ -243,6 +228,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
   },
-})
+} as const
 
 export default SelectSetting

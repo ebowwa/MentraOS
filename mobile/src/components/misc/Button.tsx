@@ -1,5 +1,4 @@
-import React from "react"
-import {TouchableOpacity, StyleSheet, GestureResponderEvent, ViewStyle} from "react-native"
+import {TouchableOpacity, GestureResponderEvent, ViewStyle} from "react-native"
 import {Text} from "@/components/ignite"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -32,13 +31,10 @@ const Button: React.FC<ButtonProps> = ({
     <TouchableOpacity
       style={[
         styles.button,
-        {backgroundColor: theme.colors.buttonPrimary},
-        isDarkTheme && {backgroundColor: theme.colors.blue600},
-        type === "secondary" && [styles.buttonSecondary, {borderColor: theme.colors.buttonPrimary}],
-        disabled && [
-          styles.buttonDisabled,
-          {backgroundColor: theme.colors.buttonDisabled, borderColor: theme.colors.buttonDisabled},
-        ],
+        {backgroundColor: theme.colors.primary},
+        isDarkTheme && {backgroundColor: theme.colors.primary},
+        type === "secondary" && [styles.buttonSecondary, {borderColor: theme.colors.primary}],
+        disabled && [styles.buttonDisabled, {backgroundColor: theme.colors.border, borderColor: theme.colors.border}],
         style,
       ]}
       onPress={onPress}
@@ -50,9 +46,9 @@ const Button: React.FC<ButtonProps> = ({
           size={16}
           color={
             disabled
-              ? theme.colors.palette.mediumGray
+              ? theme.colors.textDim
               : type === "secondary"
-                ? theme.colors.buttonPrimary
+                ? theme.colors.primary
                 : theme.colors.palette.neutral100
           }
           style={styles.buttonIcon}
@@ -63,8 +59,8 @@ const Button: React.FC<ButtonProps> = ({
         style={[
           styles.buttonText,
           {color: theme.colors.palette.neutral100},
-          disabled && [styles.buttonTextDisabled, {color: theme.colors.palette.mediumGray}],
-          type === "secondary" && [styles.buttonTextSecondary, {color: theme.colors.buttonPrimary}],
+          disabled && [styles.buttonTextDisabled, {color: theme.colors.textDim}],
+          type === "secondary" && [styles.buttonTextSecondary, {color: theme.colors.primary}],
         ]}
       />
     </TouchableOpacity>

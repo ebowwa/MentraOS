@@ -1,7 +1,6 @@
-import React from "react"
-import {TouchableOpacity, Text, ViewStyle, TextStyle} from "react-native"
-import {Icon, IconTypes} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
+import {TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {Icon, IconTypes, Text} from "@/components/ignite"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 
 interface NavButtonProps {
@@ -33,17 +32,17 @@ const NavButton: React.FC<NavButtonProps> = ({
   )
 }
 
-const $navButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $navButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   flexDirection: "row",
   alignItems: "center",
   paddingVertical: 8,
   paddingHorizontal: 12,
-  backgroundColor: colors.buttonPrimary,
+  backgroundColor: colors.primary,
   borderRadius: 8,
   marginTop: 8,
 })
 
-const $navButtonText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $navButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.palette.neutral100,
   fontSize: 16,
   fontWeight: "600",

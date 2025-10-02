@@ -38,9 +38,7 @@ export default function ThemeSettingsPage() {
         <MaterialCommunityIcons
           name="check"
           size={24}
-          color={
-            themePreference === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"
-          }
+          color={themePreference === themeKey ? theme.colors.primary : "transparent"}
         />
       </TouchableOpacity>
       {/* @ts-ignore */}

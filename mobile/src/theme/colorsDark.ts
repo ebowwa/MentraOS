@@ -110,7 +110,8 @@ export const colors = {
 
   // Backgrounds
   background: palette.primary100,
-  backgroundAlt: palette.primary300,
+  backgroundAlt: "#1A2050", // Subtle step lighter than primary100
+  modalOverlay: "rgba(0, 0, 0, 0.7)",
 
   // Borders
   border: palette.primary200,
@@ -119,10 +120,12 @@ export const colors = {
   // Primary colors
   tint: palette.primary400,
   tintInactive: palette.neutral300,
+  buttonIconBackground: palette.darkPurple1, // Icon pill buttons - matches main branch
 
   // Error states
   error: palette.angry600,
   errorBackground: palette.angry100,
+  success: palette.success500,
   warning: palette.accent300,
 
   // Common:

@@ -1,16 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {
-  View,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Share,
-  Platform,
-  ViewStyle,
-  TextStyle,
-  Clipboard,
-} from "react-native"
+import {useState, useEffect} from "react"
+import {View, ScrollView, ActivityIndicator, Share, Platform, ViewStyle, TextStyle, Clipboard} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -22,6 +11,7 @@ import {DataExportService, UserDataExport} from "@/utils/DataExportService"
 import {translate} from "@/i18n"
 import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
+import {showAlert} from "@/utils/AlertUtils"
 
 export default function DataExportPage() {
   const [exportData, setExportData] = useState<UserDataExport | null>(null)
@@ -53,7 +43,7 @@ export default function DataExportPage() {
       console.log("DataExport: Data collection completed")
     } catch (error) {
       console.error("DataExport: Error collecting data:", error)
-      Alert.alert(translate("common:error"), "Failed to collect export data. Please try again.", [
+      showAlert(translate("common:error"), "Failed to collect export data. Please try again.", [
         {text: translate("common:ok")},
       ])
     } finally {
@@ -67,10 +57,10 @@ export default function DataExportPage() {
     setCopying(true)
     try {
       Clipboard.setString(jsonString)
-      Alert.alert("Copied!", "Your data has been copied to the clipboard.", [{text: translate("common:ok")}])
+      showAlert("Copied!", "Your data has been copied to the clipboard.", [{text: translate("common:ok")}])
     } catch (error) {
       console.error("DataExport: Error copying to clipboard:", error)
-      Alert.alert(translate("common:error"), "Failed to copy to clipboard.", [{text: translate("common:ok")}])
+      showAlert(translate("common:error"), "Failed to copy to clipboard.", [{text: translate("common:ok")}])
     } finally {
       setCopying(false)
     }
@@ -93,7 +83,7 @@ export default function DataExportPage() {
       }
     } catch (error) {
       console.error("DataExport: Error sharing:", error)
-      Alert.alert(translate("common:error"), "Failed to share data.", [{text: translate("common:ok")}])
+      showAlert(translate("common:error"), "Failed to share data.", [{text: translate("common:ok")}])
     } finally {
       setSharing(false)
     }
@@ -117,7 +107,7 @@ export default function DataExportPage() {
         onRightPress={
           !loading
             ? () => {
-                Alert.alert("Export Options", "Choose an action for your data:", [
+                showAlert("Export Options", "Choose an action for your data:", [
                   {text: "Copy to Clipboard", onPress: handleCopy},
                   {text: "Share", onPress: handleShare},
                   {text: translate("common:cancel"), style: "cancel"},
@@ -155,20 +145,22 @@ export default function DataExportPage() {
 
           {/* Action Buttons */}
           <View style={themed($buttonContainer)}>
-            <ActionButton
-              label={copying ? "Copying..." : "Copy to Clipboard"}
-              variant="default"
-              onPress={handleCopy}
-              disabled={copying || !jsonString}
-              containerStyle={themed($button)}
-            />
-            <ActionButton
-              label={sharing ? "Sharing..." : "Share"}
-              variant="default"
-              onPress={handleShare}
-              disabled={sharing || !jsonString}
-              containerStyle={themed($button)}
-            />
+            <View style={themed($button)}>
+              <ActionButton
+                label={copying ? "Copying..." : "Copy to Clipboard"}
+                variant="default"
+                onPress={handleCopy}
+                disabled={copying || !jsonString}
+              />
+            </View>
+            <View style={themed($button)}>
+              <ActionButton
+                label={sharing ? "Sharing..." : "Share"}
+                variant="default"
+                onPress={handleShare}
+                disabled={sharing || !jsonString}
+              />
+            </View>
           </View>
 
           <Spacer height={theme.spacing.md} />
@@ -192,11 +184,11 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingHorizontal: spacing.md,
 })
 
-const $contentContainer: ThemedStyle<ViewStyle> = ({}) => ({
+const $contentContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $loadingContainer: ThemedStyle<ViewStyle> = ({}) => ({
+const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
   justifyContent: "center",
   alignItems: "center",
@@ -208,7 +200,7 @@ const $loadingText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $summaryContainer: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderRadius: borderRadius.md,
   padding: spacing.md,
   borderWidth: spacing.xxxs,
@@ -233,13 +225,13 @@ const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   gap: spacing.sm,
 })
 
-const $button: ThemedStyle<ViewStyle> = ({}) => ({
+const $button: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
 const $jsonContainer: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   flex: 1,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderRadius: borderRadius.md,
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
@@ -255,7 +247,7 @@ const $jsonTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   borderBottomColor: colors.border,
 })
 
-const $jsonScrollView: ThemedStyle<ViewStyle> = ({}) => ({
+const $jsonScrollView: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 

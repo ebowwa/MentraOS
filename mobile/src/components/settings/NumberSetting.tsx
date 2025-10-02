@@ -1,8 +1,8 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, TextInput, StyleSheet, Platform, Pressable, Alert} from "react-native"
+import {useState, useEffect} from "react"
+import {View, Platform, Pressable, Alert, TextInput, ViewStyle, TextStyle} from "react-native"
+import {Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {ViewStyle, TextStyle} from "react-native"
 
 type NumberSettingProps = {
   label: string
@@ -27,7 +27,7 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
 }) => {
   const {theme, themed} = useAppTheme()
   const [localValue, setLocalValue] = useState(value.toString())
-  const [isEditing, setIsEditing] = useState(false)
+  const [_isEditing, setIsEditing] = useState(false)
 
   // Update local value when prop changes
   useEffect(() => {
@@ -148,7 +148,7 @@ const NumberSetting: React.FC<NumberSettingProps> = ({
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 8,
@@ -173,7 +173,7 @@ const $input: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   flex: 1,
   fontSize: 16,
   color: colors.text,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 6,
@@ -183,8 +183,8 @@ const $input: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   minHeight: Platform.OS === "ios" ? 44 : 48,
 })
 
-const $decrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+const $decrementButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 6,
@@ -194,8 +194,8 @@ const $decrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   alignItems: "center",
 })
 
-const $incrementButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+const $incrementButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 6,

@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from "react"
-import {View, Image, ActivityIndicator, ScrollView, ImageStyle, TextStyle, ViewStyle} from "react-native"
+import {useState, useEffect} from "react"
+import {View, Image, ActivityIndicator, ScrollView, ImageStyle, TextStyle, ViewStyle, Modal} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import {Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -11,6 +11,7 @@ import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
 import {LogoutUtils} from "@/utils/LogoutUtils"
 import restComms from "@/managers/RestComms"
+import {useAuth} from "@/contexts/AuthContext"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -21,8 +22,10 @@ export default function ProfileSettingsPage() {
     provider: string | null
   } | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, replace} = useNavigationHistory()
+  const {logout} = useAuth()
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -131,7 +134,6 @@ export default function ProfileSettingsPage() {
     console.log("Profile: User confirmed account deletion - proceeding")
 
     let deleteRequestSuccessful = false
-    let errorMessage = ""
 
     try {
       console.log("Profile: Requesting account deletion from server")
@@ -143,7 +145,6 @@ export default function ProfileSettingsPage() {
     } catch (error) {
       console.error("Profile: Error requesting account deletion:", error)
       deleteRequestSuccessful = false
-      errorMessage = error instanceof Error ? error.message : String(error)
     }
 
     // Always perform logout regardless of deletion request success
@@ -182,6 +183,47 @@ export default function ProfileSettingsPage() {
         {cancelable: false},
       )
     }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      console.log("Profile: Starting sign-out process")
+      setIsSigningOut(true)
+
+      await logout()
+
+      console.log("Profile: Logout completed, navigating to login")
+
+      // Reset the loading state before navigation
+      setIsSigningOut(false)
+
+      // Navigate to Login screen directly instead of SplashScreen
+      // This ensures we skip the SplashScreen logic that might detect stale user data
+      replace("/")
+    } catch (err) {
+      console.error("Profile: Error during sign-out:", err)
+      setIsSigningOut(false)
+
+      // Show user-friendly error but still navigate to login to prevent stuck state
+      showAlert(translate("common:error"), translate("settings:signOutError"), [
+        {
+          text: translate("common:ok"),
+          onPress: () => replace("/"),
+        },
+      ])
+    }
+  }
+
+  const confirmSignOut = () => {
+    showAlert(
+      translate("settings:signOut"),
+      translate("settings:signOutConfirm"),
+      [
+        {text: translate("common:cancel"), style: "cancel"},
+        {text: translate("common:yes"), onPress: handleSignOut},
+      ],
+      {cancelable: false},
+    )
   }
 
   const {theme, themed} = useAppTheme()
@@ -240,12 +282,39 @@ export default function ProfileSettingsPage() {
                 variant="destructive"
                 onPress={handleDeleteAccount}
               />
+
+              <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
             </View>
           </>
         ) : (
           <Text tx="profileSettings:errorGettingUserInfo" />
         )}
       </ScrollView>
+
+      {/* Loading overlay for sign out */}
+      <Modal visible={isSigningOut} transparent={true} animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}>
+          <View
+            style={{
+              backgroundColor: theme.colors.background,
+              padding: theme.spacing.xl,
+              borderRadius: theme.spacing.md,
+              alignItems: "center",
+              minWidth: 200,
+            }}>
+            <ActivityIndicator size="large" color={theme.colors.tint} style={{marginBottom: theme.spacing.md}} />
+            <Text preset="bold" style={{color: theme.colors.text}}>
+              {translate("settings:loggingOutMessage")}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   )
 }

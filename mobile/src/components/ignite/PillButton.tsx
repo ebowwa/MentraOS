@@ -1,7 +1,7 @@
-import React from "react"
+import {} from "react"
 import {TouchableOpacity, TouchableOpacityProps, TextStyle, ViewStyle, StyleProp} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle, ThemedStyleArray} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {TOptions} from "i18next"
 import {TxKeyPath} from "@/i18n"
 import {Text} from "@/components/ignite/Text"
@@ -62,35 +62,25 @@ export function PillButton({
   txOptions,
   ...touchableProps
 }: PillButtonProps) {
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
 
   const isPrimary = variant === "primary"
   const isSecondary = variant === "secondary"
 
-  const getBackgroundColor = () => {
-    if (isPrimary) return theme.colors.tint
-    if (isSecondary) return theme.colors.palette.transparent
-    return theme.colors.tint
-  }
-
-  const getTextColor = () => {
-    return theme.colors.text
-  }
-
   const buttonStyles: StyleProp<ViewStyle> = [
     themed($button),
-    {
-      backgroundColor: getBackgroundColor(),
-    },
+    isPrimary && themed($primaryButton),
+    isSecondary && themed($secondaryButton),
+    !isPrimary && !isSecondary && themed($iconButton),
     disabled && themed($disabled),
     buttonStyle,
   ]
 
   const textStyles: StyleProp<TextStyle> = [
     themed($text),
-    {
-      color: getTextColor(),
-    },
+    isPrimary && themed($primaryText),
+    isSecondary && themed($secondaryText),
+    !isPrimary && !isSecondary && themed($iconText),
     disabled && themed($disabledText),
     textStyle,
   ]
@@ -102,7 +92,7 @@ export function PillButton({
   )
 }
 
-const $button: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $button: ThemedStyle<ViewStyle> = () => ({
   paddingVertical: 8,
   paddingHorizontal: 16,
   borderRadius: 100, // Pill shape
@@ -111,16 +101,43 @@ const $button: ThemedStyle<ViewStyle> = ({colors}) => ({
   alignItems: "center",
 })
 
-const $disabled: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $primaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.primary,
+})
+
+const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.transparent,
+  borderWidth: 1,
+  borderColor: colors.tint,
+})
+
+const $iconButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.buttonIconBackground,
+})
+
+const $text: ThemedStyle<TextStyle> = () => ({
+  fontSize: 14,
+  fontWeight: "normal",
+  textAlign: "center",
+  lineHeight: 20, // Fix vertical centering
+})
+
+const $primaryText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textAlt,
+})
+
+const $secondaryText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $iconText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $disabled: ThemedStyle<ViewStyle> = () => ({
   opacity: 0.4,
 })
 
 const $disabledText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
-})
-
-const $text: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  fontWeight: "normal",
-  textAlign: "center",
 })

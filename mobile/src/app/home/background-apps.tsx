@@ -402,7 +402,7 @@ const $tipContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginHorizontal: spacing.lg,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.md,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderRadius: spacing.sm,
   flexDirection: "row",
   alignItems: "center",

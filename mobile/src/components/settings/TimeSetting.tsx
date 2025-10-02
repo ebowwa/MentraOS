@@ -1,8 +1,8 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, StyleSheet, Platform, Pressable, Modal, ScrollView} from "react-native"
+import {useState, useEffect, useRef} from "react"
+import {View, Pressable, Modal, ScrollView, Platform, ViewStyle, TextStyle} from "react-native"
+import {Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import {ViewStyle, TextStyle} from "react-native"
 
 type TimeSettingProps = {
   label: string
@@ -13,7 +13,7 @@ type TimeSettingProps = {
 }
 
 const TimeSetting: React.FC<TimeSettingProps> = ({label, value, onValueChange, containerStyle, showSeconds = true}) => {
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
   const [modalVisible, setModalVisible] = useState(false)
   const [localHours, setLocalHours] = useState(0)
   const [localMinutes, setLocalMinutes] = useState(0)
@@ -41,7 +41,7 @@ const TimeSetting: React.FC<TimeSettingProps> = ({label, value, onValueChange, c
 
   const REPEATS = 5 // Must be odd for perfect centering
   const ITEM_HEIGHT = 44
-  const VISIBLE_ITEMS = 3
+  const _VISIBLE_ITEMS = 3
   const CENTER_SLOT = Math.floor(REPEATS / 2)
 
   // Function to scroll to center the selected value
@@ -102,7 +102,7 @@ const TimeSetting: React.FC<TimeSettingProps> = ({label, value, onValueChange, c
     setModalVisible(false)
   }
 
-  const generateTimeArray = (max: number) => {
+  const _generateTimeArray = (max: number) => {
     return Array.from({length: max}, (_, i) => i)
   }
 
@@ -282,7 +282,7 @@ const TimeSetting: React.FC<TimeSettingProps> = ({label, value, onValueChange, c
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 8,
@@ -301,7 +301,7 @@ const $timeButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
   justifyContent: "space-between",
   alignItems: "center",
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 6,
@@ -330,7 +330,7 @@ const $modalOverlay: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $modalContent: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderRadius: 12,
   padding: spacing.lg,
   width: "90%",
@@ -401,7 +401,7 @@ const $modalFooter: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $cancelButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flex: 1,
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   borderWidth: 1,
   borderColor: colors.border,
   borderRadius: 6,

@@ -1,6 +1,7 @@
-import {View, TouchableOpacity, Text, ViewStyle, ImageStyle, TextStyle} from "react-native"
+import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle} from "react-native"
 
 import AppIcon from "@/components/misc/AppIcon"
+import {Text} from "@/components/ignite"
 import {useActiveForegroundApp, useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -136,7 +137,7 @@ const $activeTag: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
 
 const $tagText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 11,
-  color: colors.foregroundTagText,
+  color: colors.primary,
   fontWeight: "500",
 })
 

@@ -1,10 +1,8 @@
 // SelectWithSearchSetting.tsx
 import {useAppTheme} from "@/utils/useAppTheme"
-import React, {useState, useMemo} from "react"
+import {useState, useMemo, useEffect} from "react"
 import {
   View,
-  Text,
-  StyleSheet,
   TextInput,
   Modal,
   TouchableOpacity,
@@ -14,18 +12,13 @@ import {
   Platform,
   TouchableWithoutFeedback,
 } from "react-native"
-import {Icon} from "@/components/ignite"
+import {Icon, Text} from "@/components/ignite"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import SearchIcon from "../../../assets/icons/component/SearchIcon"
 
 type Option = {
   label: string
   value: string
-}
-
-type Theme = {
-  backgroundColor: string
-  textColor: string
 }
 
 type SelectWithSearchSettingProps = {
@@ -43,13 +36,13 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
   onValueChange,
   defaultValue,
 }) => {
-  const {theme, themed} = useAppTheme()
+  const {theme} = useAppTheme()
 
   const [search, setSearch] = useState("")
   const [modalVisible, setModalVisible] = useState(false)
 
   // If the current value doesn't match any option, use the defaultValue
-  React.useEffect(() => {
+  useEffect(() => {
     if (options.length > 0 && !options.find(option => option.value === value)) {
       // Value doesn't match any option
       if (defaultValue !== undefined && options.find(option => option.value === defaultValue)) {
@@ -73,7 +66,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
         style={[
           styles.selectRow,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: theme.colors.backgroundAlt,
             borderRadius: theme.borderRadius.md,
             borderWidth: theme.spacing.xxxs,
             borderColor: theme.colors.border,
@@ -103,7 +96,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
                   style={[
                     styles.modalContent,
                     {
-                      backgroundColor: theme.colors.background,
+                      backgroundColor: theme.colors.backgroundAlt,
                       borderColor: theme.colors.border,
                       borderWidth: theme.spacing.xxxs,
                       padding: theme.spacing.md,
@@ -119,7 +112,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
                       styles.searchContainer,
                       {
                         borderColor: theme.colors.inputBorderHighlight,
-                        backgroundColor: theme.colors.background,
+                        backgroundColor: theme.colors.backgroundAlt,
                         borderRadius: 100, // Pill shape
                         marginBottom: theme.spacing.sm,
                         paddingHorizontal: theme.spacing.sm,
@@ -172,11 +165,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
                         <MaterialCommunityIcons
                           name="check"
                           size={24}
-                          color={
-                            item.value === value
-                              ? theme.colors.checkmark || theme.colors.palette.primary300
-                              : "transparent"
-                          }
+                          color={item.value === value ? theme.colors.primary : "transparent"}
                         />
                         <Text
                           style={[
@@ -201,14 +190,9 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   chevron: {
     marginLeft: 2,
-  },
-  closeButton: {
-    fontSize: 22,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
   },
   container: {
     width: "100%",
@@ -279,6 +263,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
   },
-})
+} as const
 
 export default SelectWithSearchSetting
