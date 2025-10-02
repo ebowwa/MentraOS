@@ -911,16 +911,6 @@ class MentraLive: NSObject, SGCManager {
     private var readinessCheckCounter = 0
     private var connectionTimeoutTimer: Timer?
 
-    // Callbacks
-    var jsonObservable: ((JSONObject) -> Void)?
-
-    // onButtonPress (buttonId: String, pressType: String)
-    var onButtonPress: ((String, String) -> Void)?
-    // onPhotoRequest (requestId: String, appId: String, webhookUrl: String?)
-    var onPhotoRequest: ((String, String) -> Void)?
-    // onVideoStreamResponse (appId: String, streamUrl: String)
-    var onVideoStreamResponse: ((String, String) -> Void)?
-
     // MARK: - Initialization
 
     override init() {
@@ -1450,8 +1440,6 @@ class MentraLive: NSObject, SGCManager {
             handleTransferFailed(json)
 
         default:
-            // Forward unknown types to observable
-            //      jsonObservable?(json)
             Bridge.log("Unhandled message type: \(type)")
         }
     }
@@ -1519,7 +1507,6 @@ class MentraLive: NSObject, SGCManager {
 
         default:
             Bridge.log("Unknown K900 command: \(command)")
-            jsonObservable?(json)
         }
     }
 
@@ -1628,7 +1615,7 @@ class MentraLive: NSObject, SGCManager {
         let pressType = json["pressType"] as? String ?? "short"
 
         Bridge.log("Received button press - buttonId: \(buttonId), pressType: \(pressType)")
-        onButtonPress?(buttonId, pressType)
+        Bridge.sendButtonPress(buttonId: buttonId, pressType: pressType)
     }
 
     private func handleVersionInfo(_ json: [String: Any]) {
@@ -1942,9 +1929,6 @@ class MentraLive: NSObject, SGCManager {
             "fileType": String(format: "0x%02X", fileType),
             "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
         ]
-
-        // Emit event through data observable
-        jsonObservable?(event)
     }
 
     private func processAndUploadBlePhoto(_ transfer: BlePhotoTransfer, imageData: Data) {
