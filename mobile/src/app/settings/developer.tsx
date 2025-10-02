@@ -180,7 +180,7 @@ export default function DeveloperSettingsScreen() {
         style={[
           styles.warningContainer,
           {
-            backgroundColor: theme.colors.warningBackgroundDestructive,
+            backgroundColor: theme.colors.warningBackground,
             borderWidth: theme.spacing.xxxs,
             borderColor: theme.colors.palette.angry600,
           },
@@ -269,7 +269,7 @@ export default function DeveloperSettingsScreen() {
                 styles.urlInput,
                 {
                   backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.inputBorderHighlight,
+                  borderColor: theme.colors.primary,
                   color: theme.colors.text,
                 },
               ]}

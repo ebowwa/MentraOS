@@ -1,6 +1,6 @@
 // SelectWithSearchSetting.tsx
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useState, useMemo} from "react"
+import {useState, useMemo, useEffect} from "react"
 import {
   View,
   TextInput,
@@ -42,7 +42,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
   const [modalVisible, setModalVisible] = useState(false)
 
   // If the current value doesn't match any option, use the defaultValue
-  React.useEffect(() => {
+  useEffect(() => {
     if (options.length > 0 && !options.find(option => option.value === value)) {
       // Value doesn't match any option
       if (defaultValue !== undefined && options.find(option => option.value === defaultValue)) {

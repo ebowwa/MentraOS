@@ -112,7 +112,7 @@ const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $iconButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.backgroundAlt,
+  backgroundColor: colors.buttonIconBackground,
 })
 
 const $text: ThemedStyle<TextStyle> = () => ({
@@ -123,7 +123,7 @@ const $text: ThemedStyle<TextStyle> = () => ({
 })
 
 const $primaryText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.palette.white,
+  color: colors.textAlt,
 })
 
 const $secondaryText: ThemedStyle<TextStyle> = ({colors}) => ({

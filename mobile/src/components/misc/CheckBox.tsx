@@ -50,7 +50,7 @@ const CheckBox: React.FC<CheckBoxProps> = ({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   box: {
     alignItems: "center",
     borderRadius: 3,
@@ -73,6 +73,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
   },
-})
+} as const
 
 export default CheckBox

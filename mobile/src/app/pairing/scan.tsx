@@ -333,7 +333,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.backgroundAlt,
 })
 
-const styles = StyleSheet.create({
+const styles = {
   contentContainer: {
     // alignItems: "center",
     // justifyContent: "center",
@@ -345,10 +345,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   label: {
-    fontSize: 16, // bigger text size
+    fontSize: 12,
     fontWeight: "600",
     flexWrap: "wrap",
-    fontSize: 12,
     marginTop: 5,
   },
-})
+} as const

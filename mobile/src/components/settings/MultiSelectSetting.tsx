@@ -53,7 +53,7 @@ const MultiSelectSetting: React.FC<MultiSelectSettingProps> = ({label, values = 
   )
 }
 
-const styles = StyleSheet.create({
+const styles = {
   container: {
     width: "100%",
   },
@@ -70,6 +70,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
   },
-})
+} as const
 
 export default MultiSelectSetting
