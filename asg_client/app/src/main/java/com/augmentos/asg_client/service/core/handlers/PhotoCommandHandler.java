@@ -84,6 +84,15 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
                 return false;
             }
 
+            // COOLDOWN CHECK: Reject photo requests if BLE transfer is in progress
+            if (captureService.isBleTransferInProgress()) {
+                Log.w(TAG, "🚫 Photo request rejected - BLE transfer in progress (cooldown active)");
+                logCommandResult("take_photo", false, "BLE transfer in progress - request rejected");
+                // Send immediate error response to phone
+                captureService.sendPhotoErrorResponse(requestId, "BLE_TRANSFER_BUSY", "BLE transfer in progress - request rejected");
+                return false;
+            }
+
             // Process photo capture based on transfer method
             boolean success = processPhotoCapture(captureService, photoFilePath, requestId, webhookUrl, authToken,
                                                  bleImgId, save, size, transferMethod, enableLed);

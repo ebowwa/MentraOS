@@ -10,6 +10,7 @@ import {Header, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import restComms from "@/managers/RestComms"
 
+
 export default function AppWebView() {
   const {theme} = useAppTheme()
   const {webviewURL, appName, packageName} = useLocalSearchParams()
@@ -153,6 +154,10 @@ export default function AppWebView() {
   }, [packageName, webviewURL, appName, retryTrigger]) // Dependencies
 
   // Handle WebView loading events
+  const handleLoadStart = () => {
+    // Called when the WebView starts loading
+  }
+
   const handleLoadEnd = () => {
     setHasError(false)
   }
@@ -190,7 +195,7 @@ export default function AppWebView() {
   // Render loading state while fetching token
   if (isLoadingToken) {
     return (
-      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <LoadingOverlay message={`Preparing secure access to ${appName}...`} />
       </View>
     )
@@ -199,7 +204,7 @@ export default function AppWebView() {
   // Render error state if token generation failed
   if (tokenError && !isLoadingToken) {
     return (
-      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             // Reset state and retry token generation
@@ -215,7 +220,7 @@ export default function AppWebView() {
   // Render error state if WebView loading failed after token success
   if (hasError) {
     return (
-      <View style={[{flex: 1, backgroundColor: theme2.backgroundColor}]}>
+      <View style={{flex: 1, backgroundColor: theme2.backgroundColor}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             setHasError(false)

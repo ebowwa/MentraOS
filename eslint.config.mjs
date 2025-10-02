@@ -63,12 +63,7 @@ export default [
       // React
       "react/prop-types": "off",
 
-      // React Native - these rules are smart enough to only apply to RN code
-      "react-native/no-unused-styles": "error",
-      "react-native/split-platform-components": "warn",
-      "react-native/no-inline-styles": "warn",
-      "react-native/no-color-literals": "off",
-      "react-native/no-raw-text": "off",
+      // React Native rules are scoped to RN files via an overrides block below
 
       // Reactotron
       "reactotron/no-tron-in-production": "error",
@@ -88,16 +83,41 @@ export default [
             {
               name: "react",
               importNames: ["default"],
-              message: "Import named exports from 'react' instead.",
+              message: "Import named exports from 'react' instead / don't import React.",
             },
             {
               name: "react-native",
               importNames: ["StyleSheet"],
-              message: "Do not import StyleSheet from 'react-native'. Use themed styles instead.",
+              message: "Do not import StyleSheet from 'react-native'. Use ThemedStyles / the useTheme() hook instead.",
+            },
+            {
+              name: "expo-router",
+              importNames: ["useRouter"],
+              message: "Do not use useRouter from expo-router. Use our useNavigationHistory hook instead.",
+            },
+            {
+              name: "react-native",
+              importNames: ["Text"],
+              message: "Do not import Text from 'react-native'. Use the Ignite component with the tx prop instead.",
             },
           ],
         },
       ],
+    },
+  },
+
+  // React Native-only rules (scoped override)
+  // NOTE: eslint-plugin-react-native rules were being applied to web code (e.g., the console),
+  // triggering RN-only checks like react-native/no-raw-text in regular React. The plugin does not
+  // auto-detect platform, so we explicitly scope these rules to RN files and paths.
+  {
+    files: ["mobile/**/*.{js,ts,jsx,tsx}", "**/*.native.{js,ts,jsx,tsx}"],
+    rules: {
+      "react-native/no-unused-styles": "error",
+      "react-native/split-platform-components": "warn",
+      "react-native/no-inline-styles": "warn",
+      "react-native/no-color-literals": "off",
+      "react-native/no-raw-text": "error",
     },
   },
 

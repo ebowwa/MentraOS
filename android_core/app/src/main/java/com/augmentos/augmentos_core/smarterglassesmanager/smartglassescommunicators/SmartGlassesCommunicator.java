@@ -284,7 +284,16 @@ public abstract class SmartGlassesCommunicator {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
     }
-    
+
+    /**
+     * Disconnect from WiFi on the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void disconnectFromWifi() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "WiFi disconnect not implemented for this device");
+    }
+
     /**
      * Query gallery status from the smart glasses
      * Default implementation does nothing - specific communicators should override

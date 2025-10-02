@@ -286,7 +286,7 @@ export class AsgCameraApiClient {
             offset: data.data.offset,
             limit: data.data.limit,
           },
-        }
+        } as GalleryResponse
       } else {
         console.log(`[ASG Camera API] Invalid response structure:`, data)
         throw new Error("Invalid response structure from gallery endpoint")
@@ -327,7 +327,7 @@ export class AsgCameraApiClient {
       }
 
       const photos = response.data.photos
-      console.log(`[ASG Camera API] Found ${photos.length} photos (total: ${response.data.total_count})`)
+      console.log(`[ASG Camera API] Found ${photos.length} photos (total: ${(response.data as any).total_count})`)
 
       // Ensure each photo has proper URLs and detect AVIF files
       const processedPhotos = photos.map(photo => {
@@ -345,8 +345,8 @@ export class AsgCameraApiClient {
       console.log(`[ASG Camera API] Processed photos:`, processedPhotos)
       return {
         photos: processedPhotos,
-        hasMore: response.data.has_more || false,
-        totalCount: response.data.total_count || photos.length,
+        hasMore: (response.data as any).has_more || false,
+        totalCount: (response.data as any).total_count || photos.length,
       }
     } catch (error) {
       console.error(`[ASG Camera API] Error getting gallery photos:`, error)
@@ -574,7 +574,17 @@ export class AsgCameraApiClient {
       method: "GET",
     })
 
-    return response
+    return response as {
+      status: string
+      data: {
+        client_id: string
+        changed_files: PhotoInfo[]
+        deleted_files: string[]
+        server_time: number
+        total_changed: number
+        total_size: number
+      }
+    }
   }
 
   /**
@@ -595,68 +605,102 @@ export class AsgCameraApiClient {
       total_size: 0,
     }
 
-    // Process files sequentially to avoid overwhelming the network
-    // This is more reliable, especially on slower connections
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
+    // Process files in parallel batches for better performance
+    // Use controlled concurrency to avoid overwhelming the network
+    const CONCURRENCY_LIMIT = 1 // Process 3 files simultaneously
+    const deletePromises: Promise<void>[] = [] // Track delete operations for cleanup
 
-      // Report progress if callback provided - start of this file (0%)
-      if (onProgress) {
-        onProgress(i + 1, files.length, file.name, 0)
+    // Process files in batches
+    for (let i = 0; i < files.length; i += CONCURRENCY_LIMIT) {
+      const batch = files.slice(i, i + CONCURRENCY_LIMIT)
+      console.log(
+        `[ASG Camera API] Processing batch ${Math.floor(i / CONCURRENCY_LIMIT) + 1}/${Math.ceil(files.length / CONCURRENCY_LIMIT)}: ${batch.length} files`,
+      )
+
+      // Process batch in parallel
+      const batchPromises = batch.map(async (file, batchIndex) => {
+        const globalIndex = i + batchIndex
+
+        // Report progress if callback provided - start of this file (0%)
+        if (onProgress) {
+          onProgress(globalIndex + 1, files.length, file.name, 0)
+        }
+
+        try {
+          console.log(`[ASG Camera API] Downloading file ${globalIndex + 1}/${files.length}: ${file.name}`)
+
+          // Download file with progress tracking
+          const fileData = await this.downloadFile(file.name, includeThumbnails, fileProgress => {
+            if (onProgress) {
+              onProgress(globalIndex + 1, files.length, file.name, fileProgress)
+            }
+          })
+
+          // Combine file info with downloaded file paths
+          const downloadedFile = {
+            ...file,
+            filePath: fileData.filePath,
+            thumbnailPath: fileData.thumbnailPath,
+            mime_type: fileData.mime_type || file.mime_type,
+          }
+
+          console.log(`[ASG Camera API] Successfully downloaded: ${file.name}`)
+
+          // Schedule delete operation (non-blocking)
+          const deletePromise = this.deleteFilesFromServer([file.name])
+            .then(deleteResult => {
+              if (deleteResult.deleted.length > 0) {
+                console.log(`[ASG Camera API] Successfully deleted ${file.name} from glasses`)
+              } else if (deleteResult.failed.length > 0) {
+                console.warn(`[ASG Camera API] Failed to delete ${file.name} from glasses, but keeping downloaded file`)
+              }
+            })
+            .catch(deleteError => {
+              // Log the error but don't fail the sync - the file was downloaded successfully
+              console.warn(`[ASG Camera API] Error deleting ${file.name} from glasses (non-fatal):`, deleteError)
+            })
+
+          deletePromises.push(deletePromise)
+
+          return {downloadedFile, fileSize: file.size}
+        } catch (error) {
+          console.error(`[ASG Camera API] Failed to download ${file.name}:`, error)
+          return {error: file.name}
+        }
+      })
+
+      // Wait for batch to complete
+      const batchResults = await Promise.all(batchPromises)
+
+      // Process batch results
+      for (const result of batchResults) {
+        if ("downloadedFile" in result && result.downloadedFile) {
+          results.downloaded.push(result.downloadedFile)
+          results.total_size += result.fileSize || 0
+        } else if ("error" in result) {
+          results.failed.push(result.error)
+        }
       }
 
-      try {
-        console.log(`[ASG Camera API] Downloading file ${i + 1}/${files.length}: ${file.name}`)
-
-        // Pass a progress callback to downloadFile
-        const fileData = await this.downloadFile(file.name, includeThumbnails, fileProgress => {
-          if (onProgress) {
-            onProgress(i + 1, files.length, file.name, fileProgress)
-          }
-        })
-        results.total_size += file.size
-
-        // Combine file info with downloaded file paths
-        const downloadedFile = {
-          ...file,
-          filePath: fileData.filePath,
-          thumbnailPath: fileData.thumbnailPath,
-          mime_type: fileData.mime_type || file.mime_type,
-        }
-
-        results.downloaded.push(downloadedFile)
-        console.log(`[ASG Camera API] Successfully downloaded: ${file.name}`)
-
-        // Delete this single file from the glasses immediately after successful download
-        try {
-          console.log(`[ASG Camera API] Deleting ${file.name} from glasses after successful download`)
-          const deleteResult = await this.deleteFilesFromServer([file.name])
-          if (deleteResult.deleted.length > 0) {
-            console.log(`[ASG Camera API] Successfully deleted ${file.name} from glasses`)
-          } else if (deleteResult.failed.length > 0) {
-            console.warn(`[ASG Camera API] Failed to delete ${file.name} from glasses, but keeping downloaded file`)
-          }
-        } catch (deleteError) {
-          // Log the error but don't fail the sync - the file was downloaded successfully
-          console.warn(`[ASG Camera API] Error deleting ${file.name} from glasses (non-fatal):`, deleteError)
-        }
-
-        // Small delay between downloads to avoid overwhelming the server
-        // Shorter delay than before since we're already sequential
-        if (i < files.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 50))
-        }
-      } catch (error) {
-        console.error(`[ASG Camera API] Failed to download ${file.name}:`, error)
-        results.failed.push(file.name)
+      // Small delay between batches to prevent overwhelming the server
+      if (i + CONCURRENCY_LIMIT < files.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
 
+    // Wait for all delete operations to complete (non-blocking for sync completion)
+    Promise.all(deletePromises).catch(error => {
+      console.warn(`[ASG Camera API] Some delete operations failed:`, error)
+    })
+
+    console.log(
+      `[ASG Camera API] Batch sync completed: ${results.downloaded.length} downloaded, ${results.failed.length} failed`,
+    )
     return results
   }
 
   /**
-   * Delete files from server after successful sync
+   * Delete files from server
    */
   async deleteFilesFromServer(fileNames: string[]): Promise<{
     deleted: string[]
@@ -690,7 +734,10 @@ export class AsgCameraApiClient {
         return {deleted, failed}
       }
 
-      return response
+      return response as {
+        deleted: string[]
+        failed: string[]
+      }
     } catch (error) {
       console.error("Failed to delete files from server:", error)
       return {deleted: [], failed: fileNames}
@@ -709,7 +756,11 @@ export class AsgCameraApiClient {
       method: "GET",
     })
 
-    return response
+    return response as {
+      total_files: number
+      total_size: number
+      last_modified: number
+    }
   }
 
   /**
@@ -758,7 +809,16 @@ export class AsgCameraApiClient {
           console.log(`[ASG Camera API] Download started for ${filename}, size: ${res.contentLength}`)
         },
         progress: res => {
-          const percentage = Math.round((res.bytesWritten / res.contentLength) * 100)
+          // Validate progress data to prevent negative percentages
+          const contentLength = res.contentLength || 0
+          const bytesWritten = res.bytesWritten || 0
+
+          let percentage = 0
+          if (contentLength > 0 && bytesWritten >= 0) {
+            percentage = Math.round((bytesWritten / contentLength) * 100)
+            // Clamp percentage between 0 and 100
+            percentage = Math.max(0, Math.min(100, percentage))
+          }
 
           // Call the progress callback if provided - now reports all progress
           if (onProgress) {
@@ -827,7 +887,7 @@ export class AsgCameraApiClient {
           // It detects video files and automatically generates/serves thumbnails instead of the full video
           const thumbResult = await RNFS.downloadFile({
             fromUrl: `${this.baseUrl}/api/photo?file=${encodeURIComponent(filename)}`,
-            toFile: localThumbnailPath!,
+            toFile: localThumbnailPath as string,
             headers: {
               "Accept": "image/*",
               "User-Agent": "MentraOS-Mobile/1.0",
@@ -851,7 +911,7 @@ export class AsgCameraApiClient {
           )
 
           if (thumbResult.statusCode === 200) {
-            thumbnailPath = localThumbnailPath
+            thumbnailPath = localThumbnailPath as string
             console.log(`[ASG Camera API] Successfully downloaded thumbnail to: ${thumbnailPath}`)
 
             // Verify the file exists

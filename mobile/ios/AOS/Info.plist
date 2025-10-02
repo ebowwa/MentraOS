@@ -86,8 +86,10 @@
     <string>MentraOS uses your location to display nearby points of interest, weather updates, and navigation directions on your smart glasses. For example, when you're walking, the app can show restaurants within 100 meters or provide turn-by-turn directions to your destination on your glasses display.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>MentraOS uses your microphone to enable the 'Hey Mira' AI assistant and provide live captions for deaf and hard-of-hearing users on smart glasses. For example, you can say 'Hey Mira, what's on my calendar today?' or the app can caption conversations in real-time on your glasses display.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Allow MentraOS to save photos from your glasses.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app needs access to your photo library to provide you with photo based information on your glasses.</string>
+    <string>Allow MentraOS to save photos from your glasses.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your reminders</string>
     <key>NSRemindersUsageDescription</key>

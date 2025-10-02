@@ -2,29 +2,35 @@ import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useDisplayStore} from "@/stores/display"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
-import Canvas, {Image as CanvasImage, ImageData} from "react-native-canvas"
+import {useState, useEffect, useRef} from "react"
+import {View, ViewStyle, TextStyle} from "react-native"
+import Canvas, {Image as CanvasImage} from "react-native-canvas"
+import {Text} from "@/components/ignite"
 
 interface GlassesDisplayMirrorProps {
   fallbackMessage?: string
   containerStyle?: any
   fullscreen?: boolean
+  demo?: boolean
+  demoText?: string
 }
 
 const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   fallbackMessage = "No display data available",
   containerStyle,
   fullscreen = false,
+  demo = false,
+  demoText = "Simulated Glasses Display",
 }) => {
   const {themed} = useAppTheme()
-  const [processedImageUri, setProcessedImageUri] = useState<string | null>(null)
   const canvasRef = useRef<Canvas>(null)
   const containerRef = useRef<View | null>(null)
   const [containerWidth, setContainerWidth] = useState<number | null>(null)
   const {status} = useCoreStatus()
   const {currentEvent} = useDisplayStore()
-  const layout = currentEvent.layout
+
+  // Use demo layout if in demo mode, otherwise use real layout
+  const layout = demo ? {layoutType: "text_wall", text: demoText} : currentEvent.layout
 
   const processBitmap = async () => {
     if (layout?.layoutType !== "bitmap_view" || !layout.data) {
@@ -95,9 +101,10 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     // if text contains $GBATT$, replace with battery level
     if (text.includes("$GBATT$")) {
       const batteryLevel = status.glasses_info?.battery_level
-      if (batteryLevel) {
-        return text.replace("$GBATT$", batteryLevel.toString() + "%")
+      if (typeof batteryLevel === "number" && batteryLevel >= 0) {
+        return text.replace("$GBATT$", `${batteryLevel}%`)
       }
+      return text.replace("$GBATT$", "")
     }
     return text
   }
@@ -188,7 +195,9 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
     )
   }
 
-  const content = <>{renderLayout(layout, themed($glassesText), canvasRef, containerRef, setContainerWidth)}</>
+  // Use green text for fullscreen, normal text color for non-fullscreen
+  const textStyle = fullscreen ? themed($glassesTextFullscreen) : themed($glassesText)
+  const content = <>{renderLayout(layout, textStyle, canvasRef, containerRef, setContainerWidth)}</>
 
   if (fullscreen) {
     return <View style={themed($glassesScreenFullscreen)}>{content}</View>
@@ -200,7 +209,7 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 140,
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
   borderRadius: 10,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,
@@ -208,17 +217,23 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderColor: colors.border,
 })
 
-const $glassesScreenFullscreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $glassesScreenFullscreen: ThemedStyle<ViewStyle> = () => ({
   backgroundColor: "transparent",
   minHeight: 120,
   padding: 16,
   width: "100%",
 })
 
-const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
-  // color: colors.text,
+const $glassesText: ThemedStyle<TextStyle> = ({colors, typography}) => ({
+  color: colors.text,
+  fontFamily: typography.fonts.glassesMirror.normal,
+  fontSize: 14,
+  fontWeight: 600,
+})
+
+const $glassesTextFullscreen: ThemedStyle<TextStyle> = ({typography}) => ({
   color: "#00ff88aa",
-  fontFamily: "Montserrat-Regular",
+  fontFamily: typography.fonts.glassesMirror.normal,
   fontSize: 14,
   fontWeight: 600,
 })
@@ -236,31 +251,16 @@ const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   opacity: 0.5,
 })
 
-const styles = StyleSheet.create({
+const styles = {
   cardContent: {
-    fontFamily: "Montserrat-Regular",
+    fontFamily: "glassesMirror",
     fontSize: 16,
   },
   cardTitle: {
-    fontFamily: "Montserrat-Bold",
+    fontFamily: "glassesMirror",
     fontSize: 18,
     marginBottom: 5,
   },
-  emptyTextWall: {
-    alignItems: "center",
-    borderColor: "#00FF00",
-    borderStyle: "dashed",
-    borderWidth: 1,
-    height: 100,
-    justifyContent: "center",
-    width: "100%",
-  },
-  glassesDisplayContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    width: "100%",
-  },
-})
+}
 
 export default GlassesDisplayMirror

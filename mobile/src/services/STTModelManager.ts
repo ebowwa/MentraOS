@@ -1,10 +1,9 @@
 import RNFS from "react-native-fs"
 import {Platform} from "react-native"
 import {NativeModules} from "react-native"
-import {TarBz2Extractor} from "./TarBz2Extractor"
 import bridge from "@/bridge/MantleBridge"
 
-const {BridgeModule, FileProviderModule} = NativeModules
+const {FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -307,7 +306,10 @@ class STTModelManager {
         console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
         try {
           onExtractionProgress?.({percentage: 25})
-          await bridge.extractTarBz2(tempPath, finalPath)
+          const extractionResult = await bridge.extractTarBz2(tempPath, finalPath)
+          if (!extractionResult) {
+            throw new Error("Native extraction returned failure status")
+          }
           onExtractionProgress?.({percentage: 90})
           console.log("Native extraction completed")
         } catch (extractError) {
@@ -323,7 +325,10 @@ class STTModelManager {
           console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
           try {
             onExtractionProgress?.({percentage: 25})
-            await nativeModule.extractTarBz2(tempPath, finalPath)
+            const extractionResult = await nativeModule.extractTarBz2(tempPath, finalPath)
+            if (!extractionResult) {
+              throw new Error("Native extraction returned failure status")
+            }
             onExtractionProgress?.({percentage: 90})
             console.log("Native extraction completed")
           } catch (extractError) {

@@ -1,4 +1,3 @@
-import React from "react"
 import {View, TouchableOpacity, ViewStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -10,8 +9,8 @@ import bridge from "@/bridge/MantleBridge"
 
 export const OfflineModeButton: React.FC = () => {
   const {theme, themed} = useAppTheme()
-  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.OFFLINE_MODE)
-  const [offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
+  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
     SETTINGS_KEYS.offline_captions_app_running,
   )
   const {stopAllApps} = useAppStatus()
@@ -45,7 +44,7 @@ export const OfflineModeButton: React.FC = () => {
       ],
       {
         iconName: offlineMode ? "wifi" : "wifi-off",
-        iconColor: theme.colors.tint,
+        iconColor: theme.colors.icon,
       },
     )
   }
@@ -53,11 +52,7 @@ export const OfflineModeButton: React.FC = () => {
   return (
     <View style={themed($container)}>
       <TouchableOpacity onPress={handlePress} style={themed($button)}>
-        <MaterialCommunityIcons
-          name={offlineMode ? "wifi-off" : "wifi"}
-          size={24}
-          color={offlineMode ? theme.colors.text : theme.colors.tint}
-        />
+        <MaterialCommunityIcons name={offlineMode ? "wifi-off" : "wifi"} size={24} color={theme.colors.icon} />
       </TouchableOpacity>
     </View>
   )

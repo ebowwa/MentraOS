@@ -6,6 +6,7 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.managers.K900HardwareManager;
+import com.augmentos.asg_client.io.hardware.managers.StandardHardwareManager;
 
 /**
  * Factory class for creating the appropriate IHardwareManager implementation
@@ -15,7 +16,7 @@ public class HardwareManagerFactory {
     private static final String TAG = "HardwareManagerFactory";
     
     private static IHardwareManager instance;
-    
+
     /**
      * Get the singleton instance of the hardware manager appropriate for this device.
      * 
@@ -37,43 +38,45 @@ public class HardwareManagerFactory {
      * @return A new IHardwareManager implementation
      */
     private static IHardwareManager createHardwareManager(Context context) {
-        if (isK900Device()) {
-            Log.d(TAG, "🔧 Detected K900 device - creating K900HardwareManager");
-            return new K900HardwareManager(context);
-        } else {
-            Log.d(TAG, "🔧 Generic device detected - creating BaseHardwareManager");
-            return new BaseHardwareManager(context);
+        DeviceType deviceType = detectDeviceType();
+        Log.d(TAG, "🔧 Hardware manager selection: " + deviceType);
+
+        switch (deviceType) {
+            case K900:
+                return new K900HardwareManager(context);
+            case STANDARD_ANDROID:
+                return new StandardHardwareManager(context);
+            default:
+                return new BaseHardwareManager(context);
         }
     }
-    
+
     /**
-     * Detect if this is a K900 device.
-     * 
-     * @return true if running on K900 hardware, false otherwise
+     * Detect the device platform so the appropriate hardware manager can be used.
      */
-    private static boolean isK900Device() {
-        // TODO: Implement proper K900 detection logic
-        // For now, always return true as requested
-        // In production, this should check:
-        // - Build.MANUFACTURER
-        // - Build.MODEL
-        // - Build.DEVICE
-        // - System properties
-        // - Presence of K900-specific hardware features
-        
-        Log.d(TAG, "Device detection:");
+    private static DeviceType detectDeviceType() {
+        Log.d(TAG, "Device fingerprint:");
         Log.d(TAG, "  Manufacturer: " + Build.MANUFACTURER);
+        Log.d(TAG, "  Brand: " + Build.BRAND);
         Log.d(TAG, "  Model: " + Build.MODEL);
         Log.d(TAG, "  Device: " + Build.DEVICE);
         Log.d(TAG, "  Product: " + Build.PRODUCT);
         Log.d(TAG, "  Hardware: " + Build.HARDWARE);
-        
-        // TODO: Replace with actual K900 detection
-        // For now, always assume K900 as requested
-        boolean isK900 = true;
-        
-        Log.d(TAG, "K900 device detected: " + isK900);
-        return isK900;
+
+        final String model = Build.MODEL != null ? Build.MODEL.toLowerCase() : "";
+        final String product = Build.PRODUCT != null ? Build.PRODUCT.toLowerCase() : "";
+        final String device = Build.DEVICE != null ? Build.DEVICE.toLowerCase() : "";
+        final String brand = Build.BRAND != null ? Build.BRAND.toLowerCase() : "";
+
+        if (model.contains("k900") || product.contains("k900") || device.contains("k900")) {
+            return DeviceType.K900;
+        }
+
+        if (brand.contains("google") || model.contains("pixel") || device.contains("generic")) {
+            return DeviceType.STANDARD_ANDROID;
+        }
+
+        return DeviceType.UNKNOWN;
     }
     
     /**
@@ -94,5 +97,11 @@ public class HardwareManagerFactory {
      */
     public static synchronized boolean hasInstance() {
         return instance != null;
+    }
+
+    private enum DeviceType {
+        K900,
+        STANDARD_ANDROID,
+        UNKNOWN
     }
 }

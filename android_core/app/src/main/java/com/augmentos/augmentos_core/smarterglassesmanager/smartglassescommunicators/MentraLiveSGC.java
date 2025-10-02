@@ -224,6 +224,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         ConcurrentHashMap<Integer, byte[]> receivedPackets;
         long startTime;
         boolean isComplete;
+        boolean isAnnounced;
 
         FileTransferSession(String fileName, int fileSize) {
             this.fileName = fileName;
@@ -233,6 +234,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             this.receivedPackets = new ConcurrentHashMap<>();
             this.startTime = System.currentTimeMillis();
             this.isComplete = false;
+            this.isAnnounced = false;
         }
 
         boolean addPacket(int index, byte[] data) {
@@ -249,6 +251,27 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 return true;
             }
             return false;
+        }
+        
+        // Check if this is the final packet (highest index we expect)
+        boolean isFinalPacket(int index) {
+            return index == (totalPackets - 1);
+        }
+        
+        // Check if we should trigger completion check (either complete or final packet received)
+        boolean shouldCheckCompletion(int receivedIndex) {
+            return isComplete || isFinalPacket(receivedIndex);
+        }
+        
+        // Get list of missing packet indices
+        List<Integer> getMissingPackets() {
+            List<Integer> missing = new ArrayList<>();
+            for (int i = 0; i < totalPackets; i++) {
+                if (!receivedPackets.containsKey(i)) {
+                    missing.add(i);
+                }
+            }
+            return missing;
         }
 
         byte[] assembleFile() {
@@ -1414,6 +1437,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Process data received from the glasses
      */
     private void processReceivedData(byte[] data, int size) {
+        Log.d(TAG, "Processing received data: " + bytesToHex(data));
+
         // Check if we have enough data
         if (data == null || size < 1) {
             Log.w(TAG, "Received empty or invalid data packet");
@@ -1535,6 +1560,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         switch (type) {
+            case "file_announce":
+                handleFileTransferAnnouncement(json);
+                break;
+            case "transfer_timeout":
+                handleTransferTimeout(json);
+                break;
             case "ble_photo_ready":
                 processBlePhotoReady(json);
                 break;
@@ -1998,6 +2029,70 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error processing ble_photo_ready", e);
+        }
+    }
+
+    /**
+     * Handle transfer timeout notification from glasses
+     */
+    private void handleTransferTimeout(JSONObject json) {
+        try {
+            String fileName = json.optString("fileName", "");
+            
+            Log.e(TAG, "⏰ Transfer timeout notification received for: " + fileName);
+            
+            if (!fileName.isEmpty()) {
+                // Clean up any active transfer for this file
+                FileTransferSession session = activeFileTransfers.remove(fileName);
+                if (session != null) {
+                    Log.d(TAG, "🧹 Cleaned up timed out transfer session for: " + fileName);
+                    Log.d(TAG, "📊 Transfer stats - Received: " + session.receivedPackets.size() + "/" + session.totalPackets + " packets");
+                }
+                
+                // Clean up any BLE photo transfer
+                String bleImgId = fileName;
+                int dotIndex = bleImgId.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    bleImgId = bleImgId.substring(0, dotIndex);
+                }
+                BlePhotoTransfer photoTransfer = blePhotoTransfers.remove(bleImgId);
+                if (photoTransfer != null) {
+                    Log.d(TAG, "🧹 Cleaned up timed out BLE photo transfer for: " + bleImgId);
+                }
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "⏰ Error processing transfer timeout notification", e);
+        }
+    }
+    
+    /**
+     * Handle file transfer announcement from glasses
+     */
+    private void handleFileTransferAnnouncement(JSONObject json) {
+        try {
+            // Extract data directly from JSON (same format as version_info)
+            String fileName = json.optString("fileName", "");
+            int totalPackets = json.optInt("totalPackets", 0);
+            int fileSize = json.optInt("fileSize", 0);
+            
+            Log.d(TAG, "📢 File transfer announcement: " + fileName + ", " + totalPackets + " packets, " + fileSize + " bytes");
+            
+            if (fileName.isEmpty() || totalPackets <= 0) {
+                Log.w(TAG, "📢 Invalid file transfer announcement");
+                return;
+            }
+            
+            // Create announced file transfer session
+            FileTransferSession session = new FileTransferSession(fileName, fileSize);
+            // Override calculated packet count with announced count for accuracy
+            session.totalPackets = totalPackets;
+            activeFileTransfers.put(fileName, session);
+            
+            Log.d(TAG, "📢 Prepared to receive " + totalPackets + " packets for " + fileName);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "📢 Error processing file transfer announcement", e);
         }
     }
 
@@ -3426,6 +3521,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
 
+    /**
+     * Disconnect from WiFi on the glasses
+     */
+    @Override
+    public void disconnectFromWifi() {
+        Log.d(TAG, "📶 Sending WiFi disconnect command to glasses");
+
+        try {
+            // Send WiFi disconnect command to the ASG client
+            JSONObject wifiCommand = new JSONObject();
+            wifiCommand.put("type", "disconnect_wifi");
+            sendJson(wifiCommand, true);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi disconnect JSON", e);
+        }
+    }
+
     @Override
     public void sendHotspotState(boolean enabled) {
         Log.d(TAG, "🔥 Sending hotspot state to glasses - enabled: " + enabled);
@@ -3539,29 +3651,45 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             // Add packet to session
             boolean added = photoTransfer.session.addPacket(packetInfo.packIndex, packetInfo.data);
 
-            if (added && photoTransfer.session.isComplete) {
-                long transferEndTime = System.currentTimeMillis();
-                long totalDuration = transferEndTime - photoTransfer.phoneStartTime;
-                long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ?
-                    (transferEndTime - photoTransfer.bleTransferStartTime) : 0;
+            // Check completion when final packet arrives or transfer is complete
+            if (added && photoTransfer.session.shouldCheckCompletion(packetInfo.packIndex)) {
+                if (photoTransfer.session.isComplete) {
+                    // Transfer is complete - process successfully
+                    long transferEndTime = System.currentTimeMillis();
+                    long totalDuration = transferEndTime - photoTransfer.phoneStartTime;
+                    long bleTransferDuration = photoTransfer.bleTransferStartTime > 0 ?
+                        (transferEndTime - photoTransfer.bleTransferStartTime) : 0;
 
-                Log.d(TAG, "✅ BLE photo transfer complete: " + packetInfo.fileName);
-                Log.d(TAG, "⏱️ Total duration (request to complete): " + totalDuration + "ms");
-                Log.d(TAG, "⏱️ Glasses compression: " + photoTransfer.glassesCompressionDurationMs + "ms");
-                if (bleTransferDuration > 0) {
-                    Log.d(TAG, "⏱️ BLE transfer duration: " + bleTransferDuration + "ms");
-                    Log.d(TAG, "📊 Transfer rate: " + (packetInfo.fileSize * 1000 / bleTransferDuration) + " bytes/sec");
+                    Log.d(TAG, "✅ BLE photo transfer complete: " + packetInfo.fileName);
+                    Log.d(TAG, "⏱️ Total duration (request to complete): " + totalDuration + "ms");
+                    Log.d(TAG, "⏱️ Glasses compression: " + photoTransfer.glassesCompressionDurationMs + "ms");
+                    if (bleTransferDuration > 0) {
+                        Log.d(TAG, "⏱️ BLE transfer duration: " + bleTransferDuration + "ms");
+                        Log.d(TAG, "📊 Transfer rate: " + (packetInfo.fileSize * 1000 / bleTransferDuration) + " bytes/sec");
+                    }
+
+                    // Get complete image data (AVIF or JPEG)
+                    byte[] imageData = photoTransfer.session.assembleFile();
+                    if (imageData != null) {
+                        // Process and upload the photo
+                        processAndUploadBlePhoto(photoTransfer, imageData);
+                    }
+
+                    // Send completion confirmation to glasses
+                    sendTransferCompleteConfirmation(packetInfo.fileName, true);
+
+                    // Clean up - use the bleImgId without extension
+                    blePhotoTransfers.remove(bleImgId);
+                } else {
+                    // Final packet received but transfer incomplete - tell glasses to retry
+                    List<Integer> missingPackets = photoTransfer.session.getMissingPackets();
+                    Log.e(TAG, "❌ BLE photo transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
+                    Log.e(TAG, "❌ Telling glasses to retry entire transfer");
+
+                    // Tell glasses transfer failed, they will retry
+                    sendTransferCompleteConfirmation(packetInfo.fileName, false);
+                    blePhotoTransfers.remove(bleImgId);
                 }
-
-                // Get complete image data (AVIF or JPEG)
-                byte[] imageData = photoTransfer.session.assembleFile();
-                if (imageData != null) {
-                    // Process and upload the photo
-                    processAndUploadBlePhoto(photoTransfer, imageData);
-                }
-
-                // Clean up - use the bleImgId without extension
-                blePhotoTransfers.remove(bleImgId);
             }
 
             return; // Exit after handling BLE photo
@@ -3578,33 +3706,109 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                   " (" + packetInfo.fileSize + " bytes, " + session.totalPackets + " packets)");
         }
 
-        // Add packet to session
-        boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
+            // Add packet to session
+            boolean added = session.addPacket(packetInfo.packIndex, packetInfo.data);
 
-        if (added) {
-            // BES chip handles ACKs automatically
-            Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
+            if (added) {
+                // BES chip handles ACKs automatically
+                Log.d(TAG, "📦 Packet " + packetInfo.packIndex + " received successfully (BES will auto-ACK)");
 
-            // Check if transfer is complete
-            if (session.isComplete) {
-                Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
+                // Check completion when final packet arrives or transfer is complete
+                if (session.shouldCheckCompletion(packetInfo.packIndex)) {
+                    if (session.isComplete) {
+                        // Transfer is complete - process successfully
+                        Log.d(TAG, "📦 File transfer complete: " + packetInfo.fileName);
 
-                // Assemble and save the file
-                byte[] fileData = session.assembleFile();
-                if (fileData != null) {
-                    saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                        // Assemble and save the file
+                        byte[] fileData = session.assembleFile();
+                        if (fileData != null) {
+                            saveReceivedFile(packetInfo.fileName, fileData, packetInfo.fileType);
+                        }
+
+                        // Send completion confirmation to glasses
+                        sendTransferCompleteConfirmation(packetInfo.fileName, true);
+
+                        // Remove from active transfers
+                        activeFileTransfers.remove(packetInfo.fileName);
+                    } else {
+                        // Final packet received but transfer incomplete - tell glasses to retry
+                        List<Integer> missingPackets = session.getMissingPackets();
+                        Log.e(TAG, "❌ File transfer incomplete after final packet. Missing " + missingPackets.size() + " packets: " + missingPackets);
+                        Log.e(TAG, "❌ Telling glasses to retry entire transfer");
+
+                        // Tell glasses transfer failed, they will retry
+                        sendTransferCompleteConfirmation(packetInfo.fileName, false);
+                        activeFileTransfers.remove(packetInfo.fileName);
+                    }
                 }
-
-                // Remove from active transfers
-                activeFileTransfers.remove(packetInfo.fileName);
+            } else {
+                // Packet already received or invalid index
+                Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
+                // BES chip handles ACKs automatically
             }
-        } else {
-            // Packet already received or invalid index
-            Log.w(TAG, "📦 Duplicate or invalid packet: " + packetInfo.packIndex);
-            // BES chip handles ACKs automatically
-        }
     }
 
+    /**
+     * Request missing packets from glasses
+     */
+    private void requestMissingPackets(String fileName, List<Integer> missingPackets) {
+        if (missingPackets.isEmpty()) {
+            Log.d(TAG, "✅ No missing packets for " + fileName + " - should not have been called");
+            return;
+        }
+        
+        // Check if too many packets are missing (>50% = likely failure)
+        FileTransferSession session = activeFileTransfers.get(fileName);
+        if (session != null && missingPackets.size() > session.totalPackets / 2) {
+            Log.e(TAG, "❌ Too many missing packets (" + missingPackets.size() + "/" + session.totalPackets + ") for " + fileName + " - treating as failed transfer");
+            
+            // Send failure confirmation to glasses
+            sendTransferCompleteConfirmation(fileName, false);
+            
+            // Clean up the failed session
+            activeFileTransfers.remove(fileName);
+            return;
+        }
+        
+        Log.d(TAG, "🔍 Requesting retransmission of " + missingPackets.size() + " missing packets for " + fileName + ": " + missingPackets);
+        
+        try {
+            // Send missing packets request to glasses
+            JSONObject request = new JSONObject();
+            request.put("type", "request_missing_packets");
+            request.put("fileName", fileName);
+            
+            JSONArray missingArray = new JSONArray();
+            for (Integer packetIndex : missingPackets) {
+                missingArray.put(packetIndex);
+            }
+            request.put("missingPackets", missingArray);
+            
+            sendJson(request, true); // Wake up glasses for this request
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating missing packets request", e);
+        }
+    }
+    
+    /**
+     * Send transfer completion confirmation to glasses
+     */
+    private void sendTransferCompleteConfirmation(String fileName, boolean success) {
+        try {
+            JSONObject confirmation = new JSONObject();
+            confirmation.put("type", "transfer_complete");
+            confirmation.put("fileName", fileName);
+            confirmation.put("success", success);
+            confirmation.put("timestamp", System.currentTimeMillis());
+            
+            Log.d(TAG, (success ? "✅" : "❌") + " Sending transfer completion confirmation for: " + fileName + " (success: " + success + ")");
+            sendJson(confirmation, true);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating transfer completion confirmation", e);
+        }
+    }
 
     /**
      * Save received file to storage
@@ -3723,16 +3927,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error saving BLE photo locally", e);
         }
 
-        // Use the per-request auth token if available, otherwise empty string
-        // Do NOT use core token - that's for MentraOS cloud authentication only
-        String authToken = transfer.authToken != null ? transfer.authToken : "";
+        // Get core token for authentication
+        String coreToken = getCoreToken();
 
         // Use BlePhotoUploadService to handle decoding and upload
         BlePhotoUploadService.processAndUploadPhoto(
             imageData,
             transfer.requestId,
             transfer.webhookUrl,
-            authToken,
+            coreToken,
             new BlePhotoUploadService.UploadCallback() {
                 @Override
                 public void onSuccess(String requestId) {

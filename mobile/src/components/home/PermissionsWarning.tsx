@@ -1,13 +1,11 @@
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
-import {useAppTheme} from "@/utils/useAppTheme"
 import {useFocusEffect} from "@react-navigation/native"
 import NotificationOn from "assets/icons/component/NotificationOn"
 import {useCallback, useRef, useState} from "react"
-import {Animated, Platform, TouchableOpacity, View} from "react-native"
+import {Animated, Platform, TouchableOpacity} from "react-native"
 
 export default function PermissionsWarning() {
-  const {themed, theme} = useAppTheme()
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current

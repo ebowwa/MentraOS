@@ -13,11 +13,11 @@ import { newSDKUpdate } from "src/constants/messages";
 
 import {
   WebhookRequest,
-  WebhookRequestType,
   WebhookResponse,
   SessionWebhookRequest,
   StopWebhookRequest,
   ToolCall,
+  WebhookRequestType,
 } from "../../types";
 
 import { Logger } from "pino";
@@ -290,11 +290,11 @@ export class AppServer {
             const cloudHost =
               process.env.CLOUD_PUBLIC_HOST_NAME ||
               "mentra-cloud-server.ngrok.app";
-            const response = await axios.get(`https://${cloudHost}/api/sdk`);
+            const response = await axios.get(
+              `https://${cloudHost}/api/sdk/version`,
+            );
             if (response.data && response.data.success && response.data.data) {
               latest = response.data.data.latest; // Changed from "recommended" to "latest"
-              this.logger.debug(`Latest SDK version from API: ${latest}`);
-              this.logger.debug(`Current SDK version: ${currentVersion}`);
             }
           } catch (fetchError) {
             this.logger.debug(
@@ -311,7 +311,7 @@ export class AppServer {
             this.logger.warn(newSDKUpdate(latest));
           }
         } catch (err) {
-          this.logger.debug({ err }, "Version check failed");
+          this.logger.error(err, "Version check failed");
         }
 
         resolve();
@@ -510,6 +510,7 @@ export class AppServer {
 
           // Keep track of the original session before removal
           // const session = this.activeSessions.get(sessionId);
+          const _session = this.activeSessions.get(sessionId);
 
           // Call onStop with a reconnection failure reason
           this.onStop(
@@ -616,7 +617,7 @@ export class AppServer {
         const userSessions: AppSession[] = [];
 
         // Look through all active sessions
-        this.activeSessions.forEach((session, _) => {
+        this.activeSessions.forEach((session, _sessionId) => {
           // Check if the session has this userId (not directly accessible)
           // We're relying on the webhook handler to have already verified this
           if (session.userId === userIdForSettings) {
@@ -725,24 +726,19 @@ export class AppServer {
       upload.single("photo"),
       async (req: any, res: any) => {
         try {
-          const { requestId, type } = req.body;
+          const { requestId, type, success, errorCode, errorMessage } =
+            req.body;
           const photoFile = req.file;
 
+          console.log("Received photo response: ", req.body);
+
           this.logger.info(
-            { requestId, type },
-            `📸 Received photo upload: ${requestId}`,
+            { requestId, type, success, errorCode },
+            `📸 Received photo response: ${requestId} (type: ${type})`,
           );
 
-          if (!photoFile) {
-            this.logger.error({ requestId }, "No photo file in upload");
-            return res.status(400).json({
-              success: false,
-              error: "No photo file provided",
-            });
-          }
-
           if (!requestId) {
-            this.logger.error("No requestId in photo upload");
+            this.logger.error("No requestId in photo response");
             return res.status(400).json({
               success: false,
               error: "No requestId provided",
@@ -759,6 +755,41 @@ export class AppServer {
             return res.status(404).json({
               success: false,
               error: "No active session found for this photo request",
+            });
+          }
+
+          // Handle error response (no photo file, but has error info)
+          if (type === "photo_error" || !success) {
+            // Create error response object
+            const errorResponse = {
+              requestId,
+              success: false as const,
+              error: {
+                code: errorCode || "UNKNOWN_ERROR",
+                message: errorMessage || "Unknown error occurred",
+              },
+            };
+
+            // Deliver error to the session (logging happens in camera module)
+            session.camera.handlePhotoError(errorResponse);
+
+            // Respond to ASG client
+            return res.json({
+              success: true,
+              requestId,
+              message: "Photo error received successfully",
+            });
+          }
+
+          // Handle successful photo upload
+          if (!photoFile) {
+            this.logger.error(
+              { requestId },
+              "No photo file in successful upload",
+            );
+            return res.status(400).json({
+              success: false,
+              error: "No photo file provided for successful upload",
             });
           }
 
@@ -782,10 +813,10 @@ export class AppServer {
             message: "Photo received successfully",
           });
         } catch (error) {
-          this.logger.error(error, "❌ Error handling photo upload");
+          this.logger.error(error, "❌ Error handling photo response");
           res.status(500).json({
             success: false,
-            error: "Internal server error processing photo upload",
+            error: "Internal server error processing photo response",
           });
         }
       },
@@ -815,7 +846,7 @@ export class AppServer {
   private findSessionByPhotoRequestId(
     requestId: string,
   ): AppSession | undefined {
-    for (const [_, session] of this.activeSessions) {
+    for (const [_sessionId, session] of this.activeSessions) {
       if (session.camera.hasPhotoPendingRequest(requestId)) {
         return session;
       }

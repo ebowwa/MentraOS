@@ -120,6 +120,10 @@ export {
   OpenDashboard,
   GlassesToCloudMessage,
   PhotoResponse,
+  PhotoErrorCode,
+  PhotoStage,
+  ConnectionState,
+  PhotoErrorDetails,
   RtmpStreamStatus,
   KeepAliveAck,
 } from "./types/messages/glasses-to-cloud";

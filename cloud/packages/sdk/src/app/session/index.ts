@@ -5,15 +5,11 @@
  * Handles real-time communication, event subscriptions, and display management.
  */
 import { WebSocket } from "ws";
-import { EventManager, EventData, StreamDataTypes } from "./events";
+import { EventManager, EventData } from "./events";
 import { LayoutManager } from "./layouts";
 import { SettingsManager } from "./settings";
 import { LocationManager } from "./modules/location";
-import {
-  CameraModule,
-  PhotoRequestOptions,
-  RtmpStreamOptions,
-} from "./modules/camera";
+import { CameraModule } from "./modules/camera";
 import { AudioManager } from "./modules/audio";
 import { ResourceTracker } from "../../utils/resource-tracker";
 import {
@@ -22,10 +18,7 @@ import {
   CloudToAppMessage,
   AppConnectionInit,
   AppSubscriptionUpdate,
-  PhotoRequest,
-  AudioPlayRequest,
   AudioPlayResponse,
-  AudioStopRequest,
   AppToCloudMessageType,
   CloudToAppMessageType,
 
@@ -56,16 +49,10 @@ import {
   AppConfig,
   validateAppConfig,
   AudioChunk,
-  isAudioChunk,
-  createTranscriptionStream,
-  createTranslationStream,
-  GlassesToCloudMessage,
-  PhotoResponse,
   VpsCoordinates,
   PhotoTaken,
   SubscriptionRequest,
   Capabilities,
-  PhotoData,
   CapabilitiesUpdate,
 } from "../../types";
 import { DashboardAPI } from "../../types/dashboard";
@@ -83,6 +70,7 @@ import {
   isManagedStreamStatus,
   isStreamStatusCheckResponse,
 } from "../../types/messages/cloud-to-app";
+import { SimpleStorage } from "./modules/simple-storage";
 
 /**
  * ⚙️ Configuration options for App Session
@@ -206,6 +194,8 @@ export class AppSession {
   public readonly camera: CameraModule;
   /** 🔊 Audio interface for audio playback */
   public readonly audio: AudioManager;
+  /** 🔐 Simple key-value storage interface */
+  public readonly simpleStorage: SimpleStorage;
 
   public readonly appServer: AppServer;
   public readonly logger: Logger;
@@ -352,6 +342,8 @@ export class AppSession {
       this, // Pass session reference
       this.logger.child({ module: "audio" }),
     );
+
+    this.simpleStorage = new SimpleStorage(this);
 
     this.location = new LocationManager(this, this.send.bind(this));
   }
@@ -1269,7 +1261,7 @@ export class AppSession {
           this.camera.handleStreamCheckResponse(message);
         } else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
-          const prevSettings = [...this.settingsData];
+          const _prevSettings = [...this.settingsData];
 
           // Update internal settings storage
           this.settingsData = message.settings || [];
@@ -1441,6 +1433,7 @@ export class AppSession {
           // Legacy photo response handling - now photos come directly via webhook
           // This branch can be removed in the future as all photos now go through /photo-upload
           this.logger.warn(
+            { message },
             "Received legacy photo response - photos should now come via /photo-upload webhook",
           );
         }
@@ -1559,7 +1552,7 @@ export class AppSession {
 
       // For specific stream types, perform targeted sanitization
       switch (streamType) {
-        case StreamType.TRANSCRIPTION:
+        case StreamType.TRANSCRIPTION: {
           // Ensure text field exists and is a string
           if (typeof (data as TranscriptionData).text !== "string") {
             return {
@@ -1570,8 +1563,9 @@ export class AppSession {
             };
           }
           break;
+        }
 
-        case StreamType.HEAD_POSITION:
+        case StreamType.HEAD_POSITION: {
           // Ensure position data has required numeric fields
           // Handle HeadPosition - Note the property position instead of x,y,z
           const pos = data as any;
@@ -1579,8 +1573,9 @@ export class AppSession {
             return { position: "up", timestamp: new Date() };
           }
           break;
+        }
 
-        case StreamType.BUTTON_PRESS:
+        case StreamType.BUTTON_PRESS: {
           // Ensure button type is valid
           const btn = data as any;
           if (!btn.buttonId || !btn.pressType) {
@@ -1591,6 +1586,7 @@ export class AppSession {
             };
           }
           break;
+        }
       }
 
       return data;
@@ -1889,7 +1885,7 @@ export class AppSession {
    * @param roomId - Optional room ID for room-based messaging
    * @returns Promise that resolves when message is sent
    */
-  async broadcastToAppUsers(payload: any, roomId?: string): Promise<void> {
+  async broadcastToAppUsers(payload: any, _roomId?: string): Promise<void> {
     try {
       const messageId = this.generateMessageId();
 
@@ -2115,3 +2111,4 @@ export {
   AudioPlayResult,
   SpeakOptions,
 } from "./modules/audio";
+export { SimpleStorage } from "./modules/simple-storage";

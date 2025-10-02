@@ -108,7 +108,10 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
       showAlert(
         "Download and enable local transcription",
         "Please download and enable local transcription to use offline apps",
-        [{text: "Go to settings", onPress: () => router.push("/settings/transcription")}],
+        [
+          {text: "Cancel", style: "cancel"},
+          {text: "Go to settings", onPress: () => router.push("/settings/transcription")},
+        ],
       )
       return
     }

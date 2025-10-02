@@ -1,7 +1,7 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity} from "react-native"
-import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Icon, Header, Checkbox, Button} from "@/components/ignite"
+import {useState, useEffect} from "react"
+import {View, TextInput, TouchableOpacity} from "react-native"
+import {useLocalSearchParams} from "expo-router"
+import {Screen, Icon, Header, Checkbox, Button, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
@@ -20,7 +20,7 @@ export default function WifiPasswordScreen() {
   const [ssid, setSsid] = useState(initialSsid)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberPassword, setRememberPassword] = useState(false)
+  const [rememberPassword, setRememberPassword] = useState(true)
   const [hasSavedPassword, setHasSavedPassword] = useState(false)
 
   // Load saved password when component mounts
@@ -164,7 +164,7 @@ const $label: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xs,
 })
 
-const $input: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $input: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   height: 50,
   borderWidth: 1,
   borderColor: colors.border,
@@ -181,7 +181,7 @@ const $passwordContainer: ThemedStyle<ViewStyle> = () => ({
   position: "relative",
 })
 
-const $passwordInput: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $passwordInput: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   flex: 1,
   height: 50,
   borderWidth: 1,

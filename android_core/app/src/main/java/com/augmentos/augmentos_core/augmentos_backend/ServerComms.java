@@ -29,12 +29,14 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import okhttp3.RequestBody;
-import okhttp3.Request;
-import okhttp3.OkHttpClient;
-import okhttp3.Callback;
-import okhttp3.Response;
 import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * ServerComms is the single facade for all WebSocket interactions in AugmentOS_Core.
@@ -628,7 +630,114 @@ public class ServerComms {
             Log.e(TAG, "Error building photo_response JSON", e);
         }
     }
+    
+    /**
+     * Sends a simplified photo error response message to the server
+     *
+     * @param requestId The request ID from the original photo request
+     * @param errorCode The error code (e.g., "CAMERA_INIT_FAILED", "PHONE_GLASSES_NOT_CONNECTED")
+     * @param errorMessage The error message
+     */
+    public void sendPhotoErrorResponse(String requestId, String errorCode, String errorMessage) {
+        try {
+            JSONObject errorResponse = new JSONObject();
+            errorResponse.put("type", "photo_response");
+            errorResponse.put("requestId", requestId);
+            errorResponse.put("success", false);
+            errorResponse.put("errorCode", errorCode);
+            errorResponse.put("errorMessage", errorMessage);
+            
+            // Send to cloud
+            wsManager.sendText(errorResponse.toString());
+            Log.e(TAG, "📡 SENT PHOTO ERROR TO CLOUD: " + errorResponse.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "❌ Error building photo error response JSON", e);
+        }
+    }
+    
+    /**
+     * Sends a photo error response directly to app webhook via HTTP POST
+     * This replaces the legacy WebSocket error response method
+     *
+     * @param requestId The request ID from the original photo request
+     * @param webhookUrl The webhook URL to send the error to
+     * @param authToken Auth token for webhook authentication
+     * @param errorCode The error code (e.g., "CAMERA_INIT_FAILED", "PHONE_GLASSES_NOT_CONNECTED")
+     * @param errorMessage The error message
+     */
+    public void sendPhotoErrorViaWebhook(String requestId, String webhookUrl, String authToken, 
+                                       String errorCode, String errorMessage) {
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            Log.e(TAG, "❌ Cannot send photo error via webhook - no webhook URL provided");
+            // Fallback to legacy WebSocket method
+            sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+            return;
+        }
+        
+        // Create a new thread for the webhook request
+        new Thread(() -> {
+            try {
+                Log.e(TAG, "📡 Sending photo error via webhook: " + webhookUrl + " for requestId: " + requestId);
+                
+                // Create multipart form request for error response
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                        .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                        .build();
 
+                RequestBody requestBody = new MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("requestId", requestId)
+                        .addFormDataPart("success", "false")
+                        .addFormDataPart("errorCode", errorCode)
+                        .addFormDataPart("errorMessage", errorMessage)
+                        .addFormDataPart("type", "photo_error")
+                        .build();
+
+                // Build request with optional Authorization header
+                Request.Builder requestBuilder = new Request.Builder()
+                        .url(webhookUrl)
+                        .post(requestBody);
+
+                // Add Authorization header if auth token is available
+                if (authToken != null && !authToken.isEmpty()) {
+                    requestBuilder.header("Authorization", "Bearer " + authToken);
+                    Log.d(TAG, "📡 Adding Authorization header to error webhook request for: " + requestId);
+                } else {
+                    Log.d(TAG, "📡 No auth token available for error webhook request: " + requestId);
+                }
+
+                Request request = requestBuilder.build();
+
+                Response response = client.newCall(request).execute();
+
+                if (response.isSuccessful()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    Log.d(TAG, "✅ Photo error sent successfully to webhook: " + webhookUrl);
+                    Log.d(TAG, "Response: " + responseBody);
+                } else {
+                    String errorBody = response.body() != null ? response.body().string() : "";
+                    Log.e(TAG, "❌ Photo error webhook failed with status: " + response.code());
+                    Log.e(TAG, "Error response: " + errorBody);
+                    
+                    // Fallback to legacy WebSocket method if webhook fails
+                    Log.w(TAG, "🔄 Falling back to legacy WebSocket error response");
+                    sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+                }
+
+                response.close();
+
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error sending photo error via webhook: " + webhookUrl, e);
+                
+                // Fallback to legacy WebSocket method on exception
+                Log.w(TAG, "🔄 Falling back to legacy WebSocket error response due to exception");
+                sendPhotoErrorResponse(requestId, errorCode, errorMessage);
+            }
+        }).start();
+    }
+    
     /**
      * Sends a video stream response message to the server
      *

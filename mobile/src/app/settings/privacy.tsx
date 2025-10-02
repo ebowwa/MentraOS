@@ -29,7 +29,7 @@ import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import {SETTINGS_KEYS, useSetting, useSettings, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
 
 export default function PrivacySettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -41,6 +41,7 @@ export default function PrivacySettingsScreen() {
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
   const [sensingEnabled, setSensingEnabled] = useSetting(SETTINGS_KEYS.sensing_enabled)
+  const setSetting = useSettingsStore(state => state.setSetting)
 
   // Check permissions when screen loads
   useEffect(() => {

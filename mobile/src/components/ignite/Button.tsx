@@ -19,7 +19,7 @@ const gradientBorderStyle: ViewStyle = {
   padding: 2,
 }
 
-type Presets = "default" | "filled" | "reversed" | "outlined"
+type Presets = "default" | "primary" | "secondary" | "accent" | "warning" | "destructive" | "outlined"
 
 export interface ButtonAccessoryProps {
   style: StyleProp<any>
@@ -134,9 +134,6 @@ export function Button(props: ButtonProps) {
   const {themed, theme} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
-  const gradientColors = theme.isDark
-    ? [theme.colors.buttonGradientEnd, theme.colors.buttonGradientEnd]
-    : [theme.colors.transparent, theme.colors.transparent]
   /**
    * @param {PressableStateCallbackType} root0 - The root object containing the pressed state.
    * @param {boolean} root0.pressed - The pressed state.
@@ -165,11 +162,6 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    // <LinearGradient
-    //   colors={gradientColors}
-    //   start={{x: 1, y: 0}}
-    //   end={{x: 0, y: 0}}
-    //   style={theme.isDark ? gradientBorderStyle : {}}>
     <Pressable
       style={$viewStyle}
       accessibilityRole="button"
@@ -200,7 +192,6 @@ export function Button(props: ButtonProps) {
         </View>
       )}
     </Pressable>
-    // </LinearGradient>
   )
 }
 
@@ -212,7 +203,6 @@ const $baseViewStyle: ThemedStyle<ViewStyle> = ({spacing, colors, isDark}) => ({
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.sm,
   overflow: "hidden",
-  backgroundColor: colors.buttonPrimary,
   // Add subtle border for light theme
   borderWidth: isDark ? 0 : 1,
   borderColor: isDark ? undefined : colors.border,
@@ -243,24 +233,50 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
   default: [
     $styles.row,
     $baseViewStyle,
-    // ({colors}) => ({
-    //   backgroundColor: colors.palette.primary100,
-    // }),
+    ({colors}) => ({
+      backgroundColor: colors.primary,
+    }),
   ],
-  filled: [$styles.row, $baseViewStyle],
-  reversed: [
+  primary: [
     $styles.row,
     $baseViewStyle,
     ({colors}) => ({
-      backgroundColor: colors.buttonPillIcon,
-      borderWidth: 0,
+      backgroundColor: colors.primary,
+    }),
+  ],
+  secondary: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.secondary,
+    }),
+  ],
+  accent: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.accent,
+    }),
+  ],
+  warning: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.accent,
+    }),
+  ],
+  destructive: [
+    $styles.row,
+    $baseViewStyle,
+    ({colors}) => ({
+      backgroundColor: colors.error,
     }),
   ],
   outlined: [
     $styles.row,
     $baseViewStyle,
     ({colors}) => ({
-      backgroundColor: colors.transparent,
+      backgroundColor: colors.palette.transparent,
       borderWidth: 1.5,
       borderColor: colors.textDim,
     }),
@@ -269,21 +285,30 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   default: [$baseTextStyle],
-  filled: [$baseTextStyle],
-  reversed: [$baseTextStyle, ({colors}) => ({color: colors.buttonPillIconText})],
+  primary: [$baseTextStyle],
+  secondary: [$baseTextStyle],
+  accent: [$baseTextStyle],
+  warning: [$baseTextStyle, ({colors}) => ({color: colors.palette.accent100})],
+  destructive: [$baseTextStyle, ({colors}) => ({color: colors.palette.angry600})],
   outlined: [$baseTextStyle, ({colors}) => ({color: colors.text})],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
-  default: ({colors, isDark}) => ({backgroundColor: isDark ? colors.palette.neutral200 : colors.palette.primary100}),
-  filled: ({colors}) => ({backgroundColor: colors.palette.neutral400}),
-  reversed: ({colors}) => ({opacity: 0.8}),
-  outlined: ({colors}) => ({backgroundColor: colors.palette.neutral100, opacity: 0.1}),
+  default: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  primary: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  secondary: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  accent: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  warning: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  destructive: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
+  outlined: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   default: () => ({opacity: 0.9}),
-  filled: () => ({opacity: 0.9}),
-  reversed: () => ({opacity: 0.9}),
-  outlined: () => ({opacity: 0.8}),
+  primary: () => ({opacity: 0.9}),
+  secondary: () => ({opacity: 0.9}),
+  accent: () => ({opacity: 0.9}),
+  warning: () => ({opacity: 0.9}),
+  destructive: () => ({opacity: 0.9}),
+  outlined: () => ({opacity: 0.9}),
 }
