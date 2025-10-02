@@ -9,7 +9,7 @@ import path from "path";
 import fs from "fs";
 import { AppSession } from "../session/index";
 import { createAuthMiddleware } from "../webview";
-import { newSDKUpdate } from "src/constants/messages";
+import { newSDKUpdate } from "../../constants/messages";
 
 import {
   WebhookRequest,
