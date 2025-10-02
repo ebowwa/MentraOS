@@ -1,7 +1,7 @@
-import React, {useState, useEffect, useCallback} from "react"
-import {ScrollView, View, ActivityIndicator, Alert, Platform, BackHandler} from "react-native"
+import {useState, useEffect, useCallback} from "react"
+import {ScrollView, View, ActivityIndicator, Platform, BackHandler} from "react-native"
 import bridge from "@/bridge/MantleBridge"
-import {Header, Screen, Text, Button} from "@/components/ignite"
+import {Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import ModelSelector from "@/components/settings/ModelSelector"
@@ -12,6 +12,7 @@ import STTModelManager from "@/services/STTModelManager"
 import showAlert from "@/utils/AlertUtils"
 import {useFocusEffect} from "@react-navigation/native"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 
 export default function TranscriptionSettingsScreen() {
   const {theme} = useAppTheme()
@@ -25,11 +26,51 @@ export default function TranscriptionSettingsScreen() {
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
+  const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
+  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
+    SETTINGS_KEYS.offline_captions_app_running,
+  )
   const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
     SETTINGS_KEYS.enforce_local_transcription,
   )
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
+
+  const {stopAllApps} = useAppStatus()
+
+  const handleToggleOfflineMode = () => {
+    const title = offlineMode ? "Disable Offline Mode?" : "Enable Offline Mode?"
+    const message = offlineMode
+      ? "Switching to online mode will close all offline-only apps and allow you to use all online apps."
+      : "Enabling offline mode will close all running online apps. You'll only be able to use apps that work without an internet connection, and all other apps will be shut down."
+    const confirmText = offlineMode ? "Go Online" : "Go Offline"
+
+    showAlert(
+      title,
+      message,
+      [
+        {text: "Cancel", style: "cancel"},
+        {
+          text: confirmText,
+          onPress: async () => {
+            if (!offlineMode) {
+              // If enabling offline mode, stop all running apps
+              await stopAllApps()
+            } else {
+              // If disabling offline mode, turn off offline captions
+              setOfflineCaptionsAppRunning(false)
+              bridge.toggleOfflineApps(false)
+            }
+            setOfflineMode(!offlineMode)
+          },
+        },
+      ],
+      {
+        iconName: offlineMode ? "wifi" : "wifi-off",
+        iconColor: theme.colors.icon,
+      },
+    )
+  }
 
   // Cancel download function
   const handleCancelDownload = async () => {
@@ -255,6 +296,15 @@ export default function TranscriptionSettingsScreen() {
           subtitle={translate("settings:bypassVADSubtitle")}
           value={bypassVadForDebugging}
           onValueChange={toggleBypassVadForDebugging}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={"Offline Mode"}
+          subtitle={"Toggle Offline mode. Offline Apps don't need internet to run."}
+          value={offlineMode}
+          onValueChange={handleToggleOfflineMode}
         />
 
         {
