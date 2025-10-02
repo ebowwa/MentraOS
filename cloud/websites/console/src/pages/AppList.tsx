@@ -9,6 +9,8 @@ import { useOrgStore } from "@/stores/orgs.store";
 import { useAppStore } from "@/stores/apps.store";
 import type { AppResponse } from "@/services/api.service";
 
+const DEBUG = false;
+
 const AppList: React.FC = () => {
   const navigate = useNavigate();
   const selectedOrgId = useOrgStore((s) => s.selectedOrgId);
@@ -47,15 +49,22 @@ const AppList: React.FC = () => {
         </div>
 
         {/* Debug summary for troubleshooting */}
-        <div className="text-xs text-muted-foreground mb-2">
-          <pre className="whitespace-pre-wrap">
-            {JSON.stringify(
-              { selectedOrgId, count: apps.length, loading, hasError: !!error },
-              null,
-              2,
-            )}
-          </pre>
-        </div>
+        {DEBUG && (
+          <div className="text-xs text-muted-foreground mb-2">
+            <pre className="whitespace-pre-wrap">
+              {JSON.stringify(
+                {
+                  selectedOrgId,
+                  count: apps.length,
+                  loading,
+                  hasError: !!error,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </div>
+        )}
 
         <AppTable
           apps={apps}
