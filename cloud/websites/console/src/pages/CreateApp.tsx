@@ -23,21 +23,21 @@ import {
 } from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
-// import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
 import AppSuccessDialog from "../components/dialogs/AppSuccessDialog";
 import api, { AppResponse } from "@/services/api.service";
-import { AppI } from "@mentra/sdk";
+
 import { normalizeUrl } from "@/libs/utils";
 import PermissionsForm from "../components/forms/PermissionsForm";
 import HardwareRequirementsForm from "../components/forms/HardwareRequirementsForm";
 import { Permission, PermissionType } from "@/types/app";
-import { HardwareRequirement } from "@mentra/sdk";
-import { useOrganization } from "@/context/OrganizationContext";
+import { AppI, HardwareRequirement } from "@mentra/sdk";
+import { useOrgStore } from "@/stores/orgs.store";
 import { App } from "@/types/app";
 import ImageUpload from "../components/forms/ImageUpload";
 import AppTypeTooltip from "../components/forms/AppTypeTooltip";
+// import { useAppStore } from "@/stores/apps.store";
 
 enum AppType {
   STANDARD = "standard",
@@ -48,7 +48,10 @@ enum AppType {
  */
 const CreateApp: React.FC = () => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const selectedOrgId = useOrgStore((s) => s.selectedOrgId);
+  const orgs = useOrgStore((s) => s.orgs);
+  const currentOrg = orgs.find((o) => o.id === selectedOrgId) || null;
+  // const createAppAction = useAppStore((s) => s.createApp);
 
   // Form state
   const [formData, setFormData] = useState<Partial<App>>({
@@ -92,7 +95,7 @@ const CreateApp: React.FC = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
-    const { name, value } = e.target as any;
+    const { name, value } = e.currentTarget;
     setFormData((prev: Partial<App>) => ({
       ...prev,
       [name]: value,
@@ -110,7 +113,7 @@ const CreateApp: React.FC = () => {
 
   // Handle URL field blur event to normalize URLs
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target as any;
+    const { name, value } = e.currentTarget;
 
     // Only normalize URL fields
     if (name === "publicUrl" || name === "logoURL" || name === "webviewURL") {
