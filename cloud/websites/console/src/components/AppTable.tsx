@@ -1,10 +1,23 @@
 // components/AppTable.tsx
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, type FC } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Link } from "react-router-dom";
 import { Edit, Trash, Share2, Plus, Upload, KeyRound } from "lucide-react";
 import {
@@ -12,8 +25,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AppResponse } from '../services/api.service';
-import { useOrganization } from '../context/OrganizationContext';
+import { AppResponse } from "../services/api.service";
+import { useOrganization } from "../context/OrganizationContext";
 
 // Import dialogs
 import ApiKeyDialog from "./dialogs/ApiKeyDialog";
@@ -32,7 +45,7 @@ interface AppTableProps {
   onAppUpdated?: (updatedApp: AppResponse) => void;
 }
 
-const AppTable: React.FC<AppTableProps> = ({
+const AppTable: FC<AppTableProps> = ({
   apps,
   isLoading,
   error,
@@ -40,7 +53,7 @@ const AppTable: React.FC<AppTableProps> = ({
   showViewAll = false,
   showSearch = true,
   onAppDeleted,
-  onAppUpdated
+  onAppUpdated,
 }) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -51,15 +64,16 @@ const AppTable: React.FC<AppTableProps> = ({
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [generatedApiKey, setGeneratedApiKey] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [generatedApiKey, setGeneratedApiKey] = useState("");
 
   // Filter Apps based on search query
   const filteredApps = searchQuery
-    ? apps.filter(app =>
-      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.packageName.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    ? apps.filter(
+        (app) =>
+          app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
     : apps;
 
   // Limit the number of Apps displayed
@@ -86,9 +100,7 @@ const AppTable: React.FC<AppTableProps> = ({
             )}
             {showViewAll && (
               <Button variant="outline" size="sm" asChild>
-                <Link to="/apps">
-                  View All
-                </Link>
+                <Link to="/apps">View All</Link>
               </Button>
             )}
           </div>
@@ -128,35 +140,63 @@ const AppTable: React.FC<AppTableProps> = ({
                 {displayedApps.length > 0 ? (
                   displayedApps.map((app) => (
                     <TableRow key={app.packageName}>
-                      <TableCell className="font-medium">{app.name}</TableCell>
-                      <TableCell className="font-mono text-xs text-gray-500">{app.packageName}</TableCell>
+                      <TableCell>
+                        <a
+                          key={app.packageName}
+                          className="font-medium flex flex-row items-center"
+                          href={`https://apps.mentra.glass/package/${app.packageName}`}
+                        >
+                          <img
+                            src={app.logoURL}
+                            alt={app.name}
+                            className="w-6 h-6 rounded-full mr-2"
+                          />
+                          {app.name}
+                        </a>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-gray-500">
+                        {app.packageName}
+                      </TableCell>
                       <TableCell className="text-gray-500">
                         {new Date(app.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <div>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            app.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
-                            app.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' :
-                            app.appStoreStatus === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {app.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
-                             app.appStoreStatus === 'SUBMITTED' ? 'Submitted' :
-                             app.appStoreStatus === 'REJECTED' ? 'Rejected' :
-                             app.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              app.appStoreStatus === "PUBLISHED"
+                                ? "bg-green-100 text-green-800"
+                                : app.appStoreStatus === "SUBMITTED"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : app.appStoreStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {app.appStoreStatus === "DEVELOPMENT"
+                              ? "Development"
+                              : app.appStoreStatus === "SUBMITTED"
+                                ? "Submitted"
+                                : app.appStoreStatus === "REJECTED"
+                                  ? "Rejected"
+                                  : app.appStoreStatus === "PUBLISHED"
+                                    ? "Published"
+                                    : "Development"}
                           </span>
-                          {app.appStoreStatus === 'REJECTED' && app.reviewNotes && (
-                            <div className="mt-1">
-                              <button
-                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
-                                className="text-xs text-red-600 hover:underline focus:outline-none"
-                                title={app.reviewNotes}
-                              >
-                                View Rejection Reason
-                              </button>
-                            </div>
-                          )}
+                          {app.appStoreStatus === "REJECTED" &&
+                            app.reviewNotes && (
+                              <div className="mt-1">
+                                <button
+                                  onClick={() =>
+                                    navigate(`/apps/${app.packageName}/edit`)
+                                  }
+                                  className="text-xs text-red-600 hover:underline focus:outline-none"
+                                  title={app.reviewNotes}
+                                >
+                                  View Rejection Reason
+                                </button>
+                              </div>
+                            )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -166,7 +206,9 @@ const AppTable: React.FC<AppTableProps> = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
+                                onClick={() =>
+                                  navigate(`/apps/${app.packageName}/edit`)
+                                }
                                 title="Edit App"
                               >
                                 <Edit className="h-4 w-4" />
@@ -184,7 +226,7 @@ const AppTable: React.FC<AppTableProps> = ({
                                 size="sm"
                                 onClick={async () => {
                                   // Reset generated API key state before opening dialog
-                                  setGeneratedApiKey('');
+                                  setGeneratedApiKey("");
                                   // Set selected App after resetting key state
                                   setSelectedApp(app);
                                   // Then open the dialog
@@ -228,13 +270,21 @@ const AppTable: React.FC<AppTableProps> = ({
                                   setSelectedApp(app);
                                   setIsPublishDialogOpen(true);
                                 }}
-                                title={app.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
+                                title={
+                                  app.appStoreStatus === "REJECTED"
+                                    ? "Resubmit to App Store"
+                                    : "Publish to App Store"
+                                }
                               >
                                 <Upload className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{app.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}</p>
+                              <p>
+                                {app.appStoreStatus === "REJECTED"
+                                  ? "Resubmit to App Store"
+                                  : "Publish to App Store"}
+                              </p>
                             </TooltipContent>
                           </Tooltip>
 
@@ -263,23 +313,35 @@ const AppTable: React.FC<AppTableProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-gray-500">
-                      {searchQuery ? 'No apps match your search criteria' : 'No apps to display'}
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-6 text-gray-500"
+                    >
+                      {searchQuery
+                        ? "No apps match your search criteria"
+                        : "No apps to display"}
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           )}
+
+          {showViewAll && (
+            <div className="text-center pt-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/apps">View All</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         {hasNoApps && !isLoading && !error && !searchQuery && (
           <div className="p-6 text-center">
-            <p className="text-gray-500 mb-4">Get started by creating your first app</p>
-            <Button
-              onClick={() => navigate('/apps/create')}
-              className="gap-2"
-            >
+            <p className="text-gray-500 mb-4">
+              Get started by creating your first app
+            </p>
+            <Button onClick={() => navigate("/apps/create")} className="gap-2">
               <Plus className="h-4 w-4" />
               Create App
             </Button>

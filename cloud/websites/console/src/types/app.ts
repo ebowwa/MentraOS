@@ -32,7 +32,6 @@ export type Tool = ToolSchema;
 export type Setting = AppSetting;
 
 export interface App {
-  id: string;
   packageName: string;
   name: string;
   description: string;

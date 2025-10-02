@@ -255,7 +255,7 @@ const ApiKeyDialog: FC<ApiKeyDialogProps> = ({
             </div>
           ) : (
             <>
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2">
                 <p className="text-sm text-gray-500">
                   Your API key is used to authenticate your app with MentraOS
                   cloud services. Keep it secure and never share it publicly.
@@ -298,7 +298,7 @@ const ApiKeyDialog: FC<ApiKeyDialogProps> = ({
                 )}
               </div>
 
-              <div className="space-y-2">
+              {/*<div className="space-y-2">
                 <h3 className="text-sm font-medium">Webhook URL</h3>
                 <div className="font-mono text-sm p-2 border rounded-md bg-gray-50 overflow-x-auto break-all">
                   {app?.publicUrl
@@ -309,13 +309,13 @@ const ApiKeyDialog: FC<ApiKeyDialogProps> = ({
                   This is the full webhook URL where MentraOS will send events
                   to your app.
                 </p>
-              </div>
+              </div>*/}
             </>
           )}
         </div>
 
         {!showConfirmation && (
-          <DialogFooter className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4 sm:gap-2 mt-4">
+          <DialogFooter className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4 sm:gap-2 ">
             <p className="text-xs text-gray-500">
               Last regenerated: {lastRegenerated.toLocaleDateString()}
             </p>

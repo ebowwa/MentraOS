@@ -7,6 +7,11 @@ import minVersionApi from "./client/min-version.api";
 import simpleStorageApi from "./sdk/simple-storage.api";
 import sdkVersionApi from "./sdk/sdk-version.api";
 
+// Console APIs
+import consoleAccountApi from "./console/console.account.api";
+import orgsApi from "./console/orgs.api";
+import consoleAppsApi from "./console/console.apps.api";
+
 // Legacy route modules (to be migrated gradually)
 import appRoutes from "../routes/apps.routes";
 import authRoutes from "../routes/auth.routes";
@@ -44,6 +49,11 @@ export function registerApi(app: Application) {
   app.use("/api/sdk", sdkVersionApi);
   app.use("/api/sdk/version", sdkVersionApi);
   app.use("/api/sdk/simple-storage", simpleStorageApi);
+
+  // Console mounts
+  app.use("/api/console/account", consoleAccountApi);
+  app.use("/api/console/orgs", orgsApi);
+  app.use("/api/console/apps", consoleAppsApi);
 
   // Legacy mounts (to be migrated)
   app.use("/api/apps", appRoutes);
