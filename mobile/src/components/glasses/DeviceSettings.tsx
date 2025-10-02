@@ -589,7 +589,7 @@ const $container: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: 12,
   paddingHorizontal: 16,
   borderRadius: spacing.md,
@@ -621,7 +621,7 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $advancedSettingsButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
+  backgroundColor: colors.backgroundAlt,
   paddingVertical: 14,
   paddingHorizontal: 16,
   borderRadius: spacing.md,
