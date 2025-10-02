@@ -4,7 +4,7 @@ import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
-import {Button, Header, Text} from "@/components/ignite"
+import {Button, Header} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
 import bridge from "@/bridge/MantleBridge"
@@ -290,9 +290,7 @@ export default function PairingPrepScreen() {
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       </ScrollView>
       <View style={{marginBottom: theme.spacing.lg}}>
-        <Button onPress={advanceToPairing} disabled={false}>
-          <Text>{translate("common:continue")}</Text>
-        </Button>
+        <Button onPress={advanceToPairing} disabled={false} tx="common:continue" />
       </View>
     </Screen>
   )

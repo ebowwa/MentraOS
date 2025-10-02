@@ -48,7 +48,7 @@ export default function SelectGlassesBluetoothScreen() {
 
   // Clear search results when screen comes into focus to prevent stale data
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setSearchResults([])
     }, [setSearchResults]),
   )
@@ -345,7 +345,7 @@ const styles = {
     paddingHorizontal: 10,
   },
   label: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "600",
     flexWrap: "wrap",
     marginTop: 5,

@@ -50,7 +50,7 @@ function SwitchInput(props: SwitchInputProps) {
   const {
     on,
     status,
-    disabled,
+    disabled: _disabled,
     outerStyle: $outerStyleOverride,
     innerStyle: $innerStyleOverride,
     detailStyle: $detailStyleOverride,
@@ -60,7 +60,7 @@ function SwitchInput(props: SwitchInputProps) {
   const {colors, spacing} = theme
 
   const animate = useRef(new Animated.Value(on ? 1 : 0)) // Initial value is set based on isActive
-  const opacity = useRef(new Animated.Value(0))
+  const _opacity = useRef(new Animated.Value(0))
   const trackColorAnim = useRef(new Animated.Value(on ? 1 : 0))
 
   useEffect(() => {
@@ -99,32 +99,22 @@ function SwitchInput(props: SwitchInputProps) {
     v => typeof v === "number",
   )
 
-  const offBackgroundColor = [
-    disabled && colors.palette.neutral400,
-    status === "error" && colors.errorBackground,
-    colors.switchTrackOff,
-  ].filter(Boolean)[0]
+  const offBackgroundColor = [status === "error" && colors.errorBackground, colors.switchTrackOff].filter(Boolean)[0]
 
-  const onBackgroundColor = [
-    disabled && colors.palette.transparent,
-    status === "error" && colors.errorBackground,
-    colors.switchTrackOn,
-  ].filter(Boolean)[0]
+  const onBackgroundColor = [status === "error" && colors.errorBackground, colors.switchTrackOn].filter(Boolean)[0]
 
   const knobBackgroundColor = (function () {
     if (on) {
       return [
         // $detailStyleOverride?.backgroundColor,
-        colors.switchThumbOn || colors.switchThumb, // Use switchThumbOn if available, fallback to switchThumb
         status === "error" && colors.error,
-        disabled && colors.palette.neutral600,
+        colors.switchThumbOn || colors.switchThumb, // Use switchThumbOn if available, fallback to switchThumb
       ].filter(Boolean)[0]
     } else {
       return [
         // $innerStyleOverride?.backgroundColor,
-        colors.switchThumbOff || "#E0E0E0", // More noticeable gray when off
-        disabled && colors.palette.neutral600,
         status === "error" && colors.error,
+        colors.switchThumbOff || "#E0E0E0", // More noticeable gray when off
       ].filter(Boolean)[0]
     }
   })()
@@ -147,7 +137,7 @@ function SwitchInput(props: SwitchInputProps) {
   // const offsetLeft = 0
   // const offsetRight = 0
 
-  const outputRange =
+  const _outputRange =
     Platform.OS === "web"
       ? isRTL
         ? [+(knobWidth || 0) + offsetRight, offsetLeft]
@@ -202,14 +192,14 @@ function ModernSwitchInput(props: SwitchInputProps) {
   const {
     on,
     status,
-    disabled,
+    disabled: _disabled,
     outerStyle: $outerStyleOverride,
-    innerStyle: $innerStyleOverride,
+    innerStyle: _$innerStyleOverride,
     detailStyle: $detailStyleOverride,
   } = props
 
-  const {themed, theme} = useAppTheme()
-  const {colors, spacing} = theme
+  const {themed: _themed, theme} = useAppTheme()
+  const {colors, spacing: _spacing} = theme
 
   // Use state for simplicity - no native driver conflicts!
   const [animValue] = useState(() => new Animated.Value(on ? 1 : 0))
@@ -228,29 +218,13 @@ function ModernSwitchInput(props: SwitchInputProps) {
   const knobSize = 24
   const knobMargin = 2
 
-  const offBackgroundColor = [
-    disabled && colors.palette.neutral400,
-    status === "error" && colors.errorBackground,
-    colors.switchTrackOff,
-  ].filter(Boolean)[0]
+  const offBackgroundColor = [status === "error" && colors.errorBackground, colors.switchTrackOff].filter(Boolean)[0]
 
-  const onBackgroundColor = [
-    disabled && colors.palette.neutral700,
-    status === "error" && colors.errorBackground,
-    colors.switchTrackOn,
-  ].filter(Boolean)[0]
+  const onBackgroundColor = [status === "error" && colors.errorBackground, colors.switchTrackOn].filter(Boolean)[0]
 
-  const offKnobColor = [
-    disabled && colors.palette.neutral300,
-    status === "error" && colors.error,
-    colors.switchThumbOff,
-  ].filter(Boolean)[0]
+  const offKnobColor = [status === "error" && colors.error, colors.switchThumbOff].filter(Boolean)[0]
 
-  const onKnobColor = [
-    disabled && colors.palette.neutral300,
-    status === "error" && colors.error,
-    colors.switchThumbOn,
-  ].filter(Boolean)[0]
+  const onKnobColor = [status === "error" && colors.error, colors.switchThumbOn].filter(Boolean)[0]
 
   // Calculate all interpolations from single animated value
   const translateX = animValue.interpolate({
@@ -308,7 +282,7 @@ function ModernSwitchInput(props: SwitchInputProps) {
  * @param {ToggleInputProps & { role: "on" | "off" }} props - The props for the `SwitchAccessibilityLabel` component.
  * @returns {JSX.Element} The rendered `SwitchAccessibilityLabel` component.
  */
-function SwitchAccessibilityLabel(props: SwitchInputProps & {role: "on" | "off"}) {
+function _SwitchAccessibilityLabel(props: SwitchInputProps & {role: "on" | "off"}) {
   const {on, disabled, status, accessibilityMode, role, innerStyle, detailStyle} = props
 
   const {
