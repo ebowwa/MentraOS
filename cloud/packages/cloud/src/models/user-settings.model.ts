@@ -2,6 +2,7 @@
 // cloud/src/models/user-settings.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 import { logger } from "../services/logging/pino-logger";
+import { User } from "./user.model";
 
 export interface UserSettingsI extends Document {
   email: string;
@@ -65,6 +66,17 @@ const UserSettingsSchema = new Schema<UserSettingsI>(
 
 // Index for efficient queries
 UserSettingsSchema.index({ email: 1, lastUpdated: -1 });
+UserSettingsSchema.pre("save", function (next) {
+  try {
+    if (this.email && typeof this.email === "string") {
+      this.email = this.email.toLowerCase().trim();
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
+    // ignore
+  }
+  next();
+});
 
 // Instance Methods
 UserSettingsSchema.methods.updateSettings = async function (
@@ -129,3 +141,98 @@ UserSettingsSchema.methods.deleteSetting = async function (
 export const UserSettings =
   mongoose.models.UserSettings ||
   mongoose.model<UserSettingsI>("UserSettings", UserSettingsSchema);
+(async function migrateUserSettings() {
+  const run = async () => {
+    try {
+      // Drop legacy unique index on userId if it exists
+      try {
+        const indexes = await UserSettings.collection.indexes();
+        const userIdUnique = indexes.find(
+          (ix: any) => ix.unique && ix.key && ix.key.userId === 1,
+        );
+        if (userIdUnique && userIdUnique.name) {
+          try {
+            await UserSettings.collection.dropIndex(userIdUnique.name);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (e) {
+            // ignore
+          }
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // ignore listing index errors
+      }
+
+      // Ensure partial unique index on email (only when email exists and non-empty)
+      try {
+        await UserSettings.collection.createIndex(
+          { email: 1 },
+          {
+            unique: true,
+            partialFilterExpression: { email: { $exists: true, $ne: "" } },
+          },
+        );
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // ignore if exists or duplicates prevent creation
+      }
+
+      // Backfill email from userId where missing
+      const BATCH = 200;
+      const coll = mongoose.connection.db.collection("usersettings");
+      while (true) {
+        const docs = await coll
+          .find({
+            $or: [
+              { email: { $exists: false } },
+              { email: null },
+              { email: "" },
+            ],
+            userId: { $exists: true, $ne: null },
+          })
+          .limit(BATCH)
+          .toArray();
+
+        if (!docs.length) break;
+
+        for (const doc of docs) {
+          try {
+            const user = await User.findById(doc.userId);
+            if (user && user.email) {
+              const emailLower = String(user.email).toLowerCase().trim();
+              await coll.updateOne(
+                { _id: doc._id },
+                { $set: { email: emailLower }, $unset: { userId: "" } },
+              );
+            }
+          } catch {
+            // ignore per-doc failures
+          }
+        }
+
+        if (docs.length < BATCH) break;
+      }
+
+      // After backfill, remove legacy userId field wherever present
+      try {
+        await coll.updateMany(
+          { userId: { $exists: true } },
+          { $unset: { userId: "" } },
+        );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (e) {
+        // ignore
+      }
+      logger.info("UserSettings migration completed");
+    } catch (err) {
+      logger.error({ err }, "UserSettings migration error");
+    }
+  };
+
+  if (mongoose.connection.readyState === 1) {
+    setTimeout(run, 0);
+  } else {
+    mongoose.connection.on("connected", () => setTimeout(run, 0));
+  }
+})();

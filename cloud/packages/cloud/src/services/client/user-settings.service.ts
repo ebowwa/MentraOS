@@ -9,7 +9,8 @@ import { logger } from "../logging/pino-logger";
  * Find settings document by email
  */
 export async function findByEmail(email: string) {
-  return UserSettings.findOne({ email: email.toLowerCase().trim() });
+  const normalizedEmail = email.toLowerCase().trim();
+  return UserSettings.findOne({ email: normalizedEmail });
 }
 
 /**
