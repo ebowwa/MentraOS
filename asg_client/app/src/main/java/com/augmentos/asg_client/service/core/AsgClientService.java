@@ -335,7 +335,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             payload.put("C", command);
             payload.put("B", new JSONObject());
 
-            boolean sent = sendK900Command(payload.toString());
+            boolean sent = sendK900Command(command);
+            //boolean sent = sendK900Command(payload.toString());
             if (sent) {
                 lastI2sPlaying = playing;
             }
