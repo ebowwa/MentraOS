@@ -4,7 +4,7 @@ import Toast from "react-native-toast-message"
 
 import {Screen, Text, Header, Switch} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useNavigationHistory} from "@/hooks/useNavigationHistory"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 const {SimpleBlacklist} = NativeModules
 
