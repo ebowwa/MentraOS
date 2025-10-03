@@ -20,12 +20,12 @@ export class MicrophoneManager {
   private logger: Logger;
 
   // Track the current microphone state
-  private enabled: boolean = false;
+  private enabled = false;
 
   // Debounce mechanism for state changes
   private debounceTimer: NodeJS.Timeout | null = null;
   private pendingState: boolean | null = null;
-  private lastSentState: boolean = false;
+  private lastSentState = false;
   private lastSentRequiredData: Array<
     "pcm" | "transcription" | "pcm_or_transcription"
   > = [];
@@ -79,7 +79,7 @@ export class MicrophoneManager {
   updateState(
     isEnabled: boolean,
     requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">,
-    delay: number = 1000,
+    delay = 1000,
   ): void {
     this.logger.debug(
       `Updating microphone state: ${isEnabled}, delay: ${delay}ms`,
@@ -124,10 +124,17 @@ export class MicrophoneManager {
         this.lastSentState = this.pendingState!;
         this.lastSentRequiredData = this.pendingRequiredData!;
         this.enabled = this.pendingState!;
+
+        this.session.liveKitManager.onMicStateChange();
       }
 
       // Update transcription service state
       this.updateTranscriptionState();
+
+      // Inform LiveKitManager about mic state and media need
+      // const hasMedia = this.cachedSubscriptionState.hasMedia;
+      // this.session.liveKitManager.onMicStateChange(this.enabled);
+      // this.session.liveKitManager.onMediaNeeded(hasMedia);
 
       // Update keep-alive timer based on final state
       this.updateKeepAliveTimer();
@@ -156,7 +163,7 @@ export class MicrophoneManager {
   private sendStateChangeToGlasses(
     isEnabled: boolean,
     requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">,
-    isKeepAlive: boolean = false,
+    isKeepAlive = false,
   ): void {
     if (
       !this.session.websocket ||
@@ -173,21 +180,9 @@ export class MicrophoneManager {
       const shouldBypassVad = this.shouldBypassVadForPCM();
 
       // TODO: Remove this type extension once the SDK is updated
-      const message: MicrophoneStateChange & {
-        requiredData: Array<"pcm" | "transcription" | "pcm_or_transcription">;
-      } = {
+      const message: MicrophoneStateChange = {
         type: CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
         sessionId: this.session.sessionId,
-        // userSession: {
-        //   sessionId: this.session.sessionId,
-        //   userId: this.session.userId,
-        //   startTime: this.session.startTime,
-        //   // activeAppSessions: this.session.activeAppSessions || [],
-        //   activeAppSessions: Array.from(this.session.runningApps),
-        //   // loadingApps: Array.from(this.session.loadingApps),
-        //   loadingApps: this.session.loadingApps,
-        //   isTranscribing: this.session.isTranscribing || false,
-        // },
         isMicrophoneEnabled: isEnabled,
         requiredData: isEnabled ? requiredData : [],
         bypassVad: shouldBypassVad, // NEW: Include VAD bypass flag
@@ -320,6 +315,7 @@ export class MicrophoneManager {
       this.logger.info(
         `Subscription changed, media subscriptions: ${hasMediaSubscriptions}`,
       );
+      // Inform LiveKitManager (mic state drives subscribe now)
       // Apply holddown when turning mic off to avoid flapping
       if (hasMediaSubscriptions) {
         // Cancel any pending mic-off holddown

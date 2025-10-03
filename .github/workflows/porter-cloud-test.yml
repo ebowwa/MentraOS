@@ -3,7 +3,7 @@ name: Cloud Test ☁️⚡️🚀⛈️
 on:
   push:
     branches:
-      - transcription-manager
+      - cloud/livekit-launch
     paths:
       - "cloud/**"
 jobs:

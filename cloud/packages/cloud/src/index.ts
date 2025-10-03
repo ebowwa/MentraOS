@@ -21,7 +21,7 @@ import { websocketService } from "./services/websocket/websocket.service";
 import * as AppUptimeService from "./services/core/app-uptime.service";
 import UserSession from "./services/session/UserSession";
 // Register API routes from central index
-import { registerApi } from './api';
+import { registerApi } from "./api";
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
@@ -179,9 +179,24 @@ app.use(
     customErrorMessage: (req, res, err) => {
       return `${req.method} ${req.url} - ${res.statusCode} - ${err.message}`;
     },
-    // Don't log health check requests to reduce noise
+    // Reduce verbosity in development by excluding request/response details
+    serializers: {
+      req: (req) => ({
+        method: req.method,
+        url: req.url,
+        // Only include basic info, skip headers/body/params for cleaner logs
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+        // Skip verbose response headers
+      }),
+    },
+    // Don't log noisy or frequent requests
     autoLogging: {
-      ignore: (req) => req.url === "/health",
+      ignore: (req) => {
+        // Skip health checks, and other noisy endpoints
+        return req.url === "/health";
+      },
     },
   }),
 );
@@ -195,7 +210,7 @@ registerApi(app);
 // Health check endpoint
 app.get("/health", (req, res) => {
   try {
-  const activeSessions = UserSession.getAllSessions();
+    const activeSessions = UserSession.getAllSessions();
 
     res.json({
       status: "ok",
@@ -214,7 +229,6 @@ app.get("/health", (req, res) => {
     });
   }
 });
-
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "./public")));
@@ -239,7 +253,7 @@ try {
     logger.info(`\n
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
-        ☁️☁️☁️      😎 MentraOS Cloud Server 🚀     
+        ☁️☁️☁️      😎 MentraOS Cloud Server 🚀
         ☁️☁️☁️      🌐 Listening on port ${PORT} 🌐
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️\n`);

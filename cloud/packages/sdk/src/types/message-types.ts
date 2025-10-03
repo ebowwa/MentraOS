@@ -50,6 +50,9 @@ export enum GlassesToCloudMessageType {
 
   PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
   AUDIO_PLAY_RESPONSE = "audio_play_response",
+
+  // LiveKit handshake
+  LIVEKIT_INIT = "livekit_init",
 }
 
 /**
@@ -86,6 +89,9 @@ export enum CloudToGlassesMessageType {
   REQUEST_SINGLE_LOCATION = "request_single_location",
 
   WEBSOCKET_ERROR = "websocket_error",
+
+  // LiveKit info (URL, room, token)
+  LIVEKIT_INFO = "livekit_info",
 }
 
 /**
@@ -228,6 +234,7 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.START_RTMP_STREAM,
   CloudToGlassesMessageType.STOP_RTMP_STREAM,
   CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
+  CloudToGlassesMessageType.LIVEKIT_INFO,
 ] as const;
 
 /**

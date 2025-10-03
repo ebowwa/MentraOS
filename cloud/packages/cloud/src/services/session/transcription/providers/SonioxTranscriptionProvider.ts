@@ -860,6 +860,7 @@ class SonioxTranscriptionStream implements StreamInstance {
         { streamId: this.id },
         "Cannot send keepalive - WebSocket not open",
       );
+      this.stopKeepalive();
       return;
     }
 
