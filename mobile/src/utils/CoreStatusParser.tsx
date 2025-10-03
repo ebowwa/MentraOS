@@ -24,6 +24,7 @@ export interface OtaProgress {
 export interface Glasses {
   model_name: string
   battery_level: number
+  is_charging: boolean
   glasses_use_wifi: boolean
   glasses_wifi_connected: boolean
   glasses_wifi_ssid: string
@@ -194,6 +195,7 @@ export class CoreStatusParser {
     glasses_info: {
       model_name: "Even Realities G1",
       battery_level: 60,
+      is_charging: false,
       glasses_use_wifi: false,
       glasses_wifi_connected: false,
       glasses_wifi_ssid: "",
@@ -279,6 +281,7 @@ export class CoreStatusParser {
           ? {
               model_name: glassesInfo.model_name,
               battery_level: glassesInfo.battery_level,
+              is_charging: glassesInfo.is_charging ?? false,
               glasses_use_wifi: glassesInfo.glasses_use_wifi || false,
               glasses_wifi_connected: glassesInfo.glasses_wifi_connected || false,
               glasses_wifi_ssid: glassesInfo.glasses_wifi_ssid || "",

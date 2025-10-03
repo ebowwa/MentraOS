@@ -248,6 +248,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private CalendarSystem calendarSystem;
 
     private Integer batteryLevel;
+    private Boolean glassesCharging;
     private Integer caseBatteryLevel;
     private Boolean caseCharging;
     private Boolean caseOpen;
@@ -565,7 +566,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onGlassBatteryLevelEvent(BatteryLevelEvent event) {
         if (batteryLevel != null && event.batteryLevel == batteryLevel) return;
         batteryLevel = event.batteryLevel;
-        ServerComms.getInstance().sendGlassesBatteryUpdate(event.batteryLevel, false, -1);
+        glassesCharging = event.isCharging;
+        ServerComms.getInstance().sendGlassesBatteryUpdate(event.batteryLevel, event.isCharging, -1);
         sendStatusToAugmentOsManager();
     }
 
@@ -1687,6 +1689,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             if (smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
                 connectedGlasses.put("battery_level", (batteryLevel == null) ? -1 : batteryLevel); //-1 if unknown
+                connectedGlasses.put("is_charging", (glassesCharging == null) ? false : glassesCharging);
                 connectedGlasses.put("case_battery_level", (caseBatteryLevel == null) ? -1 : caseBatteryLevel); //-1 if unknown
                 connectedGlasses.put("case_charging", (caseCharging == null) ? false : caseCharging);
                 connectedGlasses.put("case_open", (caseOpen == null) ? false : caseOpen);
@@ -2419,6 +2422,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         brightnessLevel = null;
         batteryLevel = null;
+        glassesCharging = null;
 
         // CLEAR SERIAL NUMBER DATA
         glassesSerialNumber = null;
