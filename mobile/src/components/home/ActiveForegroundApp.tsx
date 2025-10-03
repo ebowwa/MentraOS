@@ -6,6 +6,7 @@ import {useActiveForegroundApp, useAppStatus} from "@/contexts/AppletStatusProvi
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
+import {CloseXIcon} from "assets/icons/component/CloseXIcon"
 import restComms from "@/managers/RestComms"
 import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
@@ -57,6 +58,23 @@ export const ActiveForegroundApp: React.FC = () => {
     }
   }
 
+  const handleStopApp = async (event: any) => {
+    // Prevent the parent TouchableOpacity from triggering
+    event.stopPropagation()
+
+    if (activeForegroundApp) {
+      optimisticallyStopApp(activeForegroundApp.packageName)
+
+      try {
+        await restComms.stopApp(activeForegroundApp.packageName)
+        clearPendingOperation(activeForegroundApp.packageName)
+      } catch (error) {
+        refreshAppStatus()
+        console.error("Stop app error:", error)
+      }
+    }
+  }
+
   if (!activeForegroundApp) {
     // Show placeholder when no active app
     return (
@@ -86,6 +104,9 @@ export const ActiveForegroundApp: React.FC = () => {
             </View>
           </View>
         </View>
+        <TouchableOpacity onPress={handleStopApp} style={themed($closeButton)} activeOpacity={0.7}>
+          <CloseXIcon size={24} color={theme.colors.textDim} />
+        </TouchableOpacity>
         <ChevronRight color={theme.colors.text} />
       </View>
     </TouchableOpacity>
@@ -139,6 +160,12 @@ const $tagText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 11,
   color: colors.primary,
   fontWeight: "500",
+})
+
+const $closeButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
+  justifyContent: "center",
+  alignItems: "center",
 })
 
 const $placeholderContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
