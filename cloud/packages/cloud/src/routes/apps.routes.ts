@@ -1388,7 +1388,7 @@ async function getAvailableApps(req: Request, res: Response) {
             installedSet.add(inst.packageName);
           }
         }
-      } catch (_e) {
+      } catch {
         // ignore
       }
 
@@ -1415,7 +1415,7 @@ async function getAvailableApps(req: Request, res: Response) {
       data: enhancedApps,
     });
   } catch (error) {
-    logger.error("Error fetching available apps:", error);
+    logger.error(error, "Error fetching available apps:");
     res.status(500).json({
       success: false,
       message: "Failed to fetch available apps",
@@ -1469,7 +1469,7 @@ async function batchEnrichAppsWithProfiles(
     if (app.organizationId) {
       try {
         orgIdSet.add(String(app.organizationId));
-      } catch (_e) {
+      } catch {
         // ignore malformed ids
       }
     } else if (app.developerId) {
@@ -1554,6 +1554,7 @@ function enhanceAppsWithSessionState(
     };
 
     enhancedApp.is_running = userSession.runningApps.has(app.packageName);
+    // This is deprecated, will be removed in future versions.
     if (enhancedApp.is_running) {
       enhancedApp.is_foreground = app.appType === AppType.STANDARD;
     }

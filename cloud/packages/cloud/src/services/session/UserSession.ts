@@ -31,6 +31,8 @@ import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
 import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
+import LiveKitManager from "./LiveKitManager";
+import SpeakerManager from "./SpeakerManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -60,7 +62,7 @@ export class UserSession {
   public appWebsockets: Map<string, WebSocket> = new Map();
 
   // Transcription
-  public isTranscribing = false;
+  public isTranscribing = false; // TODO(isaiah): Sync with frontend to see if we can remove this property.
   public lastAudioTimestamp?: number;
 
   // Audio
@@ -80,6 +82,8 @@ export class UserSession {
   public transcriptionManager: TranscriptionManager;
   public translationManager: TranslationManager;
   public subscriptionManager: SubscriptionManager;
+  public liveKitManager: LiveKitManager;
+  public speakerManager: SpeakerManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -109,6 +113,9 @@ export class UserSession {
   // Other state
   public userDatetime?: string;
 
+  // LiveKit transport preference
+  public livekitRequested?: boolean;
+
   // Capability Discovery
   public capabilities: Capabilities | null = null;
 
@@ -119,6 +126,7 @@ export class UserSession {
     this.userId = userId;
     this.websocket = websocket;
     this.logger = rootLogger.child({ userId, service: "UserSession" });
+    this.startTime = new Date();
 
     // Initialize managers
     this.appManager = new AppManager(this);
@@ -133,9 +141,10 @@ export class UserSession {
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
+    this.liveKitManager = new LiveKitManager(this);
+    this.speakerManager = new SpeakerManager(this);
 
     this._reconnectionTimers = new Map();
-    this.startTime = new Date();
 
     // Set up heartbeat for glasses connection
     this.setupGlassesHeartbeat();
@@ -696,7 +705,7 @@ export class UserSession {
    */
   relayAudioToApps(audioData: ArrayBuffer): void {
     try {
-      this.audioManager.processAudioData(audioData, false);
+      this.audioManager.processAudioData(audioData);
     } catch (error) {
       this.logger.error(
         { error },
@@ -840,6 +849,7 @@ export class UserSession {
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();
+    if (this.liveKitManager) this.liveKitManager.dispose();
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();

@@ -438,6 +438,8 @@ export class AppWebSocketService {
               userSession.logger.debug(
                 `🔊 [AppWebSocketService] Forwarded audio request ${audioRequestMsg.requestId} to glasses`,
               );
+              // Also request server-side playback via Go bridge when enabled
+              void userSession.speakerManager.start(audioRequestMsg);
             } else {
               // Clean up mapping if we can't forward the request
               userSession.audioPlayRequestMapping.delete(
@@ -490,6 +492,8 @@ export class AppWebSocketService {
               userSession.logger.debug(
                 `🔇 [AppWebSocketService] Forwarded audio stop request from ${audioStopMsg.packageName} to glasses`,
               );
+              // Also stop server-side playback when enabled
+              void userSession.speakerManager.stop(audioStopMsg);
             } else {
               this.sendError(
                 appWebsocket,

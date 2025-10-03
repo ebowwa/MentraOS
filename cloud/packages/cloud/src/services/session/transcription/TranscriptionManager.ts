@@ -20,7 +20,6 @@ import {
   StreamInstance,
   ProviderType,
   StreamState,
-  TranscriptionError,
   InvalidSubscriptionError,
   NoProviderAvailableError,
   ResourceLimitError,
@@ -95,6 +94,17 @@ export class TranscriptionManager {
       },
       "TranscriptionManager created - initializing providers...",
     );
+  }
+
+  // Local helper to normalize Node Buffer to ArrayBuffer
+  private toArrayBuffer(input: ArrayBuffer | Buffer): ArrayBuffer {
+    if (typeof Buffer !== "undefined" && Buffer.isBuffer(input)) {
+      const buf = input as unknown as Buffer;
+      const ab = new ArrayBuffer(buf.length);
+      new Uint8Array(ab).set(buf);
+      return ab;
+    }
+    return input as ArrayBuffer;
   }
 
   async handleLocalTranscription(message: LocalTranscription): Promise<void> {
@@ -282,7 +292,7 @@ export class TranscriptionManager {
 
     // Step 1: Clean up streams that no longer have subscriptions
     const streamsToCleanup: string[] = [];
-    for (const [subscription, stream] of this.streams.entries()) {
+    for (const [subscription, _stream] of this.streams.entries()) {
       if (!this.activeSubscriptions.has(subscription)) {
         streamsToCleanup.push(subscription);
       }
@@ -354,7 +364,7 @@ export class TranscriptionManager {
     let successCount = 0;
     let failureCount = 0;
 
-    results.forEach((result, index) => {
+    results.forEach((result, _index) => {
       if (result.status === "rejected") {
         failureCount++;
         this.logger.error(
@@ -674,10 +684,10 @@ export class TranscriptionManager {
   /**
    * Feed audio to all active streams
    */
-  feedAudio(audioData: ArrayBuffer): void {
+  feedAudio(audioData: ArrayBuffer | Buffer): void {
     // If we're buffering for VAD, add to buffer
     if (this.isBufferingForVAD) {
-      this.vadAudioBuffer.push(audioData);
+      this.vadAudioBuffer.push(this.toArrayBuffer(audioData));
 
       // Prevent buffer from growing too large
       if (this.vadAudioBuffer.length > this.vadBufferMaxSize) {
@@ -701,15 +711,16 @@ export class TranscriptionManager {
   /**
    * Internal method to feed audio directly to streams
    */
-  private feedAudioToStreams(audioData: ArrayBuffer): void {
+  private feedAudioToStreams(audioData: ArrayBuffer | Buffer): void {
     // Don't feed audio if not initialized - just silently drop it
     if (!this.isInitialized || this.streams.size === 0) {
       return;
     }
 
+    const normalized = this.toArrayBuffer(audioData);
     for (const [subscription, stream] of this.streams) {
       try {
-        stream.writeAudio(audioData);
+        stream.writeAudio(normalized);
       } catch (error) {
         this.logger.warn(
           {

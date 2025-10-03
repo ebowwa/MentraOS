@@ -11,6 +11,7 @@ import sdkVersionApi from "./sdk/sdk-version.api";
 import consoleAccountApi from "./console/console.account.api";
 import orgsApi from "./console/orgs.api";
 import consoleAppsApi from "./console/console.apps.api";
+import livekitApi from "./client/livekit.api";
 
 // Legacy route modules (to be migrated gradually)
 import appRoutes from "../routes/apps.routes";
@@ -19,7 +20,6 @@ import transcriptRoutes from "../routes/transcripts.routes";
 import appSettingsRoutes from "../routes/app-settings.routes";
 import errorReportRoutes from "../routes/error-report.routes";
 import devRoutes from "../routes/developer.routes";
-import serverRoutes from "../routes/server.routes";
 import adminRoutes from "../routes/admin.routes";
 import photoRoutes from "../routes/photos.routes";
 import galleryRoutes from "../routes/gallery.routes";
@@ -42,10 +42,14 @@ import streamsRoutes from "../routes/streams.routes";
  */
 export function registerApi(app: Application) {
   // New APIs (mounted under audience-specific prefixes)
+
+  // Client APIs
   app.use("/api/client/user/settings", userSettingsApi);
   app.use("/api/client/feedback", feedbackApi);
   app.use("/api/client/min-version", minVersionApi);
+  app.use("/api/client/livekit", livekitApi);
 
+  // SDK APIs
   app.use("/api/sdk", sdkVersionApi);
   app.use("/api/sdk/version", sdkVersionApi);
   app.use("/api/sdk/simple-storage", simpleStorageApi);
@@ -66,7 +70,6 @@ export function registerApi(app: Application) {
   app.use("/api/admin", adminRoutes);
   app.use("/api/orgs", organizationRoutes);
 
-  app.use("/api/server", serverRoutes);
   app.use("/api/photos", photoRoutes);
   app.use("/api/gallery", galleryRoutes);
   app.use("/api/tools", toolsRoutes);

@@ -1,0 +1,78 @@
+# Multi-stage build: Build Go binary first (Debian/glibc to match oven/bun:latest)
+FROM golang:1.24-bookworm AS go-builder
+
+# Install build dependencies including C compiler for CGO
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    pkg-config \
+    libopus-dev \
+    libopusfile-dev \
+    libsoxr-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Go mod files
+COPY livekit-client-2/go.mod livekit-client-2/go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy Go source code
+COPY livekit-client-2/ ./
+
+# Build the binary with CGO enabled for opus/soxr
+RUN CGO_ENABLED=1 GOOS=linux go build -o livekit-bridge .
+
+# Final stage: Bun runtime with Go binary
+FROM oven/bun:latest
+
+# Install runtime dependencies for Go binary and SSL
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libopus0 \
+    libopusfile0 \
+    libsoxr0 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the Go binary from builder stage
+COPY --from=go-builder /app/livekit-bridge ./livekit-bridge
+
+# Copy startup script and make executable
+COPY start.sh ./
+RUN chmod +x start.sh
+
+# Copy Bun application source
+COPY . .
+
+# Install dependencies and ensure correct bun-types version
+RUN bun install && \
+    rm -rf node_modules/@types/bun && \
+    bun add -d bun-types@1.0.17
+
+# Build packages in sequence
+RUN echo "🚀 Starting build process..." && \
+    echo "⚙️ Building packages/sdk..." && \
+    cd packages/sdk && bun run build && \
+    echo "✅ Built packages/sdk..." && \
+    echo "⚙️ Building packages/cloud..." && \
+    cd ../cloud && bun run build && \
+    echo "✅ Built packages/cloud..." && \
+    echo "🎉 All packages built successfully! 🎉"
+
+# Expose both ports
+EXPOSE 80 8080
+
+# Set production environment
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV SERVICE_NAME=cloud
+ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
+
+
+# The porter.yaml will run ./start.sh; keep image default benign for direct runs
+CMD ["bash", "-lc", "echo 'Image ready. Run ./start.sh to start both services.'"]

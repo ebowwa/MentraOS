@@ -21,6 +21,14 @@ export interface ConnectionInit extends BaseMessage {
   coreToken?: string;
 }
 
+/**
+ * Client requests LiveKit info (url, room, token)
+ */
+export interface LiveKitInit extends BaseMessage {
+  type: GlassesToCloudMessageType.LIVEKIT_INIT;
+  mode?: "publish" | "subscribe"; // Optional mode - defaults to 'publish' for backward compatibility
+}
+
 export interface RequestSettings extends BaseMessage {
   type: GlassesToCloudMessageType.REQUEST_SETTINGS;
   sessionId: string;
@@ -374,6 +382,7 @@ export interface AudioPlayResponse extends BaseMessage {
  */
 export type GlassesToCloudMessage =
   | ConnectionInit
+  | LiveKitInit
   | RequestSettings
   | StartApp
   | StopApp

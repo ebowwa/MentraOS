@@ -41,8 +41,8 @@ export class SubscriptionManager {
   private updateChainsByApp: Map<string, Promise<unknown>> = new Map();
 
   // Cached aggregates for O(1) reads
-  private pcmSubscriptionCount: number = 0;
-  private transcriptionLikeSubscriptionCount: number = 0; // transcription/translation incl. language streams
+  private pcmSubscriptionCount = 0;
+  private transcriptionLikeSubscriptionCount = 0; // transcription/translation incl. language streams
   private languageStreamCounts: Map<ExtendedStreamType, number> = new Map();
 
   constructor(userSession: UserSession) {
@@ -267,7 +267,10 @@ export class SubscriptionManager {
     // Store chain and return when this link finishes
     this.updateChainsByApp.set(
       packageName,
-      chained.catch(() => {}),
+      chained.catch((error) => {
+        const _logger = this.logger.child({ packageName });
+        _logger.error(error, "Error in subscription update chain");
+      }),
     );
     await chained;
     return resultUser;
@@ -348,7 +351,6 @@ export class SubscriptionManager {
 
       const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
       if (!user.locationSubscriptions) {
-        // @ts-ignore - mongoose map
         user.locationSubscriptions = new Map();
       }
       if (locationRate) {
