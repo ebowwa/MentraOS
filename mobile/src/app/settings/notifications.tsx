@@ -1,21 +1,10 @@
-import React, {useState, useEffect, useCallback, useMemo} from "react"
-import {
-  View,
-  ScrollView,
-  Platform,
-  TextInput,
-  TouchableOpacity,
-  NativeModules,
-  FlatList,
-  ActivityIndicator,
-  Image,
-} from "react-native"
-import {useRouter} from "expo-router"
+import {useState, useEffect, useCallback, useMemo} from "react"
+import {View, Platform, TextInput, NativeModules, FlatList, ActivityIndicator, Image} from "react-native"
 import Toast from "react-native-toast-message"
 
 import {Screen, Text, Header, Switch} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import {useNavigationHistory} from "@/hooks/useNavigationHistory"
 
 const {SimpleBlacklist} = NativeModules
 
@@ -30,8 +19,8 @@ interface InstalledApp {
 const ITEM_HEIGHT = 64
 
 export default function NotificationSettingsScreen() {
-  const {theme, themed} = useAppTheme()
-  const router = useRouter()
+  const {theme} = useAppTheme()
+  const {goBack} = useNavigationHistory()
 
   const [apps, setApps] = useState<InstalledApp[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -180,7 +169,7 @@ export default function NotificationSettingsScreen() {
   if (loading) {
     return (
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={goBack} />
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={{color: theme.colors.textDim, marginTop: theme.spacing.md}}>Loading apps...</Text>
@@ -193,7 +182,7 @@ export default function NotificationSettingsScreen() {
   if (Platform.OS === "ios") {
     return (
       <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+        <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={goBack} />
         <View style={{flex: 1, justifyContent: "center", alignItems: "center", padding: theme.spacing.lg}}>
           <Text
             style={{
@@ -214,15 +203,14 @@ export default function NotificationSettingsScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{flex: 1, backgroundColor: theme.colors.background}}>
-      <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+    <Screen preset="fixed" style={{flex: 1}}>
+      <Header title="Notification Settings" leftIcon="caretLeft" onLeftPress={goBack} />
 
       {/* Explanatory Text */}
       <View
         style={{
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm,
-          backgroundColor: theme.colors.background,
         }}>
         <Text
           style={{
@@ -241,7 +229,6 @@ export default function NotificationSettingsScreen() {
         style={{
           paddingHorizontal: theme.spacing.md,
           paddingBottom: theme.spacing.sm,
-          backgroundColor: theme.colors.background,
         }}>
         <TextInput
           placeholder="Search apps..."
@@ -266,7 +253,6 @@ export default function NotificationSettingsScreen() {
         style={{
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.xs,
-          backgroundColor: theme.colors.background,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         }}>
