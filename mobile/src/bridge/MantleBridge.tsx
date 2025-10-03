@@ -421,6 +421,14 @@ export class MantleBridge extends EventEmitter {
           // socketComms.sendBinary(bytes)
           livekitManager.addPcm(bytes)
           break
+        case "rtmp_stream_status":
+          console.log("MantleBridge: Forwarding RTMP stream status to server:", data)
+          socketComms.sendRtmpStreamStatus(data)
+          break
+        case "keep_alive_ack":
+          console.log("MantleBridge: Forwarding keep-alive ACK to server:", data)
+          socketComms.sendKeepAliveAck(data)
+          break
         default:
           console.log("Unknown event type:", data.type)
           break
