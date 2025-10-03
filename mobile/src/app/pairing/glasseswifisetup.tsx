@@ -120,8 +120,7 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   textAlign: "center",
 })
 
-const $statusContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.backgroundAlt,
+const $statusContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.md,
   borderRadius: spacing.xs,
   marginBottom: spacing.xl,

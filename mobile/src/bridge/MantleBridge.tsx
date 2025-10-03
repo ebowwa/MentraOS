@@ -368,10 +368,10 @@ export class MantleBridge extends EventEmitter {
           GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
           break
         case "audio_play_request":
-          await AudioPlayService.handleAudioPlayRequest(data)
+          await AudioPlayService.handle_audio_play_request(data)
           break
         case "audio_stop_request":
-          await AudioPlayService.stopAllAudio()
+          await bridge.sendCommand("audio_stop_request")
           break
         case "wifi_scan_results":
           GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
