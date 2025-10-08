@@ -1,0 +1,142 @@
+/*
+ * Copyright (c) 2022 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/ {
+	chosen {
+		nordic,nus-uart = &uart0;
+		/* Use dummy display for XIP testing */
+		// zephyr,display = &hls12vga;
+		// Temporarily disable display for XIP testing
+		zephyr,display = &dummy_display;
+	};
+	
+	pwmleds {
+		compatible = "pwm-leds";
+		
+		/* PWM LED for brightness control on LED 3 (P0.31) */
+		pwm_led3: pwm_led_3 {
+			pwms = <&pwm1 0 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
+			label = "PWM LED 3";
+		};
+	};
+	
+	aliases {
+		pwm-led3 = &pwm_led3;
+	};
+
+	/* Dummy display for testing (until projector driver properly integrated) */
+	dummy_display: dummy_display {
+		compatible = "zephyr,dummy-dc";
+		width = <640>;
+		height = <480>;
+		status = "okay";
+	};
+};
+
+&pinctrl {
+	spi4_default: spi4_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK,  0, 8)>,
+			        <NRF_PSEL(SPIM_MOSI, 0, 9)>,
+			        <NRF_PSEL(SPIM_MISO, 0, 10)>;
+			nordic,drive-mode = <NRF_DRIVE_E0E1>;
+		};
+	};
+	spi4_sleep: spi4_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK,  0, 8)>,
+			        <NRF_PSEL(SPIM_MOSI, 0, 9)>,
+			        <NRF_PSEL(SPIM_MISO, 0, 10)>;
+			low-power-enable;
+		};
+	};
+	i2s0_default: i2s0_default {
+		group1 {
+			psels = <NRF_PSEL(I2S_SDOUT, 1, 06)>,
+					<NRF_PSEL(I2S_SCK_M, 1, 07)>,
+					<NRF_PSEL(I2S_LRCK_M, 1, 8)>;
+			// <NRF_PSEL(I2S_SDIN, 0, 0)>;
+
+		};
+	};
+	pdm0_default_alt: pdm0_default_alt {
+		group1 {
+			psels = <NRF_PSEL(PDM_CLK, 1, 12)>,
+					<NRF_PSEL(PDM_DIN, 1, 11)>;
+
+		};
+	};
+
+	// I2C2 pinctrl moved to board overlay
+};
+
+&spi4 {
+	compatible = "nordic,nrf-spim";
+	status = "disabled";
+	pinctrl-0 = <&spi4_default>;
+	pinctrl-1 = <&spi4_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	hls12vga: hls12vga@0 {
+		compatible = "zephyr,custom-hls12vga";
+		reg = <0>;
+		status = "disabled";
+		spi-max-frequency = <32000000>;
+
+		left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+		right_cs-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+		v0_9-gpios     = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+		v1_8-gpios     = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+		vcom-gpios     = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+		reset-gpios    = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+		width = <640>;
+		height = <480>;
+	};
+};
+
+&pinctrl {
+	pwm1_default: pwm1_default {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 31)>;
+		};
+	};
+
+	pwm1_sleep: pwm1_sleep {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 31)>;
+			low-power-enable;
+		};
+	};
+};
+
+&pwm1 {
+	status = "okay";
+	pinctrl-0 = <&pwm1_default>;
+	pinctrl-1 = <&pwm1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&i2s0 {
+	compatible = "nordic,nrf-i2s";
+	status = "okay";
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-names = "default";
+	// clock-source = "ACLK";
+};
+
+dmic_dev: &pdm0 {
+	status = "okay";
+	compatible = "nordic,nrf-pdm";
+	pinctrl-0 = <&pdm0_default_alt>;
+	pinctrl-names = "default";
+	// clock-source = "ACLK";
+};
+
+
+
+&i2c2 {
+    // SSD1306 configuration moved to board overlay
+};

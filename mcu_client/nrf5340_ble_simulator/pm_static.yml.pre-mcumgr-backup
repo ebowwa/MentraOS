@@ -1,0 +1,22 @@
+
+settings_storage:
+  address: 0xfe000
+  end_address: 0x100000
+  region: flash_primary
+  size: 0x2000
+
+xip_partition:
+  address: 0x0
+  device: MX25R64
+  end_address: 0x400000
+  region: external_flash
+  size: 0x400000
+
+littlefs_storage:
+  address: 0x400000
+  device: MX25R64
+  end_address: 0x800000
+  region: external_flash
+  size: 0x400000
+
+
