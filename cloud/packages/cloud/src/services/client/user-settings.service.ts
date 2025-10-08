@@ -61,10 +61,13 @@ export async function updateUserSettings(
   const userSettings = await findOrCreateForUser(normalizedEmail);
   await userSettings.updateSettings(settings);
 
-  logger.info(`User settings updated`, {
-    email: normalizedEmail,
-    updatedKeys: Object.keys(settings),
-  });
+  logger.info(
+    {
+      email: normalizedEmail,
+      updatedKeys: Object.keys(settings),
+    },
+    `User settings updated`,
+  );
 
   return userSettings.getSettings();
 }
@@ -88,10 +91,13 @@ export async function setUserSetting(
   const userSettings = await findOrCreateForUser(email);
   await userSettings.setSetting(key, value);
 
-  logger.info(`User setting updated`, {
-    email: email.toLowerCase().trim(),
-    key,
-  });
+  logger.info(
+    {
+      email: email.toLowerCase().trim(),
+      key,
+    },
+    `User setting updated`,
+  );
 }
 
 /**
@@ -105,10 +111,13 @@ export async function deleteUserSetting(
   if (userSettings) {
     await userSettings.deleteSetting(key);
 
-    logger.info(`User setting deleted`, {
-      email: email.toLowerCase().trim(),
-      key,
-    });
+    logger.info(
+      {
+        email: email.toLowerCase().trim(),
+        key,
+      },
+      `User setting deleted`,
+    );
   }
 }
 

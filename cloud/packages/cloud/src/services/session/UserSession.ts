@@ -543,8 +543,8 @@ export class UserSession {
         );
       } catch (sendError) {
         this.logger.error(
-          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
           sendError,
+          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
         );
       }
       this.audioPlayRequestMapping.delete(requestId);

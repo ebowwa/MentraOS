@@ -99,7 +99,7 @@ router.get("/:appName", async (req, res) => {
     const _app = await appService.getApp(appName);
 
     if (!_app) {
-      logger.error("App not found for app:", appName);
+      logger.error({ appName }, "App not found for app:");
       return res.status(404).json({ error: "App not found" });
     }
 
@@ -206,7 +206,7 @@ router.get("/:appName", async (req, res) => {
       organization: _organization,
     });
   } catch (error) {
-    rootLogger.error("Error processing App settings request:", error);
+    rootLogger.error(error as Error, "Error processing App settings request:");
     return res
       .status(401)
       .json({ error: "Invalid core token or error processing request" });
@@ -246,7 +246,7 @@ router.get("/user/:appName", async (req, res) => {
       const _app = await appService.getApp(appName);
 
       if (!_app) {
-        rootLogger.error("App not found for app:", appName);
+        rootLogger.error({ appName }, "App not found for app:");
         return res.status(404).json({ error: "App not found" });
       }
 
@@ -278,8 +278,8 @@ router.get("/user/:appName", async (req, res) => {
     return res.json({ success: true, settings: storedSettings });
   } catch (error) {
     rootLogger.error(
+      error as Error,
       "Error processing user-specific App settings request:",
-      error,
     );
     return res.status(401).json({ error: "Error processing request" });
   }
@@ -397,7 +397,10 @@ router.post("/:appName", async (req, res) => {
           );
         }
       } catch (error) {
-        rootLogger.error("Error sending settings update via WebSocket:", error);
+        rootLogger.error(
+          error as Error,
+          "Error sending settings update via WebSocket:",
+        );
       }
     }
     // Get the app to access its properties
@@ -419,13 +422,13 @@ router.post("/:appName", async (req, res) => {
             settings: updatedSettings,
           });
           rootLogger.info(
+            { responseData: response.data },
             `Called app endpoint at ${appEndpoint} with response:`,
-            response.data,
           );
         } catch (err) {
           rootLogger.error(
+            err as Error,
             `Error calling app endpoint at ${appEndpoint}:`,
-            err,
           );
         }
       }
@@ -436,7 +439,10 @@ router.post("/:appName", async (req, res) => {
       message: "Settings updated successfully",
     });
   } catch (error) {
-    rootLogger.error("Error processing update for App settings:", error);
+    rootLogger.error(
+      error as Error,
+      "Error processing update for App settings:",
+    );
     return res
       .status(401)
       .json({ error: "Invalid core token or error processing update" });

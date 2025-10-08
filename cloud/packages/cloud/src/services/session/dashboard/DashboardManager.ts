@@ -388,8 +388,8 @@ export class DashboardManager {
           break;
         default:
           this.logger.warn(
-            { mode: this.currentMode },
-            `[${this.userSession.userId}] Unknown dashboard mode: ${this.currentMode}`,
+            { userId: this.userSession.userId, mode: this.currentMode },
+            "Unknown dashboard mode",
           );
           return;
       }
