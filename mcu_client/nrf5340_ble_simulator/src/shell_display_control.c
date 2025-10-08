@@ -146,6 +146,7 @@ static int cmd_display_brightness(const struct shell *shell, size_t argc, char *
     // Convert 0-100% to 0-9 levels for HLS12VGA
     uint8_t projector_level = (brightness * 9) / 100;
     
+#ifdef CONFIG_CUSTOM_HLS12VGA
     // Set HLS12VGA brightness
     int ret = hls12vga_set_brightness(projector_level);
     if (ret == 0) {
@@ -155,6 +156,10 @@ static int cmd_display_brightness(const struct shell *shell, size_t argc, char *
         shell_error(shell, "❌ Failed to set brightness: %d", ret);
         return ret;
     }
+#else
+    shell_print(shell, "✅ Dummy brightness set to %d%% (level %d/9) - HLS12VGA disabled", 
+        brightness, projector_level);
+#endif
     
     LOG_INF("Display brightness set to %d%% via shell command", brightness);
     return 0;
@@ -165,6 +170,7 @@ static int cmd_display_brightness(const struct shell *shell, size_t argc, char *
  */
 static int cmd_display_clear(const struct shell *shell, size_t argc, char **argv)
 {
+#ifdef CONFIG_CUSTOM_HLS12VGA
     // Use HLS12VGA driver's clear screen function
     // color_on = false means clear to black (background color)
     int ret = hls12vga_clear_screen(false);
@@ -178,6 +184,10 @@ static int cmd_display_clear(const struct shell *shell, size_t argc, char **argv
     }
     
     return ret;
+#else
+    shell_print(shell, "✅ Dummy display cleared - HLS12VGA disabled");
+    return 0;
+#endif
 }
 
 /**
@@ -367,6 +377,7 @@ static int cmd_display_battery(const struct shell *shell, size_t argc, char **ar
  */
 static int cmd_display_fill(const struct shell *shell, size_t argc, char **argv)
 {
+#ifdef CONFIG_CUSTOM_HLS12VGA
     // Use HLS12VGA driver's clear screen function with white fill
     // color_on = true means fill with white (foreground color)
     int ret = hls12vga_clear_screen(true);
@@ -380,6 +391,10 @@ static int cmd_display_fill(const struct shell *shell, size_t argc, char **argv)
     }
     
     return ret;
+#else
+    shell_print(shell, "✅ Dummy display filled - HLS12VGA disabled");
+    return 0;
+#endif
 }
 
 /**
@@ -389,6 +404,7 @@ static int cmd_display_test(const struct shell *shell, size_t argc, char **argv)
 {
     shell_print(shell, "🧪 Running display test patterns...");
     
+#ifdef CONFIG_CUSTOM_HLS12VGA
     int ret;
     
     // Test 1: Horizontal grayscale pattern
@@ -427,6 +443,20 @@ static int cmd_display_test(const struct shell *shell, size_t argc, char **argv)
     
     LOG_INF("Display test patterns completed using HLS12VGA driver functions");
     return 0;
+#else
+    // Dummy test patterns when HLS12VGA is disabled
+    shell_print(shell, "  📊 Dummy horizontal grayscale pattern...");
+    k_sleep(K_MSEC(500));
+    
+    shell_print(shell, "  📊 Dummy vertical grayscale pattern...");
+    k_sleep(K_MSEC(500));
+    
+    shell_print(shell, "  ♟️  Dummy chess pattern...");
+    k_sleep(K_MSEC(500));
+    
+    shell_print(shell, "✅ Dummy display test completed - HLS12VGA disabled");
+    return 0;
+#endif
 }
 
 /* Shell command definitions */

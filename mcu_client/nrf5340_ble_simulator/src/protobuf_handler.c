@@ -809,12 +809,16 @@ void protobuf_set_brightness_level(uint32_t level)
 	
 	LOG_INF("Setting projector brightness: %u%% -> level %u (0-9)", level, projector_level);
 	
+#ifdef CONFIG_CUSTOM_HLS12VGA
 	int ret = hls12vga_set_brightness(projector_level);
 	if (ret == 0) {
 		LOG_INF("✅ Display projector brightness set to level %u/9", projector_level);
 	} else {
 		LOG_ERR("❌ Failed to set display projector brightness: %d", ret);
 	}
+#else
+	LOG_INF("✅ Dummy projector brightness set to level %u/9 - HLS12VGA disabled", projector_level);
+#endif
 }
 
 void protobuf_process_brightness_config(const mentraos_ble_BrightnessConfig *brightness_config)

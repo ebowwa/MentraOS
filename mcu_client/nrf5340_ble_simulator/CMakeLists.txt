@@ -22,6 +22,7 @@ add_subdirectory(src/mos_driver)
 target_sources(app PRIVATE
     src/main.c
     src/extern_code.c
+    src/xip_shell_commands.c
     src/protobuf_handler.c
     src/mentra_ble_service.c
     src/pdm_audio_stream.c

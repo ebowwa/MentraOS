@@ -7,9 +7,10 @@
 / {
 	chosen {
 		nordic,nus-uart = &uart0;
-		/* Use HLS12VGA projector display */
+		/* Use dummy display for XIP testing */
 		// zephyr,display = &hls12vga;
-		zephyr,display = &ssd1306;
+		// Temporarily disable display for XIP testing
+		zephyr,display = &dummy_display;
 	};
 	
 	pwmleds {
@@ -31,7 +32,7 @@
 		compatible = "zephyr,dummy-dc";
 		width = <640>;
 		height = <480>;
-		status = "disabled";  // Disabled since we're using SSD1306
+		status = "okay";
 	};
 };
 

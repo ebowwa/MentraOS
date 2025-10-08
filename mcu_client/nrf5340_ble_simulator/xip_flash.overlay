@@ -49,7 +49,7 @@
         compatible = "nordic,qspi-nor";
         reg = <0>;
         writeoc = "pp4io";
-        readoc = "qpi";
+        readoc = "read4io";
         sck-frequency = <80000000>;
         jedec-id = [c2 28 17];  /* MX25R6435F 8MB NOR Flash */
         size = <0x800000>;      /* 8MB = 0x800000 bytes */
