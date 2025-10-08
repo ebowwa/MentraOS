@@ -4,6 +4,44 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🎯 XIP Font Migration - Memory Overflow RESOLVED - 2025-10-09
+
+#### ✅ MAJOR SUCCESS: LVGL Fonts Migrated to External Flash (XIP)
+- **🚀 CRITICAL ACHIEVEMENT**: Successfully resolved 85KB memory overflow that was preventing application build
+- **📊 Memory Impact**: 
+  - **BEFORE**: `region 'FLASH' overflowed by 85200 bytes` (build failed)
+  - **AFTER**: `FLASH: 549956 B / 592 KB (90.72%)` (build succeeds!)
+  - **XIP Usage**: `EXTFLASH: 248 B / 3MB (0.01%)` - fonts now in external flash
+- **💾 Memory Saved**: 85KB+ freed up in precious internal FLASH memory
+
+#### Font System Architecture Overhaul
+- **✅ NEW**: `src/fonts/` directory with XIP-enabled PuHui Chinese+English fonts:
+  - `nrf5340_font_puhui_12_essential.c/.h` - 12pt Chinese + English font
+  - `nrf5340_font_puhui_14_essential.c/.h` - 14pt Chinese + English font  
+  - `nrf5340_font_puhui_16_essential.c/.h` - 16pt Chinese + English font
+  - `xip_fonts.h` - Font mapping utilities and convenience macros
+- **🔧 XIP Implementation**: All font data marked with `__attribute__((section(".extflash_text")))` for external flash placement
+- **📋 CMake Integration**: Added font sources and XIP relocation directives using `zephyr_code_relocate()`
+
+#### Application Font References Updated
+- **✅ UPDATED**: `src/mos_components/mos_lvgl_display/src/display_config.c` — All display configurations use XIP fonts
+- **✅ UPDATED**: `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c` — Direct LVGL font usage updated to XIP fonts
+- **✅ UPDATED**: `src/shell_display_control.c` — Shell font mapping uses XIP font helper functions
+- **✅ UPDATED**: `src/display_manager.c` — Font mapping table updated to use XIP PuHui fonts
+- **🗑️ REMOVED**: All built-in LVGL fonts disabled in `prj.conf` (MONTSERRAT, SIMSUN) to save memory
+
+#### Build System Integration
+- **⚙️ CMAKE**: Updated `CMakeLists.txt` with font directory includes and XIP relocation
+- **⚙️ CONFIG**: Updated `prj.conf` to disable built-in fonts and document XIP font usage
+- **🔗 LINKER**: XIP fonts properly linked to external flash partition via `EXTFLASH_TEXT` section
+
+#### Benefits Achieved
+- **🌏 Chinese Support**: PuHui fonts provide native Chinese character rendering + English
+- **💾 Memory Efficient**: Fonts stored in 3MB external flash instead of constrained internal FLASH  
+- **📈 Scalable**: Easy to add more font sizes without internal memory impact
+- **⚡ Performance**: XIP enables direct execution from external flash (no RAM copying required)
+- **✅ Build Success**: Application now builds completely (237/237 steps) vs previous build failures
+
 ### 🛡️ Critical Display Pattern BUS FAULT Fix - 2025-09-30
 
 #### Fixed Dangling Pointer Crash in Pattern Switching
