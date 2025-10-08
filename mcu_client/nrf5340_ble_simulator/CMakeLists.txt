@@ -63,7 +63,7 @@ target_include_directories(app PRIVATE
 zephyr_code_relocate(FILES src/extern_code.c LOCATION EXTFLASH_TEXT NOCOPY)
 
 # Relocate font data to external flash (XIP) to save internal FLASH memory
-zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_12_essential.c LOCATION EXTFLASH_TEXT NOCOPY)
-zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_14_essential.c LOCATION EXTFLASH_TEXT NOCOPY) 
-zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_16_essential.c LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_12_essential.c LOCATION EXTFLASH_RODATA NOCOPY)
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_14_essential.c LOCATION EXTFLASH_RODATA NOCOPY) 
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_16_essential.c LOCATION EXTFLASH_RODATA NOCOPY)
 

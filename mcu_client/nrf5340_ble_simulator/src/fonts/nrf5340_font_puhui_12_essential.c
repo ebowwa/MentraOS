@@ -23,7 +23,7 @@
  *----------------*/
 
 /* Place font bitmap data in external flash XIP section */
-__attribute__((section(".extflash_text"))) __attribute__((section(".extflash_text"))) static const uint8_t glyph_bitmap[] = {
+static const uint8_t glyph_bitmap[] = {
     0x00, 0x40, 0x40, 0x40, 0x40, 0x40, 0x00, 0x00, 0xC0, 0x00, 0x00, 0x50, 0x50, 0x50, 0x00, 0x00, 
     0x24, 0x24, 0xFE, 0x24, 0x68, 0xFE, 0x48, 0x48, 0x00, 0x10, 0x78, 0x50, 0x50, 0x30, 0x1C, 0x14, 
     0x14, 0x78, 0x10, 0x00, 0x00, 0x00, 0x52, 0x00, 0x52, 0x00, 0x54, 0x00, 0x70, 0x00, 0x0A, 0x80, 
@@ -193,7 +193,7 @@ __attribute__((section(".extflash_text"))) __attribute__((section(".extflash_tex
     0x40, 0xC0, 0x00, 0x00
 };
 
-__attribute__((section(".extflash_text"))) __attribute__((section(".extflash_text"))) static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
+static const lv_font_fmt_txt_glyph_dsc_t glyph_dsc[] = {
     {.bitmap_index = 0, .adv_w = 4, .box_w = 3, .box_h = 12, .ofs_x = 0, .ofs_y = 0}, /* U+0020 ' ' */
     {.bitmap_index = 0, .adv_w = 3, .box_w = 2, .box_h = 10, .ofs_x = 0, .ofs_y = 0}, /* U+0021 '!' */
     {.bitmap_index = 10, .adv_w = 5, .box_w = 4, .box_h = 5, .ofs_x = 0, .ofs_y = 0}, /* U+0022 '"' */
@@ -368,7 +368,7 @@ __attribute__((section(".extflash_text"))) __attribute__((section(".extflash_tex
     {.bitmap_index = 2636, .adv_w = 13, .box_w = 12, .box_h = 12, .ofs_x = 0, .ofs_y = 0}, /* U+9AD8 '高' */
 };
 
-__attribute__((section(".extflash_text"))) __attribute__((section(".extflash_text"))) static const uint16_t unicode_list[] = {
+static const uint16_t unicode_list[] = {
     0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 
     0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 
     0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 
@@ -393,7 +393,7 @@ __attribute__((section(".extflash_text"))) __attribute__((section(".extflash_tex
     0x95F4, 0x96F6, 0x97F3, 0x9AD8
 };
 
-__attribute__((section(".extflash_text"))) __attribute__((section(".extflash_text"))) static const lv_font_fmt_txt_cmap_t cmaps[] = {
+static const lv_font_fmt_txt_cmap_t cmaps[] = {
     {
         .range_start = 0x20,
         .range_length = 39609,
@@ -405,7 +405,7 @@ __attribute__((section(".extflash_text"))) __attribute__((section(".extflash_tex
     }
 };
 
-__attribute__((section(".extflash_text"))) __attribute__((section(".extflash_text"))) static const lv_font_fmt_txt_dsc_t font_dsc = {
+static const lv_font_fmt_txt_dsc_t font_dsc = {
     .glyph_bitmap = glyph_bitmap,
     .glyph_dsc = glyph_dsc,
     .cmaps = cmaps,
@@ -417,7 +417,7 @@ __attribute__((section(".extflash_text"))) __attribute__((section(".extflash_tex
     .bitmap_format = 0
 };
 
-__attribute__((section(".extflash_text"))) const lv_font_t font_puhui_12_essential = {
+const lv_font_t font_puhui_12_essential = {
     .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,
     .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,
     .line_height = 14,
