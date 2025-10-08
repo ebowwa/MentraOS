@@ -845,8 +845,7 @@ export class AppWebSocketService {
         { service: SERVICE_NAME, isNewCalendarSubscription, packageName },
         `isNewCalendarSubscription: ${isNewCalendarSubscription} for app ${packageName}`,
       );
-      const allCalendarEvents =
-        userSession.subscriptionManager.getAllCalendarEvents();
+      const allCalendarEvents = userSession.calendarManager.getCachedEvents();
       if (allCalendarEvents.length > 0) {
         userSession.logger.debug(
           { service: SERVICE_NAME, allCalendarEvents },

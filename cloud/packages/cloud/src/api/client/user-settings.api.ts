@@ -10,6 +10,7 @@ import {
   clientAuthWithEmail,
   RequestWithEmail,
 } from "../middleware/client.middleware";
+import UserSession from "../../services/session/UserSession";
 
 const router = Router();
 
@@ -64,6 +65,12 @@ async function updateUserSettings(req: Request, res: Response) {
       email,
       settings,
     );
+
+    // If an active session exists, apply session bridges (metric_system_enabled, default_wearable)
+    const session = UserSession.getById(email);
+    if (session) {
+      await session.userSettingsManager.onSettingsUpdatedViaRest(settings);
+    }
 
     res.json({
       success: true,

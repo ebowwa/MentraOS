@@ -322,10 +322,9 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          userSession.subscriptionManager.cacheCalendarEvent(
+          userSession.calendarManager.updateEventFromWebsocket(
             message as CalendarEvent,
           );
-          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): verify logic
@@ -841,9 +840,11 @@ export class GlassesWebSocketService {
       { service: SERVICE_NAME, message },
       `handleGlassesConnectionState for user ${userSession.userId}`,
     );
-    userSession.microphoneManager.handleConnectionStateChange(
+    await userSession.deviceManager.handleGlassesConnectionState(
+      glassesConnectionStateMessage.modelName || null,
       glassesConnectionStateMessage.status,
     );
+    return;
 
     // Extract glasses model information
     const modelName = glassesConnectionStateMessage.modelName;
