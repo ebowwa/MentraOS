@@ -11,6 +11,7 @@
 
 #include "display_manager.h"
 #include "mos_lvgl_display.h"
+#include "xip_fonts.h"  // Include XIP font definitions
 
 LOG_MODULE_REGISTER(display_manager, LOG_LEVEL_DBG);
 
@@ -31,20 +32,16 @@ static bool display_enabled = false;
 static lv_obj_t *current_text_label = NULL;
 static lv_obj_t *current_scroll_container = NULL;
 
-// Font mapping table
+// XIP Font mapping table - using external flash fonts
 static const struct {
     uint16_t code;
     const lv_font_t *font;
 } font_map[] = {
-    {12, &lv_font_montserrat_12},
-    {14, &lv_font_montserrat_14},
-    // Removed large fonts to save FLASH memory
-    // {16, &lv_font_montserrat_16},  // Not available
-    // {18, &lv_font_montserrat_18},  // Not available  
-    // {24, &lv_font_montserrat_24},  // Not available
-    // {30, &lv_font_montserrat_30},  // Not available
-    // {48, &lv_font_montserrat_48},  // Not available
-    {0, &lv_font_montserrat_14} // Default font (was 16)
+    {12, &font_puhui_12_essential},  // XIP: Chinese + English 12pt
+    {14, &font_puhui_14_essential},  // XIP: Chinese + English 14pt  
+    {16, &font_puhui_16_essential},  // XIP: Chinese + English 16pt
+    // All fonts available in external flash now!
+    {0, &font_puhui_14_essential}    // Default XIP font
 };
 
 static void display_thread_entry(void *arg1, void *arg2, void *arg3);

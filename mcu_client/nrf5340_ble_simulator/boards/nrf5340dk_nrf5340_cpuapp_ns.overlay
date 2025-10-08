@@ -1,8 +1,9 @@
 / {
-    chosen {
-        zephyr,display = &hls12vga;  // Switch to HLS12VGA projector for testing
-        nordic-nus-uart = &uart0;
-    };
+	chosen {
+		nordic,pm-ext-flash = &mx25r64;
+		zephyr,display = &hls12vga;  // Switch to HLS12VGA projector for testing
+		nordic-nus-uart = &uart0;
+	};
 };
 
 &pinctrl {

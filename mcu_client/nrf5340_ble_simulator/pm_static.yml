@@ -1,22 +1,168 @@
 
-settings_storage:
-  address: 0xfe000
-  end_address: 0x100000
+# Optimized 8MB QSPI Flash Layout (copied from working extxip_smp_svr_1)
+# Target: 3MB XIP App + 3MB LittleFS Storage + MCUboot compatibility
+# 
+# Memory Layout:
+# Internal Flash (1MB):
+#   0x00000 - 0x10000  : MCUboot (64KB)
+#   0x10000 - 0x10200  : MCUboot pad (512B)  
+#   0x10200 - 0xe4000  : Internal App (847KB)
+#   0xe4000 - 0xf0000  : Unused (48KB)
+#   0xf0000 - 0x100000 : Settings (64KB)
+#
+# External QSPI Flash (8MB):
+#   0x000000 - 0x0d4000 : mcuboot_secondary     (847KB - Internal app updates)
+#   0x0d4000 - 0x114000 : mcuboot_secondary_1   (256KB - Network core updates)
+#   0x114000 - 0x414000 : mcuboot_primary_2     (3MB   - XIP app running)
+#   0x414000 - 0x714000 : mcuboot_secondary_2   (3MB   - XIP app updates)
+#   0x714000 - 0x800000 : littlefs_storage      (944KB - File system)
+
+app:
+  address: 0x10200
+  end_address: 0xe4000
   region: flash_primary
-  size: 0x2000
+  size: 0xd3e00
 
-xip_partition:
+external_flash:
   address: 0x0
-  device: MX25R64
-  end_address: 0x400000
-  region: external_flash
-  size: 0x400000
-
-littlefs_storage:
-  address: 0x400000
   device: MX25R64
   end_address: 0x800000
   region: external_flash
-  size: 0x400000
+  size: 0x800000
+
+mcuboot:
+  address: 0x0
+  end_address: 0x10000
+  region: flash_primary
+  size: 0x10000
+
+mcuboot_pad:
+  address: 0x10000
+  end_address: 0x10200
+  region: flash_primary
+  size: 0x200
+
+mcuboot_primary:
+  address: 0x10000
+  end_address: 0xe4000
+  orig_span: &id001
+  - mcuboot_pad
+  - app
+  region: flash_primary
+  size: 0xd4000
+  span: *id001
+
+mcuboot_primary_1:
+  address: 0x0
+  device: flash_ctrl
+  end_address: 0x40000
+  region: ram_flash
+  size: 0x40000
+
+mcuboot_primary_app:
+  address: 0x10200
+  end_address: 0xe4000
+  orig_span: &id002
+  - app
+  region: flash_primary
+  size: 0xd3e00
+  span: *id002
+
+# Internal app update slot in QSPI (same size as internal app)
+mcuboot_secondary:
+  address: 0x0
+  device: MX25R64
+  end_address: 0xd4000
+  region: external_flash
+  size: 0xd4000
+
+# Network core update slot in QSPI  
+mcuboot_secondary_1:
+  address: 0xd4000
+  device: MX25R64  
+  end_address: 0x114000
+  region: external_flash
+  size: 0x40000
+
+# Large XIP application slot (3MB)
+mcuboot_primary_2:
+  address: 0x114000
+  device: MX25R64
+  end_address: 0x414000
+  orig_span: &id003  
+  - mcuboot_primary_2_pad
+  - mcuboot_primary_2_app
+  region: external_flash
+  size: 0x300000
+  span: *id003
+
+mcuboot_primary_2_pad:
+  address: 0x114000
+  end_address: 0x114200
+  region: external_flash
+  size: 0x200
+
+# XIP application code area (3MB - 512B for header)
+mcuboot_primary_2_app:
+  address: 0x114200
+  device: MX25R64
+  end_address: 0x414000
+  region: external_flash
+  size: 0x2ffe00
+
+# XIP application update slot (3MB)
+mcuboot_secondary_2:
+  address: 0x414000
+  device: MX25R64
+  end_address: 0x714000
+  region: external_flash
+  size: 0x300000
+
+# LittleFS storage partition (~944KB remaining)
+littlefs_storage:
+  address: 0x714000
+  device: MX25R64
+  end_address: 0x800000
+  region: external_flash
+  size: 0xec000
+
+otp:
+  address: 0xff8100
+  end_address: 0xff83fc
+  region: otp
+  size: 0x2fc
+
+pcd_sram:
+  address: 0x20000000
+  end_address: 0x20002000
+  region: sram_primary
+  size: 0x2000
+
+ram_flash:
+  address: 0x40000
+  end_address: 0x40000
+  region: ram_flash
+  size: 0x0
+
+rpmsg_nrf53_sram:
+  address: 0x20070000
+  end_address: 0x20080000
+  placement:
+    before:
+    - end
+  region: sram_primary
+  size: 0x10000
+
+settings_storage:
+  address: 0xf0000
+  end_address: 0x100000
+  region: flash_primary
+  size: 0x10000
+
+sram_primary:
+  address: 0x20002000
+  end_address: 0x20070000
+  region: sram_primary
+  size: 0x6e000
 
 

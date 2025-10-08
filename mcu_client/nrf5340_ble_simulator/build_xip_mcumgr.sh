@@ -84,18 +84,22 @@ if [ -d "build" ]; then
 fi
 
 echo "🚀 Building nRF5340 BLE Simulator with XIP + MCUmgr..."
+
+# Use standard project configuration with MCUmgr support
+CONF_FILE="prj.conf"
+
 if [ -n "$SYSBUILD_FLAG" ]; then
-    echo "Command: west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp --sysbuild"
+    echo "Command: west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp --sysbuild -- -DCONF_FILE=$CONF_FILE"
 else
-    echo "Command: west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp"
+    echo "Command: west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp -- -DCONF_FILE=$CONF_FILE"
 fi
 echo ""
 
 # Build with conditional sysbuild for MCUboot support
 if [ -n "$SYSBUILD_FLAG" ]; then
-    west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp --sysbuild
+    west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp --sysbuild -- -DCONF_FILE="$CONF_FILE"
 else
-    west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp
+    west build --build-dir build . --pristine --board nrf5340dk/nrf5340/cpuapp -- -DCONF_FILE="$CONF_FILE"
 fi
 
 BUILD_RESULT=$?

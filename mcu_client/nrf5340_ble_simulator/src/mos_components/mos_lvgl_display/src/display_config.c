@@ -10,6 +10,7 @@
  */
 
 #include "display_config.h"
+#include "xip_fonts.h"  // Include XIP font definitions
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
@@ -26,7 +27,7 @@ static bool config_initialized = false;
  * @brief Predefined display configurations for different display types
  */
 static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
-    // DISPLAY_TYPE_UNKNOWN - Default fallback
+    // DISPLAY_TYPE_UNKNOWN - Default fallback (XIP fonts)
     [DISPLAY_TYPE_UNKNOWN] = {
         .type = DISPLAY_TYPE_UNKNOWN,
         .name = "Unknown Display",
@@ -36,10 +37,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 124, .usable_height = 60
         },
         .fonts = {
-            .primary = &lv_font_montserrat_12,
-            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
-            .large = &lv_font_montserrat_14,
-            .cjk = &lv_font_simsun_14_cjk,
+            .primary = &font_puhui_12_essential,   // XIP: Chinese + English 12pt
+            .secondary = &font_puhui_12_essential, // XIP: Same font for consistency  
+            .large = &font_puhui_14_essential,     // XIP: Chinese + English 14pt
+            .cjk = &font_puhui_14_essential,       // XIP: PuHui supports Chinese natively
             .line_spacing = 1
         },
         .patterns = {
@@ -64,10 +65,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 600, .usable_height = 440
         },
         .fonts = {
-            .primary = &lv_font_montserrat_14,    // Use 14 instead of 24 (not available)
-            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 18 (not available)
-            .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
-            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
+            .primary = &font_puhui_14_essential,   // XIP: Chinese + English 14pt
+            .secondary = &font_puhui_12_essential, // XIP: Chinese + English 12pt  
+            .large = &font_puhui_16_essential,     // XIP: Chinese + English 16pt
+            .cjk = &font_puhui_16_essential,       // XIP: PuHui supports Chinese natively
             .line_spacing = 3
         },
         .patterns = {
@@ -82,7 +83,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         }
     },
 
-    // DISPLAY_TYPE_SSD1306_128x64 - Small OLED display
+    // DISPLAY_TYPE_SSD1306_128x64 - Small OLED display (XIP fonts)
     [DISPLAY_TYPE_SSD1306_128x64] = {
         .type = DISPLAY_TYPE_SSD1306_128x64,
         .name = "SSD1306 OLED 128x64",
@@ -92,10 +93,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 124, .usable_height = 60
         },
         .fonts = {
-            .primary = &lv_font_montserrat_12,
-            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
-            .large = &lv_font_montserrat_14,
-            .cjk = &lv_font_simsun_14_cjk,
+            .primary = &font_puhui_12_essential,   // XIP: Chinese + English 12pt
+            .secondary = &font_puhui_12_essential, // XIP: Same font for consistency  
+            .large = &font_puhui_14_essential,     // XIP: Chinese + English 14pt
+            .cjk = &font_puhui_14_essential,       // XIP: PuHui supports Chinese natively
             .line_spacing = 1
         },
         .patterns = {
@@ -120,10 +121,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .usable_width = 610, .usable_height = 450
         },
         .fonts = {
-            .primary = &lv_font_montserrat_14,    // Use 14 instead of 30 (not available)
-            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 24 (not available)
-            .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
-            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
+            .primary = &font_puhui_14_essential,   // XIP: Chinese + English 14pt
+            .secondary = &font_puhui_12_essential, // XIP: Chinese + English 12pt  
+            .large = &font_puhui_16_essential,     // XIP: Chinese + English 16pt (larger for projector)
+            .cjk = &font_puhui_16_essential,       // XIP: PuHui supports Chinese natively
             .line_spacing = 4
         },
         .patterns = {

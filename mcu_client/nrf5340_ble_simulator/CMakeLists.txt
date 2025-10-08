@@ -35,6 +35,10 @@ target_sources(app PRIVATE
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
     src/mos_components/mos_lvgl_display/src/display_config.c
+    # XIP Fonts - placed in external flash to save internal FLASH
+    src/fonts/nrf5340_font_puhui_12_essential.c
+    src/fonts/nrf5340_font_puhui_14_essential.c
+    src/fonts/nrf5340_font_puhui_16_essential.c
 )
 
 # Add protobuf sources when available
@@ -48,6 +52,7 @@ endif()
 target_include_directories(app PRIVATE
     src
     src/BspLog
+    src/fonts
     src/mos_components/mos_sysport/include
     src/mos_components/mos_lvgl_display/include
     custom_driver_module/drivers
@@ -56,4 +61,9 @@ target_include_directories(app PRIVATE
 
 # Run extern_code from the external flash (XIP). No need to copy.
 zephyr_code_relocate(FILES src/extern_code.c LOCATION EXTFLASH_TEXT NOCOPY)
+
+# Relocate font data to external flash (XIP) to save internal FLASH memory
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_12_essential.c LOCATION EXTFLASH_TEXT NOCOPY)
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_14_essential.c LOCATION EXTFLASH_TEXT NOCOPY) 
+zephyr_code_relocate(FILES src/fonts/nrf5340_font_puhui_16_essential.c LOCATION EXTFLASH_TEXT NOCOPY)
 

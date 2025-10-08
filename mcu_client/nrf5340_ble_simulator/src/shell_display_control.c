@@ -34,6 +34,7 @@
 
 // Include MOS LVGL display functions
 #include "mos_lvgl_display.h"
+#include "xip_fonts.h"  // Include XIP font definitions
 
 // Include protobuf handler for battery functions
 #include "protobuf_handler.h"
@@ -43,14 +44,10 @@ extern struct k_msgq lvgl_display_msgq;
 
 LOG_MODULE_REGISTER(shell_display, LOG_LEVEL_INF);
 
-// Helper function to map font sizes to available fonts
+// Helper function to map font sizes to available XIP fonts
 static const lv_font_t *get_font_by_size(int size)
 {
-    switch (size) {
-        case 12: return &lv_font_montserrat_12;
-        case 14: return &lv_font_montserrat_14;
-        default: return &lv_font_montserrat_14; // Default to 14
-    }
+    return xip_get_font_by_size(size);  // Use XIP font mapping function
 }
 
 /**

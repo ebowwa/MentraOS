@@ -887,16 +887,17 @@ int main(void)
 		return 0;
 	}
 	bt_gatt_cb_register(&gatt_callbacks);
-	// Initialize PDM audio streaming system
-	LOG_INF("🎤 Initializing PDM audio streaming system...");
-	err = pdm_audio_stream_init();
-	if (err) {
-		LOG_ERR("Failed to initialize PDM audio streaming (err: %d)", err);
-		// Continue without audio streaming capability
-	} else {
-		LOG_INF("✅ PDM audio streaming system ready");
-		LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
-	}
+	// TEMPORARILY DISABLED: Initialize PDM audio streaming system for debugging
+	LOG_INF("⚠️ TEMPORARILY DISABLED: PDM audio streaming for debugging");
+	// LOG_INF("🎤 Initializing PDM audio streaming system...");
+	// err = pdm_audio_stream_init();
+	// if (err) {
+	// 	LOG_ERR("Failed to initialize PDM audio streaming (err: %d)", err);
+	// 	// Continue without audio streaming capability
+	// } else {
+	// 	LOG_INF("✅ PDM audio streaming system ready");
+	// 	LOG_INF("📱 Mobile app can enable/disable microphone via MicStateConfig (Tag 20)");
+	// }
 
 	// Initialize ping/pong connectivity monitoring system
 	LOG_INF("📡 Initializing ping/pong connectivity monitoring...");
@@ -904,13 +905,14 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
-	// Initialize LVGL display system with working driver implementation
-	LOG_INF("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
+	// TEMPORARILY DISABLED: Initialize LVGL display system with working driver implementation
+	LOG_INF("⚠️ TEMPORARILY DISABLED: LVGL display system for debugging");
+	LOG_INF("🔥🔥🔥 LVGL display initialization SKIPPED for shell testing 🔥🔥🔥\n");
 	
-	// Start the LVGL display thread first!
-	LOG_INF("🧵 Starting LVGL display thread...");
-	lvgl_display_thread();
-	LOG_INF("✅ LVGL display thread started!");
+	// TEMPORARILY DISABLED: Start the LVGL display thread first!
+	// LOG_INF("🧵 Starting LVGL display thread...");
+	// lvgl_display_thread();
+	// LOG_INF("✅ LVGL display thread started!");
 #if 0
         // Give the thread a moment to initialize
         k_msleep(100);
@@ -956,6 +958,10 @@ int main(void)
 #endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
+
+	LOG_INF("🎉🎉🎉 MAIN INITIALIZATION COMPLETE - ENTERING MAIN LOOP 🎉🎉🎉");
+	LOG_INF("✅ Shell should be available now at 'nrf5340:~$ '");
+	LOG_INF("🔄 Starting LED blink loop...");
 
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
