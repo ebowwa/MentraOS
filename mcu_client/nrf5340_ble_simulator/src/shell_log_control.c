@@ -52,7 +52,10 @@ static int cmd_log_help(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "  ping_disable                  - Stop ping/pong logs (functionality remains)");
     shell_print(shell, "  ping_enable                   - Enable ping/pong logs");
     shell_print(shell, "  ping_status                   - Show ping logging status");
-    
+    shell_print(shell, "");
+    shell_print(shell, " extern_xip                    - Test extern_xip function");
+    shell_print(shell, " littlefs_shell                - Test littlefs shell");
+
     return 0;
 }
 
@@ -113,10 +116,35 @@ static int cmd_ping_status(const struct shell *shell, size_t argc, char **argv)
                 ping_logging_enabled ? "ENABLED" : "DISABLED");
     return 0;
 }
-
+/**
+ * Command: extern_xip
+ * Test extern_xip function
+ */
+static int cmd_extern_xip(const struct shell *shell, size_t argc, char **argv)
+{
+    extern void function_in_extern_flash(void);
+    extern void test_extern_flash(void);
+    shell_print(shell, "📊 test_extern_xip");
+    test_extern_flash();
+    function_in_extern_flash();
+    return 0;
+}
+/**
+ * Command: littlefs_shell
+ * Test littlefs shell
+ */
+static int cmd_littlefs_shell(const struct shell *shell, size_t argc, char **argv)
+{
+    extern int littlefs_test(void);
+    shell_print(shell, "📊 littlefs shell");
+    littlefs_test();
+    return 0;
+}
 // Register simple helper commands
 SHELL_CMD_REGISTER(log_help, NULL, "Show Zephyr logging help", cmd_log_help);
 SHELL_CMD_REGISTER(bsp_level, NULL, "Set BSP log level (0-5)", cmd_bsp_level);
 SHELL_CMD_REGISTER(ping_disable, NULL, "Disable ping/pong logging", cmd_ping_disable);
 SHELL_CMD_REGISTER(ping_enable, NULL, "Enable ping/pong logging", cmd_ping_enable);
 SHELL_CMD_REGISTER(ping_status, NULL, "Show ping logging status", cmd_ping_status);
+SHELL_CMD_REGISTER(extern_xip, NULL, "test extern_xip ", cmd_extern_xip);
+SHELL_CMD_REGISTER(littlefs_shell, NULL, "littlefs shell", cmd_littlefs_shell);

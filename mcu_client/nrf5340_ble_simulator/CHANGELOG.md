@@ -4,6 +4,60 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🗂️ LittleFS External Flash Integration Attempt - 2025-10-09
+
+#### External Flash Configuration Work
+- **📦 LittleFS Integration**: Attempted external flash (MX25R64) integration for LittleFS file system
+- **🔧 Partition Configuration**: Created `pm_static.yml` with XIP and LittleFS partitions on external flash
+- **⚙️ Device Tree Updates**: Added QSPI configuration for MX25R64 flash in board overlay
+- **🎯 XIP Support**: Configured Execute-in-Place (XIP) support with custom linker script
+- **📝 Code Restoration**: Restored full LittleFS functionality in `bspal_littlefs.c`
+
+#### Configuration Files Created
+- **📄 `pm_static.yml`**: Partition manager configuration
+  - `xip_partition`: 0x0-0x400000 (4MB) for code execution
+  - `littlefs_storage`: 0x400000-0x800000 (4MB) for file system
+  - `settings_storage`: Internal flash settings area
+- **📄 `prj_xip_mx25r64.conf`**: XIP and LittleFS configuration (later removed)
+- **📄 `linker_arm_extxip.ld`**: Custom linker script for XIP support
+- **📄 `xip_flash_mx25r64.overlay`**: Device tree overlay for external flash (later removed)
+
+#### Technical Challenges Encountered
+- **⚠️ Kconfig Dependencies**: `PM_PARTITION_REGION_LITTLEFS_EXTERNAL` dependency issues
+- **⚠️ Device Tree Parsing**: Overlay file format compatibility issues with Kconfig system
+- **⚠️ Build System Integration**: Complex interaction between XIP, partition manager, and LittleFS
+
+#### Final Status
+- **🔄 Reverted to Basic Build**: Removed XIP and external flash configuration due to complexity
+- **✅ Stable Build**: Returned to stable basic configuration for reliable operation
+- **📚 Code Preserved**: All LittleFS code restored and preserved for future implementation
+- **🎯 Next Steps**: Future work needed for proper external flash integration with Nordic PM
+
+#### Code Quality Improvements
+- **🧹 Logging Cleanup**: Removed trailing `\n` from all LOG_* statements in `bspal_littlefs.c`
+- **💬 Code Comments**: Added Chinese comments for better code understanding
+- **📏 Path Length**: Reduced MAX_PATH_LEN from 255 to 50 for optimization
+- **✨ Code Style**: Enhanced code readability and consistency
+
+#### Files Modified
+- **Modified**: `src/mos_driver/src/bspal_littlefs.c` - Restored full functionality with logging cleanup
+- **Modified**: `build_firmware.sh` - Updated build messages
+- **Removed**: `prj_xip_mx25r64.conf` - External flash configuration
+- **Removed**: `xip_flash_mx25r64.overlay` - Device tree overlay
+- **Reverted**: `boards/nrf5340dk_nrf5340_cpuapp_ns.overlay` - Removed QSPI configuration
+
+#### Build System Status
+- **✅ Compilation**: Successful with basic configuration
+- **✅ Memory Usage**: 767KB FLASH (76.15%), 305KB RAM (71.62%)
+- **✅ Firmware Size**: Optimized and stable
+- **✅ All Features**: BLE, Display, PDM Audio, Protobuf all working
+
+#### Lessons Learned
+- **🎓 Nordic PM Complexity**: Partition Manager requires careful dependency configuration
+- **🎓 Device Tree Integration**: Overlay files must be correctly formatted for Kconfig parsing
+- **🎓 Build System**: nRF Connect SDK v3.0.0 requires specific configuration patterns
+- **🎓 Incremental Approach**: Complex features should be integrated step-by-step
+
 ### 🔆 Display Brightness Control Fix - 2025-09-30
 
 #### Fixed HLS12VGA Projector Brightness Control

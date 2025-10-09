@@ -816,7 +816,6 @@ static void configure_gpio(void)
 // External BSP log control
 extern void bsp_log_init(void);
 extern int bsp_log_runtime_level;
-
 int main(void)
 {
 	int blink_status = 0;
@@ -956,7 +955,6 @@ int main(void)
 #endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
-
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
