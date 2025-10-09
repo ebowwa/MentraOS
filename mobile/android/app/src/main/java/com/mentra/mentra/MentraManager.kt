@@ -15,6 +15,8 @@ import com.mentra.mentra.sgcs.G1
 import com.mentra.mentra.sgcs.MentraLive
 import com.mentra.mentra.sgcs.SGCManager
 import com.mentra.mentra.sgcs.Simulated
+import com.mentra.mentra.stt.SherpaOnnxTranscriber
+import com.mentra.mentra.stt.VadGateSpeechPolicy
 import com.mentra.mentra.utils.DeviceTypes
 import java.text.SimpleDateFormat
 import java.util.*
@@ -107,6 +109,8 @@ class MentraManager {
     // STT
     private var shouldSendPcmData = false
     private var shouldSendTranscript = false
+    private var vad: VadGateSpeechPolicy? = null
+    private var transcriber: SherpaOnnxTranscriber? = null
 
     // View states
     private val viewStates = mutableListOf<ViewState>()
@@ -115,7 +119,97 @@ class MentraManager {
         Bridge.log("Mentra: init()")
         initializeViewStates()
         startForegroundService()
+        setupVad()
+        setupTranscriber()
         // setupPermissionMonitoring()
+    }
+
+    // MARK: - STT/VAD Setup
+
+    /**
+     * Initialize the VAD (Voice Activity Detection) system
+     * Matches iOS MentraManager.swift:126
+     */
+    private fun setupVad() {
+        val context = Bridge.getContext() ?: run {
+            Bridge.log("Failed to setup VAD - no context available")
+            return
+        }
+
+        try {
+            vad = VadGateSpeechPolicy(context).apply {
+                init(512) // 512 samples per frame (matches Sherpa-ONNX requirements)
+            }
+            Bridge.log("VAD initialized successfully")
+        } catch (e: Exception) {
+            Bridge.log("Failed to initialize VAD: ${e.message}")
+            vad = null
+        }
+    }
+
+    /**
+     * Initialize the Sherpa-ONNX transcriber for local speech-to-text
+     * Matches iOS MentraManager.swift:130-143
+     */
+    private fun setupTranscriber() {
+        val context = Bridge.getContext() ?: run {
+            Bridge.log("Failed to setup transcriber - no context available")
+            return
+        }
+
+        try {
+            transcriber = SherpaOnnxTranscriber(context).apply {
+                setTranscriptListener(object : SherpaOnnxTranscriber.TranscriptListener {
+                    override fun onPartialResult(text: String, language: String) {
+                        sendFormattedTranscription(text, isFinal = false, language)
+                    }
+
+                    override fun onFinalResult(text: String, language: String) {
+                        sendFormattedTranscription(text, isFinal = true, language)
+                    }
+                })
+
+                // Initialize on background thread
+                Thread {
+                    try {
+                        initialize()
+                        Bridge.log("SherpaOnnxTranscriber fully initialized")
+                    } catch (e: Exception) {
+                        Bridge.log("Failed to initialize SherpaOnnxTranscriber: ${e.message}")
+                    }
+                }.start()
+            }
+        } catch (e: Exception) {
+            Bridge.log("Failed to setup transcriber: ${e.message}")
+            transcriber = null
+        }
+    }
+
+    /**
+     * Format and send transcription results to the backend
+     * Matches iOS STTTools.swift didReceivePartialTranscription/didReceiveFinalTranscription
+     */
+    private fun sendFormattedTranscription(text: String, isFinal: Boolean, language: String) {
+        try {
+            // Process text if language is en-US to lowercase (matches iOS behavior)
+            val processedText = if (language == "en-US") text.lowercase() else text
+
+            val transcription = mapOf(
+                "type" to "local_transcription",
+                "text" to processedText,
+                "isFinal" to isFinal,
+                "startTime" to (System.currentTimeMillis() - if (isFinal) 2000 else 1000),
+                "endTime" to System.currentTimeMillis(),
+                "speakerId" to 0,
+                "transcribeLanguage" to language,
+                "provider" to "sherpa-onnx"
+            )
+
+            Bridge.sendLocalTranscription(transcription)
+            Bridge.log("Sent ${if (isFinal) "final" else "partial"} transcription: $text")
+        } catch (e: Exception) {
+            Bridge.log("Error sending transcription: ${e.message}")
+        }
     }
 
     // MARK: - Unique (Android)
@@ -356,9 +450,66 @@ class MentraManager {
         // TODO: config
     }
 
+    /**
+     * Handle incoming PCM audio data from the microphone
+     * Feeds audio through VAD and transcriber pipelines
+     * Matches iOS MentraManager.swift:257-324
+     */
     fun handlePcm(pcmData: ByteArray) {
-        // Bridge.log("Mentra: handlePcm()")
-        Bridge.sendMicData(pcmData)
+        // Check if VAD should be bypassed
+        if (bypassVad || bypassVadForPCM) {
+            // Bypass VAD - send directly to server and transcriber
+            if (shouldSendPcmData) {
+                Bridge.sendMicData(pcmData)
+            }
+
+            // Also send to local transcriber when bypassing VAD
+            if (shouldSendTranscript) {
+                transcriber?.acceptAudio(pcmData)
+            }
+            return
+        }
+
+        // Feed PCM to the VAD
+        val currentVad = vad
+        if (currentVad == null) {
+            // VAD not initialized - fall back to bypass mode
+            if (shouldSendPcmData) {
+                Bridge.sendMicData(pcmData)
+            }
+            if (shouldSendTranscript) {
+                transcriber?.acceptAudio(pcmData)
+            }
+            return
+        }
+
+        // Process audio through VAD
+        currentVad.processAudioBytes(pcmData, 0, pcmData.size)
+
+        // Check VAD state
+        val shouldPassAudio = currentVad.shouldPassAudioToRecognizer()
+
+        if (shouldPassAudio) {
+            // Speech detected
+            checkSetVadStatus(true)
+
+            // First send out whatever's in the vadBuffer (if there is anything)
+            emptyVadBuffer()
+
+            // Send current audio
+            if (shouldSendPcmData) {
+                Bridge.sendMicData(pcmData)
+            }
+
+            // Send to local transcriber when speech is detected
+            if (shouldSendTranscript) {
+                transcriber?.acceptAudio(pcmData)
+            }
+        } else {
+            // No speech - buffer the audio
+            checkSetVadStatus(false)
+            addToVadBuffer(pcmData)
+        }
     }
 
     private fun updateMicrophoneState() {
@@ -618,6 +769,7 @@ class MentraManager {
 
     fun updateBypassVad(enabled: Boolean) {
         bypassVad = enabled
+        vad?.changeBypassVadForDebugging(enabled)
         handle_request_status()
     }
 
@@ -723,9 +875,22 @@ class MentraManager {
         }
     }
 
+    /**
+     * Restart the transcriber after model changes
+     * Matches iOS MentraManager.swift:778-781
+     */
     fun restartTranscriber() {
-        Bridge.log("Mentra: Restarting transcriber via command")
-        // TODO: Implement transcriber restart
+        Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
+
+        // Restart transcriber on background thread to avoid blocking
+        Thread {
+            try {
+                transcriber?.restart()
+                Bridge.log("Transcriber restarted successfully")
+            } catch (e: Exception) {
+                Bridge.log("Error restarting transcriber: ${e.message}")
+            }
+        }.start()
     }
 
     // MARK: - connection state management
@@ -982,6 +1147,11 @@ class MentraManager {
 
         vadBuffer.clear()
         micEnabled = requiredData.isNotEmpty()
+
+        // Propagate microphone state to VAD and transcriber
+        vad?.changeBypassVadForPCM(bypassVad)
+        vad?.microphoneStateChanged(micEnabled)
+        transcriber?.microphoneStateChanged(micEnabled)
 
         updateMicrophoneState()
     }

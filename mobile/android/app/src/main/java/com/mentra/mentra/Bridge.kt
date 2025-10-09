@@ -13,6 +13,7 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.mentra.mentra.stt.STTTools
 import java.util.HashMap
 import kotlin.jvm.JvmStatic
 import kotlin.jvm.Synchronized
@@ -725,29 +726,27 @@ public class Bridge private constructor() {
                     if (params != null) {
                         val path = params.getString("path")
                         val languageCode = params.getString("languageCode")
-                        // STTTools.setSttModelDetails(path, languageCode)
+                        STTTools.setSttModelDetails(getContext(), path, languageCode)
                     }
                 }
                 "get_stt_model_path" -> {
-                    // return STTTools.getSttModelPath()
-                    return ""
+                    return STTTools.getSttModelPath(getContext())
                 }
                 "check_stt_model_available" -> {
-                    // return STTTools.checkSTTModelAvailable()
-                    return false
+                    return STTTools.checkSTTModelAvailable(getContext())
                 }
                 "validate_stt_model" -> {
                     if (params != null) {
                         val path = params.getString("path")
-                        // return STTTools.validateSTTModel(path)
+                        return STTTools.validateSTTModel(path)
                     }
                     return false
                 }
                 "extract_tar_bz2" -> {
                     if (params != null) {
-                        // val sourcePath = params.getString("source_path")
-                        // val destinationPath = params.getString("destination_path")
-                        // return STTTools.extractTarBz2(sourcePath, destinationPath)
+                        val sourcePath = params.getString("source_path")
+                        val destinationPath = params.getString("destination_path")
+                        return STTTools.extractTarBz2(sourcePath, destinationPath)
                     }
                     return false
                 }
@@ -780,6 +779,12 @@ public class Bridge private constructor() {
                 }
                 "restart_transcriber" -> {
                     m.restartTranscriber()
+                }
+                "toggle_enforce_local_transcription" -> {
+                    if (params != null) {
+                        val enabled = params.getBoolean("enabled")
+                        m.updateEnforceLocalTranscription(enabled)
+                    }
                 }
                 "ping" -> {
                     // Do nothing for ping

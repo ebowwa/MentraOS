@@ -5,6 +5,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.mentra.mentra.stt.STTTools;
 
 import android.util.Log;
 
@@ -115,5 +116,74 @@ public class BridgeModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void removeListeners(Integer count) {
         // Remove listeners if needed
+    }
+
+    /**
+     * Extract a tar.bz2 file to a destination directory
+     * Runs on a background thread to avoid blocking the JS thread
+     * @param sourcePath Path to the .tar.bz2 file
+     * @param destinationPath Directory to extract to
+     * @param promise Promise to resolve with extraction result
+     */
+    @ReactMethod
+    public void extractTarBz2(String sourcePath, String destinationPath, Promise promise) {
+        // Run extraction on a background thread to avoid blocking JS thread
+        new Thread(() -> {
+            try {
+                boolean result = STTTools.INSTANCE.extractTarBz2(sourcePath, destinationPath);
+                promise.resolve(result);
+            } catch (Exception e) {
+                Log.e(TAG, "Error extracting tar.bz2", e);
+                promise.reject("EXTRACTION_ERROR", e.getMessage(), e);
+            }
+        }).start();
+    }
+
+    /**
+     * Validate that an STT model has all required files
+     * @param path Path to the model directory
+     * @param promise Promise to resolve with validation result
+     */
+    @ReactMethod
+    public void validateSTTModel(String path, Promise promise) {
+        try {
+            boolean result = STTTools.INSTANCE.validateSTTModel(path);
+            promise.resolve(result);
+        } catch (Exception e) {
+            Log.e(TAG, "Error validating STT model", e);
+            promise.reject("VALIDATION_ERROR", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get the STT model path from SharedPreferences
+     * @param promise Promise to resolve with the model path
+     */
+    @ReactMethod
+    public void getSTTModelPath(Promise promise) {
+        try {
+            String path = STTTools.INSTANCE.getSttModelPath(reactContext);
+            promise.resolve(path);
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting STT model path", e);
+            promise.reject("GET_PATH_ERROR", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Save STT model details to SharedPreferences
+     * @param path Path to the model directory
+     * @param languageCode Language code of the model
+     * @param promise Promise to resolve when saved
+     */
+    @ReactMethod
+    public void setSttModelDetails(String path, String languageCode, Promise promise) {
+        try {
+            STTTools.INSTANCE.setSttModelDetails(reactContext, path, languageCode);
+            promise.resolve(null);
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting STT model details", e);
+            promise.reject("SET_DETAILS_ERROR", e.getMessage(), e);
+        }
     }
 }
