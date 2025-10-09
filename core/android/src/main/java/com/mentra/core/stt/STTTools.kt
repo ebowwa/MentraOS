@@ -1,8 +1,8 @@
-package com.mentra.mentra.stt
+package com.mentra.core.stt
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.mentra.mentra.Bridge
+import com.mentra.core.Bridge
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.BufferedInputStream

@@ -1,4 +1,4 @@
-package com.mentra.mentra.stt
+package com.mentra.core.stt
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.k2fsa.sherpa.onnx.*
-import com.mentra.mentra.Bridge
+import com.mentra.core.Bridge
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -463,8 +463,8 @@ class SherpaOnnxTranscriber(private val context: Context) {
             // Microphone turned off - clear queue and reset stream
             pcmQueue.clear()
 
-            recognizer?.let { rec ->
-                stream?.let { str ->
+            recognizer?.let { rec: OnlineRecognizer ->
+                stream?.let { str: OnlineStream ->
                     try {
                         rec.reset(str)
                         lastPartialResult = ""

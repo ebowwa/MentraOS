@@ -1,4 +1,4 @@
-package com.mentra.mentra.stt
+package com.mentra.core.stt
 
 import android.content.Context
 import android.util.Log
