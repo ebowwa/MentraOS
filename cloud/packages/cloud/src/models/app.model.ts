@@ -92,6 +92,7 @@ const AppSchema = new Schema(
       enum: ["DEVELOPMENT", "SUBMITTED", "REJECTED", "PUBLISHED"],
       default: "DEVELOPMENT",
     },
+    hashedApiKey: String,
     reviewNotes: {
       type: String,
       default: "",
