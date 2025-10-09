@@ -1,6 +1,6 @@
 // cloud/src/models/user.model.ts
 import mongoose, { Schema, Document, Model, Types } from "mongoose";
-import { AppSettingType, type AppSetting } from "@mentra/sdk";
+import { type AppSetting } from "@mentra/sdk";
 import { MongoSanitizer } from "../utils/mongoSanitizer";
 import { logger } from "../services/logging/pino-logger";
 
@@ -565,11 +565,14 @@ UserSchema.methods.updateAugmentosSettings = async function (
   );
   const newSettingsClean = JSON.parse(JSON.stringify(settings));
 
-  logger.info("Updating AugmentOS settings:", {
-    userId: this.email,
-    currentSettings: currentSettingsClean,
-    newSettings: newSettingsClean,
-  });
+  logger.info(
+    {
+      userId: this.email,
+      currentSettings: currentSettingsClean,
+      newSettings: newSettingsClean,
+    },
+    "Updating AugmentOS settings:",
+  );
 
   // Directly apply each setting to ensure updates happen properly
   Object.entries(settings).forEach(([key, value]) => {
@@ -652,10 +655,14 @@ UserSchema.methods.updateAppLastActive = async function (
           // If not pre-installed, silently ignore (app might be starting before installation completes)
           return;
         } catch (error) {
-          logger.error(
-            "Error checking pre-installed apps in updateAppLastActive:",
-            error,
-          );
+          {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            logger.error(
+              err,
+              "Error checking pre-installed apps in updateAppLastActive:",
+            );
+          }
           // Don't fail the operation if checking pre-installed apps fails
           return;
         }
@@ -800,7 +807,10 @@ UserSchema.statics.findOrCreateUser = async function (
       }
     }
   } catch (error) {
-    logger.error("Error auto-installing pre-installed apps:", error);
+    {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error(err, "Error auto-installing pre-installed apps:");
+    }
     // Don't fail user creation if app installation fails
   }
 
@@ -912,12 +922,6 @@ UserSchema.statics.findUserInstalledApps = async function (
  * Creates a slug from a name
  * @private
  */
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 /**
  * Creates or ensures a personal organization for the user

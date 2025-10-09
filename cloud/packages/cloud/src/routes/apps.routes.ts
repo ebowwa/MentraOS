@@ -289,12 +289,10 @@ async function getAllApps(req: Request, res: Response) {
       // Add hardware compatibility information to each app
       const appsWithCompatibility = apps.map((app) => {
         let compatibilityInfo = null;
-        if (userSession.capabilities) {
+        const caps = userSession.deviceManager.getCapabilities();
+        if (caps) {
           const compatibilityResult =
-            HardwareCompatibilityService.checkCompatibility(
-              app,
-              userSession.capabilities,
-            );
+            HardwareCompatibilityService.checkCompatibility(app, caps);
 
           compatibilityInfo = {
             isCompatible: compatibilityResult.isCompatible,
@@ -391,11 +389,11 @@ async function getAllApps(req: Request, res: Response) {
     // Add hardware compatibility information to each app
     const appsWithCompatibility = apps.map((app) => {
       let compatibilityInfo = null;
-      if (userSession && userSession.capabilities) {
+      if (userSession && userSession.deviceManager.getCapabilities()) {
         const compatibilityResult =
           HardwareCompatibilityService.checkCompatibility(
             app,
-            userSession.capabilities,
+            userSession.deviceManager.getCapabilities(),
           );
 
         compatibilityInfo = {
@@ -478,10 +476,11 @@ async function getPublicApps(req: Request, res: Response) {
     let apps = await appService.getAllApps();
 
     // Filter apps by hardware compatibility if user has connected glasses
-    if (request.userSession && request.userSession.capabilities) {
+    const caps = request.userSession?.deviceManager.getCapabilities();
+    if (request.userSession && caps) {
       apps = HardwareCompatibilityService.filterCompatibleApps(
         apps,
-        request.userSession.capabilities,
+        caps,
         true, // Include apps with missing optional hardware
       );
     }
@@ -540,10 +539,11 @@ async function searchApps(req: Request, res: Response) {
     }
 
     // Filter apps by hardware compatibility if user has connected glasses
-    if (request.userSession && request.userSession.capabilities) {
+    const caps = request.userSession?.deviceManager.getCapabilities();
+    if (request.userSession && caps) {
       searchResults = HardwareCompatibilityService.filterCompatibleApps(
         searchResults,
-        request.userSession.capabilities,
+        caps,
         true, // Include apps with missing optional hardware
       );
     }
@@ -1144,12 +1144,10 @@ async function installApp(req: Request, res: Response) {
     }
 
     // Log hardware compatibility information if user has active session with connected glasses
-    if (userSession && userSession.capabilities) {
+    const caps = userSession?.deviceManager.getCapabilities();
+    if (userSession && caps) {
       const compatibilityResult =
-        HardwareCompatibilityService.checkCompatibility(
-          app,
-          userSession.capabilities,
-        );
+        HardwareCompatibilityService.checkCompatibility(app, caps);
 
       if (!compatibilityResult.isCompatible) {
         logger.info(
@@ -1157,7 +1155,7 @@ async function installApp(req: Request, res: Response) {
             packageName,
             email,
             missingHardware: compatibilityResult.missingRequired,
-            capabilities: userSession.capabilities,
+            capabilities: caps,
           },
           "Installing app with missing required hardware",
         );
@@ -1291,12 +1289,10 @@ async function getInstalledApps(req: Request, res: Response) {
 
         // Check hardware compatibility for each app
         let compatibilityInfo = null;
-        if (request.userSession && request.userSession.capabilities) {
+        const caps = request.userSession?.deviceManager.getCapabilities();
+        if (request.userSession && caps) {
           const compatibilityResult =
-            HardwareCompatibilityService.checkCompatibility(
-              appDetails,
-              request.userSession.capabilities,
-            );
+            HardwareCompatibilityService.checkCompatibility(appDetails, caps);
 
           compatibilityInfo = {
             isCompatible: compatibilityResult.isCompatible,
@@ -1360,10 +1356,11 @@ async function getAvailableApps(req: Request, res: Response) {
     }
 
     // Filter apps by hardware compatibility if user has connected glasses
-    if (request.userSession && request.userSession.capabilities) {
+    const caps = request.userSession?.deviceManager.getCapabilities();
+    if (request.userSession && caps) {
       apps = HardwareCompatibilityService.filterCompatibleApps(
         apps,
-        request.userSession.capabilities,
+        caps,
         true, // Include apps with missing optional hardware
       );
     }

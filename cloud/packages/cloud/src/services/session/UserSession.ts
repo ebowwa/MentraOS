@@ -27,12 +27,14 @@ import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
-import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
-import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
+
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
 import LiveKitManager from "./LiveKitManager";
 import SpeakerManager from "./SpeakerManager";
+import DeviceManager from "./DeviceManager";
+import CalendarManager from "./CalendarManager";
+import UserSettingsManager from "./UserSettingsManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -84,6 +86,9 @@ export class UserSession {
   public subscriptionManager: SubscriptionManager;
   public liveKitManager: LiveKitManager;
   public speakerManager: SpeakerManager;
+  public calendarManager: CalendarManager;
+  public userSettingsManager: UserSettingsManager;
+  public deviceManager: DeviceManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -117,10 +122,9 @@ export class UserSession {
   public livekitRequested?: boolean;
 
   // Capability Discovery
-  public capabilities: Capabilities | null = null;
 
   // Current connected glasses model
-  public currentGlassesModel: string | null = null;
+  // public currentGlassesModel: string | null = null;
 
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
@@ -138,11 +142,14 @@ export class UserSession {
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
     this.translationManager = new TranslationManager(this);
+    this.calendarManager = new CalendarManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
     this.liveKitManager = new LiveKitManager(this);
+    this.userSettingsManager = new UserSettingsManager(this);
     this.speakerManager = new SpeakerManager(this);
+    this.deviceManager = new DeviceManager(this);
 
     this._reconnectionTimers = new Map();
 
@@ -314,241 +321,17 @@ export class UserSession {
 
   /**
    * Update the current glasses model and refresh capabilities
-   * Called when model information is received from the manager
+   * Delegate to DeviceManager to centralize model/capability handling.
    */
   async updateGlassesModel(modelName: string): Promise<void> {
-    if (this.currentGlassesModel === modelName) {
-      this.logger.debug(
-        `[UserSession:updateGlassesModel] Model unchanged: ${modelName}`,
-      );
-      return;
-    }
-
-    this.logger.info(
-      `[UserSession:updateGlassesModel] Updating glasses model from "${this.currentGlassesModel}" to "${modelName}"`,
-    );
-
-    this.currentGlassesModel = modelName;
-
-    // Update capabilities based on the new model
-    const capabilities = getCapabilitiesForModel(modelName);
-    if (capabilities) {
-      this.capabilities = capabilities;
-      this.logger.info(
-        `[UserSession:updateGlassesModel] Updated capabilities for ${modelName}`,
-      );
-    } else {
-      this.logger.warn(
-        `[UserSession:updateGlassesModel] No capabilities found for model: ${modelName}`,
-      );
-
-      // Fallback to Even Realities G1 capabilities if no capabilities found and we don't have any yet
-      if (!this.capabilities) {
-        const fallbackCapabilities =
-          getCapabilitiesForModel("Even Realities G1");
-        if (fallbackCapabilities) {
-          this.capabilities = fallbackCapabilities;
-          this.logger.info(
-            `[UserSession:updateGlassesModel] Applied fallback capabilities (Even Realities G1) for unknown model: ${modelName}`,
-          );
-        }
-      }
-    }
-
-    // Send capabilities update to all connected apps
-    this.sendCapabilitiesUpdateToApps();
-
-    // Stop any running apps that are now incompatible with the new capabilities
-    await this.stopIncompatibleApps();
-  }
-
-  /**
-   * Send capabilities update message to all connected apps
-   * @private
-   */
-  private sendCapabilitiesUpdateToApps(): void {
-    try {
-      const capabilitiesUpdateMessage = {
-        type: CloudToAppMessageType.CAPABILITIES_UPDATE,
-        capabilities: this.capabilities,
-        modelName: this.currentGlassesModel,
-        timestamp: new Date(),
-        sessionId: this.userId,
-      };
-
-      // Send to all connected apps
-      this.appWebsockets.forEach((ws, packageName) => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.send(JSON.stringify(capabilitiesUpdateMessage));
-            this.logger.debug(
-              `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to app ${packageName}`,
-            );
-          } catch (error) {
-            this.logger.error(
-              { error, packageName },
-              `[UserSession:sendCapabilitiesUpdateToApps] Failed to send capabilities update to app ${packageName}`,
-            );
-          }
-        }
-      });
-
-      this.logger.info(
-        `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to ${this.appWebsockets.size} connected apps`,
-      );
-    } catch (error) {
-      this.logger.error(
-        { error },
-        `[UserSession:sendCapabilitiesUpdateToApps] Error sending capabilities update to apps`,
-      );
-    }
-  }
-
-  /**
-   * Stop any running apps that are incompatible with the current capabilities
-   * Called after capabilities are updated due to device model changes
-   * @private
-   */
-  private async stopIncompatibleApps(): Promise<void> {
-    try {
-      if (!this.capabilities) {
-        this.logger.debug(
-          "[UserSession:stopIncompatibleApps] No capabilities available, skipping compatibility check",
-        );
-        return;
-      }
-
-      const runningAppPackages = Array.from(this.runningApps);
-
-      if (runningAppPackages.length === 0) {
-        this.logger.debug(
-          "[UserSession:stopIncompatibleApps] No running apps to check for compatibility",
-        );
-        return;
-      }
-
-      this.logger.info(
-        `[UserSession:stopIncompatibleApps] Checking compatibility for ${runningAppPackages.length} running apps with new capabilities`,
-      );
-
-      const incompatibleApps: string[] = [];
-
-      // Check each running app for compatibility
-      for (const packageName of runningAppPackages) {
-        try {
-          // Get app details to check hardware requirements
-          const app = await appService.getApp(packageName);
-          if (!app) {
-            this.logger.warn(
-              `[UserSession:stopIncompatibleApps] Could not find app details for ${packageName}, keeping it running`,
-            );
-            continue;
-          }
-
-          // Check compatibility with new capabilities
-          const compatibilityResult =
-            HardwareCompatibilityService.checkCompatibility(
-              app,
-              this.capabilities,
-            );
-
-          if (!compatibilityResult.isCompatible) {
-            incompatibleApps.push(packageName);
-
-            this.logger.warn(
-              {
-                packageName,
-                missingHardware: compatibilityResult.missingRequired,
-                capabilities: this.capabilities,
-                modelName: this.currentGlassesModel,
-              },
-              `[UserSession:stopIncompatibleApps] App ${packageName} is now incompatible with ${
-                this.currentGlassesModel
-              } - missing required hardware: ${compatibilityResult.missingRequired
-                .map((req) => req.type)
-                .join(", ")}`,
-            );
-          }
-        } catch (error) {
-          this.logger.error(
-            { error, packageName },
-            `[UserSession:stopIncompatibleApps] Error checking compatibility for app ${packageName}`,
-          );
-        }
-      }
-
-      // Stop all incompatible apps
-      if (incompatibleApps.length > 0) {
-        this.logger.info(
-          {
-            incompatibleApps,
-            modelName: this.currentGlassesModel,
-          },
-          `[UserSession:stopIncompatibleApps] Stopping ${incompatibleApps.length} incompatible apps due to device change to ${this.currentGlassesModel}`,
-        );
-
-        const stopPromises = incompatibleApps.map(async (packageName) => {
-          try {
-            await this.appManager.stopApp(packageName);
-            this.logger.info(
-              `[UserSession:stopIncompatibleApps] Successfully stopped incompatible app ${packageName}`,
-            );
-          } catch (error) {
-            this.logger.error(
-              { error, packageName },
-              `[UserSession:stopIncompatibleApps] Failed to stop incompatible app ${packageName}`,
-            );
-          }
-        });
-
-        // Wait for all apps to be stopped
-        await Promise.allSettled(stopPromises);
-
-        this.logger.info(
-          `[UserSession:stopIncompatibleApps] Completed stopping incompatible apps. Device change to ${this.currentGlassesModel} processed.`,
-        );
-      } else {
-        this.logger.info(
-          `[UserSession:stopIncompatibleApps] All running apps are compatible with ${this.currentGlassesModel}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        { error },
-        "[UserSession:stopIncompatibleApps] Error during incompatible app cleanup",
-      );
-    }
+    await this.deviceManager.setCurrentModel(modelName);
   }
 
   /**
    * Get capabilities with fallback to default model if none available
    */
   getCapabilities(): Capabilities | null {
-    if (this.capabilities) {
-      return this.capabilities;
-    }
-
-    // If no capabilities set yet, try to use Even Realities G1 as fallback
-    const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
-    if (fallbackCapabilities) {
-      this.logger.debug(
-        `[UserSession:getCapabilities] Using fallback capabilities (Even Realities G1)`,
-      );
-      return fallbackCapabilities;
-    }
-
-    this.logger.warn(
-      `[UserSession:getCapabilities] No capabilities available, including fallback`,
-    );
-    return null;
-  }
-
-  /**
-   * Check if a specific capability is available
-   */
-  hasCapability(capability: keyof Capabilities): boolean {
-    const caps = this.getCapabilities();
-    return caps ? Boolean(caps[capability]) : false;
+    return this.deviceManager.getCapabilities();
   }
 
   /**
@@ -760,8 +543,8 @@ export class UserSession {
         );
       } catch (sendError) {
         this.logger.error(
-          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
           sendError,
+          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
         );
       }
       this.audioPlayRequestMapping.delete(requestId);
@@ -774,21 +557,6 @@ export class UserSession {
         `Error relaying audio play response`,
       );
     }
-  }
-
-  /**
-   * Transform session data for client consumption
-   */
-  async toClientFormat(): Promise<any> {
-    // Return only what the client needs
-    return {
-      userId: this.userId,
-      startTime: this.startTime,
-      activeAppSessions: Array.from(this.runningApps),
-      loadingApps: Array.from(this.loadingApps),
-      isTranscribing: this.isTranscribing,
-      // Other client-relevant data
-    };
   }
 
   /**

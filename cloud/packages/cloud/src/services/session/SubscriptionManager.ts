@@ -30,9 +30,6 @@ export class SubscriptionManager {
     }[]
   > = new Map();
 
-  // Calendar cache (session-scoped)
-  private calendarEventsCache: Array<any> = [];
-
   // Track app reconnect timestamps for empty-subscription grace handling
   private lastAppReconnectAt: Map<string, number> = new Map();
   private readonly CONNECT_GRACE_MS = 8000; // 8 seconds for slower reconnects
@@ -145,21 +142,6 @@ export class SubscriptionManager {
     const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
     const hasMedia = hasPCM || hasTranscription;
     return { hasMedia, hasPCM, hasTranscription };
-  }
-
-  cacheCalendarEvent(event: any): void {
-    this.calendarEventsCache.push(event);
-    this.logger.info(
-      {
-        userId: this.userSession.userId,
-        count: this.calendarEventsCache.length,
-      },
-      "Cached calendar event",
-    );
-  }
-
-  getAllCalendarEvents(): any[] {
-    return [...this.calendarEventsCache];
   }
 
   async updateSubscriptions(
@@ -322,7 +304,7 @@ export class SubscriptionManager {
   dispose(): void {
     this.subscriptions.clear();
     this.history.clear();
-    this.calendarEventsCache = [];
+
     this.lastAppReconnectAt.clear();
   }
 

@@ -296,10 +296,9 @@ export class AppWebSocketService {
               "RTMP Stream request processed by VideoManager.",
             );
           } catch (e) {
-            this.logger.error(
-              { e, packageName: message.packageName },
-              "Error starting RTMP stream via VideoManager",
-            );
+            this.logger
+              .child({ packageName: message.packageName })
+              .error(e, "Error starting RTMP stream via VideoManager");
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -322,10 +321,12 @@ export class AppWebSocketService {
               "RTMP Stream stop request processed by VideoManager.",
             );
           } catch (e) {
-            this.logger.error(
-              { e, packageName: message.packageName },
-              "Error stopping RTMP stream via VideoManager",
-            );
+            this.logger
+              .child({
+                packageName: message.packageName,
+                userId: userSession.userId,
+              })
+              .error(e, "Error stopping RTMP stream via VideoManager");
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -845,8 +846,7 @@ export class AppWebSocketService {
         { service: SERVICE_NAME, isNewCalendarSubscription, packageName },
         `isNewCalendarSubscription: ${isNewCalendarSubscription} for app ${packageName}`,
       );
-      const allCalendarEvents =
-        userSession.subscriptionManager.getAllCalendarEvents();
+      const allCalendarEvents = userSession.calendarManager.getCachedEvents();
       if (allCalendarEvents.length > 0) {
         userSession.logger.debug(
           { service: SERVICE_NAME, allCalendarEvents },
@@ -966,10 +966,9 @@ export class AppWebSocketService {
       // Check if app has camera permission
       return SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA);
     } catch (error) {
-      logger.error(
-        { error, packageName, userId: userSession.userId },
-        "Error checking camera permission",
-      );
+      logger
+        .child({ packageName, userId: userSession.userId })
+        .error(error, "Error checking camera permission");
       return false;
     }
   }
@@ -993,12 +992,12 @@ export class AppWebSocketService {
       // Close the connection with an appropriate code
       ws.close(1008, message);
     } catch (error) {
-      logger.error("Failed to send error response", error);
+      logger.error(error, "Failed to send error response");
       // Try to close the connection anyway
       try {
         ws.close(1011, "Internal server error");
       } catch (closeError) {
-        logger.error("Failed to close WebSocket connection", closeError);
+        logger.error(closeError, "Failed to close WebSocket connection");
       }
     }
   }

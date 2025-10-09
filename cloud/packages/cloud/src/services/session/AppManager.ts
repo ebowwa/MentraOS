@@ -270,7 +270,7 @@ export class AppManager {
     // Check hardware compatibility
     const compatibilityResult = HardwareCompatibilityService.checkCompatibility(
       app,
-      this.userSession.capabilities,
+      this.userSession.deviceManager.getCapabilities(),
     );
 
     if (!compatibilityResult.isCompatible) {
@@ -278,7 +278,7 @@ export class AppManager {
         {
           packageName,
           missingHardware: compatibilityResult.missingRequired,
-          capabilities: this.userSession.capabilities,
+          capabilities: this.userSession.deviceManager.getCapabilities(),
         },
         `App ${packageName} is incompatible with connected glasses hardware`,
       );
