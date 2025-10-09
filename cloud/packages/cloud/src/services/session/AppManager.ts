@@ -28,7 +28,6 @@ import { logger as rootLogger } from "../logging/pino-logger";
 // session.service APIs are being consolidated into UserSession
 import axios, { AxiosError } from "axios";
 import App from "../../models/app.model";
-import { locationService } from "../core/location.service";
 import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 
 const logger = rootLogger.child({ service: "AppManager" });
@@ -733,17 +732,10 @@ export class AppManager {
 
       // Remove subscriptions.
       try {
-        const updatedUser =
-          await this.userSession.subscriptionManager.removeSubscriptions(
-            packageName,
-          );
-        if (updatedUser) {
-          // After removing subscriptions, re-arbitrate the location tier.
-          await locationService.handleSubscriptionChange(
-            updatedUser,
-            this.userSession,
-          );
-        }
+        await this.userSession.subscriptionManager.removeSubscriptions(
+          packageName,
+        );
+        // Location tier is now computed in-memory by SubscriptionManager.syncManagers()
       } catch (error) {
         this.logger.error(
           error,

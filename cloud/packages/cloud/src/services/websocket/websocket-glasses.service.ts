@@ -32,7 +32,6 @@ import { PosthogService } from "../logging/posthog.service";
 // sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
-import { locationService } from "../core/location.service";
 
 const SERVICE_NAME = "websocket-glasses.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -310,8 +309,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await locationService.handleDeviceLocationUpdate(
-            userSession,
+          userSession.locationManager.updateFromWebsocket(
             message as LocationUpdate,
           );
           break;
@@ -737,35 +735,6 @@ export class GlassesWebSocketService {
           "❌ Error cleaning up streams on VAD error",
         );
       }
-    }
-  }
-
-  /**
-   * Handle location update message
-   *
-   */
-  private async handleLocationUpdate(
-    userSession: UserSession,
-    message: LocationUpdate,
-  ): Promise<void> {
-    userSession.logger.debug(
-      { message, service: SERVICE_NAME },
-      "Location update received from glasses",
-    );
-    try {
-      // The core logic is now handled by the central LocationService to manage caching and polling.
-      await locationService.handleDeviceLocationUpdate(userSession, message);
-
-      // We still relay the message to any apps subscribed to the raw location stream.
-      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
-      // response for a poll request.
-      userSession.relayMessageToApps(message);
-    } catch (error) {
-      userSession.logger.error(
-        { error, service: SERVICE_NAME },
-        `Error handling location update:`,
-        error,
-      );
     }
   }
 

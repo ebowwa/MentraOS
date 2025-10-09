@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * CalendarManager
  *
@@ -12,8 +11,13 @@
 
 import type { Logger } from "pino";
 import type UserSession from "./UserSession";
-import { StreamType } from "@mentra/sdk";
-import type { CalendarEvent } from "@mentra/sdk";
+import {
+  StreamType,
+  CloudToAppMessageType,
+  type CalendarEvent,
+  type DataStream,
+} from "@mentra/sdk";
+import WebSocket from "ws";
 
 export class CalendarManager {
   private readonly userSession: UserSession;
@@ -24,6 +28,9 @@ export class CalendarManager {
 
   // Cache policy
   private static readonly MAX_CACHE = 100;
+
+  // track which apps have received relay (to avoid duplicate relays)
+  private subscribedApps: Set<string> = new Set();
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
@@ -88,10 +95,42 @@ export class CalendarManager {
   }
 
   /**
+   * Handle subscription update from SubscriptionManager.
+   * Receives list of subscribed app packages and handles relay to newly subscribed apps.
+   */
+  public handleSubscriptionUpdate(packageNames: string[]): void {
+    try {
+      // Detect and relay to newly subscribed apps
+      const newPackages = packageNames.filter(
+        (p) => !this.subscribedApps.has(p),
+      );
+
+      for (const packageName of newPackages) {
+        this.relayToApp(packageName);
+        this.subscribedApps.add(packageName);
+      }
+    } catch (error) {
+      this.logger.error(error, "Error handling calendar subscription update");
+    }
+  }
+
+  /**
+   * Handle app unsubscribe - remove from subscribed apps tracking
+   */
+  public handleUnsubscribe(packageName: string): void {
+    this.subscribedApps.delete(packageName);
+    this.logger.debug(
+      { packageName },
+      "Removed app from calendar subscriptions",
+    );
+  }
+
+  /**
    * Cleanup manager state (called from UserSession.dispose)
    */
   dispose(): void {
     this.events = [];
+    this.subscribedApps.clear();
   }
 
   // ===== Internals =====
@@ -258,6 +297,50 @@ export class CalendarManager {
   private safeTime(isoLike: string): number {
     const t = Date.parse(isoLike);
     return isNaN(t) ? Date.now() : t;
+  }
+
+  /**
+   * Relay cached calendar events to a newly subscribed app
+   */
+  private relayToApp(packageName: string): void {
+    const cachedEvents = this.getCachedEvents();
+
+    if (cachedEvents.length === 0) {
+      this.logger.debug(
+        { packageName },
+        "No calendar events to relay to newly subscribed app",
+      );
+      return;
+    }
+
+    const appWebsocket = this.userSession.appWebsockets.get(packageName);
+    if (!appWebsocket || appWebsocket.readyState !== WebSocket.OPEN) {
+      this.logger.warn(
+        { packageName },
+        "App websocket not available for calendar relay",
+      );
+      return;
+    }
+
+    // Send each event as a separate DataStream message
+    for (const event of cachedEvents) {
+      const dataStream: DataStream = {
+        type: CloudToAppMessageType.DATA_STREAM,
+        streamType: StreamType.CALENDAR_EVENT,
+        sessionId: `${this.userSession.userId}-${packageName}`,
+        data: event,
+        timestamp: new Date(),
+      };
+      appWebsocket.send(JSON.stringify(dataStream));
+    }
+
+    this.logger.info(
+      {
+        packageName,
+        eventCount: cachedEvents.length,
+      },
+      "Relayed calendar events to newly subscribed app",
+    );
   }
 }
 

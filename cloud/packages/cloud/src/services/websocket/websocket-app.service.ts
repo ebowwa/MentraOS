@@ -14,9 +14,6 @@ import {
   AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
-  DataStream,
-  LocationUpdate,
-  GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
   AudioPlayRequest,
@@ -31,10 +28,8 @@ import {
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
-import { locationService } from "../core/location.service";
 import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
 import App from "../../models/app.model";
-import { User } from "../../models/user.model";
 
 const SERVICE_NAME = "websocket-app.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -337,8 +332,7 @@ export class AppWebSocketService {
 
         case AppToCloudMessageType.LOCATION_POLL_REQUEST:
           try {
-            await locationService.handlePollRequest(
-              userSession,
+            await userSession.locationManager.handlePollRequestFromApp(
               message.accuracy,
               message.correlationId,
               message.packageName,
@@ -715,40 +709,13 @@ export class AppWebSocketService {
     const previousLanguageSubscriptions =
       userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
-    // Check if the app is newly subscribing to calendar events
-    const isNewCalendarSubscription =
-      !userSession.subscriptionManager.hasSubscription(
-        message.packageName,
-        StreamType.CALENDAR_EVENT,
-      ) &&
-      message.subscriptions.some(
-        (sub) => typeof sub === "string" && sub === StreamType.CALENDAR_EVENT,
-      );
-
-    // Check if the app is newly subscribing to location updates
-    const isNewLocationSubscription =
-      !userSession.subscriptionManager.hasSubscription(
-        message.packageName,
-        StreamType.LOCATION_UPDATE,
-      ) &&
-      message.subscriptions.some((sub) => {
-        if (typeof sub === "string") return sub === StreamType.LOCATION_UPDATE;
-        return (
-          sub.stream === StreamType.LOCATION_STREAM ||
-          sub.stream === StreamType.LOCATION_UPDATE
-        );
-      });
-
     try {
       // Update session-scoped subscriptions and await completion to prevent races
-      const updatedUser =
-        await userSession.subscriptionManager.updateSubscriptions(
-          message.packageName,
-          message.subscriptions,
-        );
-      if (updatedUser) {
-        locationService.handleSubscriptionChange(updatedUser, userSession);
-      }
+      await userSession.subscriptionManager.updateSubscriptions(
+        message.packageName,
+        message.subscriptions,
+      );
+      // Location tier and relay now handled by managers via SubscriptionManager.syncManagers()
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -838,73 +805,6 @@ export class AppWebSocketService {
           }
         }, this.SUBSCRIPTION_DEBOUNCE_MS),
       );
-    }
-
-    // Send cached calendar event if app just subscribed to calendar events
-    if (isNewCalendarSubscription) {
-      userSession.logger.info(
-        { service: SERVICE_NAME, isNewCalendarSubscription, packageName },
-        `isNewCalendarSubscription: ${isNewCalendarSubscription} for app ${packageName}`,
-      );
-      const allCalendarEvents = userSession.calendarManager.getCachedEvents();
-      if (allCalendarEvents.length > 0) {
-        userSession.logger.debug(
-          { service: SERVICE_NAME, allCalendarEvents },
-          `Sending ${allCalendarEvents.length} cached calendar events to newly subscribed app ${message.packageName}`,
-        );
-
-        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
-          for (const event of allCalendarEvents) {
-            const dataStream: DataStream = {
-              type: CloudToAppMessageType.DATA_STREAM,
-              streamType: StreamType.CALENDAR_EVENT,
-              sessionId: `${userSession.userId}-${message.packageName}`,
-              data: event,
-              timestamp: new Date(),
-            };
-            appWebsocket.send(JSON.stringify(dataStream));
-          }
-        }
-      }
-    }
-
-    // Send cached location if app just subscribed to location updates
-    if (isNewLocationSubscription) {
-      userSession.logger.info(
-        { service: SERVICE_NAME, isNewLocationSubscription, packageName },
-        `isNewLocationSubscription: ${isNewLocationSubscription} for app ${packageName}`,
-      );
-      const user = await User.findOne({ email: userSession.userId });
-      const lastLocation = user?.location;
-      if (
-        lastLocation &&
-        lastLocation.lat != null &&
-        lastLocation.lng != null
-      ) {
-        userSession.logger.info(
-          `Sending cached location to newly subscribed app ${message.packageName}`,
-        );
-        const appSessionId = `${userSession.userId}-${message.packageName}`;
-
-        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
-          const locationUpdate: LocationUpdate = {
-            type: GlassesToCloudMessageType.LOCATION_UPDATE,
-            sessionId: appSessionId,
-            lat: lastLocation.lat,
-            lng: lastLocation.lng,
-            timestamp: new Date(),
-          };
-
-          const dataStream: DataStream = {
-            type: CloudToAppMessageType.DATA_STREAM,
-            sessionId: appSessionId,
-            streamType: StreamType.LOCATION_UPDATE,
-            data: locationUpdate,
-            timestamp: new Date(),
-          };
-          appWebsocket.send(JSON.stringify(dataStream));
-        }
-      }
     }
 
     // Send cached userDatetime if app just subscribed to custom_message

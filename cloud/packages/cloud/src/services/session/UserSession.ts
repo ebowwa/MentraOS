@@ -34,6 +34,7 @@ import LiveKitManager from "./LiveKitManager";
 import SpeakerManager from "./SpeakerManager";
 import DeviceManager from "./DeviceManager";
 import CalendarManager from "./CalendarManager";
+import LocationManager from "./LocationManager";
 import UserSettingsManager from "./UserSettingsManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
@@ -87,6 +88,7 @@ export class UserSession {
   public liveKitManager: LiveKitManager;
   public speakerManager: SpeakerManager;
   public calendarManager: CalendarManager;
+  public locationManager: LocationManager;
   public userSettingsManager: UserSettingsManager;
   public deviceManager: DeviceManager;
 
@@ -143,6 +145,7 @@ export class UserSession {
     this.transcriptionManager = new TranscriptionManager(this);
     this.translationManager = new TranslationManager(this);
     this.calendarManager = new CalendarManager(this);
+    this.locationManager = new LocationManager(this);
     this.photoManager = new PhotoManager(this);
     this.videoManager = new VideoManager(this);
     this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
@@ -629,6 +632,9 @@ export class UserSession {
     if (this.photoManager) this.photoManager.dispose();
     if (this.managedStreamingExtension)
       this.managedStreamingExtension.dispose();
+
+    // Persist location to DB cold cache and clean up
+    if (this.locationManager) await this.locationManager.dispose();
 
     // Clear glasses heartbeat
     this.clearGlassesHeartbeat();

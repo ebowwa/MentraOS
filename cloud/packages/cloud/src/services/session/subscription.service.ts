@@ -24,7 +24,6 @@ import { SimplePermissionChecker } from "../permissions/simple-permission-checke
 import App from "../../models/app.model";
 import UserSession from "./UserSession";
 import { User, UserI } from "../../models/user.model";
-import { locationService } from "../core/location.service";
 import { MongoSanitizer } from "../../utils/mongoSanitizer";
 
 const logger = rootLogger.child({ service: "subscription.service" });
