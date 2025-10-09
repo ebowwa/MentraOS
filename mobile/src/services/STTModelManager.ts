@@ -3,7 +3,7 @@ import {Platform} from "react-native"
 import {NativeModules} from "react-native"
 import bridge from "@/bridge/MantleBridge"
 
-const {FileProviderModule} = NativeModules
+const {BridgeModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -113,7 +113,7 @@ class STTModelManager {
     try {
       let path = null
       if (Platform.OS === "android") {
-        const module = FileProviderModule
+        const module = BridgeModule
         if (module.getSTTModelPath) {
           path = await module.getSTTModelPath()
         }
@@ -197,7 +197,7 @@ class STTModelManager {
         const isValid = await bridge.validateSTTModel(modelPath)
         return isValid
       } else {
-        const nativeModule = FileProviderModule
+        const nativeModule = BridgeModule
         if (nativeModule.validateSTTModel) {
           const isValid = await nativeModule.validateSTTModel(modelPath)
           if (!isValid && id.includes("be-de-en-es-fr")) {
@@ -319,7 +319,7 @@ class STTModelManager {
       }
 
       if (Platform.OS === "android") {
-        const nativeModule = FileProviderModule
+        const nativeModule = BridgeModule
 
         if (nativeModule.extractTarBz2) {
           console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
@@ -403,7 +403,7 @@ class STTModelManager {
       return
     }
 
-    const nativeModule = FileProviderModule
+    const nativeModule = BridgeModule
     if (nativeModule.setSttModelDetails) {
       console.log("Setting STT model path to: " + path)
       console.log("Setting STT model language to: " + languageCode)

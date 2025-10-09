@@ -187,6 +187,16 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Sherpa-ONNX for local transcription
+    implementation 'com.github.k2-fsa:sherpa-onnx:v1.12.8'
+
+    // Silero VAD (with onnxruntime exclusions to avoid conflicts with sherpa-onnx)
+    implementation ('com.github.gkonovalov:android-vad:2.0.9') {
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime'
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime4j'
+        exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime4j-jni'
+    }
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
