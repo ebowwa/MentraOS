@@ -4,6 +4,7 @@ package com.mentra.mentra
 // import com.reactnativecommunity.slider.ReactSliderPackage
 // import org.reactnative.camera.RNCameraPackage
 // import com.mentra.mentra.logcapture.LogcatCapturePackage
+// import com.lugg.RNCConfig.RNCConfigPackage
 import android.app.Application
 import android.content.res.Configuration
 import com.BV.LinearGradient.LinearGradientPackage
@@ -19,7 +20,6 @@ import com.facebook.react.shell.MainReactPackage
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import com.horcrux.svg.SvgPackage
-import com.lugg.RNCConfig.RNCConfigPackage
 import com.reactnativecommunity.asyncstorage.AsyncStoragePackage
 import com.reactnativecommunity.webview.RNCWebViewPackage
 import com.rnfs.RNFSPackage
@@ -64,7 +64,7 @@ class MainApplication : Application(), ReactApplication {
                             // packages.add(AppHelpersPackage());
                             // packages.add(SimpleBlacklistPackage());
                             // packages.add(FetchConfigHelperPackage())
-                            packages.add(RNCConfigPackage())
+                            // packages.add(RNCConfigPackage())
                             // packages.add(RNCameraPackage());
                             // packages.add(LogcatCapturePackage());
                             packages.add(RNCWebViewPackage())

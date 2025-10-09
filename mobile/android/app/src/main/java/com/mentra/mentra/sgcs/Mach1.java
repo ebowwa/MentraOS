@@ -1,4 +1,4 @@
-// package com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators;
+// package com.mentra.mentra.sgcs;
 
 // import android.content.Context;
 // import android.content.res.Resources;
@@ -8,19 +8,34 @@
 // import android.os.Handler;
 // import android.util.Log;
 
+// import androidx.annotation.NonNull;
+// import androidx.annotation.Nullable;
 // import androidx.lifecycle.LifecycleOwner;
 // import androidx.lifecycle.LiveData;
 
-// import com.augmentos.augmentos_core.R;
-// import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
-// import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
-// import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+// // Mentra
+// import com.mentra.mentra.sgcs.SGCManager;
+// import com.mentra.mentra.MentraManager;
+// import com.mentra.mentra.Bridge;
+// import com.mentra.mentra.utils.DeviceTypes;
+// import com.mentra.mentra.utils.ConnTypes;
+// import com.mentra.mentra.utils.BitmapJavaUtils;
+// import com.mentra.mentra.utils.SmartGlassesConnectionState;
+// import com.mentra.mentra.utils.K900ProtocolUtils;
+// import com.mentra.mentra.utils.MessageChunker;
+// import com.mentra.mentra.utils.audio.Lc3Player;
+// import com.mentra.mentra.utils.BlePhotoUploadService;
+
+// // import com.augmentos.augmentos_core.R;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 // import com.squareup.picasso.Picasso;
 // import com.squareup.picasso.Target;
-// import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
-// import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
-// import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
-// import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
+// // import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 // import com.vuzix.ultralite.Anchor;
 // import com.vuzix.ultralite.BatteryStatus;
 // import com.vuzix.ultralite.EventListener;
@@ -35,10 +50,11 @@
 // import java.util.ArrayList;
 // import java.util.Arrays;
 // import java.util.Collections;
+// import java.util.Map;
 
 
 // //communicate with ActiveLook smart glasses
-// public class UltraliteSGC extends SmartGlassesCommunicator {
+// public class Mach1 extends SGCManager {
 //     private static final String TAG = "WearableAi_UltraliteSGC";
 
 //     UltraliteSDK ultraliteSdk;
@@ -81,6 +97,187 @@
 //     private long lastTapTime = 0;
 //     private int totalDashboardsIdk = 0;
 
+//     @Override
+//     public void setMicEnabled(boolean enabled) {
+
+//     }
+
+//     @Override
+//     public void requestPhoto(@NonNull String requestId, @NonNull String appId, @NonNull String size, @Nullable String webhookUrl, @Nullable String authToken) {
+
+//     }
+
+//     @Override
+//     public void startRtmpStream(@NonNull Map<String, Object> message) {
+
+//     }
+
+//     @Override
+//     public void stopRtmpStream() {
+
+//     }
+
+//     @Override
+//     public void sendRtmpKeepAlive(@NonNull Map<String, Object> message) {
+
+//     }
+
+//     @Override
+//     public void startBufferRecording() {
+
+//     }
+
+//     @Override
+//     public void stopBufferRecording() {
+
+//     }
+
+//     @Override
+//     public void saveBufferVideo(@NonNull String requestId, int durationSeconds) {
+
+//     }
+
+//     @Override
+//     public void startVideoRecording(@NonNull String requestId, boolean save) {
+
+//     }
+
+//     @Override
+//     public void stopVideoRecording(@NonNull String requestId) {
+
+//     }
+
+//     @Override
+//     public void sendButtonPhotoSettings() {
+
+//     }
+
+//     @Override
+//     public void sendButtonModeSetting() {
+
+//     }
+
+//     @Override
+//     public void sendButtonVideoRecordingSettings() {
+
+//     }
+
+//     @Override
+//     public void sendButtonMaxRecordingTime() {
+
+//     }
+
+//     @Override
+//     public void sendButtonCameraLedSetting() {
+
+//     }
+
+//     @Override
+//     public void setBrightness(int level, boolean autoMode) {
+
+//     }
+
+//     @Override
+//     public void clearDisplay() {
+
+//     }
+
+//     @Override
+//     public void sendTextWall(@NonNull String text) {
+
+//     }
+
+//     @Override
+//     public void sendDoubleTextWall(@NonNull String top, @NonNull String bottom) {
+
+//     }
+
+//     @Override
+//     public boolean displayBitmap(@NonNull String base64ImageData) {
+//         return false;
+//     }
+
+//     @Override
+//     public void showDashboard() {
+
+//     }
+
+//     @Override
+//     public void setDashboardPosition(int height, int depth) {
+
+//     }
+
+//     @Override
+//     public void setHeadUpAngle(int angle) {
+
+//     }
+
+//     @Override
+//     public void getBatteryStatus() {
+
+//     }
+
+//     @Override
+//     public void setSilentMode(boolean enabled) {
+
+//     }
+
+//     @Override
+//     public void exit() {
+
+//     }
+
+//     @Override
+//     public void disconnect() {
+
+//     }
+
+//     @Override
+//     public void forget() {
+
+//     }
+
+//     @Override
+//     public void findCompatibleDevices() {
+
+//     }
+
+//     @Override
+//     public void connectById(@NonNull String id) {
+
+//     }
+
+//     @NonNull
+//     @Override
+//     public String getConnectedBluetoothName() {
+//         return "";
+//     }
+
+//     @Override
+//     public void cleanup() {
+
+//     }
+
+//     @Override
+//     public void requestWifiScan() {
+
+//     }
+
+//     @Override
+//     public void sendWifiCredentials(@NonNull String ssid, @NonNull String password) {
+
+//     }
+
+//     @Override
+//     public void sendHotspotState(boolean enabled) {
+
+//     }
+
+//     @Override
+//     public void queryGalleryStatus() {
+
+//     }
+
 //     public class UltraliteListener implements EventListener{
 //         @Override
 //         public void onTap(int tapCount) {
@@ -122,12 +319,12 @@
 //     private LiveData<Boolean> ultraliteControlled;
 //     private LiveData<BatteryStatus> batteryStatusObserver;
 
-//     public UltraliteSGC(Context context, SmartGlassesDevice smartGlassesDevice, LifecycleOwner lifecycleOwner) {
+//     public Mach1() {
 //         super();
-//         this.lifecycleOwner = lifecycleOwner;
-//         this.context = context;
+//         // this.lifecycleOwner = lifecycleOwner;
+//         // this.context = context;
 
-//         mConnectState = SmartGlassesConnectionState.DISCONNECTED;
+//         mConnectState = ConnTypes.DISCONNECTED;
 //         hasUltraliteControl = false;
 //         screenIsClear = true;
 //         goHomeHandler = new Handler();
@@ -142,34 +339,36 @@
 //         ultraliteSdk.addEventListener(ultraliteListener);
 
 //         // Only observe LiveData if we have a valid lifecycleOwner
-//         if (lifecycleOwner != null) {
-//             ultraliteConnectedLive = ultraliteSdk.getConnected();
-//             ultraliteConnectedLive.observe(lifecycleOwner, isConnected -> {
-//                 onUltraliteConnectedChange(isConnected);
-//             });
-
-//             ultraliteControlled = ultraliteSdk.getControlledByMe();
-//             ultraliteControlled.observe(lifecycleOwner, isControlled -> {
-//                 onUltraliteControlChanged(isControlled);
-//             });
-
-//             //setup battery status
-//             EventBus.getDefault().post(new BatteryLevelEvent(ultraliteSdk.getBatteryLevel(), false));
-//             batteryStatusObserver = ultraliteSdk.getBatteryStatus();
-//             batteryStatusObserver.observe(lifecycleOwner, batteryStatus -> {
-//                 onUltraliteBatteryChanged(batteryStatus);
-//             });
-//         } else {
+// //        if (lifecycleOwner != null) {
+// //            ultraliteConnectedLive = ultraliteSdk.getConnected();
+// //            ultraliteConnectedLive.observe(lifecycleOwner, isConnected -> {
+// //                onUltraliteConnectedChange(isConnected);
+// //            });
+// //
+// //            ultraliteControlled = ultraliteSdk.getControlledByMe();
+// //            ultraliteControlled.observe(lifecycleOwner, isControlled -> {
+// //                onUltraliteControlChanged(isControlled);
+// //            });
+// //
+// //            //setup battery status
+// //            // EventBus.getDefault().post(new BatteryLevelEvent(ultraliteSdk.getBatteryLevel(), false));
+// //            batteryStatusObserver = ultraliteSdk.getBatteryStatus();
+// //            batteryStatusObserver.observe(lifecycleOwner, batteryStatus -> {
+// //                MentraManager.getInstance().handle_request_status();
+// //                // onUltraliteBatteryChanged(batteryStatus);
+// //            });
+// //        } else {
 //             Log.w(TAG, "No LifecycleOwner provided, LiveData observation is disabled");
 //             ultraliteConnectedLive = ultraliteSdk.getConnected();
 //             ultraliteControlled = ultraliteSdk.getControlledByMe();
 //             batteryStatusObserver = ultraliteSdk.getBatteryStatus();
-            
+
 //             // Still send the initial battery level
-//             EventBus.getDefault().post(new BatteryLevelEvent(ultraliteSdk.getBatteryLevel(), false));
-            
+//             // EventBus.getDefault().post(new BatteryLevelEvent(ultraliteSdk.getBatteryLevel(), false));
+//             MentraManager.getInstance().handle_request_status();
+
 //             // Note: We don't need polling anymore since we'll be using LifecycleService
-//         }
+// //        }
 
 // //        if (ultraliteSdk.isAvailable()){
 // //            Log.d(TAG, "Ultralite SDK is available.");
@@ -201,10 +400,12 @@
 //                 return;
 //             }
 //             Log.d(TAG, "Ultralite RESULT control request: " + isControlled);
-//             connectionEvent(SmartGlassesConnectionState.CONNECTED);
+//             updateConnectionState(ConnTypes.CONNECTED);
+//             // connectionEvent(SmartGlassesConnectionState.CONNECTED);
 //         } else {
 //             Log.d(TAG, "Ultralite not connected.");
-//             connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+//             updateConnectionState(ConnTypes.DISCONNECTED);
+//             // connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
 //         }
 //     }
 
@@ -212,7 +413,8 @@
 //         Log.d(TAG, "Ultralite CONTROL changed to: " + isControlledByMe);
 //         if(isControlledByMe) {
 //             hasUltraliteControl = true;
-//             connectionEvent(SmartGlassesConnectionState.CONNECTED);
+//             // connectionEvent(SmartGlassesConnectionState.CONNECTED);
+//             updateConnectionState(ConnTypes.CONNECTED);
 //         } else {
 //             hasUltraliteControl = false;
 //         }
@@ -221,7 +423,9 @@
 //     private void onUltraliteBatteryChanged(BatteryStatus batteryStatus) {
 //         Log.d(TAG, "Ultralite new battery status");
 //         int batteryLevel = batteryStatus.getLevel();
-//         EventBus.getDefault().post(new BatteryLevelEvent(batteryLevel, false));
+//         // EventBus.getDefault().post(new BatteryLevelEvent(batteryLevel, false));
+//         updateConnectionState(ConnTypes.CONNECTED);
+
 //     }
 
 
@@ -231,7 +435,8 @@
 
 //     @Override
 //     public void findCompatibleDeviceNames() {
-//         EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(smartGlassesDevice.deviceModelName, "NOTREQUIREDSKIP"));
+//         // EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(smartGlassesDevice.deviceModelName, "NOTREQUIREDSKIP"));
+//         Bridge.sendDiscoveredDevice(smartGlassesDevice.deviceModelName, "NOTREQUIREDSKIP");
 //         //this.destroy();
 //     }
 

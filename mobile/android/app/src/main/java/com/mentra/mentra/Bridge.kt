@@ -356,11 +356,11 @@ public class Bridge private constructor() {
         /** Send gallery status - matches iOS MentraLive.swift handleGalleryStatus pattern */
         @JvmStatic
         fun sendGalleryStatus(
-            photoCount: Int,
-            videoCount: Int,
-            totalCount: Int,
-            totalSize: Long,
-            hasContent: Boolean
+                photoCount: Int,
+                videoCount: Int,
+                totalCount: Int,
+                totalSize: Long,
+                hasContent: Boolean
         ) {
             val galleryData = HashMap<String, Any>()
             galleryData["photos"] = photoCount
@@ -378,16 +378,16 @@ public class Bridge private constructor() {
         /** Send hotspot status change - matches iOS MentraLive.swift emitHotspotStatusChange */
         @JvmStatic
         fun sendHotspotStatusChange(
-            enabled: Boolean,
-            ssid: String,
-            password: String,
-            gatewayIp: String
+                enabled: Boolean,
+                ssid: String,
+                password: String,
+                gatewayIp: String
         ) {
             val eventBody = HashMap<String, Any>()
             eventBody["enabled"] = enabled
             eventBody["ssid"] = ssid
             eventBody["password"] = password
-            eventBody["local_ip"] = gatewayIp  // Using gateway IP for consistency with iOS
+            eventBody["local_ip"] = gatewayIp // Using gateway IP for consistency with iOS
 
             sendTypedMessage("hotspot_status_change", eventBody as Map<String, Any>)
         }
@@ -395,11 +395,11 @@ public class Bridge private constructor() {
         /** Send version info - matches iOS MentraLive.swift emitVersionInfo */
         @JvmStatic
         fun sendVersionInfo(
-            appVersion: String,
-            buildNumber: String,
-            deviceModel: String,
-            androidVersion: String,
-            otaVersionUrl: String
+                appVersion: String,
+                buildNumber: String,
+                deviceModel: String,
+                androidVersion: String,
+                otaVersionUrl: String
         ) {
             val eventBody = HashMap<String, Any>()
             eventBody["app_version"] = appVersion
@@ -426,12 +426,12 @@ public class Bridge private constructor() {
         /** Send IMU data event - matches iOS MentraLive.swift emitImuDataEvent */
         @JvmStatic
         fun sendImuDataEvent(
-            accel: DoubleArray,
-            gyro: DoubleArray,
-            mag: DoubleArray,
-            quat: DoubleArray,
-            euler: DoubleArray,
-            timestamp: Long
+                accel: DoubleArray,
+                gyro: DoubleArray,
+                mag: DoubleArray,
+                quat: DoubleArray,
+                euler: DoubleArray,
+                timestamp: Long
         ) {
             val eventBody = HashMap<String, Any>()
             eventBody["accel"] = accel.toList()
