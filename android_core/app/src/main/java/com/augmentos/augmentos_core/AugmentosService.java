@@ -169,7 +169,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public SmartGlassesManager smartGlassesManager;
     private boolean smartGlassesManagerBound = false;
-    private final TranscriptProcessor transcriptProcessor = new TranscriptProcessor(30, 3); // 30 chars per line, 3 lines max
+    private final TranscriptProcessor transcriptProcessor = new TranscriptProcessor(44, 5); // 30 chars per line, 3 lines max
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
 
     private byte[] hexStringToByteArray(String hex) {

@@ -11,7 +11,7 @@ export class TranscriptProcessor {
   private lastPartialUpdateTime: number = 0
   private readonly throttleInterval: number = 300 // 300ms throttle interval
 
-  constructor(maxCharsPerLine: number, maxLines: number, maxFinalTranscripts: number = 3, isChinese: boolean = false) {
+  constructor(maxCharsPerLine: number, maxLines: number, maxFinalTranscripts: number = 5, isChinese: boolean = false) {
     this.maxCharsPerLine = maxCharsPerLine
     this.maxLines = maxLines
     this.maxFinalTranscripts = maxFinalTranscripts
@@ -178,9 +178,9 @@ export class TranscriptProcessor {
     if (this.isChinese !== isChinese) {
       this.isChinese = isChinese
       if (isChinese) {
-        this.maxCharsPerLine = 10
+        this.maxCharsPerLine = 18
       } else {
-        this.maxCharsPerLine = 30
+        this.maxCharsPerLine = 44
       }
       this.clear()
     }

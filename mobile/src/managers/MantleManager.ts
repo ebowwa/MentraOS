@@ -32,8 +32,8 @@ class MantleManager {
   private calendarSyncTimer: NodeJS.Timeout | null = null
   private transcriptProcessor: TranscriptProcessor
   private clearTextTimeout: NodeJS.Timeout | null = null
-  private readonly MAX_CHARS_PER_LINE = 30
-  private readonly MAX_LINES = 3
+  private readonly MAX_CHARS_PER_LINE = 44
+  private readonly MAX_LINES = 5
 
   public static getInstance(): MantleManager {
     if (!MantleManager.instance) {
