@@ -179,9 +179,9 @@ public class TranscriptProcessor {
         if (languageIsChinese != this.isChinese) {
             this.isChinese = languageIsChinese;
             if (languageIsChinese) {
-                this.maxCharsPerLine = 10;
+                this.maxCharsPerLine = 18;
             } else {
-                this.maxCharsPerLine = 30;
+                this.maxCharsPerLine = 44;
             }
             this.clear();
         }
