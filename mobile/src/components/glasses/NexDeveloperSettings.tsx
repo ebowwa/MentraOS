@@ -1,5 +1,5 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
+import {useEffect, useState} from "react"
+import {View, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
 
 import bridge from "@/bridge/MantleBridge"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
@@ -7,14 +7,9 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import ToggleSetting from "../settings/ToggleSetting"
-import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
-import RouteButton from "@/components/ui/RouteButton"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures} from "@/config/glassesFeatures"
-import {PillButton} from "@/components/ignite"
+import {PillButton, Text} from "@/components/ignite"
 import {MOCK_CONNECTION} from "@/consts"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 // Nex Interface Version - Single source of truth
 export const NEX_INTERFACE_VERSION = "1.0.0"
@@ -122,7 +117,7 @@ const PatternPreview = ({imageType, imageSize, isDark = false, showDualLayout = 
             marginBottom: 20,
             letterSpacing: 0.5,
           }}>
-          /// MentraOS Connected \\\
+          {`/// MentraOS Connected \\\\\\`}
         </Text>
 
         {/* Status Line */}
@@ -256,8 +251,6 @@ interface BleCommand {
 export default function NexDeveloperSettings() {
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
-  const {push} = useNavigationHistory()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   // Mentra Nex BLE test state variables
   const [text, setText] = useState("Hello World")
@@ -413,18 +406,6 @@ export default function NexDeveloperSettings() {
             </Text>
           </View>
         </View>
-
-        {/* Screen Settings for binocular glasses */}
-        {defaultWearable && glassesFeatures[defaultWearable]?.binocular && (
-          <View style={themed($settingsGroup)}>
-            <Text style={themed($sectionTitle)}>Display Settings</Text>
-            <RouteButton
-              label={translate("settings:screenSettings")}
-              subtitle={translate("settings:screenDescription")}
-              onPress={() => push("/settings/screen")}
-            />
-          </View>
-        )}
 
         {/* Mentra Nex BLE Test Section - Only show when connected to Mentra Nex */}
         {status.glasses_info?.model_name === "Mentra Nex" && status.core_info.puck_connected ? (

@@ -362,6 +362,15 @@ export default function DeviceSettings() {
         </View>
       )}
 
+      {/* Screen Settings for binocular glasses */}
+      {defaultWearable && glassesFeatures[defaultWearable]?.binocular && (
+        <RouteButton
+          label={translate("settings:screenSettings")}
+          subtitle={translate("settings:screenDescription")}
+          onPress={() => push("/settings/screen")}
+        />
+      )}
+
       {/* Nex Developer Settings - Only show when connected to Mentra Nex */}
       {defaultWearable && defaultWearable.toLowerCase().includes("nex") && (
         <RouteButton
