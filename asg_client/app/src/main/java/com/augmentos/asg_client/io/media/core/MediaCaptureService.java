@@ -52,6 +52,19 @@ import com.radzivon.bartoshyk.avif.coder.HeifCoder;
 import com.radzivon.bartoshyk.avif.coder.PreciseMode;
 
 /**
+ * Photo timing data structure for core photo capture performance analysis
+ */
+class PhotoTimingData {
+    public long requestStartTime;
+    public long photoCompleteTime;
+    
+    // Core timing calculation
+    public long getPhotoCaptureDuration() {
+        return photoCompleteTime - requestStartTime;
+    }
+}
+
+/**
  * PHOTO CAPTURE TESTING FRAMEWORK
  * 
  * Master controls for testing error scenarios in real-time
@@ -253,11 +266,48 @@ public class MediaCaptureService {
     // Track requested photo size per request for proper fallback handling
     private Map<String, String> photoRequestedSizes = new HashMap<>();
     
+    // Photo timing tracking
+    private Map<String, PhotoTimingData> photoTimingData = new HashMap<>();
+    
     // Upload state tracking - prevent concurrent uploads
     private volatile boolean isUploadingPhoto = false;
     private final Object uploadLock = new Object();
     
     private final FileManager fileManager;
+
+    /**
+     * Initialize timing data for a photo request
+     */
+    private void initializePhotoTiming(String requestId) {
+        PhotoTimingData timing = new PhotoTimingData();
+        timing.requestStartTime = System.currentTimeMillis();
+        photoTimingData.put(requestId, timing);
+        Log.d(TAG, "⏱️ Photo timing initialized for request: " + requestId);
+    }
+
+    /**
+     * Mark photo capture complete and log timing
+     */
+    private void markPhotoComplete(String requestId) {
+        PhotoTimingData timing = photoTimingData.get(requestId);
+        if (timing != null) {
+            timing.photoCompleteTime = System.currentTimeMillis();
+            
+            // Log core photo capture timing
+            Log.i(TAG, "📸 PHOTO CAPTURE TIMING for " + requestId + ":");
+            Log.i(TAG, "  ⚡ Total Duration: " + timing.getPhotoCaptureDuration() + "ms");
+            
+            // Clean up timing data
+            photoTimingData.remove(requestId);
+        }
+    }
+
+    /**
+     * Get timing data for a request (for debugging)
+     */
+    public PhotoTimingData getPhotoTimingData(String requestId) {
+        return photoTimingData.get(requestId);
+    }
 
     /**
      * Interface for listening to media capture and upload events
@@ -825,6 +875,13 @@ public class MediaCaptureService {
      * @param enableLed Whether to enable camera LED flash
      */
     public void takePhotoLocally(String size, boolean enableLed) {
+        // Generate a temporary requestId first
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
+        String requestId = "local_" + timeStamp;
+        
+        // Initialize timing for this request
+        initializePhotoTiming(requestId);
+        
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
@@ -852,7 +909,6 @@ public class MediaCaptureService {
         }
 
         // Add milliseconds and a random component to ensure uniqueness even in rapid capture
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
         int randomSuffix = (int)(Math.random() * 1000);
 
         String photoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "IMG_" + timeStamp + "_" + randomSuffix + ".jpg";
@@ -861,9 +917,6 @@ public class MediaCaptureService {
         
         // Log test configuration for debugging
         PhotoCaptureTestFramework.logTestConfig();
-        
-        // Generate a temporary requestId first
-        String requestId = "local_" + timeStamp;
         
         // TESTING: Check for fake camera initialization failure
         if (PhotoCaptureTestFramework.shouldFail("CAMERA_INIT")) {
@@ -903,6 +956,9 @@ public class MediaCaptureService {
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
                         
+                        // Mark photo capture complete
+                        markPhotoComplete(requestId);
+
                         // LED is now managed by CameraNeo and will turn off when camera closes
                         
                         // Notify through standard capture listener if set up
@@ -938,6 +994,9 @@ public class MediaCaptureService {
      * @param save Whether to keep the photo on device after upload
      */
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
+        // Initialize timing for this request
+        initializePhotoTiming(requestId);
+        
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
@@ -1004,6 +1063,9 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
+
+                            // Mark photo capture complete
+                            markPhotoComplete(requestId);
 
                             // LED is now managed by CameraNeo and will turn off when camera closes
 
@@ -1539,6 +1601,9 @@ public class MediaCaptureService {
      * @param save Whether to keep the original photo on device
      */
     public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
+        // Initialize timing for this request
+        initializePhotoTiming(requestId);
+        
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
@@ -1550,6 +1615,7 @@ public class MediaCaptureService {
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
         photoRequestedSizes.put(requestId, size);
+        
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -1580,6 +1646,9 @@ public class MediaCaptureService {
                         @Override
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
+
+                            // Mark photo capture complete
+                            markPhotoComplete(requestId);
 
                             // LED is now managed by CameraNeo and will turn off when camera closes
 

@@ -141,10 +141,13 @@ public class CameraNeo extends LifecycleService {
     }
     
     // Camera keep-alive settings
-    private static final long CAMERA_KEEP_ALIVE_MS = 3000; // Keep camera open for 3 seconds after photo
+    private static final long CAMERA_KEEP_ALIVE_MS = 10000; // Keep camera open for 3 seconds after photo (reduced for smart glasses battery)
     private Timer cameraKeepAliveTimer;
     private boolean isCameraKeptAlive = false;
     private String pendingPhotoPath = null;
+    
+    // Feature flag for fast capture mode (disable 3A for small photos)
+    private static final boolean ENABLE_FAST_CAPTURE_SMALL_PHOTOS = true; // Set to false to disable fast capture mode
     
     // LED control - tied to camera lifecycle
     private static volatile boolean pendingLedEnabled = false;  // LED state for current/pending requests
@@ -161,6 +164,24 @@ public class CameraNeo extends LifecycleService {
     private int[] availableAfModes;
     private float minimumFocusDistance;
     private boolean hasAutoFocus;
+    
+    /**
+     * Check if we should use fast capture mode (minimal 3A) for small photos
+     * This speeds up capture by skipping expensive auto-exposure and autofocus
+     */
+    private boolean shouldUseFastCaptureMode(String photoSize) {
+        boolean featureEnabled = ENABLE_FAST_CAPTURE_SMALL_PHOTOS;
+        Log.d(TAG, "🚀 Fast capture mode enabled for small photo (feature flag: " + photoSize + ")");
+        boolean isSmallPhoto = "small".equals(photoSize);
+        
+        boolean useFastMode = featureEnabled && isSmallPhoto;
+        
+        // if (useFastMode) {
+        //     Log.d(TAG, "🚀 Fast capture mode enabled for small photo (feature flag: " + featureEnabled + ")");
+        // }
+        
+        return useFastMode;
+    }
     
     /**
      * Get the current display rotation in degrees
@@ -2370,6 +2391,16 @@ public class CameraNeo extends LifecycleService {
             shotState = ShotState.WAITING_AE;
             aeStartTimeNs = System.nanoTime();
 
+            // Check if we should use fast capture mode for small photos
+            boolean useFastMode = shouldUseFastCaptureMode(pendingRequestedSize);
+            
+            if (useFastMode) {
+                Log.d(TAG, "🚀 Fast capture mode for small photo - skipping AE convergence");
+                // Skip AE convergence and go straight to capture
+                capturePhoto();
+                return;
+            }
+
             // Start AE convergence - autofocus runs automatically in CONTINUOUS_PICTURE mode
             Log.d(TAG, "Starting AE convergence" + (hasAutoFocus ? " (autofocus runs automatically)" : "") + "...");
 
@@ -2474,32 +2505,51 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
             stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
 
-            // Set up continuous autofocus (no manual triggers needed)
+            // Check if we should use fast capture mode for small photos
+            boolean useFastMode = shouldUseFastCaptureMode(pendingRequestedSize);
+            
+            // Set up autofocus based on capture mode
             if (hasAutoFocus) {
-                stillBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                if (useFastMode) {
+                    // Fast mode: Use fixed focus for speed
+                    stillBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+                    Log.d(TAG, "🚀 Fast mode: Using fixed focus for small photo");
+                } else {
+                    // Normal mode: Use continuous autofocus
+                    stillBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 
-                // Add center-weighted AF region for better subject focus
-                int centerX = jpegSize.getWidth() / 2;
-                int centerY = jpegSize.getHeight() / 2;
-                int regionSize = Math.min(jpegSize.getWidth(), jpegSize.getHeight()) / 3;
-                int left = Math.max(0, centerX - regionSize / 2);
-                int top = Math.max(0, centerY - regionSize / 2);
-                int right = Math.min(jpegSize.getWidth() - 1, centerX + regionSize / 2);
-                int bottom = Math.min(jpegSize.getHeight() - 1, centerY + regionSize / 2);
+                    // Add center-weighted AF region for better subject focus
+                    int centerX = jpegSize.getWidth() / 2;
+                    int centerY = jpegSize.getHeight() / 2;
+                    int regionSize = Math.min(jpegSize.getWidth(), jpegSize.getHeight()) / 3;
+                    int left = Math.max(0, centerX - regionSize / 2);
+                    int top = Math.max(0, centerY - regionSize / 2);
+                    int right = Math.min(jpegSize.getWidth() - 1, centerX + regionSize / 2);
+                    int bottom = Math.min(jpegSize.getHeight() - 1, centerY + regionSize / 2);
 
-                stillBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{
-                    new MeteringRectangle(left, top, right - left, bottom - top, MeteringRectangle.METERING_WEIGHT_MAX)
-                });
+                    stillBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{
+                        new MeteringRectangle(left, top, right - left, bottom - top, MeteringRectangle.METERING_WEIGHT_MAX)
+                    });
 
-                // Also add center-weighted AE region for consistent exposure
-                stillBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
-                    new MeteringRectangle(left, top, right - left, bottom - top, MeteringRectangle.METERING_WEIGHT_MAX)
-                });
+                    // Also add center-weighted AE region for consistent exposure
+                    stillBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
+                        new MeteringRectangle(left, top, right - left, bottom - top, MeteringRectangle.METERING_WEIGHT_MAX)
+                    });
+                }
             }
 
-            // High quality settings
-            stillBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
-            stillBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
+            // Image quality settings based on capture mode
+            if (useFastMode) {
+                // Fast mode: Use faster processing for small photos
+                stillBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_FAST);
+                stillBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_FAST);
+                Log.d(TAG, "🚀 Fast mode: Using fast processing settings for small photo");
+            } else {
+                // Normal mode: Use high quality settings
+                stillBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
+                stillBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
+            }
+
             stillBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) JPEG_QUALITY);
             int displayOrientation = getDisplayRotation();
             int jpegOrientation = JPEG_ORIENTATION.get(displayOrientation, 90);
