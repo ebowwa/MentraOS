@@ -95,7 +95,7 @@ PODS:
     - libavif/core
     - libdav1d (>= 0.6.0)
   - libdav1d (1.2.0)
-  - livekit-react-native (2.9.1):
+  - livekit-react-native (2.9.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -117,9 +117,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - livekit-react-native-webrtc (137.0.1):
+  - livekit-react-native-webrtc (137.0.2):
     - React-Core
-    - WebRTC-SDK (= 137.7151.02)
+    - WebRTC-SDK (= 137.7151.04)
   - LiveKitExpoPlugin (1.0.1):
     - ExpoModulesCore
     - livekit-react-native
@@ -1458,7 +1458,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller (1.17.5):
+  - react-native-keyboard-controller (1.18.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1471,7 +1471,7 @@ PODS:
     - React-featureflags
     - React-graphics
     - React-ImageManager
-    - react-native-keyboard-controller/common (= 1.17.5)
+    - react-native-keyboard-controller/common (= 1.18.2)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-rendererdebug
@@ -1480,7 +1480,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-keyboard-controller/common (1.17.5):
+  - react-native-keyboard-controller/common (1.18.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2143,7 +2143,7 @@ PODS:
     - Yoga
   - RNInAppBrowser (3.7.0):
     - React-Core
-  - RNLocalize (3.5.2):
+  - RNLocalize (3.5.4):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2164,7 +2164,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNPermissions (5.4.1):
+  - RNPermissions (5.4.2):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2317,7 +2317,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNSentry (6.20.0):
+  - RNSentry (6.22.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2338,7 +2338,7 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - Sentry/HybridSDK (= 8.53.2)
+    - Sentry/HybridSDK (= 8.56.2)
     - Yoga
   - RNShare (12.2.0):
     - DoubleConversion
@@ -2409,12 +2409,12 @@ PODS:
   - SDWebImage (5.19.7):
     - SDWebImage/Core (= 5.19.7)
   - SDWebImage/Core (5.19.7)
-  - SDWebImageAVIFCoder (0.11.0):
+  - SDWebImageAVIFCoder (0.11.1):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
   - SDWebImageSVGCoder (1.7.0):
     - SDWebImage/Core (~> 5.6)
-  - Sentry/HybridSDK (8.53.2)
+  - Sentry/HybridSDK (8.56.2)
   - SocketRocket (0.7.1)
   - SWCompression (4.8.6):
     - BitByteData (~> 2.0)
@@ -2459,7 +2459,7 @@ PODS:
     - SWCompression/Deflate
   - SwiftUIIntrospect (1.3.0)
   - UMAppLoader (5.0.1)
-  - WebRTC-SDK (137.7151.02)
+  - WebRTC-SDK (137.7151.04)
   - Yoga (0.0.0)
   - ZXingObjC/Core (3.6.9)
   - ZXingObjC/OneD (3.6.9):
@@ -2892,8 +2892,8 @@ SPEC CHECKSUMS:
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
   libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
-  livekit-react-native: 9f0c7e58d3b794cb3e21bfb85a07504e3d9805dd
-  livekit-react-native-webrtc: b433ea8c3845cbef1ca9b59c6155e322fcda3bdd
+  livekit-react-native: 5d14b0aba017df1ba75578e67b033b243831963d
+  livekit-react-native-webrtc: c03e72c608fbb8284a99e095dd7835a85bdb0279
   LiveKitExpoPlugin: 8e0f4bdffa921c27c13e1504ea0e668b6f859278
   onnxruntime-c: a909204639a1f035f575127ac406f781ac797c9c
   onnxruntime-objc: b6fab0f1787aa6f7190c2013f03037df4718bd8b
@@ -2931,7 +2931,7 @@ SPEC CHECKSUMS:
   react-native-bottom-tabs: 4e29ba5631b9890b9d15d3f1ef35c03a89a1bc2e
   react-native-config: 644074ab88db883fcfaa584f03520ec29589d7df
   react-native-image-picker: c5da8aa14fdffbd4d77338c352f52a8d85fcacec
-  react-native-keyboard-controller: b3d68f377e97666bf539ee7d8d6d77ac7a50f9ca
+  react-native-keyboard-controller: c7b394ca5fa3bca2264d4bd37bd4ab1aeb62a991
   react-native-mmkv: 5c69dce0d439e1791a884f6b166e76fc7fadaca6
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-pager-view: 9517b214fb7321493339fbcf53a30abd54fea07b
@@ -2973,23 +2973,23 @@ SPEC CHECKSUMS:
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: fffddeb8af59709c6d8de11b6461a6af63cad532
   RNInAppBrowser: 6d3eb68d471b9834335c664704719b8be1bfdb20
-  RNLocalize: 9b5bc41c885b6138233c9ce6de8affb22cbc1e4f
-  RNPermissions: 66e7065dd1826bf37f8d180248b2cb2c4ae26aca
+  RNLocalize: 0126149c649c4d8bb94592e6635f4e203e789c24
+  RNPermissions: 166b6880aa94483ac566c35f3d7ec9b999239e7e
   RNReanimated: 2e5069649cbab2c946652d3b97589b2ae0526220
   RNScreens: c7c659490e59cb0887cb098a9c9e9431392c05b2
-  RNSentry: 39b6ae6ce58dafc766ae3704c50a420d79e6a999
+  RNSentry: bc0d4437ab65513097b88e1b4ee3b63ec6194009
   RNShare: 65a462152ef2bc44baf4ce388b5d9ef796507cd2
   RNSVG: b889dc9c1948eeea0576a16cc405c91c37a12c19
   RNWifi: 6669d0fe0f82592d64383d0d4ac1ff888d15f8bc
   SDWebImage: 8a6b7b160b4d710e2a22b6900e25301075c34cb3
-  SDWebImageAVIFCoder: 00310d246aab3232ce77f1d8f0076f8c4b021d90
+  SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
-  Sentry: 59993bffde4a1ac297ba6d268dc4bbce068d7c1b
+  Sentry: b53951377b78e21a734f5dc8318e333dbfc682d7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   SWCompression: 9379873ad5e9f25b31db88c441649b59a4c2bab7
   SwiftUIIntrospect: fee9aa07293ee280373a591e1824e8ddc869ba5d
   UMAppLoader: 7e7e0eaa7854ffd652c00a68c443afb28c3bedba
-  WebRTC-SDK: d20de357dcbf7c9696b124b39f3ff62125107e4b
+  WebRTC-SDK: 40d4f5ba05cadff14e4db5614aec402a633f007e
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
