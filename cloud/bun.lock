@@ -47,7 +47,7 @@
       "dependencies": {
         "@livekit/rtc-node": "^0.13.18",
         "@logtail/pino": "^0.5.4",
-        "@mentra/sdk": "^2.1.20",
+        "@mentra/sdk": "workspace:*",
         "@sentry/bun": "^9.1.0",
         "@sentry/cli": "^2.42.1",
         "@supabase/supabase-js": "^2.49.1",
@@ -57,6 +57,7 @@
         "cors": "^2.8.5",
         "dotenv": "^10.0.0",
         "express": "^4.18.2",
+        "form-data": "^4.0.1",
         "helmet": "^4.6.0",
         "jose": "^6.0.11",
         "jsonwebtoken": "^9.0.1",
@@ -82,6 +83,8 @@
         "@types/cors": "^2.8.12",
         "@types/dotenv": "^8.2.0",
         "@types/express": "^4.17.13",
+        "@types/express-serve-static-core": "^4.17.43",
+        "@types/form-data": "^2.5.0",
         "@types/helmet": "^4.0.0",
         "@types/jsonwebtoken": "^9.0.2",
         "@types/multer": "^1.4.7",
@@ -770,6 +773,8 @@
     "@types/express": ["@types/express@4.17.23", "", { "dependencies": { "@types/body-parser": "*", "@types/express-serve-static-core": "^4.17.33", "@types/qs": "*", "@types/serve-static": "*" } }, "sha512-Crp6WY9aTYP3qPi2wGDo9iUe/rceX01UMhnF1jmwDcKCFM6cx7YhGP/Mpr3y9AASpfHixIG0E6azCcL5OcDHsQ=="],
 
     "@types/express-serve-static-core": ["@types/express-serve-static-core@4.19.6", "", { "dependencies": { "@types/node": "*", "@types/qs": "*", "@types/range-parser": "*", "@types/send": "*" } }, "sha512-N4LZ2xG7DatVqhCZzOGb1Yi5lMbXSZcmdLDe9EzSndPV2HpWYWzRbaerl2n27irrm94EPpprqa8KpskPT085+A=="],
+
+    "@types/form-data": ["@types/form-data@2.5.2", "", { "dependencies": { "form-data": "*" } }, "sha512-tfmcyHn1Pp9YHAO5r40+UuZUPAZbUEgqTel3EuEKpmF9hPkXgR4l41853raliXnb4gwyPNoQOfvgGGlHN5WSog=="],
 
     "@types/helmet": ["@types/helmet@4.0.0", "", { "dependencies": { "helmet": "*" } }, "sha512-ONIn/nSNQA57yRge3oaMQESef/6QhoeX7llWeDli0UZIfz8TQMkfNPTXA8VnnyeA1WUjG2pGqdjEIueYonMdfQ=="],
 
