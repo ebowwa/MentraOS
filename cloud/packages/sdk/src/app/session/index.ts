@@ -61,7 +61,6 @@ import { Logger } from "pino";
 import { AppServer } from "../server";
 import axios from "axios";
 import EventEmitter from "events";
-import fetch from "node-fetch";
 
 // Import the cloud-to-app specific type guards
 import {
@@ -1648,7 +1647,9 @@ export class AppSession {
     // Check if reconnection is allowed
     if (!this.config.autoReconnect || !this.sessionId) {
       this.logger.debug(
-        `🔄 Reconnection skipped: autoReconnect=${this.config.autoReconnect}, sessionId=${this.sessionId ? "valid" : "invalid"}`,
+        `🔄 Reconnection skipped: autoReconnect=${
+          this.config.autoReconnect
+        }, sessionId=${this.sessionId ? "valid" : "invalid"}`,
       );
       return;
     }
