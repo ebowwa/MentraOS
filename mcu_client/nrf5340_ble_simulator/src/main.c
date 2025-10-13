@@ -17,6 +17,7 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/gpio.h>
 #include <soc.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
@@ -29,7 +30,7 @@
 #include "pdm_audio_stream.h"
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
-// #include "display/lcd/hls12vga.h"  // Working HLS12VGA driver
+// #include "display/lcd/a6n.h"  // Working A6N driver
 
 #include <dk_buttons_and_leds.h>
 
@@ -817,6 +818,57 @@ static void configure_gpio(void)
 extern void bsp_log_init(void);
 extern int bsp_log_runtime_level;
 
+/**
+ * @brief Initialize user GPIOs (ES power and Microphone power)
+ * @return 0 on success, negative value on error
+ */
+#define USER_NODE DT_PATH(zephyr_user)
+
+#if DT_NODE_EXISTS(USER_NODE)
+static const struct gpio_dt_spec es_power_en = GPIO_DT_SPEC_GET(USER_NODE, es_power_en_gpios);
+static const struct gpio_dt_spec mic_pwr_en = GPIO_DT_SPEC_GET(USER_NODE, mic_pwr_en_gpios);
+
+int init_user_gpio(void)
+{
+	int err;
+	
+	if (!gpio_is_ready_dt(&es_power_en))
+	{
+		LOG_ERR("GPIO port for es_power_en not ready");
+		return -1;
+	}
+	
+	err = gpio_pin_configure_dt(&es_power_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+	if (err != 0)
+	{
+		LOG_ERR("es_power_en config error: %d", err);
+		return err;
+	}
+	
+	if (!gpio_is_ready_dt(&mic_pwr_en))
+	{
+		LOG_ERR("GPIO mic_pwr_en not ready");
+		return -1;
+	}
+	
+	err = gpio_pin_configure_dt(&mic_pwr_en, GPIO_OUTPUT_HIGH | GPIO_PULL_UP);
+	if (err != 0)
+	{
+		LOG_ERR("mic_pwr_en config error: %d", err);
+		return err;
+	}
+	
+	LOG_INF("User GPIOs configured successfully");
+	return 0;
+}
+#else
+int init_user_gpio(void)
+{
+	LOG_WRN("zephyr,user node not defined, skipping user GPIO initialization");
+	return 0;
+}
+#endif
+
 int main(void)
 {
 	int blink_status = 0;
@@ -830,6 +882,13 @@ int main(void)
 
 	LOG_INF("🚀🚀🚀 MAIN FUNCTION STARTED - v2.2.0-DISPLAY_OPEN_FIX 🚀🚀🚀");
 	LOG_INF("🌟🌟🌟 MAIN FUNCTION LOG_INF - v2.2.0-DISPLAY_OPEN_FIX 🌟🌟🌟\n");
+
+	// Initialize user GPIOs (ES power and Microphone power from A6M)
+	err = init_user_gpio();
+	if (err != 0)
+	{
+		LOG_ERR("Failed to initialize user GPIOs: %d", err);
+	}
 
 	configure_gpio();
 
@@ -920,11 +979,11 @@ int main(void)
         display_open();
         LOG_INF("✅ display_open() call completed!");
         
-        // Add direct HLS12VGA test from main thread
-        LOG_INF("🖥️ Testing HLS12VGA display from main thread...");
+        // Add direct A6N test from main thread
+        LOG_INF("🖥️ Testing A6N display from main thread...");
         const struct device *test_disp = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
         if (device_is_ready(test_disp)) {
-            LOG_INF("✅ HLS12VGA device ready in main: %s", test_disp->name);
+            LOG_INF("✅ A6N device ready in main: %s", test_disp->name);
             
             // Try to turn off blanking
             int ret = display_blanking_off(test_disp);
@@ -943,12 +1002,12 @@ int main(void)
             LOG_INF("🎨 Display write result: %d", ret);
             
             if (ret == 0) {
-                LOG_INF("🎉 SUCCESS: HLS12VGA write operation completed!");
+                LOG_INF("🎉 SUCCESS: A6N write operation completed!");
             } else {
-                LOG_ERR("❌ FAILED: HLS12VGA write operation failed: %d", ret);
+                LOG_ERR("❌ FAILED: A6N write operation failed: %d", ret);
             }
         } else {
-            LOG_ERR("❌ HLS12VGA device not ready in main");
+            LOG_ERR("❌ A6N device not ready in main");
         }
         
         // The LVGL demo thread is already defined in lvgl_demo.c - no need to call it here

@@ -32,9 +32,9 @@ typedef enum
     LCD_CMD_CYCLE_PATTERN,  // **NEW: Pattern cycling command**
     LCD_CMD_UPDATE_PROTOBUF_TEXT,  // **NEW: Update container with protobuf text**
     LCD_CMD_UPDATE_XY_TEXT,        // **NEW: Pattern 5 XY positioned text**
-    LCD_CMD_GRAYSCALE_HORIZONTAL,  // **NEW: Direct HLS12VGA horizontal grayscale**
-    LCD_CMD_GRAYSCALE_VERTICAL,    // **NEW: Direct HLS12VGA vertical grayscale**
-    LCD_CMD_CHESS_PATTERN,         // **NEW: Direct HLS12VGA chess pattern**
+    LCD_CMD_GRAYSCALE_HORIZONTAL,  // **NEW: Direct A6N horizontal grayscale**
+    LCD_CMD_GRAYSCALE_VERTICAL,    // **NEW: Direct A6N vertical grayscale**
+    LCD_CMD_CHESS_PATTERN,         // **NEW: Direct A6N chess pattern**
     LCD_CMD_SHOW_PATTERN,          // **NEW: Show specific pattern by ID**
 } display_cmd_type_t;
 #define MAX_TEXT_LEN 128
@@ -119,7 +119,7 @@ void display_cycle_pattern(void);
 // **NEW: Thread-safe protobuf text update function**
 void display_update_protobuf_text(const char *text_content);
 
-// **NEW: Direct HLS12VGA pattern functions**
+// **NEW: Direct A6N pattern functions**
 void display_draw_horizontal_grayscale(void);
 void display_draw_vertical_grayscale(void);
 void display_draw_chess_pattern(void);

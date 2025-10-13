@@ -22,7 +22,7 @@ typedef enum {
     DISPLAY_TYPE_UNKNOWN = 0,
     DISPLAY_TYPE_DUMMY_640x480,    // Large projector/dummy display 640x480
     DISPLAY_TYPE_SSD1306_128x64,   // Small OLED display 128x64
-    DISPLAY_TYPE_HLS12VGA_640x480, // Future: HLS12VGA projector 640x480
+    DISPLAY_TYPE_A6N_640x480, // Future: A6N projector 640x480
     DISPLAY_TYPE_MAX
 } display_type_t;
 
@@ -72,7 +72,7 @@ typedef struct {
     
     // Color configuration for display-specific handling
     struct {
-        uint8_t invert_colors;        // Invert black/white colors (for HLS12VGA)
+        uint8_t invert_colors;        // Invert black/white colors (for A6N)
         uint8_t hardware_mirroring;   // Hardware-level mirroring compensation
     } color_config;
     

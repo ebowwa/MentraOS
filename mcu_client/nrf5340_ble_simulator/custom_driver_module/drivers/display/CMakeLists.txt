@@ -8,4 +8,4 @@
 # SPDX-License-Identifier: Apache-2.0
  
 
-add_subdirectory_ifdef(CONFIG_CUSTOM_HLS12VGA lcd)
+add_subdirectory_ifdef(CONFIG_CUSTOM_A6N lcd)

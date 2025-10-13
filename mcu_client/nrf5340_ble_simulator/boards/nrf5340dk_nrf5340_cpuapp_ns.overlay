@@ -1,7 +1,12 @@
 / {
     chosen {
-        zephyr,display = &hls12vga;  // Switch to HLS12VGA projector for testing
+        zephyr,display = &a6n;  // Switch to A6N projector for testing
         nordic-nus-uart = &uart0;
+    };
+    
+    zephyr_user: zephyr,user {
+        es_power_en-gpios = <&gpio1 0 GPIO_ACTIVE_HIGH>;
+        mic_pwr_en-gpios  = <&gpio0 4 GPIO_ACTIVE_HIGH>;
     };
 };
 
@@ -62,24 +67,21 @@
     status = "disabled";
 };
 
-/* Enable SPI4 with 32MHz capability for HLS12VGA */
+/* Enable SPI4 with 32MHz capability for A6N */
 &spi4 {
     compatible = "nordic,nrf-spim";
     status = "okay";
     pinctrl-0 = <&spi4_default>;
     pinctrl-1 = <&spi4_sleep>;
     pinctrl-names = "default", "sleep";
-
-    hls12vga: hls12vga@0 {
-        compatible = "zephyr,custom-hls12vga";
+    
+    a6n: a6n@0 {
+        compatible = "zephyr,custom-a6n";
         reg = <0>;
-        status = "okay";  // Enable HLS12VGA for projector testing
+        status = "okay";  // Enable A6N for projector testing
         spi-max-frequency = <32000000>;
-
-        /* CS pins moved to P1.04 and P1.05 to avoid Arduino connector conflicts */
-        left_cs-gpios  = <&gpio1 4 GPIO_ACTIVE_HIGH>;  /* P1.04 - avoid conflicts */
-        right_cs-gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;  /* P1.05 - avoid conflicts */
-
+        left_cs-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>; // cs0
+        right_cs-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;// cs1
         /* Power enables and reset */
         v0_9-gpios     = <&gpio0 5 GPIO_ACTIVE_HIGH>;  /* P0.05 */
         v1_8-gpios     = <&gpio0 6 GPIO_ACTIVE_HIGH>;  /* P0.06 */
@@ -130,6 +132,12 @@
         com-invdir;
         prechargep = <0x22>;
         segment-remap;
-        status = "disabled";  // Disable SSD1306 for HLS12VGA testing
+        status = "disabled";  // Disable SSD1306 for A6N testing
     };
+};
+
+
+&gpio_fwd {
+	status = "disabled";
+	/delete-node/ uart;
 };

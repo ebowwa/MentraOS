@@ -110,10 +110,10 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         }
     },
 
-    // DISPLAY_TYPE_HLS12VGA_640x480 - Future HLS12VGA projector (limited fonts due to memory)
-    [DISPLAY_TYPE_HLS12VGA_640x480] = {
-        .type = DISPLAY_TYPE_HLS12VGA_640x480,
-        .name = "HLS12VGA Projector 640x480", 
+    // DISPLAY_TYPE_A6N_640x480 - Future A6N projector (limited fonts due to memory)
+    [DISPLAY_TYPE_A6N_640x480] = {
+        .type = DISPLAY_TYPE_A6N_640x480,
+        .name = "A6N Projector 640x480", 
         .width = 640, .height = 480,
         .layout = {
             .margin = 15, .padding = 8, .border_width = 2,
@@ -133,8 +133,8 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .refresh_rate_ms = 16, .animation_enabled = 1, .max_text_length = 512
         },
         .color_config = {
-            .invert_colors = 1,        // HLS12VGA needs color inversion (text LEDs off -> on)
-            .hardware_mirroring = 1    // HLS12VGA has mirrored output that needs correction
+            .invert_colors = 1,        // A6N needs color inversion (text LEDs off -> on)
+            .hardware_mirroring = 1    // A6N has mirrored output that needs correction
         }
     }
 };
@@ -156,9 +156,9 @@ display_type_t display_detect_type(const char *device_name)
         return DISPLAY_TYPE_DUMMY_640x480;
     }
     
-    if (strstr(device_name, "hls12vga")) {
-        LOG_INF("Detected HLS12VGA projector display");
-        return DISPLAY_TYPE_HLS12VGA_640x480;
+    if (strstr(device_name, "a6n")) {
+        LOG_INF("Detected A6N projector display");
+        return DISPLAY_TYPE_A6N_640x480;
     }
 
     LOG_WRN("Unknown display type: %s, using default configuration", device_name);
@@ -278,7 +278,7 @@ lv_color_t display_get_text_color(void)
     const display_config_t *config = display_get_config();
     
     if (config->color_config.invert_colors) {
-        // For HLS12VGA: invert to make text LEDs turn ON
+        // For A6N: invert to make text LEDs turn ON
         return lv_color_black();
     } else {
         // For SSD1306 and normal displays: white text
@@ -291,7 +291,7 @@ lv_color_t display_get_background_color(void)
     const display_config_t *config = display_get_config();
     
     if (config->color_config.invert_colors) {
-        // For HLS12VGA: invert to make background LEDs turn OFF
+        // For A6N: invert to make background LEDs turn OFF
         return lv_color_white();
     } else {
         // For SSD1306 and normal displays: black background

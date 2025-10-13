@@ -2,7 +2,7 @@
  * Shell Display Control Module
  * 
  * Manual display control commands for nRF5340 BLE Simulator
- * Supporting both HLS12VGA projector and SSD1306 OLED displays
+ * Supporting both A6N projector and SSD1306 OLED displays
  * 
  * Available Commands:
  * - display help                    : Show all display commands
@@ -26,8 +26,8 @@
 // Include LVGL for text rendering
 #include <lvgl.h>
 
-// Include HLS12VGA driver for brightness control
-#include "../custom_driver_module/drivers/display/lcd/hls12vga.h"
+// Include A6N driver for brightness control
+#include "../custom_driver_module/drivers/display/lcd/a6n.h"
 
 // Include display manager for font mapping
 #include "display_manager.h"
@@ -117,10 +117,10 @@ static int cmd_display_info(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "🖥️  Display Information:");
     shell_print(shell, "");
     shell_print(shell, "📱 System: MentraOS nRF5340 BLE Simulator");
-    shell_print(shell, "📏 HLS12VGA Resolution: 640x480 pixels");
+    shell_print(shell, "📏 A6N Resolution: 640x480 pixels");
     shell_print(shell, "📏 SSD1306 Resolution: 128x64 pixels");
     shell_print(shell, "🎨 Pixel Format: MONO (1-bit)");
-    shell_print(shell, "🔆 Brightness Support: Yes (HLS12VGA)");
+    shell_print(shell, "🔆 Brightness Support: Yes (A6N)");
     shell_print(shell, "� Available Fonts: 12px, 14px");
     shell_print(shell, "");
     
@@ -130,33 +130,86 @@ static int cmd_display_info(const struct shell *shell, size_t argc, char **argv)
 /**
  * Display brightness command
  */
+/**
+ * @brief 设置显示亮度 | Set display brightness
+ * 
+ * 根据A6N手册6.4节 | Per A6N manual section 6.4:
+ * - 最大值为0xE2寄存器默认值（上电后读取）| Max value is 0xE2 register default (read after power-on)
+ * - 相邻等级差值最小为2 | Minimum difference between adjacent levels is 2
+ * - 最多支持64级亮度可调 | Up to 64 brightness levels supported
+ * 
+ * Shell命令将0-100%映射到实际寄存器值 | Shell command maps 0-100% to actual register value
+ */
+/**
+ * @brief 设置显示亮度 (5档位) | Set display brightness (5 levels)
+ * 
+ * 支持的亮度档位 | Supported brightness levels:
+ * - 20%  (0x33)
+ * - 40%  (0x66)
+ * - 60%  (0x99)
+ * - 80%  (0xCC)
+ * - 100% (0xFF)
+ */
 static int cmd_display_brightness(const struct shell *shell, size_t argc, char **argv)
 {
-    if (argc != 2) {
-        shell_error(shell, "❌ Usage: display brightness <0-100>");
+    if (argc != 2)
+    {
+        shell_error(shell, "❌ Usage: display brightness <20|40|60|80|100>");
+        shell_print(shell, "");
+        shell_print(shell, "亮度档位 | Brightness Levels:");
+        shell_print(shell, "  20%%  - 最暗 | Dimmest (0x33)");
+        shell_print(shell, "  40%%  - 较暗 | Darker (0x66)");
+        shell_print(shell, "  60%%  - 中等 | Medium (0x99)");
+        shell_print(shell, "  80%%  - 较亮 | Brighter (0xCC)");
+        shell_print(shell, "  100%% - 最亮 | Brightest (0xFF)");
+        shell_print(shell, "");
+        shell_print(shell, "Examples:");
+        shell_print(shell, "  display brightness 20   - Set to 20%%");
+        shell_print(shell, "  display brightness 60   - Set to 60%%");
+        shell_print(shell, "  display brightness 100  - Set to 100%%");
         return -EINVAL;
     }
     
-    int brightness = atoi(argv[1]);
-    if (brightness < 0 || brightness > 100) {
-        shell_error(shell, "❌ Brightness must be 0-100%%");
-        return -EINVAL;
+    int brightness_pct = atoi(argv[1]);
+    
+    // 支持的亮度档位映射 | Supported brightness level mapping
+    uint8_t reg_value;
+    switch (brightness_pct)
+    {
+        case 20:
+            reg_value = 0x33;  // 20%
+            break;
+        case 40:
+            reg_value = 0x66;  // 40%
+            break;
+        case 60:
+            reg_value = 0x99;  // 60%
+            break;
+        case 80:
+            reg_value = 0xCC;  // 80%
+            break;
+        case 100:
+            reg_value = 0xFF;  // 100%
+            break;
+        default:
+            shell_error(shell, "❌ Invalid brightness. Use: 20, 40, 60, 80, or 100");
+            return -EINVAL;
     }
     
-    // Convert 0-100% to 0-9 levels for HLS12VGA
-    uint8_t projector_level = (brightness * 9) / 100;
-    
-    // Set HLS12VGA brightness
-    int ret = hls12vga_set_brightness(projector_level);
-    if (ret == 0) {
-        shell_print(shell, "✅ HLS12VGA projector brightness set to %d%% (level %d/9)", 
-            brightness, projector_level);
-    } else {
+    // 设置亮度 | Set brightness
+    int ret = a6n_set_brightness(reg_value);
+    if (ret == 0)
+    {
+        shell_print(shell, "✅ A6N brightness set to %d%% (reg=0x%02X)", 
+            brightness_pct, reg_value);
+    }
+    else
+    {
         shell_error(shell, "❌ Failed to set brightness: %d", ret);
         return ret;
     }
     
-    LOG_INF("Display brightness set to %d%% via shell command", brightness);
+    LOG_INF("Display brightness set to %d%% (0x%02X) via shell", brightness_pct, reg_value);
     return 0;
 }
 
@@ -165,13 +218,13 @@ static int cmd_display_brightness(const struct shell *shell, size_t argc, char *
  */
 static int cmd_display_clear(const struct shell *shell, size_t argc, char **argv)
 {
-    // Use HLS12VGA driver's clear screen function
+    // Use A6N driver's clear screen function
     // color_on = false means clear to black (background color)
-    int ret = hls12vga_clear_screen(false);
+    int ret = a6n_clear_screen(false);
     
     if (ret == 0) {
         shell_print(shell, "✅ Display cleared to black");
-        LOG_INF("Display cleared via shell command using hls12vga_clear_screen()");
+        LOG_INF("Display cleared via shell command using a6n_clear_screen()");
     } else {
         shell_error(shell, "❌ Failed to clear display (error: %d)", ret);
         LOG_ERR("Failed to clear display: %d", ret);
@@ -367,13 +420,13 @@ static int cmd_display_battery(const struct shell *shell, size_t argc, char **ar
  */
 static int cmd_display_fill(const struct shell *shell, size_t argc, char **argv)
 {
-    // Use HLS12VGA driver's clear screen function with white fill
+    // Use A6N driver's clear screen function with white fill
     // color_on = true means fill with white (foreground color)
-    int ret = hls12vga_clear_screen(true);
+    int ret = a6n_clear_screen(true);
     
     if (ret == 0) {
         shell_print(shell, "✅ Display filled with white");
-        LOG_INF("Display filled via shell command using hls12vga_clear_screen(true)");
+        LOG_INF("Display filled via shell command using a6n_clear_screen(true)");
     } else {
         shell_error(shell, "❌ Failed to fill display (error: %d)", ret);
         LOG_ERR("Failed to fill display: %d", ret);
@@ -383,49 +436,72 @@ static int cmd_display_fill(const struct shell *shell, size_t argc, char **argv)
 }
 
 /**
- * Display test command
+ * 显示测试命令 | Display test command
  */
 static int cmd_display_test(const struct shell *shell, size_t argc, char **argv)
 {
-    shell_print(shell, "🧪 Running display test patterns...");
+    shell_print(shell, "🧪 运行 A6N 硬件自测试图案 | Running A6N hardware self-test patterns...");
     
     int ret;
     
-    // Test 1: Horizontal grayscale pattern
-    shell_print(shell, "  📊 Running horizontal grayscale pattern...");
-    ret = hls12vga_draw_horizontal_grayscale_pattern();
-    if (ret != 0) {
-        shell_error(shell, "❌ Horizontal pattern failed (error: %d)", ret);
+    // 测试 1: 全黑 | Test 1: All black (0x80)
+    shell_print(shell, "  ⬛ 测试图案 0x00: 全黑 | Pattern 0x00: All black (0x80)");
+    ret = a6n_enable_selftest(true, 0x00);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ 全黑图案失败 | Black pattern failed (error: %d)", ret);
         return ret;
     }
-    k_sleep(K_MSEC(2000));  // Display for 2 seconds
+    k_sleep(K_MSEC(2000));  // 显示 2 秒 | Display for 2 seconds
     
-    // Test 2: Vertical grayscale pattern  
-    shell_print(shell, "  📊 Running vertical grayscale pattern...");
-    ret = hls12vga_draw_vertical_grayscale_pattern();
-    if (ret != 0) {
-        shell_error(shell, "❌ Vertical pattern failed (error: %d)", ret);
+    // 测试 2: 全亮 | Test 2: All white (0x81)
+    shell_print(shell, "  ⬜ 测试图案 0x01: 全亮 | Pattern 0x01: All white (0x81)");
+    ret = a6n_enable_selftest(true, 0x01);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ 全亮图案失败 | White pattern failed (error: %d)", ret);
         return ret;
     }
-    k_sleep(K_MSEC(2000));  // Display for 2 seconds
+    k_sleep(K_MSEC(2000));  // 显示 2 秒 | Display for 2 seconds
     
-    // Test 3: Chess pattern
-    shell_print(shell, "  ♟️  Running chess pattern...");
-    ret = hls12vga_draw_chess_pattern();
-    if (ret != 0) {
-        shell_error(shell, "❌ Chess pattern failed (error: %d)", ret);
+    // 测试 3: 2x2 棋盘格 | Test 3: 2x2 checkerboard (0x88)
+    shell_print(shell, "  ♟️  测试图案 0x08: 2x2棋盘格 | Pattern 0x08: 2x2 checkerboard (0x88)");
+    ret = a6n_enable_selftest(true, 0x08);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ 2x2棋盘格失败 | 2x2 checkerboard failed (error: %d)", ret);
         return ret;
     }
-    k_sleep(K_MSEC(2000));  // Display for 2 seconds
+    k_sleep(K_MSEC(2000));  // 显示 2 秒 | Display for 2 seconds
     
-    // Clear screen after tests
-    hls12vga_clear_screen(false);
+    // 测试 4: 4x4 棋盘格 | Test 4: 4x4 checkerboard (0x89)
+    shell_print(shell, "  ♟️  测试图案 0x09: 4x4棋盘格 | Pattern 0x09: 4x4 checkerboard (0x89)");
+    ret = a6n_enable_selftest(true, 0x09);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ 4x4棋盘格失败 | 4x4 checkerboard failed (error: %d)", ret);
+        return ret;
+    }
+    k_sleep(K_MSEC(2000));  // 显示 2 秒 | Display for 2 seconds
     
-    shell_print(shell, "✅ Display test completed");
-    shell_print(shell, "🎨 Patterns: Horizontal grayscale, vertical grayscale, chess pattern");
-    shell_print(shell, "📐 Using native HLS12VGA driver test patterns");
+    // 关闭自测试模式 | Disable self-test mode
+    shell_print(shell, "  🔄 关闭自测试模式 | Disabling self-test mode");
+    ret = a6n_enable_selftest(false, 0x00);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ 关闭自测试失败 | Failed to disable self-test (error: %d)", ret);
+        return ret;
+    }
     
-    LOG_INF("Display test patterns completed using HLS12VGA driver functions");
+    // 清屏 | Clear screen
+    a6n_clear_screen(false);
+    
+    shell_print(shell, "✅ 显示测试完成 | Display test completed");
+    shell_print(shell, "🎨 测试图案 | Test patterns: 全黑(0x80)/全亮(0x81)/2x2棋盘(0x88)/4x4棋盘(0x89)");
+    shell_print(shell, "📐 使用 A6N 硬件自测试 (Bank1初始化 + Bank0 0x8F) | Using A6N hardware self-test (Bank1 init + Bank0 0x8F)");
+    shell_print(shell, "⚠️  注意: 内部测试图 APL 较高，已使用较低亮度和短时间显示 | Note: High APL patterns, using low brightness and short duration");
+    
+    LOG_INF("A6N hardware self-test patterns completed");
     return 0;
 }
 
@@ -433,7 +509,7 @@ static int cmd_display_test(const struct shell *shell, size_t argc, char **argv)
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_display,
     SHELL_CMD(help, NULL, "Show display commands help", cmd_display_help),
     SHELL_CMD(info, NULL, "Show display information", cmd_display_info),
-    SHELL_CMD_ARG(brightness, NULL, "Set display brightness (0-100)", cmd_display_brightness, 2, 0),
+    SHELL_CMD_ARG(brightness, NULL, "Set brightness (20/40/60/80/100%)", cmd_display_brightness, 2, 0),
     SHELL_CMD(clear, NULL, "Clear display", cmd_display_clear),
     SHELL_CMD(fill, NULL, "Fill display with white", cmd_display_fill),
     SHELL_CMD_ARG(text, NULL, "Write text: \"string\" [x y size] (overlay or positioned)", cmd_display_text, 2, 3),

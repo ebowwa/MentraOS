@@ -4,6 +4,112 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🖥️ A6N Display Driver Implementation & Brightness Control - 2025-10-13
+
+#### A6N Display Driver Migration
+- **✅ NEW**: Complete A6N display driver replacing HLS12VGA
+- **📺 Resolution**: 640×480 GRAY16 (4-bit grayscale) mode @ 90Hz refresh rate
+- **⚡ Performance**: SPI 32MHz communication, optimized I1→I4 LUT conversion
+- **🔧 Architecture**: Dual optical engine support (left_cs + right_cs) with synchronized control
+- **📋 Files**: Added a6n.c (1313 lines), a6n.h (246 lines), removed hls12vga.c/h
+
+#### 5-Level Brightness Control System
+- **✅ FEATURE**: Implemented 5-level brightness adjustment via Bank0 0xE2 register
+- **🎚️ Levels**: 20% (0x33), 40% (0x66), 60% (0x99), 80% (0xCC), 100% (0xFF)
+- **🎯 API**: `a6n_set_brightness()` for direct register control
+- **🔧 Helper**: `a6n_get_max_brightness()` returns maximum brightness (0xFF)
+- **📱 Shell Command**: `display brightness <20|40|60|80|100>` for user-friendly control
+
+#### Horizontal Mirror Fix
+- **🐛 FIXED**: Left optical engine mirror inversion issue
+- **🔧 Root Cause**: Left/right engines had opposite mirror polarity settings
+- **✅ Solution**: Unified both engines to use identical mirror configuration
+- **📊 Register**: 0xEF configured with bit7=1 (mirror), bit[6:5]=10 (reserved), bit[4:0]=8 (center)
+- **🎯 Result**: Both left and right engines now display correctly without inversion
+
+#### Reset IO Configuration Update
+- **🔧 CRITICAL**: Reset pin configuration changed from GPIO_INPUT to GPIO_OUTPUT
+- **⚡ Timing**: Added hardware reset sequence in a6n_power_on()
+  - Power sequence: v0.9 → 10ms → v1.8 → 10ms → reset low → 5ms → reset high → 300ms
+- **✅ Stability**: Ensures A6N chip properly resets before register configuration
+- **🎯 Impact**: Improved display initialization reliability
+
+#### Bank0/Bank1 Register Access
+- **✅ FEATURE**: Full support for Bank0 and Bank1 register operations
+- **📝 Commands**: 
+  - Bank0 Write: 0x78, Read: 0x79
+  - Bank1 Write: 0x7A, Read: 0x7B
+- **🔧 API**: `a6n_write_reg_bank()` and `a6n_read_reg()` with bank_id parameter
+- **🎯 Use Cases**: Self-test patterns require Bank1 register initialization
+
+#### Display Initialization Optimization
+- **✅ SIMPLIFIED**: LCD_CMD_OPEN initialization sequence optimized
+- **📋 Sequence**: 
+  1. a6n_power_on() - Power rails and reset
+  2. set_display_onoff(true) - Enable VCOM
+  3. a6n_set_gray16_mode() - Set 0xBE=0x84
+  4. a6n_set_mirror(MIRROR_HORZ) - Configure horizontal mirror
+  5. Configure refresh rate (0x78=0x0E, 0x7C=0x13 for 90Hz)
+  6. a6n_open_display() and a6n_clear_screen()
+- **⚡ Timing**: Added appropriate delays (6us) between register operations
+
+#### Shell Command Enhancement
+- **🎮 Brightness Control**: `display brightness <20|40|60|80|100>`
+- **📋 Help System**: Comprehensive usage examples and level descriptions
+- **✅ Validation**: Input range checking with friendly error messages
+- **🔍 Feedback**: Displays percentage and register value (e.g., "60%, reg=0x99")
+
+#### Test Script & Documentation
+- **📝 NEW**: a6n_display_test.sh - Comprehensive bilingual test guide
+- **🧪 Content**: Test steps, expected results, register configuration reference
+- **🐛 Debugging**: Known issues and solutions documented
+- **🌐 Bilingual**: All content in Chinese | English format
+
+#### Technical Specifications
+- **Display Mode**: GRAY16 (4-bit), 2 pixels per byte
+- **Data Size**: 320 bytes/row, 153,600 bytes/frame
+- **Batch Size**: 192 rows/batch (61,440 bytes)
+- **SPI Speed**: 32MHz actual operation
+- **Frame Rate**: 90Hz self-refresh
+- **Brightness Range**: 0x00-0xFF (64 levels supported by hardware)
+
+#### Files Changed
+```
+18 files changed, 1907 insertions(+), 1231 deletions(-)
+
+New Files:
+  + a6n.c (1313 lines)
+  + a6n.h (246 lines)
+  + a6n_display_test.sh (106 lines)
+
+Removed Files:
+  - hls12vga.c (942 lines)
+  - hls12vga.h (105 lines)
+
+Modified Files:
+  - mos_lvgl_display.c (initialization sequence)
+  - shell_display_control.c (brightness command)
+  - CMakeLists.txt (driver references)
+  - prj.conf (configuration updates)
+```
+
+#### Testing & Verification
+- **✅ Display Init**: Power-on initialization successful
+- **✅ Mirror Fix**: Both left/right engines display correctly
+- **✅ Brightness**: All 5 levels (20%/40%/60%/80%/100%) verified working
+- **✅ Shell Commands**: Response and feedback correct
+- **✅ Hardware Reset**: Reset timing sequence verified
+- **✅ Register Config**: 0xBE, 0xE2, 0xEF, 0x78, 0x7C all configured correctly
+
+#### Status: ✅ Production Ready
+- **Display System**: A6N driver fully operational
+- **Brightness Control**: 5-level adjustment working
+- **Mirror Correction**: Left/right engines synchronized
+- **Reset Sequence**: Hardware initialization stable
+- **Documentation**: Test script and CHANGELOG updated
+
+## Previous Releases
+
 ### �️ Comprehensive Shell Display Command System - 2025-09-30
 
 #### Major Shell Display Control Implementation

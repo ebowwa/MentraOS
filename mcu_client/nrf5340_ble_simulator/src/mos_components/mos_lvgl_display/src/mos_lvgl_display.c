@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-09-30 09:40:11
+ * @LastEditTime : 2025-10-13 17:59:59
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -17,8 +17,7 @@
 
 #include "lvgl_display.h"
 // #include <lvgl.h>
-// #include <hls12vga.h>
-// #include <display/lcd/hls12vga.h>
+#include <display/lcd/a6n.h>
 
 #include "bal_os.h"
 #include "bsp_log.h"
@@ -162,7 +161,7 @@ void display_update_protobuf_text(const char *text_content)
     mos_msgq_send(&lvgl_display_msgq, &cmd, MOS_OS_WAIT_FOREVER);
 }
 
-// **NEW: Direct HLS12VGA pattern functions - Thread-safe**
+// **NEW: Direct A6N pattern functions - Thread-safe**
 void display_draw_horizontal_grayscale(void)
 {
     display_cmd_t cmd = {.type = LCD_CMD_GRAYSCALE_HORIZONTAL};
@@ -905,11 +904,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
     const display_config_t *config = display_get_config();
     LOG_INF("🖼️ Display configuration loaded: %s (%dx%d)", 
              config->name, config->width, config->height);
-    // if (hls12vga_init_sem_take() != 0)  // 等待屏幕spi初始化完成
-    // {
-    //     LOG_ERR("Failed to hls12vga_init_sem_take err");
-    //     return;
-    // }
+    if (a6n_init_sem_take() != 0)  // 等待屏幕spi初始化完成
+    {
+        LOG_ERR("Failed to a6n_init_sem_take err");
+        return;
+    }
     // 初始化 FPS 统计定时器：每 1000ms 输出一次
     mos_timer_create(&fps_timer, fps_timer_cb);
     mos_timer_start(&fps_timer, true, 1000);
@@ -937,17 +936,39 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     // state_type = LCD_STATE_OFF;
                     break;
                 case LCD_CMD_OPEN:
-                    LOG_INF("LCD_CMD_OPEN");
-                    // hls12vga_power_on();
-                    // set_display_onoff(true);
-                    // hls12vga_set_brightness(9);  // 设置亮度
-                    // hls12vga_set_mirror(0x08);   // 0x10 垂直镜像 0x00 正常显示 0x08 水平镜像 0x18 水平+垂直镜像
-                    // // hls12vga_set_brightness(cmd.p.open.brightness);
-                    // // hls12vga_set_mirror(cmd.p.open.mirror);
-                    // mos_delay_ms(2);
-                    // hls12vga_open_display();  // 开启显示
-                    // // hls12vga_set_shift(MOVE_DEFAULT, 0);
-                    // hls12vga_clear_screen(false);  // 清屏
+                    LOG_INF("LCD_CMD_OPEN - Simplified Init (Vendor Recommendation)");
+                    a6n_power_on();
+                    set_display_onoff(true);
+                    a6n_set_brightness(0xff);
+                    mos_delay_us(6);
+                    // 设置显示格式为 GRAY16 (4-bit) | Set display format to GRAY16 (4-bit)
+                    a6n_set_gray16_mode();      // 0xBE = 0x84
+                    mos_delay_us(6);
+                    
+                    // 设置水平镜像模式 | Set horizontal mirror mode
+                    int mirror_ret = a6n_set_mirror(MIRROR_HORZ);
+                    if (mirror_ret < 0)
+                    {
+                        LOG_ERR("Failed to set mirror mode: %d", mirror_ret);
+                    }
+                    mos_delay_us(6);
+                    a6n_read_reg(0, 1, 0xbe);   // Bank0, 右光机, 0xbe 寄存器 | Bank0, right engine, 0xbe register
+                    mos_delay_us(6);
+                    
+                    a6n_write_reg(0x60, 0x80); 
+                    mos_delay_us(6);
+                    
+                    // 配置自刷新帧率为 90Hz (SPI时钟≤32MHz) | Configure self-refresh rate to 90Hz (SPI≤32MHz)
+                    a6n_write_reg(0x78, 0x0E);  // OSC 时钟配置 | OSC clock config
+                    mos_delay_us(6);
+                    a6n_write_reg(0x7C, 0x13);  // OSC 时钟配置 | OSC clock config (90Hz)
+                    mos_delay_us(6);
+                    
+                    LOG_INF("LCD init complete - GRAY16 mode + 90Hz refresh rate configured");
+                    mos_delay_ms(2);
+                    a6n_open_display();
+                    a6n_clear_screen(false);
+     
                     state_type = LCD_STATE_ON;
 
                     LOG_INF("🚀 About to call show_default_ui()...");
@@ -976,11 +997,11 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 case LCD_CMD_CLOSE:
                     if (get_display_onoff())
                     {
-                        // hls12vga_clear_screen(false); // 清屏
+                        // a6n_clear_screen(false); // 清屏
                         // lv_timer_handler();
                         // scroll_text_stop();
                         // set_display_onoff(false);
-                        // hls12vga_power_off();
+                        // a6n_power_off();
                     }
                     state_type = LCD_STATE_OFF;
                     break;
@@ -996,25 +1017,25 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                 }
                 break;
                 case LCD_CMD_GRAYSCALE_HORIZONTAL:
-                    /* **NEW: Handle direct HLS12VGA horizontal grayscale pattern** */
+                    /* **NEW: Handle direct A6N horizontal grayscale pattern** */
                     // LOG_INF("LCD_CMD_GRAYSCALE_HORIZONTAL - Drawing true 8-bit horizontal grayscale");
-                    // if (hls12vga_draw_horizontal_grayscale_pattern() != 0)
+                    // if (a6n_draw_horizontal_grayscale_pattern() != 0)
                     // {
                     //     LOG_ERR("Failed to draw horizontal grayscale pattern");
                     // }
                     // break;
                 case LCD_CMD_GRAYSCALE_VERTICAL:
-                    /* **NEW: Handle direct HLS12VGA vertical grayscale pattern** */
+                    /* **NEW: Handle direct A6N vertical grayscale pattern** */
                     // LOG_INF("LCD_CMD_GRAYSCALE_VERTICAL - Drawing true 8-bit vertical grayscale");
-                    // if (hls12vga_draw_vertical_grayscale_pattern() != 0)
+                    // if (a6n_draw_vertical_grayscale_pattern() != 0)
                     // {
                     //     LOG_ERR("Failed to draw vertical grayscale pattern");
                     // }
                     // break;
                 case LCD_CMD_CHESS_PATTERN:
-                    /* **NEW: Handle direct HLS12VGA chess pattern** */
+                    /* **NEW: Handle direct A6N chess pattern** */
                     // LOG_INF("LCD_CMD_CHESS_PATTERN - Drawing chess board pattern");
-                    // if (hls12vga_draw_chess_pattern() != 0)
+                    // if (a6n_draw_chess_pattern() != 0)
                     // {
                     //     LOG_ERR("Failed to draw chess pattern");
                     // }
