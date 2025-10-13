@@ -87,7 +87,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header leftTx="settings:title" onLeftPress={handleQuickPress} />
 
       <ScrollView

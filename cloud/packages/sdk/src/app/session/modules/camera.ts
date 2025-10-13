@@ -29,6 +29,7 @@ import {
   ManagedStreamOptions,
   ManagedStreamResult,
 } from "./camera-managed-extension";
+import { cameraWarnLog } from "../../../utils/permissions-utils";
 
 /**
  * Options for photo requests
@@ -171,6 +172,8 @@ export class CameraModule {
    */
   async requestPhoto(options?: PhotoRequestOptions): Promise<PhotoData> {
     return new Promise((resolve, reject) => {
+      const baseUrl = this.session?.getHttpsServerUrl?.() || "";
+      cameraWarnLog(baseUrl, this.packageName, "requestPhoto");
       try {
         console.log("DEBUG: requestPhoto options:", options);
 
@@ -421,6 +424,12 @@ export class CameraModule {
     this.logger.info(
       { rtmpUrl: options.rtmpUrl },
       `📹 RTMP stream request starting`,
+    );
+
+    cameraWarnLog(
+      this.session.getHttpsServerUrl?.(),
+      this.packageName,
+      "startStream",
     );
 
     if (!options.rtmpUrl) {

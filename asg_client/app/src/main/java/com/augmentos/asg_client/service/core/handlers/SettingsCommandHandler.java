@@ -33,8 +33,8 @@ public class SettingsCommandHandler implements ICommandHandler {
 
     @Override
     public Set<String> getSupportedCommandTypes() {
-        return Set.of("set_photo_mode", "button_mode_setting", "button_video_recording_setting", 
-                      "button_photo_setting", "button_camera_led");
+        return Set.of("set_photo_mode", "button_video_recording_setting",
+                      "button_max_recording_time", "button_photo_setting", "button_camera_led");
     }
 
     @Override
@@ -43,10 +43,10 @@ public class SettingsCommandHandler implements ICommandHandler {
             switch (commandType) {
                 case "set_photo_mode":
                     return handleSetPhotoMode(data);
-                case "button_mode_setting":
-                    return handleButtonModeSetting(data);
                 case "button_video_recording_setting":
                     return handleButtonVideoRecordingSetting(data);
+                case "button_max_recording_time":
+                    return handleButtonMaxRecordingTime(data);
                 case "button_photo_setting":
                     return handleButtonPhotoSetting(data);
                 case "button_camera_led":
@@ -76,27 +76,6 @@ public class SettingsCommandHandler implements ICommandHandler {
         }
     }
 
-    /**
-     * Handle button mode setting command
-     */
-    public boolean handleButtonModeSetting(JSONObject data) {
-        try {
-            String mode = data.optString("mode", "photo");
-            Log.d(TAG, "📱 Received button mode setting: " + mode);
-            AsgSettings settings = serviceManager.getAsgSettings();
-            if (settings != null) {
-                settings.setButtonPressMode(mode);
-                return true;
-            } else {
-                Log.e(TAG, "Settings not available");
-                return false;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error handling button mode setting", e);
-            return false;
-        }
-    }
-    
     /**
      * Handle button video recording setting command
      */
@@ -135,6 +114,30 @@ public class SettingsCommandHandler implements ICommandHandler {
         }
     }
     
+    /**
+     * Handle button max recording time setting command
+     */
+    public boolean handleButtonMaxRecordingTime(JSONObject data) {
+        try {
+            int minutes = data.optInt("minutes", 10);
+
+            Log.d(TAG, "📱 Received button max recording time setting: " + minutes + " minutes");
+
+            AsgSettings asgSettings = serviceManager.getAsgSettings();
+            if (asgSettings != null) {
+                asgSettings.setButtonMaxRecordingTimeMinutes(minutes);
+                Log.d(TAG, "✅ Button max recording time saved: " + minutes + " minutes");
+                return true;
+            } else {
+                Log.e(TAG, "Settings not available");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button max recording time setting", e);
+            return false;
+        }
+    }
+
     /**
      * Handle button photo setting command
      */

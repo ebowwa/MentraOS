@@ -367,6 +367,17 @@ export class MantleBridge extends EventEmitter {
           console.log("APP_STOPPED_EVENT", data.packageName)
           GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
           break
+        case "button_press":
+          console.log("🔘 BUTTON_PRESS event received:", data)
+          // Emit event to React Native layer for handling
+          GlobalEventEmitter.emit("BUTTON_PRESS", {
+            buttonId: data.buttonId,
+            pressType: data.pressType,
+            timestamp: data.timestamp,
+          })
+          // Also forward to server for apps that need it
+          socketComms.sendButtonPress(data.buttonId, data.pressType)
+          break
         case "audio_play_request":
           await AudioPlayService.handle_audio_play_request(data)
           break
@@ -658,11 +669,18 @@ export class MantleBridge extends EventEmitter {
     })
   }
 
-  async sendSetButtonMode(mode: string) {
+  // DEPRECATED: Button mode is now controlled by gallery mode state
+  // Keeping method for backward compatibility but it does nothing
+  async sendSetButtonMode(_mode: string) {
+    console.log("sendSetButtonMode is deprecated - gallery mode controls capture now")
+    return Promise.resolve()
+  }
+
+  async sendGalleryModeActive(active: boolean) {
     return await this.sendData({
-      command: "set_button_mode",
+      command: "send_gallery_mode_active",
       params: {
-        mode: mode,
+        active: active,
       },
     })
   }
@@ -683,6 +701,15 @@ export class MantleBridge extends EventEmitter {
         width: width,
         height: height,
         fps: fps,
+      },
+    })
+  }
+
+  async sendSetButtonMaxRecordingTime(minutes: number) {
+    return await this.sendData({
+      command: "set_button_max_recording_time",
+      params: {
+        minutes: minutes,
       },
     })
   }

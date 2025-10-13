@@ -4,7 +4,6 @@
  */
 
 import WebSocket from "ws";
-import crypto from "crypto";
 import {
   CloudToGlassesMessageType,
   CloudToAppMessageType,

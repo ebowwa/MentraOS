@@ -1,14 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {Alert, Platform, Linking} from "react-native"
-import {
-  request,
-  check,
-  PERMISSIONS,
-  Permission,
-  RESULTS,
-  requestNotifications,
-  checkNotifications,
-} from "react-native-permissions"
+import {request, check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import {PermissionsAndroid} from "react-native"
 import {
   checkAndRequestNotificationAccessSpecialPermission,
@@ -17,7 +9,7 @@ import {
 import {translate} from "@/i18n"
 import showAlert from "./AlertUtils"
 import {Theme} from "@/theme"
-import {AppletInterface, AppletPermission} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, AppletPermission} from "@/types/AppletTypes"
 
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
@@ -345,7 +337,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
 
   let allGranted = true
   let partiallyGranted = false
-  let previouslyDenied = false
 
   // For iOS, check if previously denied before attempting to request
   if (Platform.OS === "ios" && config.ios.length > 0) {
@@ -374,7 +365,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
         // If permission is blocked at system level, handle it differently
         if (currentStatus === RESULTS.BLOCKED) {
           console.log(`Permission ${permission} is BLOCKED by system`)
-          previouslyDenied = true
           // Show dialog to direct user to Settings
           await handlePreviouslyDeniedPermission(config.name)
           return false // Just return false since we've handled the alert internally
@@ -422,7 +412,7 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
       let allDenied = true
       let anyNeverAskAgain = false
 
-      Object.entries(results).forEach(([permission, result]) => {
+      Object.entries(results).forEach(([_permission, result]) => {
         if (result === PermissionsAndroid.RESULTS.GRANTED) {
           hasGranted = true
           allDenied = false
@@ -436,7 +426,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
 
       // Handle "Never Ask Again" case similar to iOS previouslyDenied
       if (anyNeverAskAgain) {
-        previouslyDenied = true
         // Handle the previously denied permission by showing the alert
         await handlePreviouslyDeniedPermission(config.name)
         // Just return false, since we've handled the alert internally
@@ -479,7 +468,6 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
           allGranted = false
         } else if (result === RESULTS.BLOCKED) {
           // Permission is blocked at the system level
-          previouslyDenied = true
           allGranted = false
 
           // This shouldn't happen as we checked before, but just in case

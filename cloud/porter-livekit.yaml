@@ -1,0 +1,23 @@
+version: v2
+namespace: ${PORTER_NAMESPACE}
+
+build:
+  method: docker
+  context: ./cloud/.
+  dockerfile: ./cloud/docker/Dockerfile.livekit
+
+services:
+  - name: cloud
+    type: web
+    run: ./start.sh
+    port: 80 # Main Cloud API port
+    cpuCores: 5
+    ramMegabytes: 4096
+    env:
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "cloud"
+      RTMP_RELAY_URLS: "rtmp-relay-uscentral.mentra.glass:1935"
+      LIVEKIT_GO_BRIDGE_URL: "ws://localhost:8080"
+      # Add any Go service environment variables here
+      LOG_LEVEL: "info"
+      PORT: "8080" # For the Go service

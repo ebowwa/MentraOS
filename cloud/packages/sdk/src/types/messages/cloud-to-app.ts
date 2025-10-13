@@ -531,3 +531,26 @@ export interface AppDirectMessageResponse extends BaseMessage {
   error?: string;
   targetUserId: string;
 }
+
+
+
+//===========================================================
+// Cloud-to-Sdk Communication Response Messages
+//===========================================================
+
+/*
+*  Permission data structures for permission fetch responses
+*/
+export interface Permission {
+  type: string; // or a union/enum if you want stricter typing
+  description: string;
+  _id: string;
+}
+
+/*
+*  Package permissions response structure
+*/
+export interface PackagePermissions {
+  packageName: string;
+  permissions: Permission[];
+}

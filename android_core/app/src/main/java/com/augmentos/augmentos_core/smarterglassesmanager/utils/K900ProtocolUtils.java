@@ -549,9 +549,21 @@ public class K900ProtocolUtils {
                 context.sendBroadcast(testIntent);
                 
                 // In a real implementation, we would wait for a response
-                // For now, we check device model as a fallback
-                String model = android.os.Build.MODEL.toLowerCase();
-                return model.contains("k900") || model.contains("xyglasses");
+                // For now, we check device properties as a fallback
+                String model = (android.os.Build.MODEL != null ? android.os.Build.MODEL : "").toLowerCase();
+                String product = (android.os.Build.PRODUCT != null ? android.os.Build.PRODUCT : "").toLowerCase();
+                String device = (android.os.Build.DEVICE != null ? android.os.Build.DEVICE : "").toLowerCase();
+                String display = (android.os.Build.DISPLAY != null ? android.os.Build.DISPLAY : "").toLowerCase();
+                String fingerprint = (android.os.Build.FINGERPRINT != null ? android.os.Build.FINGERPRINT : "").toLowerCase();
+                String manufacturer = (android.os.Build.MANUFACTURER != null ? android.os.Build.MANUFACTURER : "").toLowerCase();
+
+                // Check for K900 variants, XY glasses identifiers, and MentraLive rebrands
+                return model.contains("k900") || product.contains("k900") || device.contains("k900") ||
+                       display.contains("k900") || fingerprint.contains("k900") ||
+                       model.contains("xyglasses") || manufacturer.contains("xyglasses") ||
+                       manufacturer.contains("xyaiglasses") ||
+                       product.contains("mentralive") || device.contains("mentralive") ||
+                       display.contains("mentralive") || fingerprint.contains("mentralive");
             } catch (Exception e) {
                 Log.e("K900ProtocolUtils", "Error checking for K900 specific broadcast", e);
             }

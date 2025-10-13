@@ -1,13 +1,12 @@
-import React from "react"
-import {View, ViewStyle, TextStyle} from "react-native"
-import {Text} from "@/components/ignite"
-import {AppInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
+import {Fragment} from "react"
+import {View, ViewStyle} from "react-native"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface} from "@/types/AppletTypes"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Spacer} from "./Spacer"
 import {ThemedStyle} from "@/theme"
 import showAlert from "@/utils/AlertUtils"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {AppListItem} from "./AppListItem"
 import Divider from "./Divider"
 import AppsHeader from "./AppsHeader"
@@ -15,7 +14,6 @@ import AppsHeader from "./AppsHeader"
 export default function IncompatibleAppsListOld() {
   const {appStatus} = useAppStatus()
   const {themed, theme} = useAppTheme()
-  const {status} = useCoreStatus()
 
   // Filter out incompatible apps (not running and marked as incompatible)
   const incompatibleApps = appStatus.filter(app => {
@@ -33,7 +31,7 @@ export default function IncompatibleAppsListOld() {
     return null
   }
 
-  const handleAppPress = (app: AppInterface) => {
+  const handleAppPress = (app: AppletInterface) => {
     // Show alert explaining why the app is incompatible
     const missingHardware =
       app.compatibility?.missingRequired?.map(req => req.type.toLowerCase()).join(", ") || "required features"
@@ -53,18 +51,15 @@ export default function IncompatibleAppsListOld() {
     )
   }
 
-  // Get connected glasses name
-  const glassesName = status.glasses_info?.model_name || status.core_info.default_wearable || "your glasses"
-
   return (
     <View style={themed($appsContainer)}>
       <View style={themed($headerContainer)}>
-        <AppsHeader title={`Incompatible with ${glassesName}`} showSearchIcon={false} />
+        <AppsHeader title="home:incompatibleApps" showSearchIcon={false} />
       </View>
 
       <View style={themed($contentContainer)}>
         {incompatibleApps.map((app, index) => (
-          <React.Fragment key={app.packageName}>
+          <Fragment key={app.packageName}>
             <AppListItem
               app={app}
               isActive={false}
@@ -80,7 +75,7 @@ export default function IncompatibleAppsListOld() {
                 <Spacer height={8} />
               </>
             )}
-          </React.Fragment>
+          </Fragment>
         ))}
       </View>
     </View>

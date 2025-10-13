@@ -1,5 +1,5 @@
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {AppletInterface} from "@/contexts/AppletStatusProvider"
+import {AppletInterface} from "@/types/AppletTypes"
 import {useSettingsStore} from "@/stores/settings"
 
 interface ApiResponse<T = any> {

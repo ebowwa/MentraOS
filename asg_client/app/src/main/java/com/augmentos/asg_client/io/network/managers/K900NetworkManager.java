@@ -158,8 +158,28 @@ public class K900NetworkManager extends BaseNetworkManager {
         Log.d(TAG, "🔥 =========================================");
         Log.d(TAG, "🔥 START K900 HOTSPOT (INTENT MODE)");
         Log.d(TAG, "🔥 =========================================");
-        
+
         try {
+            // IMPORTANT: Hotspot requires WiFi radio to be enabled (even if not connected)
+            // Check and enable WiFi if needed before starting hotspot
+            if (!wifiManager.isWifiEnabled()) {
+                Log.d(TAG, "🔥 ⚠️ WiFi radio is OFF - enabling WiFi radio for hotspot...");
+                boolean enabled = wifiManager.setWifiEnabled(true);
+                if (enabled) {
+                    Log.d(TAG, "🔥 ✅ WiFi radio enabled successfully");
+                    // Give WiFi a moment to initialize
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        Log.w(TAG, "Sleep interrupted while waiting for WiFi radio", e);
+                    }
+                } else {
+                    Log.e(TAG, "🔥 ❌ Failed to enable WiFi radio - hotspot may not start");
+                }
+            } else {
+                Log.d(TAG, "🔥 ✅ WiFi radio already enabled");
+            }
+
             // Send K900 hotspot enable intent
             Log.d(TAG, "🔥 📡 Sending K900 hotspot enable intent...");
             Intent intent = new Intent();

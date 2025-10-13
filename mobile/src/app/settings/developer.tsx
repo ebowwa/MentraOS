@@ -1,5 +1,5 @@
 import {useState} from "react"
-import {View, Platform, ScrollView, TextInput} from "react-native"
+import {View, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import bridge from "@/bridge/MantleBridge"
 import showAlert from "@/utils/AlertUtils"
@@ -220,17 +220,13 @@ export default function DeveloperSettingsScreen() {
 
         <Spacer height={theme.spacing.md} />
 
-        {Platform.OS === "ios" && (
-          <>
-            <ToggleSetting
-              label="Enable Squircles"
-              subtitle="Use iOS-style squircle app icons instead of circles"
-              value={enableSquircles}
-              onValueChange={toggleEnableSquircles}
-            />
-            <Spacer height={theme.spacing.md} />
-          </>
-        )}
+        <ToggleSetting
+          label="Enable Squircles"
+          subtitle="Use iOS-style squircle app icons instead of circles"
+          value={enableSquircles}
+          onValueChange={toggleEnableSquircles}
+        />
+        <Spacer height={theme.spacing.md} />
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
         {defaultWearable && glassesFeatures[defaultWearable] && glassesFeatures[defaultWearable].powerSavingMode && (

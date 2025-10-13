@@ -2327,17 +2327,24 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
 
         try {
-            // Send ping message (no ACK needed for heartbeats)
+            // Send ping message to glasses hardware (no ACK needed for heartbeats)
             JSONObject pingMsg = new JSONObject();
             pingMsg.put("type", "ping");
             sendJsonWithoutAck(pingMsg);
+
+            // Send heartbeat to AsgClientService for connection monitoring
+            JSONObject serviceHeartbeat = new JSONObject();
+            serviceHeartbeat.put("type", "service_heartbeat");
+            serviceHeartbeat.put("timestamp", System.currentTimeMillis());
+            serviceHeartbeat.put("heartbeat_counter", heartbeatCounter);
+            sendJson(serviceHeartbeat, false); // Use sendJson for ACK tracking
 
             // Send custom audio TX command
             // sendEnableCustomAudioTxMessage(shouldUseGlassesMic);
 
             // Increment heartbeat counter
             heartbeatCounter++;
-            Log.d(TAG, "💓 Heartbeat #" + heartbeatCounter + " sent");
+            Log.d(TAG, "💓 Heartbeat #" + heartbeatCounter + " sent (BLE ping + service heartbeat)");
 
             // Request battery status every N heartbeats
             if (heartbeatCounter % BATTERY_REQUEST_EVERY_N_HEARTBEATS == 0) {
@@ -4039,6 +4046,33 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating button mode message", e);
+        }
+    }
+
+    /**
+     * Send gallery mode active state to the smart glasses
+     * Controls whether button presses should trigger local photo/video capture
+     *
+     * @param active true if gallery/camera app is active, false otherwise
+     */
+    @Override
+    public void sendGalleryModeActive(boolean active) {
+        Log.d(TAG, "📸 Sending gallery mode active to glasses: " + active);
+
+        if (!isConnected) {
+            Log.w(TAG, "Cannot send gallery mode - not connected");
+            return;
+        }
+
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "save_in_gallery_mode");
+            json.put("active", active);
+            json.put("timestamp", System.currentTimeMillis());
+            sendJson(json);
+            Log.d(TAG, "✅ Gallery mode active message sent: " + json.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating gallery mode message", e);
         }
     }
 

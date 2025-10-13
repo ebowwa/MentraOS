@@ -242,6 +242,11 @@ public class AugmentOsManagerMessageParser {
                 callback.setButtonMode(mode);
                 break;
 
+            case "send_gallery_mode_active":
+                boolean active = commandObject.getJSONObject("params").getBoolean("active");
+                callback.sendGalleryModeActive(active);
+                break;
+
             case "set_button_photo_size":
                 String photoSize = commandObject.getJSONObject("params").getString("size");
                 callback.setButtonPhotoSize(photoSize);

@@ -78,6 +78,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Service health monitoring
     private static final String ACTION_HEARTBEAT = "com.augmentos.asg_client.ACTION_HEARTBEAT";
     private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+    private static final long HEARTBEAT_TIMEOUT_MS = 35000; // 35 seconds timeout
 
     // ---------------------------------------------
     // Dependency Injection Container
@@ -100,6 +101,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private boolean isAugmentosBound = false;
     private static AsgClientService instance;
     private boolean lastI2sPlaying = false;
+    private boolean isConnected = false; // Track connection state based on heartbeat
 
     // ---------------------------------------------
     // WiFi State Management
@@ -116,6 +118,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private BroadcastReceiver heartbeatReceiver;
     private BroadcastReceiver restartReceiver;
     private BroadcastReceiver otaProgressReceiver;
+    
+    // ---------------------------------------------
+    // Heartbeat Timeout Management
+    // ---------------------------------------------
+    private Handler heartbeatTimeoutHandler;
+    private Runnable heartbeatTimeoutRunnable;
 
     // ---------------------------------------------
     // ServiceConnection for AugmentosService
@@ -198,6 +206,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             // Send version info
             Log.d(TAG, "📋 Sending initial version information");
             sendVersionInfo();
+
+            // Start heartbeat monitoring
+            Log.d(TAG, "💓 Starting heartbeat monitoring");
+            startHeartbeatMonitoring();
 
             // Clean up orphaned BLE transfer files from previous sessions
             Log.d(TAG, "🗑️ Cleaning up orphaned BLE transfer files");
@@ -345,6 +357,57 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    // ---------------------------------------------
+    // Touch/Swipe Event Commands
+    // ---------------------------------------------
+    
+    /**
+     * Enable or disable touch event reporting
+     * @param enable true to enable touch events, false to disable
+     */
+    public void handleTouchEventControl(boolean enable) {
+        Log.i(TAG, "Touch event control request: " + (enable ? "enable" : "disable"));
+
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("C", "cs_swst");
+            JSONObject bData = new JSONObject();
+            bData.put("type", 26);
+            bData.put("switch", enable);
+            payload.put("B", bData);
+
+            boolean sent = sendK900Command(payload.toString());
+            if (sent) {
+                Log.i(TAG, "Touch event control command sent successfully");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct touch event control payload", e);
+        }
+    }
+
+    /**
+     * Enable or disable swipe volume control
+     * @param enable true to enable swipe volume control, false to disable
+     */
+    public void handleSwipeVolumeControl(boolean enable) {
+        Log.i(TAG, "Swipe volume control request: " + (enable ? "enable" : "disable"));
+
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("C", "cs_fbvol");
+            JSONObject bData = new JSONObject();
+            bData.put("switch", enable);
+            payload.put("B", bData);
+
+            boolean sent = sendK900Command(payload.toString());
+            if (sent) {
+                Log.i(TAG, "Swipe volume control command sent successfully");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct swipe volume control payload", e);
+        }
+    }
+
     private boolean sendK900Command(String payload) {
         if (serviceContainer == null || serviceContainer.getServiceManager() == null) {
             Log.w(TAG, "ServiceContainer not initialized; cannot send I2S command");
@@ -484,6 +547,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } else {
                 Log.d(TAG, "⏭️ OTA progress receiver is null - skipping");
             }
+            
+            // Stop heartbeat monitoring
+            stopHeartbeatMonitoring();
             
             Log.d(TAG, "✅ All receivers unregistered successfully");
         } catch (IllegalArgumentException e) {
@@ -856,6 +922,95 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (Exception e) {
             Log.e(TAG, "💥 Error registering heartbeat receiver", e);
         }
+    }
+
+    /**
+     * Reset heartbeat timeout - called when heartbeat is received
+     */
+    private void resetHeartbeatTimeout() {
+        Log.d(TAG, "💓 Resetting heartbeat timeout");
+        
+        try {
+            // Cancel any existing timeout
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            
+            // Mark as connected
+            isConnected = true;
+            Log.d(TAG, "🔌 Connection state changed to CONNECTED");
+            
+            // Schedule new timeout
+            heartbeatTimeoutHandler.postDelayed(heartbeatTimeoutRunnable, HEARTBEAT_TIMEOUT_MS);
+            Log.d(TAG, "⏰ Heartbeat timeout scheduled for " + HEARTBEAT_TIMEOUT_MS + "ms");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error resetting heartbeat timeout", e);
+        }
+    }
+
+    /**
+     * Start heartbeat monitoring - call this when service becomes active
+     */
+    public void startHeartbeatMonitoring() {
+        Log.d(TAG, "💓 Starting heartbeat monitoring");
+        
+        try {
+            // Initialize heartbeat timeout handler if not already done
+            if (heartbeatTimeoutHandler == null) {
+                Log.d(TAG, "💓 Initializing heartbeat timeout handler");
+                heartbeatTimeoutHandler = new Handler(Looper.getMainLooper());
+                heartbeatTimeoutRunnable = () -> {
+                    Log.w(TAG, "⚠️ Heartbeat timeout - marking as disconnected");
+                    isConnected = false;
+                    Log.i(TAG, "🔌 Connection state changed to DISCONNECTED due to heartbeat timeout");
+                };
+            }
+            
+            // Cancel any existing timeout
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            
+            // Don't set connected state - wait for first heartbeat
+            isConnected = false;
+            Log.d(TAG, "🔌 Connection state initialized as DISCONNECTED - waiting for first heartbeat");
+            
+            // Schedule initial timeout to detect if no heartbeat comes
+            heartbeatTimeoutHandler.postDelayed(heartbeatTimeoutRunnable, HEARTBEAT_TIMEOUT_MS);
+            Log.d(TAG, "⏰ Initial heartbeat timeout scheduled for " + HEARTBEAT_TIMEOUT_MS + "ms");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error starting heartbeat monitoring", e);
+        }
+    }
+
+    /**
+     * Stop heartbeat monitoring - call this when service becomes inactive
+     */
+    public void stopHeartbeatMonitoring() {
+        Log.d(TAG, "💓 Stopping heartbeat monitoring");
+        
+        try {
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            isConnected = false;
+            Log.d(TAG, "🔌 Connection state changed to DISCONNECTED (monitoring stopped)");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error stopping heartbeat monitoring", e);
+        }
+    }
+
+    /**
+     * Get current connection state
+     */
+    public boolean isConnected() {
+        return isConnected;
+    }
+
+    /**
+     * Handle service heartbeat received from MentraLiveSGC
+     */
+    public void onServiceHeartbeatReceived() {
+        Log.d(TAG, "💓 Service heartbeat received from MentraLiveSGC");
+        
+        // Reset heartbeat timeout and mark as connected
+        resetHeartbeatTimeout();
     }
 
     private void registerRestartReceiver() {

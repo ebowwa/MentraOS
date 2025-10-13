@@ -221,21 +221,14 @@ class Bridge: RCTEventEmitter {
     // MARK: - Hardware Events
 
     static func sendButtonPress(buttonId: String, pressType: String) {
-        do {
-            let event: [String: Any] = [
-                "type": "button_press",
-                "buttonId": buttonId,
-                "pressType": pressType,
-                "timestamp": Int(Date().timeIntervalSince1970 * 1000),
-            ]
-
-            let jsonData = try JSONSerialization.data(withJSONObject: event)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                Bridge.sendWSText(jsonString)
-            }
-        } catch {
-            Bridge.log("ServerComms: Error building button_press JSON: \(error)")
-        }
+        // Send as typed message so it gets handled locally by MantleBridge.tsx
+        // This allows the React Native layer to process it before forwarding to server
+        let body: [String: Any] = [
+            "buttonId": buttonId,
+            "pressType": pressType,
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+        ]
+        Bridge.sendTypedMessage("button_press", body: body)
     }
 
     static func sendPhotoResponse(requestId: String, photoUrl: String) {
@@ -369,6 +362,7 @@ class Bridge: RCTEventEmitter {
             case send_wifi_credentials
             case set_hotspot_state
             case query_gallery_status
+            case send_gallery_mode_active
             case photo_request
             case start_buffer_recording
             case stop_buffer_recording
@@ -387,6 +381,10 @@ class Bridge: RCTEventEmitter {
             case display_event
             case display_text
             case update_settings
+            case set_button_photo_size
+            case set_button_video_settings
+            case set_button_max_recording_time
+            case set_button_camera_led
             case microphone_state_change
             case restart_transcriber
             case unknown
@@ -480,6 +478,13 @@ class Bridge: RCTEventEmitter {
                 case .query_gallery_status:
                     Bridge.log("CommandBridge: Querying gallery status")
                     m.queryGalleryStatus()
+                case .send_gallery_mode_active:
+                    guard let params = params, let active = params["active"] as? Bool else {
+                        Bridge.log("CommandBridge: send_gallery_mode_active invalid params")
+                        break
+                    }
+                    Bridge.log("CommandBridge: Sending gallery mode active: \(active)")
+                    m.sendGalleryModeActive(active)
                 case .photo_request:
                     guard let params = params,
                           let requestId = params["requestId"] as? String,
@@ -571,6 +576,41 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.handle_update_settings(params)
+                // Button settings:
+                case .set_button_photo_size:
+                    guard let params = params,
+                          let size = params["size"] as? String
+                    else {
+                        Bridge.log("CommandBridge: set_button_photo_size invalid params")
+                        break
+                    }
+                    m.setButtonPhotoSize(size)
+                case .set_button_video_settings:
+                    guard let params = params,
+                          let width = params["width"] as? Int,
+                          let height = params["height"] as? Int,
+                          let fps = params["fps"] as? Int
+                    else {
+                        Bridge.log("CommandBridge: set_button_video_settings invalid params")
+                        break
+                    }
+                    m.setButtonVideoSettings(width: width, height: height, fps: fps)
+                case .set_button_max_recording_time:
+                    guard let params = params,
+                          let minutes = params["minutes"] as? Int
+                    else {
+                        Bridge.log("CommandBridge: set_button_max_recording_time invalid params")
+                        break
+                    }
+                    m.setButtonMaxRecordingTime(minutes)
+                case .set_button_camera_led:
+                    guard let params = params,
+                          let enabled = params["enabled"] as? Bool
+                    else {
+                        Bridge.log("CommandBridge: set_button_camera_led invalid params")
+                        break
+                    }
+                    m.setButtonCameraLed(enabled)
                 // STT:
                 case .set_stt_model_details:
                     guard let params = params,

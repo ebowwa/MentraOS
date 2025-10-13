@@ -1,11 +1,11 @@
-import React from "react"
 import {View, ViewStyle, TextStyle, TouchableOpacity, Dimensions, FlatList} from "react-native"
 import {Text} from "@/components/ignite"
-import {AppletInterface, useAppStatus} from "@/contexts/AppletStatusProvider"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {AppletInterface} from "@/types/AppletTypes"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Spacer} from "./Spacer"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import showAlert from "@/utils/AlertUtils"
 import AppIcon from "./AppIcon"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
@@ -26,6 +26,7 @@ export default function IncompatibleAppsList() {
 
     // Check if app has compatibility info and is marked as incompatible
     const isIncompatible = app.compatibility && !app.compatibility.isCompatible
+
     return isIncompatible
   })
 
@@ -64,11 +65,11 @@ export default function IncompatibleAppsList() {
   if (paddedApps.length % GRID_COLUMNS !== 0) {
     const missingApps = GRID_COLUMNS - (paddedApps.length % GRID_COLUMNS)
     for (let i = 0; i < missingApps; i++) {
-      paddedApps.push({packageName: `empty-${i}`, name: ""} as AppInterface)
+      paddedApps.push({packageName: `empty-${i}`, name: ""} as AppletInterface)
     }
   }
 
-  const renderAppItem = ({item}: {item: AppInterface}) => {
+  const renderAppItem = ({item}: {item: AppletInterface}) => {
     // Empty placeholder
     if (item.packageName.startsWith("empty-")) {
       return <View style={themed($gridItem)} />
@@ -77,7 +78,7 @@ export default function IncompatibleAppsList() {
     return (
       <TouchableOpacity style={themed($gridItem)} onPress={() => handleAppPress(item)} activeOpacity={0.7}>
         <View style={themed($appContainer)}>
-          <AppIcon app={item} style={[themed($appIcon), themed($incompatibleIcon)]} />
+          <AppIcon app={item} style={themed($appIcon)} />
         </View>
         <Text text={item.name} style={themed($appName)} numberOfLines={2} ellipsizeMode="tail" />
       </TouchableOpacity>
@@ -109,7 +110,7 @@ const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.sm, // Match AppsGridView padding
 })
 
-const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
+const $headerText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 15,
   fontWeight: "600",
   color: colors.textDim,
@@ -117,11 +118,11 @@ const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
   marginBottom: spacing.sm,
 })
 
-const $gridContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $gridContainer: ThemedStyle<ViewStyle> = () => ({
   // Match AppsGridView gridContainer
 })
 
-const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $row: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-evenly", // Match AppsGridView
 })
 
@@ -143,10 +144,6 @@ const $appIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
   borderRadius: 30,
   marginBottom: spacing.xs,
   overflow: "hidden",
-})
-
-const $incompatibleIcon: ThemedStyle<ViewStyle> = () => ({
-  opacity: 0.7, // Additional dimming for incompatible apps
 })
 
 const $appName: ThemedStyle<TextStyle> = ({colors}) => ({

@@ -9,7 +9,7 @@ import path from "path";
 import fs from "fs";
 import { AppSession } from "../session/index";
 import { createAuthMiddleware } from "../webview";
-import { newSDKUpdate } from "../../constants/messages";
+import { newSDKUpdate } from "../../constants/log-messages/updates";
 
 import {
   WebhookRequest,
@@ -288,19 +288,19 @@ export class AppServer {
           // this.logger.debug(`Developer is using SDK version: ${currentVersion}`);
 
           // Fetch latest SDK version from the API endpoint
-          let latest = "2.1.25"; // fallback version
+          let latest: string | null = null;
           try {
             const cloudHost = "api.mentra.glass";
             const response = await axios.get(
               `https://${cloudHost}/api/sdk/version`,
+              { timeout: 3000 }, // 3 second timeout
             );
             if (response.data && response.data.success && response.data.data) {
-              latest = response.data.data.latest; // Changed from "recommended" to "latest"
+              latest = response.data.data.latest;
             }
-          } catch (fetchError) {
+          } catch {
             this.logger.debug(
-              { fetchError },
-              "Failed to fetch latest SDK version from API, using fallback",
+              "Failed to fetch latest SDK version - skipping version check (offline or API unavailable)",
             );
           }
 
@@ -760,7 +760,7 @@ export class AppServer {
           }
 
           // Handle error response (no photo file, but has error info)
-          if (type === "photo_error" || !success) {
+          if (type === "photo_error" || success === false) {
             // Create error response object
             const errorResponse = {
               requestId,

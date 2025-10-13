@@ -242,31 +242,46 @@ public class ServiceUtils {
             String product = android.os.Build.PRODUCT;
             String display = android.os.Build.DISPLAY;
             String fingerprint = android.os.Build.FINGERPRINT;
-            
-            Log.d(TAG, "Device detection - MODEL: " + model + 
-                      ", PRODUCT: " + product + 
-                      ", DISPLAY: " + display + 
-                      ", FINGERPRINT: " + fingerprint);
-            
+            String manufacturer = android.os.Build.MANUFACTURER;
+            String device = android.os.Build.DEVICE;
+
+            Log.d(TAG, "Device detection - MODEL: " + model +
+                      ", PRODUCT: " + product +
+                      ", DEVICE: " + device +
+                      ", DISPLAY: " + display +
+                      ", FINGERPRINT: " + fingerprint +
+                      ", MANUFACTURER: " + manufacturer);
+
             // Check multiple build properties for K900 variants
-            String[] propsToCheck = {model, product, display, fingerprint};
-            
+            String[] propsToCheck = {model, product, device, display, fingerprint, manufacturer};
+
             for (String prop : propsToCheck) {
-                if (prop != null && prop.toLowerCase().contains("k900")) {
-                    Log.i(TAG, "K900 device detected via property: " + prop);
-                    return true;
+                if (prop != null) {
+                    String propLower = prop.toLowerCase();
+
+                    // Check for K900 variants
+                    if (propLower.contains("k900")) {
+                        Log.i(TAG, "K900 device detected via property: " + prop);
+                        return true;
+                    }
+
+                    // Check for XY glasses identifiers
+                    if (propLower.contains("xyglasses") || propLower.contains("xyaiglasses")) {
+                        Log.i(TAG, "K900 device detected via XY glasses identifier: " + prop);
+                        return true;
+                    }
+
+                    // Check for MentraLive (K900 devices)
+                    if (propLower.contains("mentralive")) {
+                        Log.i(TAG, "K900 device detected via MentraLive identifier: " + prop);
+                        return true;
+                    }
                 }
             }
-            
-            // Additional check for XY glasses (alternate identifier)
-            if (model != null && model.toLowerCase().contains("xyglasses")) {
-                Log.i(TAG, "K900 device detected via XY glasses identifier");
-                return true;
-            }
-            
+
             Log.d(TAG, "Not a K900 device - no matching identifiers found");
             return false;
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error detecting K900 device", e);
             return false;

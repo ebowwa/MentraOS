@@ -61,7 +61,7 @@ public class DefaultServerFactory {
         ServerConfig config = createServerConfig(port, serverName, context);
         NetworkProvider networkProvider = createNetworkProvider(logger);
         CacheManager cacheManager = createCacheManager(logger);
-        RateLimiter rateLimiter = createRateLimiter(100, 60000, logger); // 100 requests per minute
+        RateLimiter rateLimiter = createRateLimiter(150, 60000, logger); // 100 requests per minute
 
         return new AsgCameraServer(config, networkProvider, cacheManager, rateLimiter, logger, fileManager);
     }

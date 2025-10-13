@@ -58,8 +58,8 @@ if (
   // If we're in debug mode, add the debug apps to the preinstalled list.
   PRE_INSTALLED.push(...PRE_INSTALLED_DEBUG);
   logger.info(
+    { PRE_INSTALLED_DEBUG },
     "Debug mode enabled - adding debug apps to preinstalled list:",
-    PRE_INSTALLED_DEBUG,
   );
 }
 
@@ -273,7 +273,7 @@ export class AppService {
    * @returns Validated and sanitized tools array or throws error if invalid
    */
   private validateToolDefinitions(tools: any[]): ToolSchema[] {
-    logger.debug("Validating tool definitions:", tools);
+    logger.debug({ tools }, "Validating tool definitions:");
     if (!Array.isArray(tools)) {
       throw new Error("Tools must be an array");
     }
@@ -345,7 +345,7 @@ export class AppService {
    * @returns Validated and sanitized settings array or throws error if invalid
    */
   private validateSettingDefinitions(settings: any[]): AppSetting[] {
-    logger.debug("Validating setting definitions:", settings);
+    logger.debug({ settings }, "Validating setting definitions:");
     if (!Array.isArray(settings)) {
       throw new Error("Settings must be an array");
     }
@@ -961,7 +961,7 @@ export class AppService {
     // Look up the App by packageName
     const app = await this.getApp(packageName);
 
-    logger.debug("🔨 Triggering tool webhook for:", packageName);
+    logger.debug({ packageName }, "🔨 Triggering tool webhook for:");
 
     if (!app) {
       throw new Error(`App ${packageName} not found`);
@@ -988,8 +988,8 @@ export class AppService {
     const maxRetries = 2;
     const baseDelay = 1000; // 1 second
 
-    logger.debug("🔨 Sending tool webhook to:", webhookUrl);
-    logger.debug("🔨 Payload:", payload);
+    logger.debug({ webhookUrl }, "🔨 Sending tool webhook to:");
+    logger.debug({ payload }, "🔨 Payload:");
 
     // Attempt to send the webhook with retries
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -1013,14 +1013,8 @@ export class AppService {
           if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError;
             logger.error(
+              axiosError as Error,
               `Tool webhook failed for ${packageName}: ${axiosError.message}`,
-              {
-                packageName,
-                webhookUrl,
-                attempt,
-                status: axiosError.response?.status,
-                data: axiosError.response?.data,
-              },
             );
 
             // Return a standardized error response
@@ -1079,7 +1073,7 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
 
-    logger.debug("Getting App tools for:", packageName);
+    logger.debug({ packageName }, "Getting App tools for:");
 
     // Get tools from the database instead of fetching app_config.json
     if (app.tools && Array.isArray(app.tools)) {

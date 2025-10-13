@@ -22,7 +22,7 @@ jobs:
 
       - name: Deploy stack to Dev
         timeout-minutes: 30
-        run: exec porter apply -f ./cloud/porter-dev.yaml
+        run: exec porter apply -f ./cloud/porter-livekit.yaml
         env:
           PORTER_APP_NAME: cloud-dev
           PORTER_NAMESPACE: dev

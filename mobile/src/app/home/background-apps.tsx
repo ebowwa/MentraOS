@@ -6,7 +6,8 @@ import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {AppletInterface, useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
+import {useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
+import {AppletInterface, isOfflineApp} from "@/types/AppletTypes"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import restComms from "@/managers/RestComms"
@@ -17,6 +18,7 @@ import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+// Camera app protection removed - now handled by default button action system
 
 export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
@@ -43,6 +45,13 @@ export default function BackgroundAppsScreen() {
     const app = inactive.find(a => a.packageName === packageName)
     if (!app) {
       console.error("App not found:", packageName)
+      return
+    }
+
+    // Handle offline apps - activate only
+    if (isOfflineApp(app)) {
+      // Activate the app (make it appear in active apps)
+      optimisticallyStartApp(packageName, app.type)
       return
     }
 
@@ -104,6 +113,14 @@ export default function BackgroundAppsScreen() {
 
   const stopApp = async (packageName: string) => {
     optimisticallyStopApp(packageName)
+
+    // Skip offline apps - they don't need server communication
+    const appToStop = active.find(a => a.packageName === packageName)
+    if (appToStop && isOfflineApp(appToStop)) {
+      console.log("Skipping offline app stop in background-apps:", packageName)
+      clearPendingOperation(packageName)
+      return
+    }
 
     try {
       await restComms.stopApp(packageName)
@@ -178,12 +195,7 @@ export default function BackgroundAppsScreen() {
                 toggleApp(app)
               }}
               activeOpacity={1}>
-              <Switch
-                value={app.is_running}
-                onValueChange={() => toggleApp(app)}
-                disabled={false}
-                pointerEvents="none"
-              />
+              <Switch value={app.is_running} onValueChange={() => toggleApp(app)} />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -226,7 +238,7 @@ export default function BackgroundAppsScreen() {
                     <Text style={themed($tipText)} tx="home:activateAnApp" />
                     <Text style={themed($tipSubtext)} tx="home:tapAnAppSwitch" />
                   </View>
-                  <Switch value={false} onValueChange={() => {}} disabled={false} pointerEvents="none" />
+                  <Switch value={false} onValueChange={() => {}} disabled={false} />
                 </View>
                 <Spacer height={theme.spacing.lg} />
               </>

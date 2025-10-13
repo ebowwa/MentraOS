@@ -80,6 +80,7 @@ struct ViewState {
     var buttonVideoWidth = 1280
     var buttonVideoHeight = 720
     var buttonVideoFps = 30
+    var buttonMaxRecordingTimeMinutes = 10
     var buttonCameraLed = true
 
     // VAD:
@@ -547,7 +548,7 @@ struct ViewState {
             // )
 
             // if a g1 is connected, set the mic enabled:
-            if sgc?.type == "g1", sgc!.ready {
+            if sgc?.hasMic ?? false, sgc!.ready {
                 await sgc!.setMicEnabled(useGlassesMic)
             }
 
@@ -1002,6 +1003,12 @@ struct ViewState {
         handle_request_status() // to update the UI
     }
 
+    func setButtonMaxRecordingTime(_ minutes: Int) {
+        buttonMaxRecordingTimeMinutes = minutes
+        sgc?.sendButtonMaxRecordingTime(minutes)
+        handle_request_status() // to update the UI
+    }
+
     func setButtonCameraLed(_: Bool) {
         sgc?.sendButtonCameraLedSetting()
 
@@ -1163,6 +1170,11 @@ struct ViewState {
         sgc?.queryGalleryStatus()
     }
 
+    func sendGalleryModeActive(_ active: Bool) {
+        Bridge.log("Mentra: 📸 Sending gallery mode active to glasses: \(active)")
+        sgc?.sendGalleryModeActive(active)
+    }
+
     func restartTranscriber() {
         Bridge.log("Mentra: Restarting SherpaOnnxTranscriber via command")
         transcriber?.restart()
@@ -1258,6 +1270,7 @@ struct ViewState {
                 "height": buttonVideoHeight,
                 "fps": buttonVideoFps,
             ],
+            "button_max_recording_time_minutes": buttonMaxRecordingTimeMinutes,
             "button_camera_led": buttonCameraLed,
         ]
 

@@ -215,7 +215,7 @@ export class WebSocketService {
                 this.glassesWss.emit("connection", ws, request);
               });
             } catch (jwtError) {
-              logger.error("Error verifying glasses JWT token:", jwtError);
+              logger.error(jwtError, "Error verifying glasses JWT token:");
               socket.write(
                 "HTTP/1.1 401 Unauthorized\r\n" +
                   "Content-Type: application/json\r\n" +

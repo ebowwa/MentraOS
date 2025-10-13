@@ -15,12 +15,14 @@ import {PermissionFeatures, requestFeaturePermissions} from "@/utils/Permissions
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasBrightness, hasCustomMic} from "@/config/glassesFeatures"
+import {glassesFeatures, hasBrightness, hasCustomMic, hasConfigurableButton} from "@/config/glassesFeatures"
 import {localStorageService} from "@/services/asg/localStorageService"
 import {SvgXml} from "react-native-svg"
 import OtaProgressSection from "./OtaProgressSection"
 import InfoSection from "@/components/ui/InfoSection"
 import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import {AppPicker} from "@/components/misc/AppPicker"
+import {useAppStatus} from "@/contexts/AppletStatusProvider"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -79,14 +81,19 @@ export default function DeviceSettings() {
   const {status} = useCoreStatus()
   const isGlassesConnected = Boolean(status.glasses_info?.model_name)
   const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
-  const [buttonMode, setButtonMode] = useSetting(SETTINGS_KEYS.button_mode)
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
   const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
   const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
   const [_hasLocalPhotos, setHasLocalPhotos] = useState(false)
+  const [defaultButtonActionEnabled, setDefaultButtonActionEnabled] = useSetting(
+    SETTINGS_KEYS.default_button_action_enabled,
+  )
+  const [defaultButtonActionApp, setDefaultButtonActionApp] = useSetting(SETTINGS_KEYS.default_button_action_app)
+  const [showAppPicker, setShowAppPicker] = useState(false)
 
   const {push} = useNavigationHistory()
+  const {appStatus} = useAppStatus()
 
   // Check if we have any advanced settings to show
   const hasMicrophoneSelector =
@@ -166,12 +173,6 @@ export default function DeviceSettings() {
     }, [fadeAnim, scaleAnim, slideAnim, checkLocalPhotos]),
   )
 
-  useEffect(() => {
-    if (status.glasses_settings?.button_mode) {
-      setButtonMode(status.glasses_settings.button_mode)
-    }
-  }, [status.glasses_settings?.button_mode])
-
   const setMic = async (val: string) => {
     if (val === "phone") {
       // We're potentially about to enable the mic, so request permission
@@ -197,12 +198,6 @@ export default function DeviceSettings() {
     await bridge.sendSetPreferredMic(val) // TODO: config: remove
   }
 
-  const setButtonModeWithSave = async (mode: string) => {
-    setButtonMode(mode)
-    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.button_mode, mode)
-    await bridge.sendSetButtonMode(mode) // TODO: config: remove
-  }
-
   const confirmForgetGlasses = () => {
     showDestructiveAlert(
       translate("settings:forgetGlasses"),
@@ -226,17 +221,6 @@ export default function DeviceSettings() {
   if (!defaultWearable) {
     return (
       <View style={themed($container)}>
-        {/* Show gallery button if there are local photos, even without glasses */}
-        {
-          <View style={themed($galleryButtonContainer)}>
-            <RouteButton
-              label={translate("glasses:gallery")}
-              subtitle={translate("glasses:galleryDescription")}
-              onPress={() => push("/asg/gallery")}
-            />
-          </View>
-        }
-
         <View style={themed($emptyStateContainerWithGallery)}>
           <Text style={themed($emptyStateText)}>
             Glasses settings will appear here.{"\n"}Pair glasses to adjust settings.
@@ -313,12 +297,6 @@ export default function DeviceSettings() {
           </View>
         )}
 
-      <RouteButton
-        label={translate("glasses:gallery")}
-        subtitle={translate("glasses:galleryDescription")}
-        onPress={() => push("/asg/gallery")}
-      />
-
       {hasBrightness(defaultWearable) && isGlassesConnected && (
         <View style={themed($settingsGroup)}>
           <ToggleSetting
@@ -372,76 +350,69 @@ export default function DeviceSettings() {
       )}
       {/* Mic selector has been moved to Advanced Settings section below */}
 
-      {/* Only show button mode selector if glasses support configurable button */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
+      {/* Camera Settings button moved to Gallery Settings page */}
+
+      {/* Button Settings - Only show for glasses with configurable buttons */}
+      {defaultWearable && hasConfigurableButton(defaultWearable) && (
         <View style={themed($settingsGroup)}>
-          <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>
-            {translate("deviceSettings:cameraButtonAction")}
-          </Text>
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingBottom: theme.spacing.xs,
-              paddingTop: theme.spacing.xs,
+          <ToggleSetting
+            label="Default Button Action"
+            value={defaultButtonActionEnabled}
+            onValueChange={value => {
+              setDefaultButtonActionEnabled(value)
             }}
-            onPress={() => setButtonModeWithSave("photo")}>
-            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:takeGalleryPhoto")}</Text>
-            <MaterialCommunityIcons
-              name="check"
-              size={24}
-              color={buttonMode === "photo" ? theme.colors.icon : "transparent"}
-            />
-          </TouchableOpacity>
-
-          {/* divider */}
-          <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingTop: theme.spacing.xs,
-              paddingBottom: theme.spacing.xs,
+            containerStyle={{
+              paddingHorizontal: 0,
+              paddingTop: 0,
+              paddingBottom: defaultButtonActionEnabled ? theme.spacing.sm : 0,
+              borderWidth: 0,
             }}
-            onPress={() => setButtonModeWithSave("apps")}>
-            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:useInApps")}</Text>
-            <MaterialCommunityIcons
-              name="check"
-              size={24}
-              color={buttonMode === "apps" ? theme.colors.icon : "transparent"}
-            />
-          </TouchableOpacity>
+          />
 
-          {/* divider */}
-          <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              paddingTop: theme.spacing.xs,
-            }}
-            onPress={() => setButtonModeWithSave("both")}>
-            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:both")}</Text>
-            <MaterialCommunityIcons
-              name="check"
-              size={24}
-              color={buttonMode === "both" ? theme.colors.icon : "transparent"}
-            />
-          </TouchableOpacity>
+          {defaultButtonActionEnabled && (
+            <>
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: theme.colors.separator,
+                  marginBottom: theme.spacing.sm,
+                }}
+              />
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+                onPress={() => setShowAppPicker(true)}>
+                <View style={{flex: 1}}>
+                  <Text style={{color: theme.colors.text, fontSize: 14, fontWeight: "500", marginBottom: 4}}>
+                    Default App
+                  </Text>
+                  <Text style={{color: theme.colors.textDim, fontSize: 13}}>
+                    {appStatus.find(app => app.packageName === defaultButtonActionApp)?.name || "Select app"}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textDim} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 
-      {/* Camera Settings button for glasses with configurable button */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
-        <RouteButton
-          label={translate("settings:cameraSettings")}
-          subtitle={translate("settings:cameraSettingsDescription")}
-          onPress={() => push("/settings/camera")}
-        />
-      )}
+      {/* AppPicker Modal */}
+      <AppPicker
+        visible={showAppPicker}
+        onClose={() => setShowAppPicker(false)}
+        onSelect={app => {
+          setDefaultButtonActionApp(app.packageName)
+        }}
+        apps={appStatus}
+        selectedPackageName={defaultButtonActionApp}
+        title="Select Default App"
+        filterPredicate={app => app.type === "standard"} // Only show foreground apps
+        showCompatibilityWarnings={true}
+      />
 
       {/* Only show WiFi settings if connected glasses support WiFi */}
       {defaultWearable && glassesFeatures[defaultWearable]?.wifi && (
@@ -467,6 +438,15 @@ export default function DeviceSettings() {
           label={translate("settings:dashboardSettings")}
           subtitle={translate("settings:dashboardDescription")}
           onPress={() => push("/settings/dashboard")}
+        />
+      )}
+
+      {/* Screen settings for binocular glasses */}
+      {defaultWearable && glassesFeatures[defaultWearable]?.binocular && (
+        <RouteButton
+          label={translate("settings:screenSettings")}
+          subtitle={translate("settings:screenDescription")}
+          onPress={() => push("/settings/screen")}
         />
       )}
 
@@ -639,11 +619,6 @@ const $advancedSettingsLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 16,
   fontWeight: "600",
-})
-
-const $galleryButtonContainer: ThemedStyle<ViewStyle> = ({spacing: _spacing}) => ({
-  marginTop: _spacing.xl,
-  marginBottom: _spacing.lg,
 })
 
 const $emptyStateContainerWithGallery: ThemedStyle<ViewStyle> = ({spacing}) => ({

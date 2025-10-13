@@ -349,7 +349,7 @@ export class SonioxTranslationUtils {
 
     // Step 2: For two-way pairs, assign ownership if not already owned
     const twoWayPairs = this.findTwoWayPairs(translationPairs);
-    for (const { langA, langB, subscriptions } of twoWayPairs) {
+    for (const { langA, langB } of twoWayPairs) {
       const pairKey = `${langA}:${langB}`;
       const ownership: string[] = [];
       const skip: string[] = [];
@@ -388,7 +388,7 @@ export class SonioxTranslationUtils {
 
     // Step 3.5: Multi-source targets (between two-way and individual priority)
     const multiSourceTargets = this.getMultiSourceTargets();
-    for (const [targetLang, supportedSources] of multiSourceTargets) {
+    for (const [targetLang] of multiSourceTargets) {
       const targetPairs = translationPairs.filter(
         (p) => p.target === targetLang,
       );
@@ -493,9 +493,9 @@ export class SonioxTranslationUtils {
   private static analyzeSubscriptions(
     subscriptions: string[],
   ): SubscriptionAnalysis {
-    const transcriptionSubs = subscriptions.filter((s) =>
-      s.startsWith("transcription:"),
-    );
+    // const transcriptionSubs = subscriptions.filter((s) =>
+    //   s.startsWith("transcription:"),
+    // );
     const translationSubs = subscriptions.filter((s) =>
       s.startsWith("translation:"),
     );

@@ -1,13 +1,14 @@
 // AppIcon.tsx
-import React, {useEffect, useState} from "react"
+import {memo} from "react"
 import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle, Platform, ActivityIndicator} from "react-native"
 import {Image} from "expo-image"
-import {AppletInterface} from "@/contexts/AppletStatusProvider"
+import {AppletInterface} from "@/types/AppletTypes"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {SquircleView} from "expo-squircle-view"
 import {useSetting, SETTINGS_KEYS} from "@/stores/settings"
+import {CameraAppIcon} from "./CameraAppIcon"
 
 interface AppIconProps {
   app: AppletInterface
@@ -17,13 +18,26 @@ interface AppIconProps {
   hideLoadingIndicator?: boolean
 }
 
-const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false, hideLoadingIndicator = false}) => {
+const AppIcon = ({app, onClick, style, showLabel = false, hideLoadingIndicator = false}: AppIconProps) => {
   const {themed, theme} = useAppTheme()
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
-  const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
+  const [newUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [enableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
+
+  // Use custom camera icon for camera app
+  const isCameraApp = app.packageName === "com.mentra.camera"
+
+  // Determine size based on style prop - handle various sizes used across the app
+  const getIconSize = (): "small" | "medium" | "large" => {
+    const width = style?.width
+    if (!width) return "medium"
+    if (width <= 40) return "small"
+    if (width >= 64) return "large"
+    return "medium"
+  }
+  const iconSize = getIconSize()
 
   return (
     <WrapperComponent
@@ -32,7 +46,16 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
       style={[themed($container), style]}
       accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
       accessibilityRole={onClick ? "button" : undefined}>
-      {Platform.OS === "ios" && enableSquircles ? (
+      {isCameraApp ? (
+        <>
+          {app.loading && newUi && !hideLoadingIndicator && (
+            <View style={themed($loadingContainer)}>
+              <ActivityIndicator size="small" color={theme.colors.tint} />
+            </View>
+          )}
+          <CameraAppIcon size={iconSize} style={style} />
+        </>
+      ) : Platform.OS === "ios" && enableSquircles ? (
         <SquircleView
           cornerSmoothing={100}
           preserveSmoothing={true}
@@ -50,7 +73,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
             </View>
           )}
           <Image
-            source={{uri: app.logoURL}}
+            source={typeof app.logoURL === "string" ? {uri: app.logoURL} : app.logoURL}
             style={themed($icon)}
             contentFit="cover"
             transition={200}
@@ -65,7 +88,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, onClick, style, showLabel = false
             </View>
           )}
           <Image
-            source={{uri: app.logoURL}}
+            source={typeof app.logoURL === "string" ? {uri: app.logoURL} : app.logoURL}
             style={[themed($icon), {borderRadius: 60, width: style?.width ?? 56, height: style?.height ?? 56}]}
             contentFit="cover"
             transition={200}
@@ -100,7 +123,7 @@ const $icon: ThemedStyle<ImageStyle> = () => ({
   resizeMode: "cover",
 })
 
-const $appName: ThemedStyle<TextStyle> = ({colors, isDark}) => ({
+const $appName: ThemedStyle<TextStyle> = ({isDark}) => ({
   fontSize: 11,
   fontWeight: "600",
   lineHeight: 12,
@@ -109,16 +132,4 @@ const $appName: ThemedStyle<TextStyle> = ({colors, isDark}) => ({
   color: isDark ? "#ced2ed" : "#000000",
 })
 
-const $squareBadge: ThemedStyle<ViewStyle> = () => ({
-  alignItems: "center",
-  borderRadius: 6,
-  height: 20,
-  justifyContent: "center",
-  position: "absolute",
-  right: 3,
-  top: -8,
-  width: 20,
-  zIndex: 3,
-})
-
-export default React.memo(AppIcon)
+export default memo(AppIcon)

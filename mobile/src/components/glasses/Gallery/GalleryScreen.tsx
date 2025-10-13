@@ -961,17 +961,22 @@ export function GalleryScreen() {
         return
       }
 
-      // Handle different gallery states
-      if (galleryState === GalleryState.QUERYING_GLASSES) {
-        console.log("[GalleryScreen] Media available, requesting hotspot")
-        transitionToState(GalleryState.MEDIA_AVAILABLE)
-      } else if (
-        galleryState === GalleryState.SYNC_COMPLETE ||
-        galleryState === GalleryState.READY_TO_SYNC ||
-        galleryState === GalleryState.NO_MEDIA_ON_GLASSES
-      ) {
-        // This is likely a gallery status update after photo capture
-        console.log("[GalleryScreen] 📸 Gallery status update after photo capture, showing sync option")
+      // Handle different gallery states - transition to MEDIA_AVAILABLE unless already connecting/syncing
+      const canTransitionToMediaAvailable = ![
+        GalleryState.REQUESTING_HOTSPOT,
+        GalleryState.WAITING_FOR_WIFI_PROMPT,
+        GalleryState.CONNECTING_TO_HOTSPOT,
+        GalleryState.CONNECTED_LOADING,
+        GalleryState.READY_TO_SYNC,
+        GalleryState.SYNCING,
+      ].includes(galleryState)
+
+      if (canTransitionToMediaAvailable) {
+        if (galleryState === GalleryState.QUERYING_GLASSES) {
+          console.log("21 [GalleryScreen] Media available, requesting hotspot")
+        } else {
+          console.log("[GalleryScreen] 📸 Gallery status update (state: " + galleryState + "), showing sync option")
+        }
         transitionToState(GalleryState.MEDIA_AVAILABLE)
       }
     }
@@ -982,13 +987,8 @@ export function GalleryScreen() {
     }
   }, [galleryState, networkStatus.phoneSSID, hotspotSsid])
 
-  // Handle state transitions
-  useEffect(() => {
-    if (galleryState === GalleryState.MEDIA_AVAILABLE) {
-      console.log("[GalleryScreen] Media available, requesting hotspot")
-      transitionToState(GalleryState.USER_CANCELLED_WIFI)
-    }
-  }, [galleryState])
+  // MEDIA_AVAILABLE state shows the sync button - user can manually tap to initiate connection
+  // No auto-request behavior needed
 
   // Listen for hotspot ready
   useEffect(() => {
@@ -1134,6 +1134,7 @@ export function GalleryScreen() {
 
   const shouldShowSyncButton =
     [
+      GalleryState.MEDIA_AVAILABLE,
       GalleryState.CONNECTED_LOADING,
       GalleryState.USER_CANCELLED_WIFI,
       GalleryState.WAITING_FOR_WIFI_PROMPT,
@@ -1151,6 +1152,34 @@ export function GalleryScreen() {
     const statusContent = () => {
       console.log("[GalleryScreen] Rendering status content for state:", galleryState)
       switch (galleryState) {
+        case GalleryState.MEDIA_AVAILABLE:
+          return (
+            <View>
+              <View style={themed($syncButtonRow)}>
+                <MaterialCommunityIcons
+                  name="download-circle-outline"
+                  size={20}
+                  color={theme.colors.text}
+                  style={{marginRight: spacing.xs}}
+                />
+                <Text style={themed($syncButtonText)}>
+                  Sync {glassesGalleryStatus?.total || 0}{" "}
+                  {(glassesGalleryStatus?.photos || 0) > 0 && (glassesGalleryStatus?.videos || 0) > 0
+                    ? (glassesGalleryStatus?.total || 0) === 1
+                      ? "item"
+                      : "items"
+                    : (glassesGalleryStatus?.photos || 0) > 0
+                      ? (glassesGalleryStatus?.photos || 0) === 1
+                        ? "photo"
+                        : "photos"
+                      : (glassesGalleryStatus?.videos || 0) === 1
+                        ? "video"
+                        : "videos"}
+                </Text>
+              </View>
+            </View>
+          )
+
         case GalleryState.REQUESTING_HOTSPOT:
           return (
             <View style={themed($syncButtonRow)}>
@@ -1266,12 +1295,15 @@ export function GalleryScreen() {
       }
     }
 
+    const isTappable =
+      galleryState === GalleryState.MEDIA_AVAILABLE || galleryState === GalleryState.USER_CANCELLED_WIFI
+
     return (
       <TouchableOpacity
         style={[themed($syncButtonFixed)]}
-        onPress={galleryState === GalleryState.USER_CANCELLED_WIFI ? retryHotspotConnection : undefined}
-        activeOpacity={galleryState === GalleryState.USER_CANCELLED_WIFI ? 0.8 : 1}
-        disabled={galleryState !== GalleryState.USER_CANCELLED_WIFI}>
+        onPress={isTappable ? retryHotspotConnection : undefined}
+        activeOpacity={isTappable ? 0.8 : 1}
+        disabled={!isTappable}>
         <View style={themed($syncButtonContent)}>{statusContent()}</View>
       </TouchableOpacity>
     )

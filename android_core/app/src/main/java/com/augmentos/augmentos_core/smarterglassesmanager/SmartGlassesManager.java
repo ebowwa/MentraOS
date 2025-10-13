@@ -920,6 +920,12 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void sendGalleryModeActive(boolean active) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendGalleryModeActive(active);
+        }
+    }
+
     /**
      * Start buffer recording on smart glasses
      * Continuously records last 30 seconds in a circular buffer

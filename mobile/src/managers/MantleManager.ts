@@ -91,14 +91,19 @@ class MantleManager {
   }
 
   private async sendCalendarEvents() {
-    console.log("Mantle: sendCalendarEvents()")
-    const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)
-    const calendarIds = calendars.map((calendar: Calendar.Calendar) => calendar.id)
-    // from 2 hours ago to 1 week from now:
-    const startDate = new Date(Date.now() - 2 * 60 * 60 * 1000)
-    const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    const events = await Calendar.getEventsAsync(calendarIds, startDate, endDate)
-    restComms.sendCalendarData({events, calendars})
+    try {
+      console.log("Mantle: sendCalendarEvents()")
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)
+      const calendarIds = calendars.map((calendar: Calendar.Calendar) => calendar.id)
+      // from 2 hours ago to 1 week from now:
+      const startDate = new Date(Date.now() - 2 * 60 * 60 * 1000)
+      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const events = await Calendar.getEventsAsync(calendarIds, startDate, endDate)
+      restComms.sendCalendarData({events, calendars})
+    } catch (error) {
+      // it's fine if this fails
+      console.log("Mantle: Error sending calendar events", error)
+    }
   }
 
   private async sendLocationUpdates() {

@@ -219,7 +219,7 @@ export interface WebSocketError {
 }
 
 import { Request } from "express";
-import { AppSession } from "src/app/session";
+import { AppSession } from "../app/session";
 
 export interface AuthenticatedRequest extends Request {
   authUserId?: string;

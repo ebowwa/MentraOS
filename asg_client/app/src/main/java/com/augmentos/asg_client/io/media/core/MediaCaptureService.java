@@ -206,6 +206,10 @@ public class MediaCaptureService {
     private long recordingStartTime = 0;
     private boolean currentVideoLedEnabled = false; // Track if LED was enabled for current recording
 
+    // Max recording time check
+    private final Handler recordingTimeHandler = new Handler(Looper.getMainLooper());
+    private Runnable recordingTimeCheckRunnable;
+
     // Default BLE params (used if size unspecified)
     public static final int bleImageTargetWidth = 480;
     public static final int bleImageTargetHeight = 480;
@@ -376,19 +380,27 @@ public class MediaCaptureService {
      * Start video recording with specific settings
      * @param settings Video settings (resolution, fps)
      * @param enableLed Whether to enable recording LED
+     * @param maxRecordingTimeMinutes Maximum recording time in minutes (0 = no limit)
+     * @param initialBatteryLevel Initial battery level (for monitoring during recording, -1 = unknown)
      */
-    public void startVideoRecording(VideoSettings settings, boolean enableLed) {
+    public void startVideoRecording(VideoSettings settings, boolean enableLed, int maxRecordingTimeMinutes, int initialBatteryLevel) {
+        // Check if battery is too low to start recording
+        if (initialBatteryLevel >= 0 && initialBatteryLevel < 10) {
+            Log.w(TAG, "⚠️ Battery too low to start recording: " + initialBatteryLevel + "% (minimum 10% required)");
+            return;
+        }
+
         if (isRecordingVideo) {
             Log.d(TAG, "Stopping video recording");
             stopVideoRecording();
         } else {
-            Log.d(TAG, "Starting video recording with settings: " + settings);
+            Log.d(TAG, "Starting video recording with settings: " + settings + ", max time: " + maxRecordingTimeMinutes + " minutes, battery: " + initialBatteryLevel + "%");
             // Generate IDs for local recording
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
             int randomSuffix = (int)(Math.random() * 1000);
             String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
             String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
-            startVideoRecording(videoFilePath, requestId, settings, enableLed);
+            startVideoRecording(videoFilePath, requestId, settings, enableLed, maxRecordingTimeMinutes);
         }
     }
 
@@ -469,13 +481,20 @@ public class MediaCaptureService {
      * Start video recording with specific parameters
      */
     private void startVideoRecording(String videoFilePath, String requestId, boolean enableLed) {
-        startVideoRecording(videoFilePath, requestId, null, enableLed);
+        startVideoRecording(videoFilePath, requestId, null, enableLed, 0);
     }
-    
+
     /**
      * Start video recording with specific parameters and settings
      */
     private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
+        startVideoRecording(videoFilePath, requestId, settings, enableLed, 0);
+    }
+
+    /**
+     * Start video recording with specific parameters, settings, and max time
+     */
+    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed, int maxRecordingTimeMinutes) {
         // Check if RTMP streaming is active - videos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot start video - RTMP streaming active");
@@ -521,7 +540,7 @@ public class MediaCaptureService {
                     Log.d(TAG, "Video recording started with ID: " + videoId);
                     isRecordingVideo = true;
                     recordingStartTime = System.currentTimeMillis();
-                    
+
                     // Turn on recording LED if enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOn();
@@ -532,13 +551,45 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStarted(requestId, videoFilePath);
                     }
+
+                    // Set up max recording time check if specified
+                    if (maxRecordingTimeMinutes > 0) {
+                        long maxRecordingTimeMs = maxRecordingTimeMinutes * 60 * 1000L;
+                        Log.d(TAG, "Setting max recording time: " + maxRecordingTimeMinutes + " minutes (" + maxRecordingTimeMs + " ms)");
+
+                        // Create a runnable that checks if max time has been reached
+                        recordingTimeCheckRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isRecordingVideo) {
+                                    long elapsedTime = System.currentTimeMillis() - recordingStartTime;
+                                    if (elapsedTime >= maxRecordingTimeMs) {
+                                        Log.d(TAG, "⏱️ Max recording time reached (" + maxRecordingTimeMinutes + " minutes), stopping recording");
+                                        stopVideoRecording();
+                                    } else {
+                                        // Check again in 1 second
+                                        recordingTimeHandler.postDelayed(this, 1000);
+                                    }
+                                }
+                            }
+                        };
+
+                        // Start checking after 1 second
+                        recordingTimeHandler.postDelayed(recordingTimeCheckRunnable, 1000);
+                    }
                 }
 
                 @Override
                 public void onRecordingStopped(String videoId, String filePath) {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
-                    
+
+                    // Cancel max recording time check
+                    if (recordingTimeCheckRunnable != null) {
+                        recordingTimeHandler.removeCallbacks(recordingTimeCheckRunnable);
+                        recordingTimeCheckRunnable = null;
+                    }
+
                     // Turn off recording LED if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOff();
@@ -1488,6 +1539,13 @@ public class MediaCaptureService {
      * @param save Whether to keep the original photo on device
      */
     public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
@@ -1565,11 +1623,18 @@ public class MediaCaptureService {
      * This avoids taking a duplicate photo
      */
     private void reusePhotoForBleTransfer(String existingPhotoPath, String requestId, String bleImgId, boolean save, String size) {
+        // Check if RTMP streaming is active - avoid BLE transfers during streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot transfer photo via BLE - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
         photoRequestedSizes.put(requestId, size);
-        
+
         Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + existingPhotoPath);
         
         // Notify that we're using an existing photo

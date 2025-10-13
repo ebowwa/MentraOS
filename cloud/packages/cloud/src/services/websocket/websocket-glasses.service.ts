@@ -32,7 +32,6 @@ import { PosthogService } from "../logging/posthog.service";
 // sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
-import { locationService } from "../core/location.service";
 
 const SERVICE_NAME = "websocket-glasses.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -167,8 +166,8 @@ export class GlassesWebSocketService {
               })
               .catch((error) => {
                 userSession.logger.error(
-                  `❌ Failed to reinitialize connection for user: ${userSession.userId}`,
                   error,
+                  `❌ Failed to reinitialize connection for user: ${userSession.userId}`,
                 );
               });
             return;
@@ -205,8 +204,8 @@ export class GlassesWebSocketService {
             })
             .catch((error) => {
               userSession.logger.error(
-                `❌ Error processing message of type: ${message.type} for user: ${userId}`,
                 error,
+                `❌ Error processing message of type: ${message.type} for user: ${userId}`,
               );
             });
         } catch (error) {
@@ -310,8 +309,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await locationService.handleDeviceLocationUpdate(
-            userSession,
+          userSession.locationManager.updateFromWebsocket(
             message as LocationUpdate,
           );
           break;
@@ -322,10 +320,9 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          userSession.subscriptionManager.cacheCalendarEvent(
+          userSession.calendarManager.updateEventFromWebsocket(
             message as CalendarEvent,
           );
-          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): verify logic
@@ -560,7 +557,7 @@ export class GlassesWebSocketService {
           break;
       }
     } catch (error) {
-      userSession.logger.error("Error handling glasses message:", error);
+      userSession.logger.error(error, "Error handling glasses message:");
     }
   }
 
@@ -742,35 +739,6 @@ export class GlassesWebSocketService {
   }
 
   /**
-   * Handle location update message
-   *
-   */
-  private async handleLocationUpdate(
-    userSession: UserSession,
-    message: LocationUpdate,
-  ): Promise<void> {
-    userSession.logger.debug(
-      { message, service: SERVICE_NAME },
-      "Location update received from glasses",
-    );
-    try {
-      // The core logic is now handled by the central LocationService to manage caching and polling.
-      await locationService.handleDeviceLocationUpdate(userSession, message);
-
-      // We still relay the message to any apps subscribed to the raw location stream.
-      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
-      // response for a poll request.
-      userSession.relayMessageToApps(message);
-    } catch (error) {
-      userSession.logger.error(
-        { error, service: SERVICE_NAME },
-        `Error handling location update:`,
-        error,
-      );
-    }
-  }
-
-  /**
    * Handle head position event message
    *
    * @param userSession User session
@@ -841,9 +809,11 @@ export class GlassesWebSocketService {
       { service: SERVICE_NAME, message },
       `handleGlassesConnectionState for user ${userSession.userId}`,
     );
-    userSession.microphoneManager.handleConnectionStateChange(
+    await userSession.deviceManager.handleGlassesConnectionState(
+      glassesConnectionStateMessage.modelName || null,
       glassesConnectionStateMessage.status,
     );
+    return;
 
     // Extract glasses model information
     const modelName = glassesConnectionStateMessage.modelName;
@@ -980,7 +950,7 @@ export class GlassesWebSocketService {
         "Sent settings update",
       );
     } catch (error) {
-      userSession.logger.error("Error sending settings:", error);
+      userSession.logger.error(error, "Error sending settings:");
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         message: "Error retrieving settings",
@@ -1030,7 +1000,7 @@ export class GlassesWebSocketService {
 
       userSession.websocket.send(JSON.stringify(responseMessage));
     } catch (error) {
-      userSession.logger.error("Error retrieving AugmentOS settings:", error);
+      userSession.logger.error(error, "Error retrieving AugmentOS settings:");
 
       // Send error back to client
       const errorMessage = {
@@ -1072,15 +1042,6 @@ export class GlassesWebSocketService {
     // Disconnecting is probably a network issue and the user will likely reconnect.
     // So we don't want to end the session immediately, but rather wait for a grace period
     // to see if the user reconnects.
-    // Stop transcription
-    // if (userSession.isTranscribing) {
-    //   userSession.isTranscribing = false;
-    //   try {
-    //     await userSession.transcriptionManager.stopAndFinalizeAll();
-    //   } catch (error) {
-    //     userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
-    //   }
-    // }
 
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
@@ -1200,12 +1161,12 @@ export class GlassesWebSocketService {
       ws.send(JSON.stringify(errorMessage));
       ws.close(1008, message);
     } catch (error) {
-      logger.error("Error sending error message to glasses:", error);
+      logger.error(error, "Error sending error message to glasses:");
 
       try {
         ws.close(1011, "Internal server error");
       } catch (closeError) {
-        logger.error("Error closing WebSocket connection:", closeError);
+        logger.error(closeError, "Error closing WebSocket connection:");
       }
     }
   }

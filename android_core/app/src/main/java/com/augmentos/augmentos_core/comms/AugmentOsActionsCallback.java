@@ -45,6 +45,7 @@ public interface AugmentOsActionsCallback {
     void queryGalleryStatus();
     void setPreferredMic(String mic);
     void setButtonMode(String mode);
+    void sendGalleryModeActive(boolean active);
     void setButtonPhotoSize(String size);
     void setButtonVideoSettings(int width, int height, int fps);
     void setButtonCameraLed(boolean enabled);

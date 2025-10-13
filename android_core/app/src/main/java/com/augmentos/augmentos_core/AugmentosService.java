@@ -2916,6 +2916,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
+    public void sendGalleryModeActive(boolean active) {
+        Log.d("AugmentOsService", "📸 Sending gallery mode active to glasses: " + active);
+        
+        // Send to glasses if connected (Mentra Live only)
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.sendGalleryModeActive(active);
+        } else {
+            Log.w("AugmentOsService", "Cannot send gallery mode - glasses not connected");
+        }
+    }
+
+    @Override
     public void setButtonPhotoSize(String size) {
         Log.d("AugmentOsService", "Setting button photo size: " + size);
         // Save locally

@@ -34,6 +34,10 @@ import {
 } from "../../types";
 import { DashboardMode } from "../../types/dashboard";
 import { PermissionErrorDetail } from "../../types/messages/cloud-to-app";
+import {
+  calendarWarnLog,
+  microPhoneWarnLog,
+} from "../../utils/permissions-utils";
 
 /** 🎯 Type-safe event handler function */
 type Handler<T> = (data: T) => void;
@@ -125,6 +129,8 @@ export class EventManager {
   constructor(
     private subscribe: (type: ExtendedStreamType) => void,
     private unsubscribe: (type: ExtendedStreamType) => void,
+    private packageName: string,
+    private baseUrl: string,
   ) {
     this.emitter = new EventEmitter();
     this.handlers = new Map();
@@ -135,7 +141,13 @@ export class EventManager {
   // Convenience handlers for common event types
 
   onTranscription(handler: Handler<TranscriptionData>) {
-    // Default to en-US when using the generic transcription handler
+    // Only make the API call if we have a base URL (server-side environment)
+    microPhoneWarnLog(
+      this.baseUrl,
+      this.packageName,
+      this.onTranscription.name,
+    );
+
     return this.addHandler(createTranscriptionStream("en-US"), handler);
   }
 
@@ -180,6 +192,11 @@ export class EventManager {
     targetLanguage: string,
     handler: Handler<TranslationData>,
   ): () => void {
+    microPhoneWarnLog(
+      this.baseUrl || "",
+      this.packageName,
+      this.ontranslationForLanguage.name,
+    );
     if (!isValidLanguageCode(sourceLanguage)) {
       throw new Error(`Invalid source language code: ${sourceLanguage}`);
     }
@@ -222,6 +239,11 @@ export class EventManager {
   }
 
   onVoiceActivity(handler: Handler<Vad>) {
+    microPhoneWarnLog(
+      this.baseUrl || "",
+      this.packageName,
+      this.onVoiceActivity.name,
+    );
     return this.addHandler(StreamType.VAD, handler);
   }
 
@@ -367,6 +389,10 @@ export class EventManager {
     type: T,
     handler: Handler<EventData<T>>,
   ): () => void {
+    // Check permissions for specific stream types
+    if (type === StreamType.CALENDAR_EVENT) {
+      calendarWarnLog(this.baseUrl, this.packageName, "on");
+    }
     return this.addHandler(type, handler);
   }
 

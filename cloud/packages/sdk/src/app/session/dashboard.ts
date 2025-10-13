@@ -19,7 +19,7 @@ import { EventManager } from "./events";
 
 // Import AppSession interface for typing
 import type { AppSession } from "./index";
-import { AppToCloudMessage } from "src/types";
+import { AppToCloudMessage } from "../../types";
 import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();

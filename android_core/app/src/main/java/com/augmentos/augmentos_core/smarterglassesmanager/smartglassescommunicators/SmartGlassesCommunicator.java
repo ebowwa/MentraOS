@@ -326,6 +326,18 @@ public abstract class SmartGlassesCommunicator {
     }
 
     /**
+     * Send gallery mode active state to glasses
+     * Controls whether button presses should trigger local photo/video capture
+     * Default implementation does nothing - specific communicators should override
+     *
+     * @param active true if gallery/camera app is active, false otherwise
+     */
+    public void sendGalleryModeActive(boolean active) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Gallery mode active not implemented for this device");
+    }
+
+    /**
      * Start buffer recording on smart glasses
      * Continuously records last 30 seconds in a circular buffer
      * Default implementation does nothing - specific communicators should override

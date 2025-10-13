@@ -106,6 +106,16 @@ export default [
     },
   },
 
+  // Jest setup files configuration
+  {
+    files: ["**/jest.setup.js", "**/jest.config.js", "**/*.test.{js,ts,jsx,tsx}", "**/*.spec.{js,ts,jsx,tsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+
   // React Native-only rules (scoped override)
   // NOTE: eslint-plugin-react-native rules were being applied to web code (e.g., the console),
   // triggering RN-only checks like react-native/no-raw-text in regular React. The plugin does not
