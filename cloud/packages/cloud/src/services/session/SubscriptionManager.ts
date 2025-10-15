@@ -141,6 +141,18 @@ export class SubscriptionManager {
     const hasPCM = this.pcmSubscriptionCount > 0;
     const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
     const hasMedia = hasPCM || hasTranscription;
+
+    this.logger.debug(
+      {
+        pcmCount: this.pcmSubscriptionCount,
+        transcriptionLikeCount: this.transcriptionLikeSubscriptionCount,
+        hasPCM,
+        hasTranscription,
+        hasMedia,
+      },
+      "hasPCMTranscriptionSubscriptions called",
+    );
+
     return { hasMedia, hasPCM, hasTranscription };
   }
 
@@ -451,28 +463,65 @@ export class SubscriptionManager {
     oldSet: Set<ExtendedStreamType>,
     newSet: Set<ExtendedStreamType>,
   ): void {
+    this.logger.debug(
+      {
+        packageName,
+        oldCount: oldSet.size,
+        newCount: newSet.size,
+        oldSubs: Array.from(oldSet),
+        newSubs: Array.from(newSet),
+      },
+      "applyDelta called",
+    );
+
     // Removals
     for (const sub of oldSet) {
       if (!newSet.has(sub)) {
+        this.logger.debug(
+          { packageName, sub, isAdd: false },
+          "Calling applySingle for removal",
+        );
         this.applySingle(sub, /*isAdd*/ false);
       }
     }
     // Additions
     for (const sub of newSet) {
       if (!oldSet.has(sub)) {
+        this.logger.debug(
+          { packageName, sub, isAdd: true },
+          "Calling applySingle for addition",
+        );
         this.applySingle(sub, /*isAdd*/ true);
       }
     }
+
+    this.logger.debug(
+      {
+        packageName,
+        transcriptionLikeCount: this.transcriptionLikeSubscriptionCount,
+        pcmCount: this.pcmSubscriptionCount,
+      },
+      "applyDelta completed - current counts",
+    );
   }
 
   /**
    * Apply a single subscription add/remove to cached aggregates
    */
   private applySingle(sub: ExtendedStreamType, isAdd: boolean): void {
+    this.logger.debug(
+      { sub, isAdd, subType: typeof sub },
+      "applySingle called",
+    );
+
     // PCM stream
     if (sub === StreamType.AUDIO_CHUNK) {
       this.pcmSubscriptionCount += isAdd ? 1 : -1;
       if (this.pcmSubscriptionCount < 0) this.pcmSubscriptionCount = 0;
+      this.logger.debug(
+        { sub, isAdd, newCount: this.pcmSubscriptionCount },
+        "applySingle: PCM stream processed",
+      );
       return;
     }
 
@@ -481,26 +530,62 @@ export class SubscriptionManager {
       this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
       if (this.transcriptionLikeSubscriptionCount < 0)
         this.transcriptionLikeSubscriptionCount = 0;
+      this.logger.debug(
+        { sub, isAdd, newCount: this.transcriptionLikeSubscriptionCount },
+        "applySingle: Direct transcription/translation processed",
+      );
       return;
     }
 
     // Language-specific streams
-    if (isLanguageStream(sub)) {
+    const isLangStream = isLanguageStream(sub);
+    this.logger.debug(
+      { sub, isAdd, isLangStream },
+      "applySingle: Checking if language stream",
+    );
+
+    if (isLangStream) {
       const langInfo = parseLanguageStream(sub as string);
+      this.logger.debug(
+        { sub, isAdd, langInfo },
+        "applySingle: Parsed language stream",
+      );
+
       if (
         langInfo &&
         (langInfo.type === StreamType.TRANSCRIPTION ||
           langInfo.type === StreamType.TRANSLATION)
       ) {
+        const oldCount = this.transcriptionLikeSubscriptionCount;
         this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
         if (this.transcriptionLikeSubscriptionCount < 0)
           this.transcriptionLikeSubscriptionCount = 0;
+        this.logger.debug(
+          {
+            sub,
+            isAdd,
+            langInfoType: langInfo.type,
+            oldCount,
+            newCount: this.transcriptionLikeSubscriptionCount,
+          },
+          "applySingle: Language stream transcription count updated",
+        );
+      } else {
+        this.logger.debug(
+          { sub, isAdd, langInfo },
+          "applySingle: Language stream but not transcription/translation type",
+        );
       }
       const prev = this.languageStreamCounts.get(sub) || 0;
       const next = prev + (isAdd ? 1 : -1);
       if (next <= 0) this.languageStreamCounts.delete(sub);
       else this.languageStreamCounts.set(sub, next);
       return;
+    } else {
+      this.logger.debug(
+        { sub, isAdd },
+        "applySingle: Not a recognized subscription type - IGNORING",
+      );
     }
   }
 }
