@@ -206,11 +206,8 @@ func (s *LiveKitBridgeService) StreamAudio(
 	go func() {
 		defer log.Printf("StreamAudio receive goroutine ended: userId=%s", userId)
 
-		// Process first chunk with track name
-		trackName := firstChunk.TrackName
-		if trackName == "" {
-			trackName = "speaker"
-		}
+		// Process first chunk with track ID
+		trackName := trackIDToName(firstChunk.TrackId)
 		if err := session.writeAudioToTrack(firstChunk.PcmData, trackName); err != nil {
 			errChan <- fmt.Errorf("failed to write first chunk: %w", err)
 			return
