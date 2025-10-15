@@ -18,6 +18,6 @@ services:
       SERVICE_NAME: "cloud"
       RTMP_RELAY_URLS: "rtmp-relay-uscentral.mentra.glass:1935"
       LIVEKIT_GRPC_SOCKET: "/tmp/livekit-bridge.sock"
-      LIVEKIT_PCM_ENDIAN: "swap"
+      LIVEKIT_PCM_ENDIAN: "off"
       # Add any Go service environment variables here
       LOG_LEVEL: "info"
