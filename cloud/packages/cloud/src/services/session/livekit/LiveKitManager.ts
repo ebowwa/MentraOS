@@ -255,6 +255,13 @@ export class LiveKitManager {
 
   public async ensureBridgeConnected(): Promise<void> {
     if (this.bridgeClient && this.bridgeClient.isConnected()) return;
+    if (this.bridgeClient && this.bridgeClient.isConnecting()) {
+      this.logger.debug(
+        { feature: "livekit" },
+        "Bridge connection already in progress, skipping",
+      );
+      return;
+    }
     this.logger.info(
       { feature: "livekit" },
       "Ensuring bridge subscriber is connected",

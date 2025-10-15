@@ -44,6 +44,7 @@ export class LiveKitGrpcClient {
   private client: any; // LiveKitBridge gRPC client
   private audioStream: grpc.ClientDuplexStream<any, any> | null = null;
   private connected = false;
+  private connecting = false;
   private disposed = false;
   private joinedRoom = false;
   private currentParams: JoinRoomParams | null = null;
@@ -131,11 +132,19 @@ export class LiveKitGrpcClient {
       throw new Error("LiveKitGrpcClient is disposed");
     }
 
+    if (this.connecting) {
+      this.logger.warn(
+        "Connection already in progress, skipping duplicate call",
+      );
+      return;
+    }
+
     if (this.joinedRoom) {
       this.logger.warn("Already connected to room, disconnecting first");
       await this.disconnect();
     }
 
+    this.connecting = true;
     this.currentParams = params;
 
     // Join room via gRPC
@@ -145,6 +154,7 @@ export class LiveKitGrpcClient {
     await this.startAudioStream();
 
     this.connected = true;
+    this.connecting = false;
     this.logger.info(
       {
         room: params.roomName,
@@ -157,6 +167,11 @@ export class LiveKitGrpcClient {
 
   private async joinRoom(params: JoinRoomParams): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Ensure connecting flag is reset on error
+      const handleError = (error: any) => {
+        this.connecting = false;
+        reject(error);
+      };
       const request = {
         user_id: this.userSession.userId,
         room_name: params.roomName,
@@ -184,12 +199,11 @@ export class LiveKitGrpcClient {
               },
               "JoinRoom RPC failed",
             );
-            reject(error);
+            handleError(error);
             return;
           }
 
           if (!response.success) {
-            const err = new Error(response.error || "Failed to join room");
             this.logger.error(
               {
                 response,
@@ -197,7 +211,7 @@ export class LiveKitGrpcClient {
               },
               "JoinRoom returned failure",
             );
-            reject(err);
+            handleError(new Error(response.error || "Failed to join room"));
             return;
           }
 
@@ -681,6 +695,13 @@ export class LiveKitGrpcClient {
    */
   public isConnected(): boolean {
     return this.connected && this.joinedRoom && !!this.audioStream;
+  }
+
+  /**
+   * Check if connection is in progress
+   */
+  public isConnecting(): boolean {
+    return this.connecting;
   }
 
   /**
