@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 
 	pb "github.com/Mentra-Community/MentraOS/cloud/packages/cloud-livekit-bridge/proto"
 	"google.golang.org/grpc"
@@ -36,13 +38,44 @@ func main() {
 	// Register reflection service (for debugging with grpcurl)
 	reflection.Register(grpcServer)
 
-	// Listen on port
-	lis, err := net.Listen("tcp", ":"+config.Port)
-	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", config.Port, err)
+	// Determine if we should use Unix socket or TCP
+	var lis net.Listener
+	var err error
+
+	socketPath := os.Getenv("LIVEKIT_GRPC_SOCKET")
+	if socketPath != "" {
+		// Use Unix domain socket
+		// Remove existing socket file if it exists
+		if err := os.RemoveAll(socketPath); err != nil {
+			log.Fatalf("Failed to remove existing socket: %v", err)
+		}
+
+		// Ensure directory exists
+		socketDir := filepath.Dir(socketPath)
+		if err := os.MkdirAll(socketDir, 0755); err != nil {
+			log.Fatalf("Failed to create socket directory: %v", err)
+		}
+
+		lis, err = net.Listen("unix", socketPath)
+		if err != nil {
+			log.Fatalf("Failed to listen on Unix socket %s: %v", socketPath, err)
+		}
+
+		// Set socket permissions to allow access
+		if err := os.Chmod(socketPath, 0666); err != nil {
+			log.Fatalf("Failed to set socket permissions: %v", err)
+		}
+
+		log.Printf("✅ LiveKit gRPC Bridge listening on Unix socket: %s", socketPath)
+	} else {
+		// Use TCP port (backward compatibility)
+		lis, err = net.Listen("tcp", ":"+config.Port)
+		if err != nil {
+			log.Fatalf("Failed to listen on port %s: %v", config.Port, err)
+		}
+		log.Printf("✅ LiveKit gRPC Bridge listening on TCP port: %s", config.Port)
 	}
 
-	log.Printf("✅ LiveKit gRPC Bridge listening on port %s", config.Port)
 	log.Println("Ready to accept connections...")
 
 	// Start serving

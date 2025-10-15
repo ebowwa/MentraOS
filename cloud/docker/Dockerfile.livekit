@@ -14,15 +14,15 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy Go mod files
-COPY livekit-client-2/go.mod livekit-client-2/go.sum ./
+COPY packages/cloud-livekit-bridge/go.mod packages/cloud-livekit-bridge/go.sum ./
 
 # Download dependencies
 RUN go mod download
 
 # Copy Go source code
-COPY livekit-client-2/ ./
+COPY packages/cloud-livekit-bridge/ ./
 
-# Build the binary with CGO enabled for opus/soxr
+# Build the gRPC bridge binary with CGO enabled for opus/soxr
 RUN CGO_ENABLED=1 GOOS=linux go build -o livekit-bridge .
 
 # Final stage: Bun runtime with Go binary
@@ -71,7 +71,7 @@ EXPOSE 80 8080
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV SERVICE_NAME=cloud
-ENV LIVEKIT_GO_BRIDGE_URL=ws://localhost:8080
+ENV LIVEKIT_GRPC_SOCKET=/tmp/livekit-bridge.sock
 
 
 # The porter.yaml will run ./start.sh; keep image default benign for direct runs

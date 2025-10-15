@@ -67,8 +67,18 @@ export class LiveKitGrpcClient {
       service: "LiveKitGrpcClient",
       feature: "livekit-grpc",
     });
-    this.bridgeUrl =
-      bridgeUrl || process.env.LIVEKIT_GRPC_BRIDGE_URL || "livekit-bridge:9090";
+
+    // Support Unix socket or TCP connection
+    // If LIVEKIT_GRPC_SOCKET is set, use Unix socket with unix: prefix
+    const socketPath = process.env.LIVEKIT_GRPC_SOCKET;
+    if (socketPath) {
+      this.bridgeUrl = `unix:${socketPath}`;
+    } else {
+      this.bridgeUrl =
+        bridgeUrl ||
+        process.env.LIVEKIT_GRPC_BRIDGE_URL ||
+        "livekit-bridge:9090";
+    }
 
     // Initialize endianness mode from environment
     const mode = (process.env.LIVEKIT_PCM_ENDIAN || "auto").toLowerCase();
@@ -110,7 +120,8 @@ export class LiveKitGrpcClient {
       const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
       const livekitProto = (protoDescriptor.mentra as any).livekit.bridge;
 
-      // Create insecure client (internal network)
+      // Create insecure client (internal network or Unix socket)
+      // gRPC-JS automatically handles unix: prefix for Unix domain sockets
       this.client = new livekitProto.LiveKitBridge(
         this.bridgeUrl,
         grpc.credentials.createInsecure(),

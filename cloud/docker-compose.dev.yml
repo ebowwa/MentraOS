@@ -21,7 +21,7 @@ services:
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true
       - CLOUD_HOST_NAME=cloud
-      - LIVEKIT_GRPC_BRIDGE_URL=livekit-bridge:9090
+      - LIVEKIT_GRPC_SOCKET=/var/run/livekit/bridge.sock
       - DEBUG_CAPTURE_AUDIO=true
     env_file:
       - .env
@@ -29,6 +29,7 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
+      - livekit_socket:/var/run/livekit
     command: bash -c "bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev"
     tty: true
     stdin_open: true
@@ -40,17 +41,18 @@ services:
     build:
       context: ./packages/cloud-livekit-bridge
       dockerfile: Dockerfile
-    ports:
-      - "9090:9090"
     environment:
       - PORT=9090
       - LOG_LEVEL=debug
       - LIVEKIT_URL=${LIVEKIT_URL}
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_GRPC_SOCKET=/var/run/livekit/bridge.sock
+    volumes:
+      - livekit_socket:/var/run/livekit
     restart: "no"
     healthcheck:
-      test: ["CMD", "pgrep", "-x", "livekit-bridge"]
+      test: ["CMD", "test", "-S", "/var/run/livekit/bridge.sock"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -58,3 +60,4 @@ services:
 volumes:
   node_modules:
   bun_cache:
+  livekit_socket:
