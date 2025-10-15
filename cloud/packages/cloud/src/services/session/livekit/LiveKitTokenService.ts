@@ -1,5 +1,5 @@
 import { Logger } from "pino";
-import { logger as rootLogger } from "../logging/pino-logger";
+import { logger as rootLogger } from "../../logging/pino-logger";
 import { AccessToken } from "livekit-server-sdk";
 
 export interface LiveKitGrants {
