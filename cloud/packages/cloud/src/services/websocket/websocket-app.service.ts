@@ -355,6 +355,25 @@ export class AppWebSocketService {
           try {
             const photoRequestMsg = message as PhotoRequest;
 
+            // 📍 CP02: Cloud Receives Request
+            const cp02Time = Date.now();
+            this.logger.info(
+              {
+                checkpointId: "CP02",
+                requestId: photoRequestMsg.requestId,
+                timestamp: cp02Time,
+                phase: "cloud_received_request",
+                packageName: photoRequestMsg.packageName,
+              },
+              `📍 CP02: Cloud received photo request`,
+            );
+
+            // Store timing in metadata
+            if (!photoRequestMsg.timingMetadata) {
+              photoRequestMsg.timingMetadata = {};
+            }
+            photoRequestMsg.timingMetadata.cp02_cloud_received = cp02Time;
+
             // Check if app has camera permission
             const hasCameraPermission = await this.checkCameraPermission(
               photoRequestMsg.packageName,

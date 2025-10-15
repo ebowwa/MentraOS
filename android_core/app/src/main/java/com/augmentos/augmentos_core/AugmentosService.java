@@ -1952,7 +1952,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             @Override
             public void onPhotoRequest(String requestId, String appId, String webhookUrl, String authToken, String size) {
-                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", authToken=" + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
+                // 📍 CP07: Phone Native Receives Request
+                long cp07Time = System.currentTimeMillis();
+                Log.d(TAG, "📍 CP07: Photo request received: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", authToken=" + (authToken.isEmpty() ? "none" : "***") + ", size=" + size + ", checkpoint=CP07, timestamp=" + cp07Time);
 
                 // Track photo request info for potential error responses
                 if (webhookUrl != null && !webhookUrl.isEmpty()) {

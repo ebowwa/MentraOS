@@ -2651,6 +2651,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             Log.d(TAG, "Using auto transfer mode with BLE fallback ID: " + bleImgId);
 
+            // 📍 CP09: MentraLiveSGC Sends to Glasses
+            long cp09Time = System.currentTimeMillis();
+            Log.d(TAG, "📍 CP09: MentraLiveSGC sending photo request to glasses: requestId=" + requestId + ", appId=" + appId + ", checkpoint=CP09, timestamp=" + cp09Time);
+
             sendJson(json, true);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo request JSON", e);

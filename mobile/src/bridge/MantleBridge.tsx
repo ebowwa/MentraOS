@@ -1096,6 +1096,20 @@ export class MantleBridge extends EventEmitter {
   }
 
   async sendCommand(command: string, params?: any) {
+    // 📍 CP06: Bridge Command Sent (for photo requests)
+    if (command === "photo_request") {
+      const cp06Time = Date.now()
+      const requestId = params?.requestId || "unknown"
+      console.log(
+        `📍 CP06: Bridge sending photo_request to native - requestId: ${requestId}, checkpoint: CP06, timestamp: ${cp06Time}`,
+      )
+
+      // Store timing
+      if (params && params.timingMetadata) {
+        params.timingMetadata.cp06_bridge_sent = cp06Time
+      }
+    }
+
     return await this.sendData({
       command: command,
       params: params || {},

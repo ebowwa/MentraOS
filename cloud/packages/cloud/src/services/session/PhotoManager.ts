@@ -66,19 +66,29 @@ export class PhotoManager {
       customWebhookUrl,
       authToken,
       size = "medium",
+      timingMetadata = {},
     } = appRequest;
 
+    // 📍 CP03: PhotoManager Processing
+    const cp03Time = Date.now();
     this.logger.info(
       {
+        checkpointId: "CP03",
         packageName,
         requestId,
+        timestamp: cp03Time,
+        phase: "photomanager_processing",
         saveToGallery,
         size,
         hasCustomWebhook: !!customWebhookUrl,
         hasAuthToken: !!authToken,
       },
-      "Processing App photo request.",
+      "📍 CP03: PhotoManager processing photo request",
     );
+
+    // Store timing
+    const metadata = timingMetadata || {};
+    metadata.cp03_photomanager_start = cp03Time;
 
     // Get the webhook URL - use custom if provided, otherwise fall back to app's default
     let webhookUrl: string | undefined;
@@ -129,6 +139,7 @@ export class PhotoManager {
 
     // Message to glasses based on CloudToGlassesMessageType.PHOTO_REQUEST
     // Include webhook URL so ASG can upload directly to the app
+    const metadata = timingMetadata || {};
     const messageToGlasses = {
       type: CloudToGlassesMessageType.PHOTO_REQUEST,
       sessionId: this.userSession.sessionId,
@@ -138,19 +149,28 @@ export class PhotoManager {
       authToken, // Include authToken for webhook authentication
       size, // Propagate desired size
       timestamp: new Date(),
+      timingMetadata: metadata, // Propagate timing metadata
     };
 
     try {
       this.userSession.websocket.send(JSON.stringify(messageToGlasses));
+
+      // 📍 CP04: Request Sent to Glasses
+      const cp04Time = Date.now();
+      metadata.cp04_sent_to_glasses = cp04Time;
+
       this.logger.info(
         {
+          checkpointId: "CP04",
           requestId,
+          timestamp: cp04Time,
+          phase: "sent_to_glasses",
           packageName,
           webhookUrl,
           isCustom: !!customWebhookUrl,
           hasAuthToken: !!authToken,
         },
-        "PHOTO_REQUEST command sent to glasses with webhook URL.",
+        "📍 CP04: PHOTO_REQUEST sent to glasses",
       );
 
       // If using custom webhook URL, resolve immediately since glasses won't send response back to cloud
@@ -189,6 +209,9 @@ export class PhotoManager {
   async handlePhotoResponse(
     glassesResponse: PhotoResponse | any,
   ): Promise<void> {
+    // 📍 CP16: Cloud Receives Photo Response
+    const cp16Time = Date.now();
+
     // Handle simplified error format from glasses/phone
     let normalizedResponse: PhotoResponse;
 
@@ -210,6 +233,17 @@ export class PhotoManager {
 
     const { requestId, success } = normalizedResponse;
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
+
+    this.logger.info(
+      {
+        checkpointId: "CP16",
+        requestId,
+        timestamp: cp16Time,
+        phase: "cloud_received_response",
+        success,
+      },
+      `📍 CP16: Cloud received photo response`,
+    );
 
     this.logger.debug(
       {
@@ -313,14 +347,20 @@ export class PhotoManager {
         photoResponse,
       );
 
+      // 📍 CP17: Response Sent to App
+      const cp17Time = Date.now();
+
       if (result.sent) {
         this.logger.info(
           {
+            checkpointId: "CP17",
             requestId,
+            timestamp: cp17Time,
+            phase: "response_sent_to_app",
             packageName,
             resurrectionTriggered: result.resurrectionTriggered,
           },
-          `Sent photo result to App ${packageName}${result.resurrectionTriggered ? " after resurrection" : ""}`,
+          `📍 CP17: Photo result sent to App ${packageName}${result.resurrectionTriggered ? " after resurrection" : ""}`,
         );
       } else {
         this.logger.warn(

@@ -394,22 +394,33 @@ class SocketComms {
   }
 
   private handle_photo_request(msg: any) {
+    // 📍 CP05: Mobile Receives Request
+    const cp05Time = Date.now()
+
     const requestId = msg.requestId || ""
     const appId = msg.appId || ""
     const webhookUrl = msg.webhookUrl || ""
     const size = msg.size || "medium"
+    const timingMetadata = msg.timingMetadata || {}
+
     console.log(
-      `Received photo_request, requestId: ${requestId}, appId: ${appId}, webhookUrl: ${webhookUrl}, size: ${size}`,
+      `📍 CP05: Mobile received photo_request - requestId: ${requestId}, appId: ${appId}, webhookUrl: ${webhookUrl}, size: ${size}, checkpoint: CP05, timestamp: ${cp05Time}`,
     )
+
     if (!requestId || !appId) {
       console.log("Invalid photo request: missing requestId or appId")
       return
     }
+
+    // Store timing
+    timingMetadata.cp05_mobile_received = cp05Time
+
     bridge.sendCommand("photo_request", {
       requestId,
       appId,
       webhookUrl,
       size,
+      timingMetadata,
     })
   }
 

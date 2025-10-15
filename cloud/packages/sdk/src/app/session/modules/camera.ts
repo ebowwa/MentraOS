@@ -180,10 +180,22 @@ export class CameraModule {
         // Generate unique request ID
         const requestId = `photo_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
+        // 📍 CP01: Photo Request Initiated (SDK)
+        const startTime = Date.now();
+        this.logger.info(
+          {
+            checkpointId: "CP01",
+            requestId,
+            timestamp: startTime,
+            phase: "sdk_request_initiated",
+          },
+          `📍 CP01: Photo request initiated`,
+        );
+
         // Store promise resolvers for when we get the response
         this.pendingPhotoRequests.set(requestId, { resolve, reject });
 
-        // Create photo request message
+        // Create photo request message with timing metadata
         const message: PhotoRequest = {
           type: AppToCloudMessageType.PHOTO_REQUEST,
           packageName: this.packageName,
@@ -194,6 +206,10 @@ export class CameraModule {
           customWebhookUrl: options?.customWebhookUrl,
           authToken: options?.authToken,
           size: options?.size || "medium",
+          // Add timing metadata for distributed tracing
+          timingMetadata: {
+            cp01_sdk_start: startTime,
+          },
         };
 
         // Send request to cloud
@@ -279,9 +295,20 @@ export class CameraModule {
     const pendingRequest = this.pendingPhotoRequests.get(requestId);
 
     if (pendingRequest) {
+      // 📍 CP18: Photo Received Complete (SDK)
+      const endTime = Date.now();
+      const startTime = (photoData as any).timingMetadata?.cp01_sdk_start;
+      const totalDuration = startTime ? endTime - startTime : undefined;
+
       this.logger.info(
-        { requestId },
-        `📸 Photo received for request ${requestId}`,
+        {
+          checkpointId: "CP18",
+          requestId,
+          timestamp: endTime,
+          totalDurationMs: totalDuration,
+          phase: "sdk_photo_received",
+        },
+        `📍 CP18: Photo received complete${totalDuration ? ` (${totalDuration}ms total)` : ""}`,
       );
 
       // Resolve the promise with the photo data

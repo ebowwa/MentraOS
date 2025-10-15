@@ -45,6 +45,11 @@ export interface PhotoRequest extends BaseMessage {
   authToken?: string; // Auth token for custom webhook authentication
   /** Desired photo size sent by App. Defaults to 'medium' if omitted. */
   size?: "small" | "medium" | "large";
+  /** Timing metadata for performance tracing (optional) */
+  timingMetadata?: {
+    cp01_sdk_start?: number;
+    [key: string]: number | undefined;
+  };
 }
 
 // Video, Audio and Stream configuration interfaces are imported from '../rtmp-stream'

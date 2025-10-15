@@ -7,6 +7,10 @@ import dotenv from "dotenv";
 import path from "path";
 dotenv.config();
 
+// Initialize OpenTelemetry tracing early
+import { initializeTracing } from "./tracing/otel-setup";
+initializeTracing();
+
 import express from "express";
 import { Server } from "http";
 import cookieParser from "cookie-parser";

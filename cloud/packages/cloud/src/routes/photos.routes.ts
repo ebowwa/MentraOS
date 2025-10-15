@@ -115,6 +115,9 @@ router.post(
   uploadMiddleware,
   async (req: Request, res: Response) => {
     try {
+      // 📍 CP15: Cloud Receives Upload
+      const cp15Time = Date.now();
+
       // Parse metadata from request body
       let metadata;
       try {
@@ -126,7 +129,15 @@ router.post(
 
       const { requestId } = metadata;
 
-      logger.info(`Processing upload for requestId: ${requestId}`);
+      logger.info(
+        {
+          checkpointId: "CP15",
+          requestId,
+          timestamp: cp15Time,
+          phase: "cloud_received_upload",
+        },
+        `📍 CP15: Cloud received photo upload for requestId: ${requestId}`,
+      );
 
       if (!requestId) {
         return res.status(400).json({ error: "Request ID is required" });

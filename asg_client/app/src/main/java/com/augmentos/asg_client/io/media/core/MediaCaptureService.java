@@ -991,6 +991,10 @@ public class MediaCaptureService {
         // TESTING: Add fake delay for camera capture
         PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
+        // 📍 CP12: Camera Capture Started
+        long cp12Time = System.currentTimeMillis();
+        Log.d(TAG, "📍 CP12: Camera capture started: requestId=" + requestId + ", checkpoint=CP12, timestamp=" + cp12Time);
+
         try {
             playShutterSound();
 
@@ -1003,7 +1007,9 @@ public class MediaCaptureService {
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
-                            Log.d(TAG, "Photo captured successfully at: " + filePath);
+                            // 📍 CP13: Photo Captured
+                            long cp13Time = System.currentTimeMillis();
+                            Log.d(TAG, "📍 CP13: Photo captured successfully: requestId=" + requestId + ", filePath=" + filePath + ", checkpoint=CP13, timestamp=" + cp13Time);
 
                             // LED is now managed by CameraNeo and will turn off when camera closes
 
@@ -1123,6 +1129,10 @@ public class MediaCaptureService {
                 }
 
                 Request request = requestBuilder.build();
+
+                // 📍 CP14: Upload Started
+                long cp14Time = System.currentTimeMillis();
+                Log.d(TAG, "📍 CP14: Photo upload started: requestId=" + requestId + ", webhookUrl=" + webhookUrl + ", checkpoint=CP14, timestamp=" + cp14Time);
 
                 Response response = client.newCall(request).execute();
 

@@ -1072,7 +1072,9 @@ public class SmartGlassesManager extends Service {
      */
     public boolean requestPhoto(String requestId, String appId, String webhookUrl, String authToken, String size) {
 
-        Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
+        // 📍 CP08: SmartGlassesManager Processes
+        long cp08Time = System.currentTimeMillis();
+        Log.d(TAG, "📍 CP08: SmartGlassesManager processing photo request: requestId=" + requestId + ", appId=" + appId + ", webhookUrl=" + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size + ", checkpoint=CP08, timestamp=" + cp08Time);
 
         // Track photo request info for potential error responses
         if (webhookUrl != null && !webhookUrl.isEmpty()) {
@@ -1088,7 +1090,7 @@ public class SmartGlassesManager extends Service {
             smartGlassesRepresentative.smartGlassesCommunicator != null &&
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
 
-            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
+            Log.d(TAG, "Forwarding photo request to glasses communicator, requestId: " + requestId + ", appId: " + appId + ", webhookUrl: " + webhookUrl + ", authToken: " + (authToken.isEmpty() ? "none" : "***") + ", size=" + size);
 
             // Pass the request to the smart glasses communicator
             smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId, webhookUrl, authToken, size);

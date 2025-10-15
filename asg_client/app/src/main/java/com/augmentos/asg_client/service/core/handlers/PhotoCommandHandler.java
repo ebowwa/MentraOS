@@ -54,6 +54,12 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
         try {
             // Resolve package name using base class functionality
             String packageName = resolvePackageName(data);
+            
+            // 📍 CP11: PhotoCommandHandler Processes
+            long cp11Time = System.currentTimeMillis();
+            String requestId = data.optString("requestId", "");
+            Log.d(TAG, "📍 CP11: PhotoCommandHandler processing take_photo: requestId=" + requestId + ", packageName=" + packageName + ", checkpoint=CP11, timestamp=" + cp11Time);
+            
             logCommandStart("take_photo", packageName);
 
             // Validate requestId using base class functionality
@@ -61,7 +67,6 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
                 return false;
             }
 
-            String requestId = data.optString("requestId", "");
             String webhookUrl = data.optString("webhookUrl", "");
             String authToken = data.optString("authToken", "");
             String transferMethod = data.optString("transferMethod", "direct");

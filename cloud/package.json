@@ -16,10 +16,8 @@
     "porter": "docker compose -f docker-compose.porter.local.yml up --build",
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:bun": "bun test",
-
     "console": "cd websites/console && bun run dev",
     "store": "cd websites/store && bun run dev",
-
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
     "ngrok:isaiah2": "ngrok http --url=isaiah.mentra.glass 8002",
     "ngrok:israelov": "ngrok http --url=israelovpuddle.ngrok.app 8002"
@@ -31,6 +29,11 @@
     "@langchain/google-vertexai": "^0.1.8",
     "@logtail/pino": "^0.5.4",
     "@mentra/sdk": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.206.0",
+    "@opentelemetry/instrumentation": "^0.206.0",
+    "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0",
     "@sentry/bun": "^9.1.0",
     "@sentry/cli": "^2.42.1",
     "@sentry/node": "^9.1.0",

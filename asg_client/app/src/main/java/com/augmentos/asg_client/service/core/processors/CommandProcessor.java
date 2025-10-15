@@ -154,6 +154,13 @@ public class CommandProcessor {
                 return;
             }
 
+            // 📍 CP10: ASG Receives Command (for photo requests)
+            if ("take_photo".equals(commandData.type())) {
+                long cp10Time = System.currentTimeMillis();
+                String requestId = commandData.data().optString("requestId", "unknown");
+                Log.d(TAG, "📍 CP10: ASG received take_photo command: requestId=" + requestId + ", checkpoint=CP10, timestamp=" + cp10Time);
+            }
+
             Log.d(TAG, "📊 Command data extracted - Type: " + commandData.type() + ", MessageID: " + commandData.messageId() + ", Data: " + commandData.data());
 
             // Check for duplicate message ID
