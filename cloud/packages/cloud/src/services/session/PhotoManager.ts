@@ -139,7 +139,6 @@ export class PhotoManager {
 
     // Message to glasses based on CloudToGlassesMessageType.PHOTO_REQUEST
     // Include webhook URL so ASG can upload directly to the app
-    const metadata = timingMetadata || {};
     const messageToGlasses = {
       type: CloudToGlassesMessageType.PHOTO_REQUEST,
       sessionId: this.userSession.sessionId,
@@ -149,7 +148,7 @@ export class PhotoManager {
       authToken, // Include authToken for webhook authentication
       size, // Propagate desired size
       timestamp: new Date(),
-      timingMetadata: metadata, // Propagate timing metadata
+      timingMetadata: metadata, // Propagate timing metadata (from line 90)
     };
 
     try {
