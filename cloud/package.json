@@ -33,6 +33,8 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.206.0",
     "@opentelemetry/instrumentation": "^0.206.0",
     "@opentelemetry/sdk-node": "^0.206.0",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
+    "@opentelemetry/sdk-trace-node": "^2.1.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
     "@sentry/bun": "^9.1.0",
     "@sentry/cli": "^2.42.1",
