@@ -709,7 +709,13 @@ ${fs.existsSync(beWavPath) ? beWavPath : "(ffmpeg not available)"}
       return buf;
     }
 
-    // Detect endianness once in 'auto' mode
+    // Force swap if mode is "swap" (check FIRST before auto-detection)
+    if (this.endianMode === "swap") {
+      this.shouldSwapBytes = true;
+      this.endianSwapDetermined = true;
+    }
+
+    // Detect endianness once in 'auto' mode (only if not already forced)
     if (
       !this.endianSwapDetermined &&
       this.endianMode === "auto" &&
@@ -746,14 +752,15 @@ ${fs.existsSync(beWavPath) ? beWavPath : "(ffmpeg not available)"}
       );
     }
 
-    // Force swap if mode is "swap"
-    if (this.endianMode === "swap") {
-      this.shouldSwapBytes = true;
-      this.endianSwapDetermined = true;
-    }
-
     // Perform byte swapping if needed
     if (this.shouldSwapBytes) {
+      // Log once to confirm swapping is happening
+      if (frameCount === 0) {
+        this.logger.info(
+          { feature: "livekit-grpc", mode: this.endianMode },
+          "SWAPPING BYTES - converting big-endian to little-endian",
+        );
+      }
       // Create new buffer for swapped data
       const swapped = Buffer.allocUnsafe(buf.length);
       for (let i = 0; i + 1 < buf.length; i += 2) {
@@ -761,6 +768,13 @@ ${fs.existsSync(beWavPath) ? beWavPath : "(ffmpeg not available)"}
         swapped[i + 1] = buf[i];
       }
       return swapped;
+    }
+
+    if (frameCount === 0) {
+      this.logger.info(
+        { feature: "livekit-grpc", mode: this.endianMode },
+        "NOT SWAPPING BYTES - data is already little-endian",
+      );
     }
 
     return buf;

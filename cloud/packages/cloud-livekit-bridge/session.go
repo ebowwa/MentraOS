@@ -128,7 +128,19 @@ func (s *RoomSession) writeAudioToTrack(pcmData []byte, trackName string) error 
 	return nil
 }
 
-// stopPlayback cancels any ongoing audio playback
+// closeTrack closes and unpublishes a specific track
+func (s *RoomSession) closeTrack(trackName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if track, exists := s.tracks[trackName]; exists {
+		track.Close()
+		delete(s.tracks, trackName)
+		log.Printf("Closed and unpublished track '%s' for user %s", trackName, s.userId)
+	}
+}
+
+// stopPlayback cancels any ongoing audio playback (does not close tracks)
 func (s *RoomSession) stopPlayback() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

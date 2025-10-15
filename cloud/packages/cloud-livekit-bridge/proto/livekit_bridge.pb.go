@@ -144,11 +144,12 @@ type AudioChunk struct {
 	// User ID for routing (required for first message in stream)
 	UserId string `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// Track name (optional, defaults to "speaker")
-	// Used to publish audio to different LiveKit tracks:
-	// - "speaker": default audio playback track
-	// - "app_audio": app-specific audio
-	// - "tts": text-to-speech audio
-	TrackName     string `protobuf:"bytes,6,opt,name=track_name,json=trackName,proto3" json:"track_name,omitempty"`
+	// Track ID for routing audio to specific LiveKit tracks (optional)
+	// 0: speaker (default audio playback)
+	// 1: app_audio (app-specific audio)
+	// 2: tts (text-to-speech audio)
+	// >2: custom app tracks
+	TrackId       int32 `protobuf:"varint,6,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -218,11 +219,11 @@ func (x *AudioChunk) GetUserId() string {
 	return ""
 }
 
-func (x *AudioChunk) GetTrackName() string {
+func (x *AudioChunk) GetTrackId() int32 {
 	if x != nil {
-		return x.TrackName
+		return x.TrackId
 	}
-	return ""
+	return 0
 }
 
 // Join LiveKit room request
@@ -515,9 +516,8 @@ type PlayAudioRequest struct {
 	StopOther bool `protobuf:"varint,4,opt,name=stop_other,json=stopOther,proto3" json:"stop_other,omitempty"`
 	// User ID (for routing to correct room session)
 	UserId string `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// Track name (optional, defaults to "speaker")
-	// Specifies which LiveKit track to publish audio to
-	TrackName     string `protobuf:"bytes,6,opt,name=track_name,json=trackName,proto3" json:"track_name,omitempty"`
+	// Track ID (optional, defaults to 0 = "speaker")
+	TrackId       int32 `protobuf:"varint,6,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -587,11 +587,11 @@ func (x *PlayAudioRequest) GetUserId() string {
 	return ""
 }
 
-func (x *PlayAudioRequest) GetTrackName() string {
+func (x *PlayAudioRequest) GetTrackId() int32 {
 	if x != nil {
-		return x.TrackName
+		return x.TrackId
 	}
-	return ""
+	return 0
 }
 
 // Play audio event (streaming response)
@@ -694,7 +694,9 @@ type StopAudioRequest struct {
 	// Optional: Specific request ID to stop (if not set, stops current playback)
 	RequestId string `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// Reason for stopping (for debugging/logging)
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Track ID to stop (optional, defaults to 0 = "speaker")
+	TrackId       int32 `protobuf:"varint,4,opt,name=track_id,json=trackId,proto3" json:"track_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -748,6 +750,13 @@ func (x *StopAudioRequest) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *StopAudioRequest) GetTrackId() int32 {
+	if x != nil {
+		return x.TrackId
+	}
+	return 0
 }
 
 // Stop audio response
@@ -1044,7 +1053,7 @@ var File_proto_livekit_bridge_proto protoreflect.FileDescriptor
 
 const file_proto_livekit_bridge_proto_rawDesc = "" +
 	"\n" +
-	"\x1aproto/livekit_bridge.proto\x12\x15mentra.livekit.bridge\"\xbf\x01\n" +
+	"\x1aproto/livekit_bridge.proto\x12\x15mentra.livekit.bridge\"\xbb\x01\n" +
 	"\n" +
 	"AudioChunk\x12\x19\n" +
 	"\bpcm_data\x18\x01 \x01(\fR\apcmData\x12\x1f\n" +
@@ -1052,9 +1061,8 @@ const file_proto_livekit_bridge_proto_rawDesc = "" +
 	"sampleRate\x12\x1a\n" +
 	"\bchannels\x18\x03 \x01(\x05R\bchannels\x12!\n" +
 	"\ftimestamp_ms\x18\x04 \x01(\x03R\vtimestampMs\x12\x17\n" +
-	"\auser_id\x18\x05 \x01(\tR\x06userId\x12\x1d\n" +
-	"\n" +
-	"track_name\x18\x06 \x01(\tR\ttrackName\"\xa7\x01\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\x12\x19\n" +
+	"\btrack_id\x18\x06 \x01(\x05R\atrackId\"\xa7\x01\n" +
 	"\x0fJoinRoomRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\troom_name\x18\x02 \x01(\tR\broomName\x12\x14\n" +
@@ -1076,7 +1084,7 @@ const file_proto_livekit_bridge_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"C\n" +
 	"\x11LeaveRoomResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error\"\xbd\x01\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\xb9\x01\n" +
 	"\x10PlayAudioRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1b\n" +
@@ -1084,9 +1092,8 @@ const file_proto_livekit_bridge_proto_rawDesc = "" +
 	"\x06volume\x18\x03 \x01(\x02R\x06volume\x12\x1d\n" +
 	"\n" +
 	"stop_other\x18\x04 \x01(\bR\tstopOther\x12\x17\n" +
-	"\auser_id\x18\x05 \x01(\tR\x06userId\x12\x1d\n" +
-	"\n" +
-	"track_name\x18\x06 \x01(\tR\ttrackName\"\x9d\x03\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\x12\x19\n" +
+	"\btrack_id\x18\x06 \x01(\x05R\atrackId\"\x9d\x03\n" +
 	"\x0ePlayAudioEvent\x12C\n" +
 	"\x04type\x18\x01 \x01(\x0e2/.mentra.livekit.bridge.PlayAudioEvent.EventTypeR\x04type\x12\x1d\n" +
 	"\n" +
@@ -1105,12 +1112,13 @@ const file_proto_livekit_bridge_proto_rawDesc = "" +
 	"\bPROGRESS\x10\x01\x12\r\n" +
 	"\tCOMPLETED\x10\x02\x12\n" +
 	"\n" +
-	"\x06FAILED\x10\x03\"b\n" +
+	"\x06FAILED\x10\x03\"}\n" +
 	"\x10StopAudioRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"q\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x19\n" +
+	"\btrack_id\x18\x04 \x01(\x05R\atrackId\"q\n" +
 	"\x11StopAudioResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\x12,\n" +

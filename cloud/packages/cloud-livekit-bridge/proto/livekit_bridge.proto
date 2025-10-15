@@ -52,11 +52,12 @@ message AudioChunk {
   string user_id = 5;
 
   // Track name (optional, defaults to "speaker")
-  // Used to publish audio to different LiveKit tracks:
-  // - "speaker": default audio playback track
-  // - "app_audio": app-specific audio
-  // - "tts": text-to-speech audio
-  string track_name = 6;
+  // Track ID for routing audio to specific LiveKit tracks (optional)
+  // 0: speaker (default audio playback)
+  // 1: app_audio (app-specific audio)
+  // 2: tts (text-to-speech audio)
+  // >2: custom app tracks
+  int32 track_id = 6;
 }
 
 // Join LiveKit room request
@@ -132,9 +133,8 @@ message PlayAudioRequest {
   // User ID (for routing to correct room session)
   string user_id = 5;
 
-  // Track name (optional, defaults to "speaker")
-  // Specifies which LiveKit track to publish audio to
-  string track_name = 6;
+  // Track ID (optional, defaults to 0 = "speaker")
+  int32 track_id = 6;
 }
 
 // Play audio event (streaming response)
@@ -177,6 +177,9 @@ message StopAudioRequest {
 
   // Reason for stopping (for debugging/logging)
   string reason = 3;
+
+  // Track ID to stop (optional, defaults to 0 = "speaker")
+  int32 track_id = 4;
 }
 
 // Stop audio response

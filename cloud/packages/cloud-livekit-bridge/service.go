@@ -14,6 +14,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// trackIDToName converts track ID to track name
+func trackIDToName(trackID int32) string {
+	switch trackID {
+	case 0:
+		return "speaker"
+	case 1:
+		return "app_audio"
+	case 2:
+		return "tts"
+	default:
+		return fmt.Sprintf("track_%d", trackID)
+	}
+}
+
 // LiveKitBridgeService implements the gRPC service
 type LiveKitBridgeService struct {
 	pb.UnimplementedLiveKitBridgeServer
@@ -68,18 +82,14 @@ func (s *LiveKitBridgeService) JoinRoom(
 
 				receivedPackets++
 
-				// Strip header (first 2 bytes contain chunk sequence number)
+				// Match old bridge behavior exactly
 				pcmData := userPacket.Payload
-				if len(pcmData) < 2 {
-					return
+				if len(pcmData)%2 == 1 {
+					pcmData = pcmData[1:]
 				}
-				pcmData = pcmData[2:] // Skip first 2 bytes (header)
-
-				// Ensure even-length PCM data
 				if len(pcmData)%2 == 1 {
 					pcmData = pcmData[:len(pcmData)-1]
 				}
-
 				if len(pcmData) == 0 {
 					return
 				}
@@ -123,17 +133,8 @@ func (s *LiveKitBridgeService) JoinRoom(
 
 	session.room = room
 
-	// Create and publish audio track
-	track, err := session.createPublishTrack()
-	if err != nil {
-		room.Disconnect()
-		return &pb.JoinRoomResponse{
-			Success: false,
-			Error:   fmt.Sprintf("failed to create track: %v", err),
-		}, nil
-	}
-
-	session.publishTrack = track
+	// DON'T create track here - only create when actually playing audio
+	// This prevents static feedback loop (mobile hears empty track as static)
 
 	// Store session
 	s.sessions.Store(req.UserId, session)
@@ -226,12 +227,9 @@ func (s *LiveKitBridgeService) StreamAudio(
 				return
 			}
 
-			// Use track name from chunk, default to "speaker"
-			chunkTrackName := chunk.TrackName
-			if chunkTrackName == "" {
-				chunkTrackName = "speaker"
-			}
-			if err := session.writeAudioToTrack(chunk.PcmData, chunkTrackName); err != nil {
+			// Convert track_id to track name
+			trackName := trackIDToName(chunk.TrackId)
+			if err := session.writeAudioToTrack(chunk.PcmData, trackName); err != nil {
 				errChan <- fmt.Errorf("failed to write audio: %w", err)
 				return
 			}
@@ -329,11 +327,8 @@ func (s *LiveKitBridgeService) PlayAudio(
 		return err
 	}
 
-	// Get track name, default to "speaker"
-	trackName := req.TrackName
-	if trackName == "" {
-		trackName = "speaker"
-	}
+	// Convert track_id to track name
+	trackName := trackIDToName(req.TrackId)
 
 	// Play audio file (implementation in playback.go)
 	duration, err := s.playAudioFile(req, session, stream, trackName)
@@ -344,15 +339,26 @@ func (s *LiveKitBridgeService) PlayAudio(
 			RequestId: req.RequestId,
 			Error:     err.Error(),
 		})
+
+		// Close only this specific track on error
+		session.closeTrack(trackName)
+
 		return err
 	}
 
 	// Send COMPLETED event
-	return stream.Send(&pb.PlayAudioEvent{
+	if err := stream.Send(&pb.PlayAudioEvent{
 		Type:       pb.PlayAudioEvent_COMPLETED,
 		RequestId:  req.RequestId,
 		DurationMs: duration,
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Close only this specific track after playback to prevent static feedback
+	session.closeTrack(trackName)
+
+	return nil
 }
 
 // StopAudio handles stopping audio playback
@@ -360,7 +366,7 @@ func (s *LiveKitBridgeService) StopAudio(
 	ctx context.Context,
 	req *pb.StopAudioRequest,
 ) (*pb.StopAudioResponse, error) {
-	log.Printf("StopAudio request: userId=%s", req.UserId)
+	log.Printf("StopAudio request: userId=%s, trackId=%d", req.UserId, req.TrackId)
 
 	sessionVal, ok := s.sessions.Load(req.UserId)
 	if !ok {
@@ -371,7 +377,15 @@ func (s *LiveKitBridgeService) StopAudio(
 	}
 
 	session := sessionVal.(*RoomSession)
+
+	// Convert track_id to track name
+	trackName := trackIDToName(req.TrackId)
+
+	// Cancel playback for this track
 	session.stopPlayback()
+
+	// Close only the specific track
+	session.closeTrack(trackName)
 
 	return &pb.StopAudioResponse{
 		Success:          true,
