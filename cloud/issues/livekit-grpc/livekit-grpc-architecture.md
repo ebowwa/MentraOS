@@ -1226,17 +1226,15 @@ func (s *RoomSession) Close() {
 
 **Steps**:
 
-1. Implement gRPC service on port 9090
-2. Keep WebSocket service on port 8080 (for rollback)
-3. Add feature flag: `LIVEKIT_USE_GRPC=false` (default)
-4. Test in dev environment:
+1. Implement gRPC service in `packages/cloud-livekit-bridge/`
+2. Keep old WebSocket code in `livekit-client-2/` for reference only (not running)
+3. Test in dev environment:
    - Audio playback
    - Transcription
    - App audio relay
    - Memory/CPU under load
-5. Deploy to staging with flag OFF
-6. Enable flag on staging: `LIVEKIT_USE_GRPC=true`
-7. Thorough staging testing:
+4. Deploy to staging
+5. Thorough staging testing:
    - Functional tests
    - Load tests
    - Memory leak tests (24hr soak)
@@ -1253,10 +1251,9 @@ func (s *RoomSession) Close() {
 
 **Steps**:
 
-1. Deploy to production with `LIVEKIT_USE_GRPC=false`
+1. Deploy to production (gRPC only)
 2. Validate deployment (service running, health checks pass)
-3. Enable feature flag: `LIVEKIT_USE_GRPC=true` (100% rollout)
-4. Monitor metrics closely for first hour:
+3. Monitor metrics closely for first hour:
    - Memory usage
    - CPU usage
    - Error rates
@@ -1266,20 +1263,18 @@ func (s *RoomSession) Close() {
 **Rollback plan** (if issues detected):
 
 ```bash
-# Instant rollback via environment variable (no redeployment needed)
-kubectl set env deployment/cloud LIVEKIT_USE_GRPC=false
-# Or flip feature flag in config/service
+# Revert to previous deployment (old WebSocket image)
+kubectl rollout undo deployment/cloud
+# Or redeploy previous image tag
 ```
 
 ### Phase 3: Cleanup
 
 **After 1 week of stable production**:
 
-1. Remove WebSocket code:
-   - Delete `livekit-client-2/bridge_service.go`
-   - Delete `livekit-client-2/pacing.go`
-   - Delete `LiveKitClient.ts` (WebSocket version)
-   - Remove feature flag checks
+1. Delete old WebSocket code:
+   - Delete entire `livekit-client-2/` directory
+   - Clean up any old references
 
 2. Update documentation
 
@@ -1288,7 +1283,7 @@ kubectl set env deployment/cloud LIVEKIT_USE_GRPC=false
 **Final state**:
 
 ```
-livekit-bridge/       (gRPC service)
+packages/cloud-livekit-bridge/    (gRPC service)
   ├── main.go
   ├── service.go
   ├── session.go
@@ -1327,7 +1322,7 @@ cloud/packages/cloud/src/services/session/
 **Alerting thresholds**:
 
 - Memory growth >100MB/hour → investigate immediately
-- Error rate >1% above baseline → rollback
+- Error rate >1% above baseline → rollback (revert deployment)
 - Goroutine count >1000 → rollback immediately
 - Audio latency >200ms → investigate
 

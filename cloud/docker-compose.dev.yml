@@ -21,7 +21,8 @@ services:
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true
       - CLOUD_HOST_NAME=cloud
-      - LIVEKIT_GO_BRIDGE_URL=ws://livekit-bridge:8080
+      - LIVEKIT_GRPC_BRIDGE_URL=livekit-bridge:9090
+      - DEBUG_CAPTURE_AUDIO=true
     env_file:
       - .env
     volumes:
@@ -34,26 +35,22 @@ services:
     depends_on:
       - livekit-bridge
 
-  # LiveKit Go Bridge service
+  # LiveKit gRPC Bridge service
   livekit-bridge:
     build:
-      context: ./livekit-client-2
+      context: ./packages/cloud-livekit-bridge
       dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
     environment:
-      - PORT=8080
+      - PORT=9090
       - LOG_LEVEL=debug
       - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
     restart: "no"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8080/health",
-        ]
+      test: ["CMD", "pgrep", "-x", "livekit-bridge"]
       interval: 30s
       timeout: 3s
       retries: 3

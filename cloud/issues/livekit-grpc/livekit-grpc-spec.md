@@ -153,14 +153,14 @@ App calls session.audio.speak("hello world")
 
 ### Migration Strategy
 
-- Feature flag: `LIVEKIT_USE_GRPC=true` (default false)
-- Deploy gRPC service on new port alongside WebSocket
-- Test in dev environment
-- Deploy to staging with flag OFF, test thoroughly
-- Push to production with flag OFF
-- Enable 100% via feature flag
+- Implement gRPC service in `packages/cloud-livekit-bridge/`
+- Keep old WebSocket code in `livekit-client-2/` for reference only (not running)
+- Test thoroughly in dev environment
+- Deploy to staging, test thoroughly
+- Deploy to production (gRPC only)
 - Monitor memory, CPU, latency, error rates
-- Rollback: flip feature flag back to false (instant, no redeployment)
+- Rollback: Revert to previous deployment (old WebSocket image)
+- After 1 week stable: Delete `livekit-client-2/`
 
 ## Jitter Buffering Requirements
 
