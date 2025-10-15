@@ -54,13 +54,6 @@ export class LiveKitGrpcClient {
   private endianSwapDetermined = false;
   private shouldSwapBytes = false;
 
-  // Audio capture for debugging
-  private captureAudio = false;
-  private capturedChunks: Buffer[] = [];
-  private captureStartTime: number = 0;
-  private captureDuration = 5000; // 5 seconds
-  private captureFilePath = "";
-
   constructor(userSession: UserSession, bridgeUrl?: string) {
     this.userSession = userSession;
     this.logger = userSession.logger.child({
@@ -83,17 +76,6 @@ export class LiveKitGrpcClient {
     // Initialize endianness mode from environment
     const mode = (process.env.LIVEKIT_PCM_ENDIAN || "auto").toLowerCase();
     this.endianMode = mode as "auto" | "swap" | "off";
-
-    // Enable audio capture if DEBUG_CAPTURE_AUDIO is set
-    if (process.env.DEBUG_CAPTURE_AUDIO === "true") {
-      this.captureAudio = true;
-      const timestamp = Date.now();
-      this.captureFilePath = `/tmp/livekit-audio-${this.userSession.userId}-${timestamp}.raw`;
-      this.logger.info(
-        { feature: "livekit-grpc", path: this.captureFilePath },
-        "Audio capture ENABLED - will save first 5 seconds to file",
-      );
-    }
 
     // Load proto and create gRPC client
     this.initializeGrpcClient();
@@ -265,11 +247,6 @@ export class LiveKitGrpcClient {
       try {
         let pcmData = Buffer.from(chunk.pcm_data);
 
-        // Capture audio for debugging if enabled
-        if (this.captureAudio) {
-          this.captureAudioData(pcmData, receivedChunks);
-        }
-
         // Handle endianness if needed
         if (this.endianMode !== "off" && pcmData.length >= 2) {
           pcmData = this.handleEndianness(pcmData, receivedChunks);
@@ -369,40 +346,7 @@ export class LiveKitGrpcClient {
   }
 
   /**
-   * Capture audio data for debugging
-   */
-  private captureAudioData(pcmData: Buffer, chunkIndex: number): void {
-    if (!this.captureAudio) return;
-
-    // Start capture timer on first chunk
-    if (this.capturedChunks.length === 0) {
-      this.captureStartTime = Date.now();
-      this.logger.info(
-        { feature: "livekit-grpc" },
-        "Started audio capture (5 seconds)",
-      );
-    }
-
-    // Check if we've captured enough
-    const elapsed = Date.now() - this.captureStartTime;
-    if (elapsed > this.captureDuration) {
-      // Save and analyze
-      this.saveAndAnalyzeCapturedAudio();
-      this.captureAudio = false; // Stop capturing
-      return;
-    }
-
-    // Store the chunk (BEFORE any endianness handling)
-    this.capturedChunks.push(Buffer.from(pcmData));
-
-    // Log detailed analysis for first chunk
-    if (chunkIndex === 0) {
-      this.analyzeFirstChunk(pcmData);
-    }
-  }
-
-  /**
-   * Analyze first audio chunk in detail
+   * Analyze first chunk for debugging
    */
   private analyzeFirstChunk(pcmData: Buffer): void {
     this.logger.info(
@@ -437,268 +381,6 @@ export class LiveKitGrpcClient {
       },
       "First chunk - interpreted both ways",
     );
-  }
-
-  /**
-   * Save captured audio to file and analyze
-   */
-  private saveAndAnalyzeCapturedAudio(): void {
-    const fs = require("fs");
-    const { execSync } = require("child_process");
-    const totalChunks = this.capturedChunks.length;
-    const totalBytes = this.capturedChunks.reduce(
-      (sum, chunk) => sum + chunk.length,
-      0,
-    );
-
-    this.logger.info(
-      {
-        feature: "livekit-grpc",
-        chunks: totalChunks,
-        totalBytes,
-        path: this.captureFilePath,
-      },
-      "Saving captured audio to file",
-    );
-
-    try {
-      // Concatenate all chunks
-      const allAudio = Buffer.concat(this.capturedChunks);
-
-      // Save raw PCM
-      fs.writeFileSync(this.captureFilePath, allAudio);
-
-      // Analyze statistics
-      const i16 = new Int16Array(
-        allAudio.buffer,
-        allAudio.byteOffset,
-        Math.floor(allAudio.byteLength / 2),
-      );
-
-      let min = 32767;
-      let max = -32768;
-      let sum = 0;
-      let zeros = 0;
-      let maxAbsValues = 0;
-
-      for (let i = 0; i < i16.length; i++) {
-        const val = i16[i];
-        if (val < min) min = val;
-        if (val > max) max = val;
-        sum += Math.abs(val);
-        if (val === 0) zeros++;
-        if (Math.abs(val) > 30000) maxAbsValues++;
-      }
-
-      const avg = sum / i16.length;
-      const zeroPercent = (zeros / i16.length) * 100;
-      const maxPercent = (maxAbsValues / i16.length) * 100;
-
-      this.logger.info(
-        {
-          feature: "livekit-grpc",
-          stats: {
-            samples: i16.length,
-            min,
-            max,
-            avgAbsolute: Math.round(avg),
-            zerosPercent: zeroPercent.toFixed(2),
-            maxedOutPercent: maxPercent.toFixed(2),
-          },
-        },
-        "Audio capture complete - statistics",
-      );
-
-      // Convert to WAV files automatically
-      const leWavPath = this.captureFilePath.replace(".raw", "-le.wav");
-      const beWavPath = this.captureFilePath.replace(".raw", "-be.wav");
-
-      try {
-        // Convert as little-endian
-        execSync(
-          `ffmpeg -f s16le -ar 16000 -ac 1 -i ${this.captureFilePath} ${leWavPath} -y 2>/dev/null`,
-          { stdio: "ignore" },
-        );
-        this.logger.info(
-          { feature: "livekit-grpc", path: leWavPath },
-          "Created little-endian WAV",
-        );
-      } catch {
-        this.logger.warn(
-          { feature: "livekit-grpc" },
-          "ffmpeg not available - skipping LE WAV",
-        );
-      }
-
-      try {
-        // Convert as big-endian
-        execSync(
-          `ffmpeg -f s16be -ar 16000 -ac 1 -i ${this.captureFilePath} ${beWavPath} -y 2>/dev/null`,
-          { stdio: "ignore" },
-        );
-        this.logger.info(
-          { feature: "livekit-grpc", path: beWavPath },
-          "Created big-endian WAV",
-        );
-      } catch {
-        this.logger.warn(
-          { feature: "livekit-grpc" },
-          "ffmpeg not available - skipping BE WAV",
-        );
-      }
-
-      // Save analysis to text file
-      const analysisPath = this.captureFilePath.replace(".raw", ".txt");
-      const qualityAnalysis = this.analyzeAudioQuality(
-        min,
-        max,
-        avg,
-        zeroPercent,
-        maxPercent,
-      );
-      const analysis = `
-Audio Capture Analysis - STATIC AUDIO DEBUG
-============================================
-File: ${this.captureFilePath}
-Samples: ${i16.length}
-Duration: ~${(i16.length / 16000).toFixed(2)} seconds @ 16kHz
-
-Statistics:
------------
-Min value: ${min}
-Max value: ${max}
-Average absolute: ${Math.round(avg)}
-Zeros: ${zeros} (${zeroPercent.toFixed(2)}%)
-Maxed out (>30000): ${maxAbsValues} (${maxPercent.toFixed(2)}%)
-
-First 100 samples (as little-endian):
-${Array.from(i16.slice(0, 100)).join(", ")}
-
-First 64 bytes (hex):
-${Array.from(allAudio.slice(0, 64))
-  .map((b) => b.toString(16).padStart(2, "0"))
-  .join(" ")}
-
-Analysis:
----------
-${qualityAnalysis}
-
-WAV Files (if ffmpeg available):
----------------------------------
-${leWavPath} - Little-endian (standard)
-${beWavPath} - Big-endian
-
-NEXT STEPS:
------------
-1. Listen to both WAV files (if created)
-2. Determine which one sounds clear (not static)
-3. Apply the fix:
-
-   If ${leWavPath.split("/").pop()} is clear:
-   → Audio is already little-endian (correct)
-   → Add to .env: LIVEKIT_PCM_ENDIAN=off
-
-   If ${beWavPath.split("/").pop()} is clear:
-   → Audio is big-endian (needs byte swapping)
-   → Add to .env: LIVEKIT_PCM_ENDIAN=swap
-
-   If BOTH sound like static:
-   → Not an endianness issue
-   → Check mobile sends PCM16 format
-   → Verify 16kHz mono
-
-4. Restart cloud: docker-compose restart cloud
-
-FILES SAVED:
-------------
-${this.captureFilePath}
-${analysisPath}
-${fs.existsSync(leWavPath) ? leWavPath : "(ffmpeg not available)"}
-${fs.existsSync(beWavPath) ? beWavPath : "(ffmpeg not available)"}
-`;
-
-      fs.writeFileSync(analysisPath, analysis);
-
-      this.logger.info(
-        {
-          feature: "livekit-grpc",
-          rawFile: this.captureFilePath,
-          analysisFile: analysisPath,
-          leWav: fs.existsSync(leWavPath) ? leWavPath : null,
-          beWav: fs.existsSync(beWavPath) ? beWavPath : null,
-        },
-        "Audio capture complete - files saved",
-      );
-
-      // Log to console for easy visibility
-      console.log("\n" + "=".repeat(60));
-      console.log("AUDIO CAPTURE COMPLETE");
-      console.log("=".repeat(60));
-      console.log(analysis);
-      console.log("=".repeat(60) + "\n");
-    } catch (error) {
-      this.logger.error(
-        { feature: "livekit-grpc", error },
-        "Failed to save captured audio",
-      );
-    }
-
-    // Clear captured data
-    this.capturedChunks = [];
-  }
-
-  /**
-   * Analyze audio quality based on statistics
-   */
-  private analyzeAudioQuality(
-    min: number,
-    max: number,
-    avg: number,
-    zeroPercent: number,
-    maxPercent: number,
-  ): string {
-    const issues: string[] = [];
-
-    if (zeroPercent > 50) {
-      issues.push("- TOO MANY ZEROS (>50%) - Likely silence or no audio");
-    }
-
-    if (maxPercent > 10) {
-      issues.push(
-        "- TOO MANY MAXED VALUES (>10%) - Likely clipping or wrong format",
-      );
-    }
-
-    if (avg < 100) {
-      issues.push("- VERY LOW AMPLITUDE (<100) - Audio too quiet or silence");
-    }
-
-    if (avg > 20000) {
-      issues.push("- VERY HIGH AMPLITUDE (>20000) - Possible clipping");
-    }
-
-    if (min === 0 && max === 0) {
-      issues.push("- ALL ZEROS - No audio data");
-    }
-
-    if (Math.abs(max) > 32000 || Math.abs(min) > 32000) {
-      issues.push(
-        "- VALUES NEAR LIMITS - Check for clipping or bit depth issues",
-      );
-    }
-
-    // Check for pattern suggesting wrong endianness
-    if (avg < 500 && maxPercent < 1 && zeroPercent < 10) {
-      issues.push(
-        "- LOW AMPLITUDE BUT NOT SILENCE - Possible endianness issue (try swapping)",
-      );
-    }
-
-    if (issues.length === 0) {
-      return "Audio looks HEALTHY - good amplitude range, no obvious issues";
-    } else {
-      return "POTENTIAL ISSUES DETECTED:\n" + issues.join("\n");
-    }
   }
 
   /**

@@ -13,8 +13,6 @@ import { Logger } from "pino";
 // import { createLC3Service } from "../lc3/lc3.service";
 import { AudioWriter } from "../debug/audio-writer";
 import UserSession from "./UserSession";
-import fs from "fs";
-import { execSync } from "child_process";
 
 /**
  * Represents a sequenced audio chunk with metadata
@@ -71,12 +69,6 @@ export class AudioManager {
   private lastLogAt = 0;
   // Carry-over byte to keep PCM16 even-length between frames
   private pcmRemainder: Buffer | null = null;
-
-  // Audio capture for debugging
-  private captureEnabled = process.env.DEBUG_CAPTURE_AUDIO === "true";
-  private capturedChunks: Buffer[] = [];
-  private captureStartTime = 0;
-  private captureDuration = 5000; // 5 seconds
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
@@ -148,9 +140,6 @@ export class AudioManager {
         }
 
         // Capture audio if enabled
-        if (this.captureEnabled) {
-          this.captureAudio(buf);
-        }
 
         // Relay to Apps if there are subscribers
         this.relayAudioToApps(buf);
@@ -255,69 +244,6 @@ export class AudioManager {
       this.logAudioChunkCount++;
     } catch (error) {
       this.logger.error(error, `Error relaying audio:`);
-    }
-  }
-
-  /**
-   * Capture audio for debugging
-   */
-  private captureAudio(buf: Buffer): void {
-    if (!this.captureEnabled) return;
-
-    // Start capture timer on first chunk
-    if (this.capturedChunks.length === 0) {
-      this.captureStartTime = Date.now();
-      this.logger.info("Started audio capture (5 seconds)");
-    }
-
-    // Check if we've captured enough
-    const elapsed = Date.now() - this.captureStartTime;
-    if (elapsed > this.captureDuration) {
-      this.saveCapturedAudio();
-      this.captureEnabled = false;
-      return;
-    }
-
-    // Store chunk
-    this.capturedChunks.push(Buffer.from(buf));
-  }
-
-  /**
-   * Save captured audio to file
-   */
-  private saveCapturedAudio(): void {
-    try {
-      const userId = this.userSession.userId.replace(/[^a-zA-Z0-9]/g, "-");
-      const rawPath = `/tmp/audio-${userId}.raw`;
-      const wavPath = `/tmp/audio-${userId}.wav`;
-
-      // Concatenate all chunks
-      const allAudio = Buffer.concat(this.capturedChunks);
-
-      // Save raw PCM
-      fs.writeFileSync(rawPath, allAudio);
-
-      this.logger.info({ rawPath, bytes: allAudio.length }, "Saved raw audio");
-
-      // Convert to WAV
-      try {
-        execSync(
-          `ffmpeg -f s16le -ar 16000 -ac 1 -i ${rawPath} ${wavPath} -y 2>/dev/null`,
-        );
-        this.logger.info({ wavPath }, "Created WAV file");
-        console.log(`\n${"=".repeat(60)}`);
-        console.log(`AUDIO SAVED: ${wavPath}`);
-        console.log(
-          `Run: docker cp $(docker ps -q --filter ancestor=dev-cloud):/tmp/audio-${userId}.wav ./`,
-        );
-        console.log(`${"=".repeat(60)}\n`);
-      } catch {
-        this.logger.warn("ffmpeg not available - only raw file saved");
-      }
-
-      this.capturedChunks = [];
-    } catch (error) {
-      this.logger.error({ error }, "Failed to save captured audio");
     }
   }
 
