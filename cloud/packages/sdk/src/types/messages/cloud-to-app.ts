@@ -14,6 +14,7 @@ import {
   CalendarEvent,
   RtmpStreamStatus,
   PhotoResponse,
+  RgbLedControlResponse,
 } from "./glasses-to-cloud";
 import { AppSession } from "../../app/session";
 
@@ -354,6 +355,7 @@ export type CloudToAppMessage =
   | AppDirectMessageResponse
   | RtmpStreamStatus
   | PhotoResponse
+  | RgbLedControlResponse
   | PermissionError
   | AudioPlayResponse;
 
@@ -434,6 +436,12 @@ export function isPhotoResponse(
   message: CloudToAppMessage,
 ): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isRgbLedControlResponse(
+  message: CloudToAppMessage,
+): message is RgbLedControlResponse {
+  return message.type === GlassesToCloudMessageType.RGB_LED_CONTROL_RESPONSE;
 }
 
 export function isStreamStatusCheckResponse(
@@ -532,24 +540,22 @@ export interface AppDirectMessageResponse extends BaseMessage {
   targetUserId: string;
 }
 
-
-
 //===========================================================
 // Cloud-to-Sdk Communication Response Messages
 //===========================================================
 
-/*
-*  Permission data structures for permission fetch responses
-*/
+/**
+ * Permission data structures for permission fetch responses
+ */
 export interface Permission {
   type: string; // or a union/enum if you want stricter typing
   description: string;
   _id: string;
 }
 
-/*
-*  Package permissions response structure
-*/
+/**
+ * Package permissions response structure
+ */
 export interface PackagePermissions {
   packageName: string;
   permissions: Permission[];

@@ -532,6 +532,19 @@ public class ServerComms {
         }
     }
 
+    public void sendTouchEvent(String deviceModel, String gestureName, long timestamp) {
+        try {
+            JSONObject event = new JSONObject();
+            event.put("type", "touch_event");
+            event.put("device_model", deviceModel);
+            event.put("gesture_name", gestureName);
+            event.put("timestamp", timestamp);
+            wsManager.sendText(event.toString());
+            Log.d(TAG, "Sent touch event to cloud: " + gestureName);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error building touch_event JSON", e);
+        }
+    }
 
     public void sendPhoneBatteryUpdate(int level, boolean charging, Integer timeRemaining) {
         try {
@@ -874,6 +887,22 @@ public class ServerComms {
                     serverCommsCallback.onPhotoRequest(requestId, appId, webhookUrl, authToken, size);
                 } else {
                     Log.e(TAG, "Invalid photo request: missing requestId or appId");
+                }
+                break;
+
+            case "rgb_led_control":
+                String ledRequestId = msg.optString("requestId");
+                String ledPackageName = msg.optString("packageName");
+                String action = msg.optString("action");
+                String color = msg.optString("color", "red");
+                int ontime = msg.optInt("ontime", 1000);
+                int offtime = msg.optInt("offtime", 0);
+                int count = msg.optInt("count", 1);
+                Log.d(TAG, "💡 Received rgb_led_control, requestId: " + ledRequestId + ", action: " + action + ", color: " + color);
+                if (serverCommsCallback != null && !ledRequestId.isEmpty()) {
+                    serverCommsCallback.onRgbLedControl(ledRequestId, ledPackageName, action, color, ontime, offtime, count);
+                } else {
+                    Log.e(TAG, "Invalid RGB LED control request: missing requestId");
                 }
                 break;
 
@@ -1250,6 +1279,16 @@ public class ServerComms {
             Log.d(TAG, "Sent audio play response: " + message.toString());
         } catch (Exception e) {
             Log.e(TAG, "Error sending audio play response", e);
+        }
+    }
+
+    public void sendLedControlResponse(JSONObject ledResponse) {
+        try {
+            // Send the LED control response directly since it's already in the correct format
+            wsManager.sendText(ledResponse.toString());
+            Log.d(TAG, "💡 Sent LED control response: " + ledResponse.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending LED control response", e);
         }
     }
 

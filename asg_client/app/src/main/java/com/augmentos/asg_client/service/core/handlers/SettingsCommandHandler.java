@@ -34,7 +34,7 @@ public class SettingsCommandHandler implements ICommandHandler {
     @Override
     public Set<String> getSupportedCommandTypes() {
         return Set.of("set_photo_mode", "button_video_recording_setting",
-                      "button_max_recording_time", "button_photo_setting", "button_camera_led");
+                      "button_max_recording_time", "button_photo_setting", "button_camera_led", "button_mode_setting");
     }
 
     @Override
@@ -51,6 +51,8 @@ public class SettingsCommandHandler implements ICommandHandler {
                     return handleButtonPhotoSetting(data);
                 case "button_camera_led":
                     return handleButtonCameraLedSetting(data);
+                case "button_mode_setting":
+                    return handleButtonModeSetting(data);
                 default:
                     Log.e(TAG, "Unsupported settings command: " + commandType);
                     return false;
@@ -182,6 +184,31 @@ public class SettingsCommandHandler implements ICommandHandler {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error handling button camera LED setting", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Handle button mode setting command
+     * This command allows configuring general button behavior settings
+     */
+    public boolean handleButtonModeSetting(JSONObject data) {
+        try {
+            String mode = data.optString("mode", "normal");
+            
+            Log.d(TAG, "📱 Received button mode setting: " + mode);
+            
+            // For now, we'll just log the setting since AsgSettings doesn't have a specific
+            // button mode field. This can be extended later if needed.
+            Log.d(TAG, "✅ Button mode setting received: " + mode);
+            
+            // Send acknowledgment response
+            JSONObject ack = responseBuilder.buildPhotoModeAckResponse(mode);
+            communicationManager.sendBluetoothResponse(ack);
+            
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error handling button mode setting", e);
             return false;
         }
     }

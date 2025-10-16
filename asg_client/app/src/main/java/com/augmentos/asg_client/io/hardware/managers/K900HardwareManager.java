@@ -5,7 +5,9 @@ import android.util.Log;
 
 import com.augmentos.asg_client.io.hardware.core.BaseHardwareManager;
 import com.augmentos.asg_client.hardware.K900LedController;
+import com.augmentos.asg_client.hardware.K900RgbLedController;
 import com.augmentos.asg_client.audio.I2SAudioController;
+import com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager;
 
 /**
  * Implementation of IHardwareManager for K900 devices.
@@ -13,8 +15,9 @@ import com.augmentos.asg_client.audio.I2SAudioController;
  */
 public class K900HardwareManager extends BaseHardwareManager {
     private static final String TAG = "K900HardwareManager";
-    
+
     private K900LedController ledController;
+    private K900RgbLedController rgbLedController;
     private I2SAudioController audioController;
     
     /**
@@ -162,12 +165,118 @@ public class K900HardwareManager extends BaseHardwareManager {
     }
 
     @Override
+    public void setBluetoothManager(Object bluetoothManager) {
+        if (bluetoothManager instanceof K900BluetoothManager) {
+            try {
+                rgbLedController = new K900RgbLedController((K900BluetoothManager) bluetoothManager);
+                Log.d(TAG, "🔧 ✅ K900 RGB LED controller initialized successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "🔧 ❌ Failed to initialize K900 RGB LED controller", e);
+                rgbLedController = null;
+            }
+        } else {
+            Log.w(TAG, "Invalid BluetoothManager provided (expected K900BluetoothManager)");
+        }
+    }
+
+    // ============================================
+    // MTK LED Brightness Control
+    // ============================================
+
+    @Override
+    public boolean supportsLedBrightness() {
+        return ledController != null;
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent) {
+        if (ledController != null) {
+            ledController.setBrightness(percent);
+            Log.d(TAG, String.format("💡 Recording LED brightness set to %d%%", percent));
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent, int durationMs) {
+        if (ledController != null) {
+            ledController.setBrightness(percent, durationMs);
+            Log.d(TAG, String.format("💡 Recording LED brightness set to %d%% for %dms", percent, durationMs));
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
+
+    @Override
+    public int getRecordingLedBrightness() {
+        if (ledController != null) {
+            return ledController.getBrightness();
+        }
+        return 0;
+    }
+
+    // ============================================
+    // RGB LED Control (BES Chipset)
+    // ============================================
+
+    @Override
+    public boolean supportsRgbLed() {
+        return rgbLedController != null;
+    }
+
+    @Override
+    public void setRgbLedOn(int ledIndex, int ontime, int offtime, int count) {
+        if (rgbLedController != null) {
+            rgbLedController.setLedOn(ledIndex, ontime, offtime, count);
+            Log.d(TAG, String.format("🚨 RGB LED ON - Index: %d, OnTime: %dms, OffTime: %dms, Count: %d",
+                    ledIndex, ontime, offtime, count));
+        } else {
+            Log.w(TAG, "RGB LED controller not available - call setBluetoothManager() first");
+        }
+    }
+
+    @Override
+    public void setRgbLedOff() {
+        if (rgbLedController != null) {
+            rgbLedController.setLedOff();
+            Log.d(TAG, "🚨 RGB LED OFF");
+        } else {
+            Log.w(TAG, "RGB LED controller not available");
+        }
+    }
+
+    @Override
+    public void flashRgbLedWhite(int durationMs) {
+        if (rgbLedController != null) {
+            rgbLedController.flashWhite(durationMs);
+            Log.d(TAG, String.format("📸 RGB LED white flash for %dms", durationMs));
+        } else {
+            Log.w(TAG, "RGB LED controller not available");
+        }
+    }
+
+    @Override
+    public void setRgbLedSolidWhite(int durationMs) {
+        if (rgbLedController != null) {
+            rgbLedController.setSolidWhite(durationMs);
+            Log.d(TAG, String.format("🎥 RGB LED solid white for %dms", durationMs));
+        } else {
+            Log.w(TAG, "RGB LED controller not available");
+        }
+    }
+
+    @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down K900HardwareManager");
 
         if (audioController != null) {
             audioController.stopPlayback();
             audioController = null;
+        }
+
+        if (rgbLedController != null) {
+            rgbLedController = null;
         }
 
         if (ledController != null) {

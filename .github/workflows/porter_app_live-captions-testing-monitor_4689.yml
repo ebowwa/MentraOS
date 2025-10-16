@@ -1,7 +1,7 @@
 "on":
   push:
     branches:
-      - dev
+      - never
 name: Deploy to live-captions-testing-monitor
 jobs:
   porter-deploy:

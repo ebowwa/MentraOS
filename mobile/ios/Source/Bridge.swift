@@ -231,6 +231,44 @@ class Bridge: RCTEventEmitter {
         Bridge.sendTypedMessage("button_press", body: body)
     }
 
+    static func sendTouchEvent(deviceModel: String, gestureName: String, timestamp: Int64) {
+        let body: [String: Any] = [
+            "device_model": deviceModel,
+            "gesture_name": gestureName,
+            "timestamp": timestamp,
+        ]
+        Bridge.sendTypedMessage("touch_event", body: body)
+    }
+
+    static func sendSwipeVolumeStatus(enabled: Bool, timestamp: Int64) {
+        let body: [String: Any] = [
+            "enabled": enabled,
+            "timestamp": timestamp,
+        ]
+        Bridge.sendTypedMessage("swipe_volume_status", body: body)
+    }
+
+    static func sendSwitchStatus(switchType: Int, value: Int, timestamp: Int64) {
+        let body: [String: Any] = [
+            "switch_type": switchType,
+            "switch_value": value,
+            "timestamp": timestamp,
+        ]
+        Bridge.sendTypedMessage("switch_status", body: body)
+    }
+
+    static func sendRgbLedControlResponse(requestId: String, success: Bool, error: String?) {
+        guard !requestId.isEmpty else { return }
+        var body: [String: Any] = [
+            "requestId": requestId,
+            "success": success,
+        ]
+        if let error {
+            body["error"] = error
+        }
+        Bridge.sendTypedMessage("rgb_led_control_response", body: body)
+    }
+
     static func sendPhotoResponse(requestId: String, photoUrl: String) {
         do {
             let event: [String: Any] = [
@@ -385,6 +423,7 @@ class Bridge: RCTEventEmitter {
             case set_button_video_settings
             case set_button_max_recording_time
             case set_button_camera_led
+            case rgb_led_control
             case microphone_state_change
             case restart_transcriber
             case unknown
@@ -611,6 +650,41 @@ class Bridge: RCTEventEmitter {
                         break
                     }
                     m.setButtonCameraLed(enabled)
+                case .rgb_led_control:
+                    guard let params = params,
+                          let action = params["action"] as? String,
+                          let requestId = params["requestId"] as? String
+                    else {
+                        Bridge.log("CommandBridge: rgb_led_control invalid params")
+                        if let maybeRequestId = params?["requestId"] as? String {
+                            Bridge.sendRgbLedControlResponse(requestId: maybeRequestId, success: false, error: "invalid_params")
+                        }
+                        break
+                    }
+
+                    func parseInt(_ value: Any?) -> Int? {
+                        if let intValue = value as? Int {
+                            return intValue
+                        }
+                        if let doubleValue = value as? Double {
+                            return Int(doubleValue)
+                        }
+                        return nil
+                    }
+
+                    let color = params["color"] as? String
+                    let ontime = parseInt(params["ontime"]) ?? 1000
+                    let offtime = parseInt(params["offtime"]) ?? 0
+                    let count = parseInt(params["count"]) ?? 1
+                    let packageName = params["packageName"] as? String
+
+                    m.handleRgbLedControl(requestId: requestId,
+                                          packageName: packageName,
+                                          action: action,
+                                          color: color,
+                                          ontime: ontime,
+                                          offtime: offtime,
+                                          count: count)
                 // STT:
                 case .set_stt_model_details:
                     guard let params = params,

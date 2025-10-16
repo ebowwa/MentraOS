@@ -30,6 +30,7 @@ import androidx.preference.PreferenceManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesGalleryStatusEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.TouchEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
@@ -1786,6 +1787,61 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         hasContent));
                 break;
 
+            case "touch_event":
+                // Process touch event from glasses (swipes, taps, long press)
+                String gestureName = json.optString("gesture_name", "unknown");
+                long touchTimestamp = json.optLong("timestamp", System.currentTimeMillis());
+                
+                Log.d(TAG, "👆 Received touch event - Gesture: " + gestureName);
+                
+                // Post touch event to EventBus for AugmentosService to handle
+                EventBus.getDefault().post(new TouchEvent(
+                        smartGlassesDevice.deviceModelName,
+                        gestureName,
+                        touchTimestamp));
+                break;
+
+            case "swipe_volume_status":
+                // Process swipe volume control status from glasses
+                boolean swipeVolumeEnabled = json.optBoolean("enabled", false);
+                long swipeTimestamp = json.optLong("timestamp", System.currentTimeMillis());
+                
+                Log.d(TAG, "🔊 Received swipe volume status - Enabled: " + swipeVolumeEnabled);
+                
+                // TODO: Post swipe volume status event to EventBus once event class is created
+                // EventBus.getDefault().post(new SwipeVolumeStatusEvent(
+                //         smartGlassesDevice.deviceModelName,
+                //         swipeVolumeEnabled,
+                //         swipeTimestamp));
+                
+                // For now, forward to data observable for app consumption
+                if (dataObservable != null) {
+                    dataObservable.onNext(json);
+                }
+                break;
+
+            case "switch_status":
+                // Process switch status report from glasses
+                int switchType = json.optInt("switch_type", -1);
+                int switchValue = json.optInt("switch_value", -1);
+                long switchTimestamp = json.optLong("timestamp", System.currentTimeMillis());
+                
+                Log.d(TAG, "🔘 Received switch status - Type: " + switchType + 
+                      ", Value: " + switchValue);
+                
+                // TODO: Post switch status event to EventBus once event class is created
+                // EventBus.getDefault().post(new SwitchStatusEvent(
+                //         smartGlassesDevice.deviceModelName,
+                //         switchType,
+                //         switchValue,
+                //         switchTimestamp));
+                
+                // For now, forward to data observable for app consumption
+                if (dataObservable != null) {
+                    dataObservable.onNext(json);
+                }
+                break;
+
             case "sensor_data":
                 // Process sensor data
                 // ...
@@ -1996,6 +2052,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 break;
 
             default:
+                Log.d(TAG, "📦 Unknown message type: " + type);
                 // Pass the data to the subscriber for custom processing
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -2169,6 +2226,29 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
             default:
                 Log.d(TAG, "Unknown K900 command: " + command);
+                
+                // Check if this is a C-wrapped standard JSON message (not a true K900 command)
+                // This happens when ASG Client sends standard JSON messages through K900BluetoothManager
+                // which automatically C-wraps them
+                try {
+                    // Try to parse the "C" field as JSON
+                    JSONObject innerJson = new JSONObject(command);
+                    
+                    // If it has a "type" field, it's a standard message that got C-wrapped
+                    if (innerJson.has("type")) {
+                        String messageType = innerJson.optString("type", "");
+                        Log.d(TAG, "📦 Detected C-wrapped standard JSON message with type: " + messageType);
+                        Log.d(TAG, "🔓 Unwrapping and processing through standard message handler");
+                        
+                        // Process through the standard message handler
+                        processJsonMessage(innerJson);
+                        return; // Exit after processing
+                    }
+                } catch (JSONException e) {
+                    // Not valid JSON or doesn't have type field - treat as unknown K900 command
+                    Log.d(TAG, "Command is not a C-wrapped JSON message, passing to data observable");
+                }
+                
                 // Pass to data observable for custom processing
                 if (dataObservable != null) {
                     dataObservable.onNext(json);
@@ -3576,8 +3656,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 case "request_wifi_scan":
                     requestWifiScan();
                     break;
+                case "rgb_led_control_on":
+                case "rgb_led_control_off":
+                    // Forward LED control commands directly to glasses via BLE
+                    Log.d(TAG, "💡 Forwarding LED control command to glasses: " + type);
+                    sendJson(json, true);
+                    break;
                 default:
-                    Log.w(TAG, "Unknown custom command type: " + type);
+                    Log.w(TAG, "Unknown custom command type: " + type + " - attempting to forward to glasses");
+                    // Forward unknown commands to glasses - they might handle them
+                    sendJson(json, true);
                     break;
             }
         } catch (JSONException e) {

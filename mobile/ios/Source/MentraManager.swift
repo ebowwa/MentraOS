@@ -1015,6 +1015,29 @@ struct ViewState {
         handle_request_status() // to update the UI
     }
 
+    func handleRgbLedControl(requestId: String,
+                             packageName: String?,
+                             action: String,
+                             color: String?,
+                             ontime: Int,
+                             offtime: Int,
+                             count: Int)
+    {
+        guard let live = sgc as? MentraLive else {
+            Bridge.log("Mentra: RGB LED control requested but current SGC does not support Mentra Live features")
+            Bridge.sendRgbLedControlResponse(requestId: requestId, success: false, error: "unsupported_device")
+            return
+        }
+
+        live.handleRgbLedControl(requestId: requestId,
+                                 packageName: packageName,
+                                 action: action,
+                                 color: color,
+                                 ontime: ontime,
+                                 offtime: offtime,
+                                 count: count)
+    }
+
     func updateGlassesHeadUpAngle(_ value: Int) {
         headUpAngle = value
         sgc?.setHeadUpAngle(value)

@@ -92,6 +92,25 @@ export interface PhotoRequestToGlasses extends BaseMessage {
   size?: "small" | "medium" | "large";
 }
 
+/**
+ * LED color type for RGB LED control
+ */
+export type LedColor = "red" | "green" | "blue" | "orange" | "white";
+
+/**
+ * RGB LED control request to glasses
+ */
+export interface RgbLedControlToGlasses extends BaseMessage {
+  type: CloudToGlassesMessageType.RGB_LED_CONTROL;
+  requestId: string;
+  appId: string;
+  action: "on" | "off"; // Only low-level on/off actions
+  color?: LedColor; // LED color name
+  ontime?: number;
+  offtime?: number;
+  count?: number;
+}
+
 // TODO(isaiah): Deprecated, remove this after new mobile client refactor complete, and we migrate to SettingsStateChange.
 /**
  * Settings update to glasses
@@ -220,6 +239,7 @@ export type CloudToGlassesMessage =
   | AppStateChange
   | MicrophoneStateChange
   | PhotoRequestToGlasses
+  | RgbLedControlToGlasses
   | AudioPlayRequestToGlasses
   | AudioStopRequestToGlasses
   | SettingsUpdate
@@ -283,6 +303,12 @@ export function isPhotoRequest(
   message: CloudToGlassesMessage,
 ): message is PhotoRequestToGlasses {
   return message.type === CloudToGlassesMessageType.PHOTO_REQUEST;
+}
+
+export function isRgbLedControl(
+  message: CloudToGlassesMessage,
+): message is RgbLedControlToGlasses {
+  return message.type === CloudToGlassesMessageType.RGB_LED_CONTROL;
 }
 
 export function isSettingsUpdate(

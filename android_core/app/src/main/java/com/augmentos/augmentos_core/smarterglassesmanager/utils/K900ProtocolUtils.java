@@ -263,6 +263,9 @@ public class K900ProtocolUtils {
         if (data == null || data.length < 7) { // Minimum protocol size
             return false;
         }
+
+        Log.d("K900ProtocolUtils", "isK900ProtocolFormat: " + data[0] + " " + data[1]);
+        Log.d("K900ProtocolUtils", "CMD_START_CODE: " + CMD_START_CODE[0] + " " + CMD_START_CODE[1]);
         
         return data[0] == CMD_START_CODE[0] && 
                data[1] == CMD_START_CODE[1];

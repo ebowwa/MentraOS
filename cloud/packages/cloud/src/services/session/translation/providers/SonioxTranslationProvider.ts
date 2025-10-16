@@ -236,15 +236,37 @@ class SonioxTranslationStream implements TranslationStreamInstance {
   private sendConfigMessage(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
+    // Check if this is "all-to-LANG" format (one-way from any language)
+    const isAllToFormat = this.sourceLanguage === "all";
+
     // Normalize language codes for Soniox
-    const sourceLang = this.normalizeLanguageCode(this.sourceLanguage);
+    const sourceLang = isAllToFormat
+      ? "auto"
+      : this.normalizeLanguageCode(this.sourceLanguage);
     const targetLang = this.normalizeLanguageCode(this.targetLanguage);
 
     // Build translation config optimized for translation only
     let translationConfig: any;
 
-    // Check if this is a two-way translation pair
-    if (this.isTwoWayPair(sourceLang, targetLang)) {
+    if (isAllToFormat) {
+      // One-way translation from ALL languages to target
+      this.isTwoWay = false;
+
+      translationConfig = {
+        type: "one_way",
+        target_language: targetLang,
+      };
+
+      this.logger.debug(
+        {
+          format: "all-to-target",
+          targetLanguage: targetLang,
+        },
+        "Using one-way translation from all languages",
+      );
+    } else if (this.isTwoWayPair(sourceLang, targetLang)) {
+      // Two-way translation between specific language pair
+      // This gives better accuracy with language hints
       this.isTwoWay = true;
       this.langA = sourceLang;
       this.langB = targetLang;
@@ -254,8 +276,17 @@ class SonioxTranslationStream implements TranslationStreamInstance {
         language_a: sourceLang,
         language_b: targetLang,
       };
+
+      this.logger.debug(
+        {
+          format: "two-way",
+          languageA: sourceLang,
+          languageB: targetLang,
+        },
+        "Using two-way translation with language hints for better accuracy",
+      );
     } else {
-      // One-way translation
+      // One-way translation from specific source to target
       this.isTwoWay = false;
 
       translationConfig = {
@@ -263,27 +294,35 @@ class SonioxTranslationStream implements TranslationStreamInstance {
         target_language: targetLang,
       };
 
-      // If source is specific, set it
+      // If source is specific, set it as hint
       if (sourceLang !== "auto") {
         translationConfig.source_languages = [sourceLang];
       }
+
+      this.logger.debug(
+        {
+          format: "one-way",
+          sourceLanguage: sourceLang,
+          targetLanguage: targetLang,
+        },
+        "Using one-way translation with specific source",
+      );
     }
 
     const config = {
       api_key: this.config.apiKey,
-      model: this.config.model || "stt-rt-preview-v2",
+      model: this.config.model || "stt-rt-v3-preview",
       audio_format: "pcm_s16le",
       sample_rate: 16000,
       num_channels: 1,
       language: sourceLang === "auto" ? "auto" : sourceLang,
       translation: translationConfig,
 
+      // Enable language identification for better accuracy
+      enable_language_identification: true,
+
       // Optimize for translation
       include_nonfinal: false, // for translation, we don't need non final results.
-      enable_profanity_filter: false,
-      enable_automatic_punctuation: true,
-      enable_speaker_diarization: true,
-      enable_language_identification: true,
       enable_endpoint_detection: true,
 
       // max time for final.
@@ -294,8 +333,13 @@ class SonioxTranslationStream implements TranslationStreamInstance {
 
     this.logger.debug(
       {
-        config,
-        languages: `${this.sourceLanguage} → ${this.targetLanguage}`,
+        translationType: translationConfig.type,
+        sourceLanguage: this.sourceLanguage,
+        targetLanguage: this.targetLanguage,
+        normalizedSource: sourceLang,
+        normalizedTarget: targetLang,
+        isAllToFormat,
+        isTwoWay: this.isTwoWay,
       },
       "Sent Soniox translation config",
     );
@@ -965,6 +1009,13 @@ export class SonioxTranslationProvider implements TranslationProvider {
   }
 
   supportsLanguagePair(source: string, target: string): boolean {
+    // Special case: "all" means translate from any language to target
+    if (source === "all") {
+      return this.supportedLanguages.has(
+        SonioxTranslationUtils.normalizeLanguageCode(target),
+      );
+    }
+
     // Use the utility to check if the language pair is supported
     return SonioxTranslationUtils.supportsTranslation(source, target);
   }

@@ -57,6 +57,7 @@ export {
   // Re-export the cloud-to-app versions of these type guards since they're the ones
   // that should be used when dealing with CloudToAppMessage types
   isPhotoResponse as isPhotoResponseFromCloud,
+  isRgbLedControlResponse as isRgbLedControlResponseFromCloud,
   isRtmpStreamStatus as isRtmpStreamStatusFromCloud,
 } from "./types/messages/cloud-to-app";
 
@@ -105,6 +106,7 @@ export * from "./logging/logger";
 export {
   ButtonPress,
   HeadPosition,
+  TouchEvent,
   GlassesBatteryUpdate,
   PhoneBatteryUpdate,
   GlassesConnectionState,
@@ -120,6 +122,7 @@ export {
   OpenDashboard,
   GlassesToCloudMessage,
   PhotoResponse,
+  RgbLedControlResponse,
   PhotoErrorCode,
   PhotoStage,
   ConnectionState,
@@ -138,10 +141,12 @@ export {
   MicrophoneStateChange,
   CloudToGlassesMessage,
   PhotoRequestToGlasses,
+  RgbLedControlToGlasses,
   SettingsUpdate,
   StartRtmpStream,
   StopRtmpStream,
   KeepRtmpStreamAlive,
+  LedColor,
 } from "./types/messages/cloud-to-glasses";
 
 // From messages/app-to-cloud.ts
@@ -152,6 +157,7 @@ export {
   RtmpStreamStopRequest,
   AppToCloudMessage,
   PhotoRequest,
+  RgbLedControlRequest,
 } from "./types/messages/app-to-cloud";
 
 // From layout.ts
@@ -174,6 +180,7 @@ export {
   isStartApp,
   isStopApp,
   isPhotoResponse as isPhotoResponseFromGlasses,
+  isRgbLedControlResponse as isRgbLedControlResponseFromGlasses,
   isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
   isKeepAliveAck,
   isPhoneNotificationDismissed,
@@ -188,6 +195,7 @@ export {
   isStartRtmpStream,
   isStopRtmpStream,
   isKeepRtmpStreamAlive,
+  isRgbLedControl,
 } from "./types/messages/cloud-to-glasses";
 
 export {
@@ -197,6 +205,7 @@ export {
   isRtmpStreamRequest,
   isRtmpStreamStopRequest,
   isPhotoRequest as isPhotoRequestFromApp,
+  isRgbLedControlRequest,
 } from "./types/messages/app-to-cloud";
 
 // Export setting-related types

@@ -288,6 +288,67 @@ class SocketComms {
     }
   }
 
+  sendTouchEvent(event: {device_model: string; gesture_name: string; timestamp: number}) {
+    try {
+      const payload = {
+        type: "touch_event",
+        device_model: event.device_model,
+        gesture_name: event.gesture_name,
+        timestamp: event.timestamp,
+      }
+      this.ws.sendText(JSON.stringify(payload))
+    } catch (error) {
+      console.log(`SocketCommsTS: Error sending touch_event: ${error}`)
+    }
+  }
+
+  sendSwipeVolumeStatus(enabled: boolean, timestamp: number) {
+    try {
+      const payload = {
+        type: "swipe_volume_status",
+        enabled,
+        timestamp,
+      }
+      this.ws.sendText(JSON.stringify(payload))
+    } catch (error) {
+      console.log(`SocketCommsTS: Error sending swipe_volume_status: ${error}`)
+    }
+  }
+
+  sendSwitchStatus(switchType: number, switchValue: number, timestamp: number) {
+    try {
+      const payload = {
+        type: "switch_status",
+        switch_type: switchType,
+        switch_value: switchValue,
+        timestamp,
+      }
+      this.ws.sendText(JSON.stringify(payload))
+    } catch (error) {
+      console.log(`SocketCommsTS: Error sending switch_status: ${error}`)
+    }
+  }
+
+  sendRgbLedControlResponse(requestId: string, success: boolean, errorMessage?: string | null) {
+    if (!requestId) {
+      console.log("SocketCommsTS: Skipping RGB LED control response - missing requestId")
+      return
+    }
+    try {
+      const payload: any = {
+        type: "rgb_led_control_response",
+        requestId,
+        success,
+      }
+      if (errorMessage) {
+        payload.error = errorMessage
+      }
+      this.ws.sendText(JSON.stringify(payload))
+    } catch (error) {
+      console.log(`SocketCommsTS: Error sending rgb_led_control_response: ${error}`)
+    }
+  }
+
   sendHeadPosition(isUp: boolean) {
     try {
       const event = {
@@ -480,6 +541,28 @@ class SocketComms {
     })
   }
 
+  private handle_rgb_led_control(msg: any) {
+    if (!msg || !msg.requestId) {
+      console.log("SocketCommsTS: rgb_led_control missing requestId, ignoring")
+      return
+    }
+
+    const coerceNumber = (value: any, fallback: number) => {
+      const coerced = Number(value)
+      return Number.isFinite(coerced) ? coerced : fallback
+    }
+
+    bridge.sendCommand("rgb_led_control", {
+      requestId: msg.requestId,
+      packageName: msg.packageName ?? null,
+      action: msg.action ?? "off",
+      color: msg.color ?? null,
+      ontime: coerceNumber(msg.ontime, 1000),
+      offtime: coerceNumber(msg.offtime, 0),
+      count: coerceNumber(msg.count, 1),
+    })
+  }
+
   // Message Handling
   private handle_message(msg: any) {
     const type = msg.type
@@ -574,6 +657,10 @@ class SocketComms {
 
       case "stop_video_recording":
         this.handle_stop_video_recording(msg)
+        break
+
+      case "rgb_led_control":
+        this.handle_rgb_led_control(msg)
         break
 
       default:

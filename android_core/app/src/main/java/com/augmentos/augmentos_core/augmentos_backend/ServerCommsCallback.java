@@ -28,6 +28,19 @@ public interface ServerCommsCallback {
     void onPhotoRequest(String requestId, String appId, String webhookUrl, String authToken, String size);
 
     /**
+     * Called when the server requests RGB LED control
+     *
+     * @param requestId Unique ID for this LED control request
+     * @param packageName Package name of the app requesting LED control
+     * @param action LED action ("on" or "off")
+     * @param color LED color ("red", "green", "blue", "orange", "white")
+     * @param ontime LED on duration in milliseconds
+     * @param offtime LED off duration in milliseconds
+     * @param count Number of on/off cycles
+     */
+    void onRgbLedControl(String requestId, String packageName, String action, String color, int ontime, int offtime, int count);
+
+    /**
      * Called when the server requests an RTMP stream
      *
      * @param message The complete RTMP stream request message with all parameters

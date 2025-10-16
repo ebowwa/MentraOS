@@ -378,6 +378,45 @@ export class MantleBridge extends EventEmitter {
           // Also forward to server for apps that need it
           socketComms.sendButtonPress(data.buttonId, data.pressType)
           break
+        case "touch_event": {
+          const deviceModel = data.device_model ?? "Mentra Live"
+          const gestureName = data.gesture_name ?? "unknown"
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          GlobalEventEmitter.emit("TOUCH_EVENT", {
+            deviceModel,
+            gestureName,
+            timestamp,
+          })
+          socketComms.sendTouchEvent({
+            device_model: deviceModel,
+            gesture_name: gestureName,
+            timestamp,
+          })
+          break
+        }
+        case "swipe_volume_status": {
+          const enabled = !!data.enabled
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          socketComms.sendSwipeVolumeStatus(enabled, timestamp)
+          GlobalEventEmitter.emit("SWIPE_VOLUME_STATUS", {enabled, timestamp})
+          break
+        }
+        case "switch_status": {
+          const switchType = typeof data.switch_type === "number" ? data.switch_type : (data.switchType ?? -1)
+          const switchValue = typeof data.switch_value === "number" ? data.switch_value : (data.switchValue ?? -1)
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          socketComms.sendSwitchStatus(switchType, switchValue, timestamp)
+          GlobalEventEmitter.emit("SWITCH_STATUS", {switchType, switchValue, timestamp})
+          break
+        }
+        case "rgb_led_control_response": {
+          const requestId = data.requestId ?? ""
+          const success = !!data.success
+          const errorMessage = typeof data.error === "string" ? data.error : null
+          socketComms.sendRgbLedControlResponse(requestId, success, errorMessage)
+          GlobalEventEmitter.emit("RGB_LED_CONTROL_RESPONSE", {requestId, success, error: errorMessage})
+          break
+        }
         case "audio_play_request":
           await AudioPlayService.handle_audio_play_request(data)
           break
@@ -677,6 +716,7 @@ export class MantleBridge extends EventEmitter {
   }
 
   async sendGalleryModeActive(active: boolean) {
+    console.log("sendGalleryModeActive", active)
     return await this.sendData({
       command: "send_gallery_mode_active",
       params: {

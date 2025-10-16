@@ -50,6 +50,8 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.12.4",
+    "@grpc/proto-loader": "^0.7.15",
     "@livekit/rtc-node": "^0.13.18",
     "@logtail/pino": "^0.5.4",
     "@mentra/sdk": "workspace:*",

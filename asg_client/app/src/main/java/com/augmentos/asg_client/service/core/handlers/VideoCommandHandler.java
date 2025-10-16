@@ -46,7 +46,7 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 case "start_video_recording":
                     return handleStartVideoRecording(data);
                 case "stop_video_recording":
-                    return handleStopCommand();
+                    return handleStopCommand(data);
                 case "get_video_recording_status":
                     return handleStatusCommand();
                 case "start_buffer_recording":
@@ -137,7 +137,9 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
     /**
      * Handle stop video recording command
      */
-    public boolean handleStopCommand() {
+    public boolean handleStopCommand(JSONObject data) {
+        Log.d(TAG, "handleStopCommand called with data: " + data);
+
         try {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
@@ -152,7 +154,22 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 return false;
             }
 
-            captureService.stopVideoRecording();
+            // Extract requestId from command data if provided
+            String requestId = null;
+            if (data != null) {
+                requestId = data.optString("requestId", null);
+            }
+            
+            // If requestId provided, use handleStopVideoCommand for validation
+            // Otherwise use direct stopVideoRecording for backward compatibility
+            if (requestId != null && !requestId.isEmpty()) {
+                Log.d(TAG, "Stopping video with requestId validation: " + requestId);
+                captureService.handleStopVideoCommand(requestId);
+            } else {
+                Log.d(TAG, "Stopping video without requestId (backward compatibility mode)");
+                captureService.stopVideoRecording();
+            }
+            
             streamingManager.sendVideoRecordingStatusResponse(true, "recording_stopped", null);
             return true;
         } catch (Exception e) {

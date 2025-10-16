@@ -28,6 +28,7 @@ export enum GlassesToCloudMessageType {
 
   BUTTON_PRESS = StreamType.BUTTON_PRESS,
   HEAD_POSITION = StreamType.HEAD_POSITION,
+  TOUCH_EVENT = StreamType.TOUCH_EVENT,
   GLASSES_BATTERY_UPDATE = StreamType.GLASSES_BATTERY_UPDATE,
   PHONE_BATTERY_UPDATE = StreamType.PHONE_BATTERY_UPDATE,
   GLASSES_CONNECTION_STATE = StreamType.GLASSES_CONNECTION_STATE,
@@ -50,6 +51,9 @@ export enum GlassesToCloudMessageType {
 
   PHOTO_TAKEN = StreamType.PHOTO_TAKEN,
   AUDIO_PLAY_RESPONSE = "audio_play_response",
+
+  // RGB LED control
+  RGB_LED_CONTROL_RESPONSE = "rgb_led_control_response",
 
   // LiveKit handshake
   LIVEKIT_INIT = "livekit_init",
@@ -74,6 +78,7 @@ export enum CloudToGlassesMessageType {
   PHOTO_REQUEST = "photo_request",
   AUDIO_PLAY_REQUEST = "audio_play_request",
   AUDIO_STOP_REQUEST = "audio_stop_request",
+  RGB_LED_CONTROL = "rgb_led_control",
 
   // RTMP streaming
   START_RTMP_STREAM = "start_rtmp_stream",
@@ -108,6 +113,7 @@ export enum AppToCloudMessageType {
   PHOTO_REQUEST = "photo_request",
   AUDIO_PLAY_REQUEST = "audio_play_request",
   AUDIO_STOP_REQUEST = "audio_stop_request",
+  RGB_LED_CONTROL = "rgb_led_control",
 
   // RTMP streaming
   RTMP_STREAM_REQUEST = "rtmp_stream_request",
@@ -157,6 +163,7 @@ export enum CloudToAppMessageType {
   // Media responses
   PHOTO_RESPONSE = "photo_response",
   AUDIO_PLAY_RESPONSE = "audio_play_response",
+  RGB_LED_CONTROL_RESPONSE = "rgb_led_control_response",
   RTMP_STREAM_STATUS = "rtmp_stream_status",
   MANAGED_STREAM_STATUS = "managed_stream_status",
   STREAM_STATUS_CHECK_RESPONSE = "stream_status_check_response",
@@ -228,6 +235,7 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.PHOTO_REQUEST,
   CloudToGlassesMessageType.AUDIO_PLAY_REQUEST,
   CloudToGlassesMessageType.AUDIO_STOP_REQUEST,
+  CloudToGlassesMessageType.RGB_LED_CONTROL,
   CloudToGlassesMessageType.SETTINGS_UPDATE,
   CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,

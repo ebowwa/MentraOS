@@ -21,39 +21,37 @@ services:
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true
       - CLOUD_HOST_NAME=cloud
-      - LIVEKIT_GO_BRIDGE_URL=ws://livekit-bridge:8080
+      - LIVEKIT_GRPC_SOCKET=/var/run/livekit/bridge.sock
     env_file:
       - .env
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
+      - livekit_socket:/var/run/livekit
     command: bash -c "bun install && cd packages/sdk && bun run build && cd ../cloud && bun install && bun run dev"
     tty: true
     stdin_open: true
     depends_on:
       - livekit-bridge
 
-  # LiveKit Go Bridge service
+  # LiveKit gRPC Bridge service
   livekit-bridge:
     build:
-      context: ./livekit-client-2
+      context: ./packages/cloud-livekit-bridge
       dockerfile: Dockerfile
     environment:
-      - PORT=8080
+      - PORT=9090
       - LOG_LEVEL=debug
       - LIVEKIT_URL=${LIVEKIT_URL}
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+      - LIVEKIT_GRPC_SOCKET=/var/run/livekit/bridge.sock
+    volumes:
+      - livekit_socket:/var/run/livekit
     restart: "no"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8080/health",
-        ]
+      test: ["CMD", "test", "-S", "/var/run/livekit/bridge.sock"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -61,3 +59,4 @@ services:
 volumes:
   node_modules:
   bun_cache:
+  livekit_socket:

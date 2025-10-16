@@ -25,6 +25,7 @@ import {
   StreamStatusCheckRequest,
   StreamStatusCheckResponse,
   PermissionType,
+  RgbLedControlRequest,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
@@ -255,6 +256,70 @@ export class AppWebSocketService {
           userSession.dashboardManager.handleAppMessage(message);
           break;
         }
+
+        // RGB LED control message handling
+        case AppToCloudMessageType.RGB_LED_CONTROL:
+          // Forward RGB LED control request to glasses
+          try {
+            const ledRequestMsg = message as RgbLedControlRequest;
+
+            this.logger.info(
+              {
+                requestId: ledRequestMsg.requestId,
+                packageName: ledRequestMsg.packageName,
+                action: ledRequestMsg.action,
+                color: ledRequestMsg.color,
+              },
+              "💡 RGB LED control request received from app",
+            );
+
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesLedRequest = {
+              type: CloudToGlassesMessageType.RGB_LED_CONTROL,
+              sessionId: userSession.sessionId,
+              requestId: ledRequestMsg.requestId,
+              packageName: ledRequestMsg.packageName,
+              action: ledRequestMsg.action,
+              color: ledRequestMsg.color,
+              ontime: ledRequestMsg.ontime,
+              offtime: ledRequestMsg.offtime,
+              count: ledRequestMsg.count,
+              timestamp: new Date(),
+            };
+
+            // Send to glasses via WebSocket
+            if (
+              userSession.websocket &&
+              userSession.websocket.readyState === 1
+            ) {
+              userSession.websocket.send(JSON.stringify(glassesLedRequest));
+              this.logger.info(
+                {
+                  requestId: ledRequestMsg.requestId,
+                  action: ledRequestMsg.action,
+                },
+                "💡 RGB LED control request forwarded to glasses",
+              );
+            } else {
+              this.sendError(
+                appWebsocket,
+                AppErrorCode.INTERNAL_ERROR,
+                "Glasses not connected",
+              );
+            }
+          } catch (e) {
+            this.logger.error(
+              { e, packageName: message.packageName },
+              "Error forwarding RGB LED control request",
+            );
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message ||
+                "Failed to forward RGB LED control request.",
+            );
+          }
+          break;
 
         // Mentra Live Photo / Video Stream Request message handling.
         case AppToCloudMessageType.RTMP_STREAM_REQUEST:

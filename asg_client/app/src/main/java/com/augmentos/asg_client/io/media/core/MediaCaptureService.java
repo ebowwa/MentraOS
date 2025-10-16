@@ -363,6 +363,48 @@ public class MediaCaptureService {
             hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
         }
     }
+    
+    /**
+     * Trigger white LED flash for photo capture (synchronized with shutter sound)
+     */
+    private void triggerPhotoFlashLed() {
+        Log.i(TAG, "📸 triggerPhotoFlashLed() called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.flashRgbLedWhite(5000); // 5 second flash
+            Log.i(TAG, "📸 Photo flash LED (white) triggered via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
+    
+    /**
+     * Trigger solid white LED for video recording duration
+     */
+    private void triggerVideoPulseLed() {
+        Log.i(TAG, "🎥 triggerVideoPulseLed() called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.setRgbLedSolidWhite(60000); // 60 second solid white LED
+            Log.i(TAG, "🎥 Video recording LED (solid white) triggered via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
+    
+    /**
+     * Stop video recording LED (turn off LED)
+     */
+    private void stopVideoPulseLed() {
+        Log.d(TAG, "stopVideoPulseLed called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.setRgbLedOff();
+            Log.d(TAG, "🎥 Video recording LED stopped via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
 
     private void playVideoStartSound() {
         if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
@@ -384,6 +426,8 @@ public class MediaCaptureService {
      * @param initialBatteryLevel Initial battery level (for monitoring during recording, -1 = unknown)
      */
     public void startVideoRecording(VideoSettings settings, boolean enableLed, int maxRecordingTimeMinutes, int initialBatteryLevel) {
+        Log.d(TAG, "startVideoRecording called with settings: " + settings + ", enableLed: " + enableLed + ", maxRecordingTimeMinutes: " + maxRecordingTimeMinutes + ", initialBatteryLevel: " + initialBatteryLevel);
+        
         // Check if battery is too low to start recording
         if (initialBatteryLevel >= 0 && initialBatteryLevel < 10) {
             Log.w(TAG, "⚠️ Battery too low to start recording: " + initialBatteryLevel + "% (minimum 10% required)");
@@ -421,6 +465,8 @@ public class MediaCaptureService {
      * @param settings Video settings (resolution, fps) or null for defaults
      */
     public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings, boolean enableLed) {
+        Log.d(TAG, "handleStartVideoCommand called with requestId: " + requestId + ", save: " + save + ", settings: " + settings + ", enableLed: " + enableLed);
+        
         // Check if already recording
         if (isRecordingVideo) {
             Log.w(TAG, "Already recording video, ignoring start command");
@@ -444,6 +490,8 @@ public class MediaCaptureService {
      * @param requestId Request ID of the video to stop (must match current recording)
      */
     public void handleStopVideoCommand(String requestId) {
+        Log.d(TAG, "handleStopVideoCommand called with requestId: " + requestId);
+
         if (!isRecordingVideo) {
             Log.w(TAG, "No video recording to stop");
             if (mMediaCaptureListener != null) {
@@ -532,6 +580,9 @@ public class MediaCaptureService {
         try {
             // Play video start sound
             playVideoStartSound();
+            if (enableLed) {
+                triggerVideoPulseLed(); // Trigger solid white LED for video recording duration
+            }
 
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
@@ -590,6 +641,8 @@ public class MediaCaptureService {
                         recordingTimeCheckRunnable = null;
                     }
 
+                    // Note: RGB white LED already turned off in stopVideoRecording() synchronized with sound
+
                     // Turn off recording LED if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOff();
@@ -617,6 +670,9 @@ public class MediaCaptureService {
                     Log.e(TAG, "Video recording error: " + videoId + ", error: " + errorMessage);
                     isRecordingVideo = false;
                     
+                    // Turn off RGB white LED on error (error path may not go through stopVideoRecording)
+                    stopVideoPulseLed();
+                    
                     // Turn off recording LED on error if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOff();
@@ -643,6 +699,9 @@ public class MediaCaptureService {
         } catch (Exception e) {
             Log.e(TAG, "Error starting video recording", e);
 
+            // Turn off RGB white LED if error occurred during start
+            stopVideoPulseLed();
+
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(requestId, "Error starting video: " + e.getMessage(),
                         MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
@@ -666,11 +725,14 @@ public class MediaCaptureService {
         try {
             // Play video stop sound
             playVideoStopSound();
+            stopVideoPulseLed(); // Stop white LED when video recording stops
 
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
             Log.e(TAG, "Error stopping video recording", e);
+
+            // Note: RGB white LED already turned off above (line 768), no need to call again
 
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(currentVideoId, "Error stopping video: " + e.getMessage(),
@@ -877,6 +939,10 @@ public class MediaCaptureService {
         PhotoCaptureTestFramework.addFakeDelay("CAMERA_INIT");
 
         playShutterSound();
+        if (enableLed) {
+            triggerPhotoFlashLed(); // Trigger white LED flash synchronized with shutter sound
+        }
+
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
@@ -997,6 +1063,8 @@ public class MediaCaptureService {
 
         try {
             playShutterSound();
+            // Disable LED for webhook uploads to avoid distracting white flash
+            // LED control is handled by CameraNeo for camera lifecycle management
 
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
@@ -1580,6 +1648,8 @@ public class MediaCaptureService {
         PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         playShutterSound();
+        // Disable LED for BLE transfers to avoid distracting white flash
+        // LED control is handled by CameraNeo for camera lifecycle management
 
         try {
             // Use CameraNeo for photo capture
