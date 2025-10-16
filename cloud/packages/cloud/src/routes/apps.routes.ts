@@ -675,6 +675,7 @@ async function startApp(req: Request, res: Response) {
     packageName,
     route: "POST /apps/:packageName/start",
     sessionId: userSession.sessionId,
+    feature: "app-start",
   });
 
   const startTime = Date.now();
@@ -682,6 +683,8 @@ async function startApp(req: Request, res: Response) {
   // INFO: Route entry
   routeLogger.info(
     {
+      phase: "route-entry",
+      timestamp: startTime,
       sessionState: {
         websocketConnected:
           userSession.websocket?.readyState === WebSocket.OPEN,
@@ -707,7 +710,26 @@ async function startApp(req: Request, res: Response) {
 
   try {
     // Validate that the app exists before attempting to start it
+    const dbQueryStart = Date.now();
+    routeLogger.info(
+      {
+        phase: "db-query-start",
+        query: "appService.getApp",
+        timestamp: dbQueryStart,
+      },
+      `Fetching app ${packageName} from database`,
+    );
     const app = await appService.getApp(packageName);
+    const dbQueryDuration = Date.now() - dbQueryStart;
+    routeLogger.info(
+      {
+        phase: "db-query-complete",
+        query: "appService.getApp",
+        duration: dbQueryDuration,
+        timestamp: Date.now(),
+      },
+      `App fetch completed in ${dbQueryDuration}ms`,
+    );
     if (!app) {
       const totalDuration = Date.now() - startTime;
       routeLogger.error(
@@ -734,17 +756,25 @@ async function startApp(req: Request, res: Response) {
     }
 
     // DEBUG: AppManager call
-    routeLogger.debug("Calling userSession.appManager.startApp()");
     const appManagerStartTime = Date.now();
+    routeLogger.info(
+      {
+        phase: "appmanager-start",
+        timestamp: appManagerStartTime,
+      },
+      "Calling userSession.appManager.startApp()",
+    );
 
     const result = await userSession.appManager.startApp(packageName);
     const appManagerDuration = Date.now() - appManagerStartTime;
 
     // DEBUG: AppManager result
-    routeLogger.debug(
+    routeLogger.info(
       {
+        phase: "appmanager-complete",
+        duration: appManagerDuration,
+        timestamp: Date.now(),
         appManagerResult: result,
-        appManagerDuration,
         postStartState: {
           isNowRunning: userSession.runningApps.has(packageName),
           isStillLoading: userSession.loadingApps.has(packageName),
@@ -755,16 +785,24 @@ async function startApp(req: Request, res: Response) {
     );
 
     // DEBUG: Broadcast call
-    routeLogger.debug("Calling userSession.appManager.broadcastAppState()");
     const broadcastStartTime = Date.now();
+    routeLogger.info(
+      {
+        phase: "broadcast-start",
+        timestamp: broadcastStartTime,
+      },
+      "Calling userSession.appManager.broadcastAppState()",
+    );
 
     const appStateChange = userSession.appManager.broadcastAppState();
     const broadcastDuration = Date.now() - broadcastStartTime;
 
     // DEBUG: Broadcast result
-    routeLogger.debug(
+    routeLogger.info(
       {
-        broadcastDuration,
+        phase: "broadcast-complete",
+        duration: broadcastDuration,
+        timestamp: Date.now(),
         appStateChangeGenerated: !!appStateChange,
         appStateChangeSize: appStateChange
           ? JSON.stringify(appStateChange).length
@@ -800,10 +838,12 @@ async function startApp(req: Request, res: Response) {
     // INFO: Successful completion
     routeLogger.info(
       {
+        phase: "route-complete",
         totalDuration,
+        timestamp: Date.now(),
         success: result.success,
       },
-      `App start completed in ${totalDuration}ms`,
+      `App start route completed in ${totalDuration}ms`,
     );
 
     // DEBUG: Final state details
