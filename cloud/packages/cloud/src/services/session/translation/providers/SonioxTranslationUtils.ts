@@ -22,7 +22,18 @@ interface TwoWayPair {
 export class SonioxTranslationUtils {
   private static readonly mappings = translationMappings.models.find(
     (m) => m.id === "stt-rt-preview",
-  )!;
+  )! as {
+    id: string;
+    languages: Array<{ code: string; name: string }>;
+    translation_targets: Array<{
+      exclude_source_languages: string[];
+      source_languages: string[];
+      target_language: string;
+    }>;
+    two_way_translation_pairs: string[];
+    one_way_translation: string | null;
+    two_way_translation: string | null;
+  };
 
   /**
    * Normalize BCP 47 language codes (e.g., "fr-FR") to Soniox base codes (e.g., "fr")
@@ -102,6 +113,18 @@ export class SonioxTranslationUtils {
     const normalizedLangA = this.normalizeLanguageCode(langA);
     const normalizedLangB = this.normalizeLanguageCode(langB);
 
+    // v3: Check if all language pairs are supported
+    if (this.mappings.two_way_translation === "all_languages") {
+      // Verify both languages are in the supported list
+      const supportedLanguages = this.getSupportedLanguages();
+      return (
+        supportedLanguages.includes(normalizedLangA) &&
+        supportedLanguages.includes(normalizedLangB) &&
+        normalizedLangA !== normalizedLangB
+      );
+    }
+
+    // v2: Check specific pairs
     return (
       this.mappings.two_way_translation_pairs.includes(
         `${normalizedLangA}:${normalizedLangB}`,
@@ -125,12 +148,22 @@ export class SonioxTranslationUtils {
 
     if (normalizedSource === normalizedTarget) return false;
 
+    // v3: Check if all language pairs are supported
+    if (this.mappings.one_way_translation === "all_languages") {
+      // Verify both languages are in the supported list
+      const supportedLanguages = this.getSupportedLanguages();
+      return (
+        supportedLanguages.includes(normalizedSource) &&
+        supportedLanguages.includes(normalizedTarget)
+      );
+    }
+
     // First check if this is a two-way translation pair
     if (this.supportsTwoWayTranslation(normalizedSource, normalizedTarget)) {
       return true;
     }
 
-    // Then check one-way translation targets
+    // Then check one-way translation targets (v2)
     const target = this.mappings.translation_targets.find(
       (t) => t.target_language === normalizedTarget,
     );

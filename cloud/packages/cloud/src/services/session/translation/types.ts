@@ -287,7 +287,7 @@ export const DEFAULT_TRANSLATION_CONFIG: TranslationConfig = {
   soniox: {
     apiKey: SONIOX_API_KEY,
     endpoint: SONIOX_ENDPOINT,
-    model: "stt-rt-preview", // Default model, can be overridden
+    model: "stt-rt-v3-preview", // Default model, can be overridden
   },
 
   performance: {

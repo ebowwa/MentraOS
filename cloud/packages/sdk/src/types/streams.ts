@@ -199,18 +199,26 @@ export function parseLanguageStream(
     }
   }
 
-  // Handle translation format (translation:es-ES-to-en-US or translation:es-ES-to-en-US?options)
+  // Handle translation format (translation:es-ES-to-en-US, translation:all-to-en-US, or with ?options)
   if (subscription.startsWith(`${StreamType.TRANSLATION}:`)) {
     const [baseType, rest] = subscription.split(":");
     const [languagePair, queryString] = rest?.split("?") ?? [];
     const [sourceLanguage, targetLanguage] = languagePair?.split("-to-") ?? [];
 
-    if (
+    // Check for "all-to-LANG" format (one-way translation from any language)
+    const isAllToFormat =
+      sourceLanguage === "all" &&
+      targetLanguage &&
+      isValidLanguageCode(targetLanguage);
+
+    // Check for "LANG-to-LANG" format (two-way translation between specific languages)
+    const isSpecificPairFormat =
       sourceLanguage &&
       targetLanguage &&
       isValidLanguageCode(sourceLanguage) &&
-      isValidLanguageCode(targetLanguage)
-    ) {
+      isValidLanguageCode(targetLanguage);
+
+    if (isAllToFormat || isSpecificPairFormat) {
       const options: Record<string, string | boolean> = {};
 
       // Parse query parameters if present
@@ -231,7 +239,7 @@ export function parseLanguageStream(
       return {
         type: StreamType.TRANSLATION,
         baseType,
-        transcribeLanguage: sourceLanguage,
+        transcribeLanguage: sourceLanguage, // "all" for all-to-LANG, or specific language code
         translateLanguage: targetLanguage,
         options: Object.keys(options).length > 0 ? options : undefined,
         original: subscription,
@@ -273,7 +281,7 @@ export function createTranscriptionStream(
  * Create a translation stream identifier for a language pair
  * Returns a type-safe stream type that can be used like a StreamType
  *
- * @param sourceLanguage Source language code (e.g., "es-ES")
+ * @param sourceLanguage Source language code (e.g., "es-ES") or "all" for one-way translation
  * @param targetLanguage Target language code (e.g., "en-US")
  * @param options Optional configuration options
  * @returns Typed stream identifier
@@ -287,8 +295,11 @@ export function createTranslationStream(
   const cleanSourceLanguage = sourceLanguage.split("?")[0];
   const cleanTargetLanguage = targetLanguage.split("?")[0];
 
+  // Support "all" as source for one-way translation (all languages → target)
+  const isAllToFormat = cleanSourceLanguage === "all";
+
   if (
-    !isValidLanguageCode(cleanSourceLanguage) ||
+    (!isAllToFormat && !isValidLanguageCode(cleanSourceLanguage)) ||
     !isValidLanguageCode(cleanTargetLanguage)
   ) {
     throw new Error(
@@ -296,6 +307,34 @@ export function createTranslationStream(
     );
   }
   const base = `${StreamType.TRANSLATION}:${cleanSourceLanguage}-to-${cleanTargetLanguage}`;
+  if (options?.disableLanguageIdentification) {
+    return `${base}?no-language-identification=true` as ExtendedStreamType;
+  }
+  return createLanguageStream(base);
+}
+
+/**
+ * Create a universal translation stream identifier that translates from any language to target
+ * This is useful when you want to support all languages translating to a single target
+ * Returns a type-safe stream type that can be used like a StreamType
+ *
+ * Example: createUniversalTranslationStream('es-ES') creates "translation:all-to-es-ES"
+ *
+ * @param targetLanguage Target language code (e.g., "es-ES")
+ * @param options Optional configuration options
+ * @returns Typed stream identifier
+ */
+export function createUniversalTranslationStream(
+  targetLanguage: string,
+  options?: { disableLanguageIdentification?: boolean },
+): ExtendedStreamType {
+  const cleanTargetLanguage = targetLanguage.split("?")[0];
+
+  if (!isValidLanguageCode(cleanTargetLanguage)) {
+    throw new Error(`Invalid target language code: ${cleanTargetLanguage}`);
+  }
+
+  const base = `${StreamType.TRANSLATION}:all-to-${cleanTargetLanguage}`;
   if (options?.disableLanguageIdentification) {
     return `${base}?no-language-identification=true` as ExtendedStreamType;
   }
