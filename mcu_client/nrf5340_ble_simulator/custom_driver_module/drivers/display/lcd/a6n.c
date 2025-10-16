@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-28 11:31:02
- * @LastEditTime : 2025-10-13 16:25:01
+ * @LastEditTime : 2025-10-14 16:27:09
  * @FilePath     : a6n.c
  * @Description  :
  *
@@ -182,8 +182,8 @@ static int a6n_transmit_all(const struct device *dev, const uint8_t *data, size_
         return -EINVAL;
     }
 
-    int                    err    = -1;
-    const a6n_config *cfg    = dev->config;
+    int err = -1;
+    const a6n_config *cfg = dev->config;
     struct spi_buf tx_buf = {
         .buf = data,
         .len = size,
@@ -196,11 +196,25 @@ static int a6n_transmit_all(const struct device *dev, const uint8_t *data, size_
     /* 执行SPI传输（带重试机制）; Execute SPI transmission (with retry mechanism) */
     for (int i = 0; i <= retries; i++)
     {
+        // 同时拉低左右 CS | Pull both CS low simultaneously
         gpio_pin_set_dt(&cfg->left_cs, 0);   // Select left CS (active LOW)
         gpio_pin_set_dt(&cfg->right_cs, 0);  // Select right CS (active LOW)
+        
+        // ✅ FIX: 添加 CS setup time 延时，确保左右光机同步
+        // CS setup time delay to ensure left/right engines are synchronized
+        k_busy_wait(1);
+        
+        // SPI 数据传输 | SPI data transfer
         err = spi_write_dt(&cfg->spi, &tx);
+        
+        // ✅ FIX: 添加 CS hold time 延时，确保数据传输完成
+        // CS hold time delay to ensure data transfer completion
+        k_busy_wait(1);
+        
+        // 同时拉高左右 CS | Pull both CS high simultaneously
         gpio_pin_set_dt(&cfg->left_cs, 1);   // Deselect left CS (inactive HIGH)
         gpio_pin_set_dt(&cfg->right_cs, 1);  // Deselect right CS (inactive HIGH)
+        
         if (err != 0)
         {
             k_msleep(1); /* 短暂延迟; Short delay */
@@ -223,7 +237,7 @@ static int a6n_transmit_all(const struct device *dev, const uint8_t *data, size_
 int a6n_set_gray16_mode(void)
 {
     /* Bank0 0xBE = 0x84 (GRAY16) */
-    int ret = a6n_write_reg(0xBE, 0x84);
+    int ret = a6n_write_reg(0, 0xBE, 0x84);
     if (ret == 0)
     {
         LOG_INF("A6N video format -> GRAY16 (4-bit/pixel) set OK");
@@ -666,17 +680,18 @@ int a6n_set_mirror(mirror_mode_t mode)
 }
 
 /**
- * @brief 写入 Bank0 寄存器（广播模式）| Write Bank0 register value (broadcast mode)
+ * @brief 写入 Bank0/Bank1 寄存器（广播模式）| Write Bank0/Bank1 register value (broadcast mode)
+ * @param bank_id Bank 号 (0=Bank0, 1=Bank1) | Bank number (0=Bank0, 1=Bank1)
  * @param reg 寄存器地址 | Register address to write
  * @param param 寄存器值 | Value to write to the register
  * @return 0 表示成功，负数表示错误 | 0 on success, negative error code on failure
  */
-int a6n_write_reg(uint8_t reg, uint8_t param)
+int a6n_write_reg(uint8_t bank_id, uint8_t reg, uint8_t param)
 {
-    LOG_INF("bspal_write_register reg:0x%02x, param:0x%02x", reg, param);
+    LOG_INF("bspal_write_register bank:%d, reg:0x%02x, param:0x%02x", bank_id, reg, param);
     
     // 使用统一的 Bank 寄存器写入接口 | Use unified Bank register write interface
-    int ret = a6n_write_reg_bank(dev_a6n, 0, reg, param);
+    int ret = a6n_write_reg_bank(dev_a6n, bank_id, reg, param);
     return ret;
 }
 
@@ -715,7 +730,15 @@ int a6n_write_reg_bank(const struct device *dev, uint8_t bank_id, uint8_t reg, u
     // 广播模式：同时拉低左右 CS，发送数据，拉高 CS | Broadcast mode: pull both CS low, send data, pull CS high
     gpio_pin_set_dt(&cfg->left_cs, 0);   // 左 CS 拉低 | Left CS low
     gpio_pin_set_dt(&cfg->right_cs, 0);  // 右 CS 拉低 | Right CS low
+    
+    // ✅ FIX: 添加 CS setup time，确保左右光机同步 | Add CS setup time for sync
+    k_busy_wait(1);  // 1us delay
+    
     int ret = spi_write_dt(&cfg->spi, &tx_data_set);
+    
+    // ✅ FIX: 添加 CS hold time | Add CS hold time
+    k_busy_wait(1);  // 1us delay
+    
     gpio_pin_set_dt(&cfg->left_cs, 1);   // 左 CS 拉高 | Left CS high
     gpio_pin_set_dt(&cfg->right_cs, 1);  // 右 CS 拉高 | Right CS high
 

@@ -31,6 +31,7 @@
 #include "bsp_log.h"
 #include "mos_lvgl_display.h"  // Working LVGL display integration
 // #include "display/lcd/a6n.h"  // Working A6N driver
+#include "opt3006.h"  // OPT3006 ambient light sensor
 
 #include <dk_buttons_and_leds.h>
 
@@ -1015,7 +1016,7 @@ int main(void)
 #endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
-
+	opt3006_initialize();
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));

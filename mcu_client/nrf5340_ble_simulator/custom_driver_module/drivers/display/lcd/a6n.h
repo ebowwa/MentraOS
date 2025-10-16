@@ -226,9 +226,11 @@ void a6n_init_sem_give(void);
 
 int a6n_init_sem_take(void);
 
+
 int a6n_read_reg(uint8_t bank_id, int mode, uint8_t reg);
 
-int a6n_write_reg(uint8_t reg, uint8_t param);
+
+int a6n_write_reg(uint8_t bank_id, uint8_t reg, uint8_t param);
 
 int a6n_write_reg_bank(const struct device *dev, uint8_t bank_id, uint8_t reg, uint8_t val);
 // Enable or disable 4bpp (Gray16) transfer mode at runtime.

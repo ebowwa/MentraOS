@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-10-13 17:59:59
+ * @LastEditTime : 2025-10-14 16:27:25
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -939,10 +939,24 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     LOG_INF("LCD_CMD_OPEN - Simplified Init (Vendor Recommendation)");
                     a6n_power_on();
                     set_display_onoff(true);
+
+                    // ✅ 配置 Bank1 0x55 寄存器 - 关闭 Demura 功能
+                    // Configure Bank1 0x55 register - Disable Demura function
+                    LOG_INF("🔧 Configuring Bank1 registers...");
+                    a6n_write_reg(1, 0x55, 0x00);  // Bank1 0x55 = 0x00 (Demura disabled)
+                    mos_delay_us(6);
+
+                    a6n_read_reg(0, 0, 0x62);   
+                    mos_delay_us(6);
+                    a6n_read_reg(0, 1, 0x62);
+                    mos_delay_us(6);
+
+                    // 配置 Bank0 寄存器 | Configure Bank0 registers
                     a6n_set_brightness(0xff);
                     mos_delay_us(6);
+                    
                     // 设置显示格式为 GRAY16 (4-bit) | Set display format to GRAY16 (4-bit)
-                    a6n_set_gray16_mode();      // 0xBE = 0x84
+                    a6n_set_gray16_mode();      // Bank0 0xBE = 0x84
                     mos_delay_us(6);
                     
                     // 设置水平镜像模式 | Set horizontal mirror mode
@@ -955,13 +969,13 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     a6n_read_reg(0, 1, 0xbe);   // Bank0, 右光机, 0xbe 寄存器 | Bank0, right engine, 0xbe register
                     mos_delay_us(6);
                     
-                    a6n_write_reg(0x60, 0x80); 
+                    a6n_write_reg(0, 0x60, 0x80);  // Bank0 0x60 = 0x80 (待确认功能)
                     mos_delay_us(6);
                     
                     // 配置自刷新帧率为 90Hz (SPI时钟≤32MHz) | Configure self-refresh rate to 90Hz (SPI≤32MHz)
-                    a6n_write_reg(0x78, 0x0E);  // OSC 时钟配置 | OSC clock config
+                    a6n_write_reg(0, 0x78, 0x0E);  // Bank0 OSC 时钟配置 | OSC clock config
                     mos_delay_us(6);
-                    a6n_write_reg(0x7C, 0x13);  // OSC 时钟配置 | OSC clock config (90Hz)
+                    a6n_write_reg(0, 0x7C, 0x13);  // Bank0 OSC 时钟配置 | OSC clock config (90Hz)
                     mos_delay_us(6);
                     
                     LOG_INF("LCD init complete - GRAY16 mode + 90Hz refresh rate configured");

@@ -30,6 +30,7 @@ target_sources(app PRIVATE
     src/bsp_log_control.c
     src/shell_log_control.c
     src/shell_display_control.c
+    src/shell_opt3006.c
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
     src/mos_components/mos_lvgl_display/src/display_config.c

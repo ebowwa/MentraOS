@@ -68,7 +68,7 @@ static int cmd_display_help(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "  display fill                     - Fill entire display (white)");
     shell_print(shell, "");
     shell_print(shell, "🔆 Brightness Control:");
-    shell_print(shell, "  display brightness <0-100>       - Set display brightness (0-100%%)");
+    shell_print(shell, "  display brightness <20|40|60|80|100> - Set display brightness (5 levels)");
     shell_print(shell, "");
     shell_print(shell, "🎨 Pattern Control:");
     shell_print(shell, "  display pattern <0-5>            - Select specific pattern:");
@@ -95,7 +95,7 @@ static int cmd_display_help(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "  display test                     - Run display test patterns");
     shell_print(shell, "");
     shell_print(shell, "Examples:");
-    shell_print(shell, "  display brightness 75            - Set brightness to 75%%");
+    shell_print(shell, "  display brightness 60            - Set brightness to 60%%");
     shell_print(shell, "  display pattern 2                - Show vertical zebra pattern");
     shell_print(shell, "  display battery 65               - Set 65%% battery, not charging");
     shell_print(shell, "  display battery 85 true          - Set 85%% battery, charging");

@@ -4,6 +4,133 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🌞 A6N Display Driver Optimization + OPT3006 Ambient Light Sensor Driver - 2025-10-16
+
+#### 1. A6N Display Driver Improvements
+
+##### 1.1 Fixed Left/Right Optical Engine Display Inconsistency
+- **Issue**: Left and right optical engines sometimes displayed inconsistent data
+- **Root Cause**: CS (Chip Select) timing not synchronized
+- **Fix**: Added 1μs delays in `a6n_transmit_all()` and `a6n_write_reg_bank()`
+  - CS setup time: `k_busy_wait(1)` after pulling CS low
+  - CS hold time: `k_busy_wait(1)` after SPI transfer, before pulling CS high
+- **File**: `custom_driver_module/drivers/display/lcd/a6n.c`
+
+##### 1.2 Unified Register Write Interface
+- **Change**: `a6n_write_reg()` signature changed from `(uint8_t reg, uint8_t param)` to `(uint8_t bank_id, uint8_t reg, uint8_t param)`
+- **Purpose**: Unified Bank0/Bank1 register operations using broadcast mode for both engines
+- **Impact**: All calls to `a6n_write_reg()` updated
+- **Files**: `a6n.c`, `a6n.h`, `mos_lvgl_display.c`
+
+##### 1.3 Register Initialization Timing Optimization
+- **Change**: Moved all A6N register initialization from `a6n_init()` to `LCD_CMD_OPEN`
+- **Reason**: Ensures register configuration occurs after display power-on
+- **Configuration**:
+  - Bank1 0x55 = 0x00 (Disable Demura function)
+  - Bank0 0xBE = 0x84 (GRAY16 4-bit grayscale mode)
+  - Bank0 0x60 = 0x80 (Function TBD)
+  - Bank0 0x78 = 0x0E, 0x7C = 0x13 (90Hz self-refresh rate, SPI≤32MHz)
+  - Horizontal mirror mode
+- **File**: `mos_lvgl_display.c`
+
+##### 1.4 Shell Command Help Update
+- Fixed `display brightness` command help text to accurately reflect 5-level support (20/40/60/80/100)
+- **File**: `shell_display_control.c`
+
+---
+
+#### 2. New OPT3006 Ambient Light Sensor Driver ⭐
+
+##### 2.1 Driver Implementation
+- I2C: Address 0x44 (7-bit), Speed 100kHz (standard mode)
+- Device ID: 0x3001
+- Illuminance calculation: lux = 0.01 × 2^E × R[11:0] (per datasheet Equation 3)
+- Default config: Continuous mode, 800ms, auto-range (0xCC10)
+- Files: opt3006.c (440 lines), opt3006.h (219 lines)
+
+##### 2.2 Configuration Register (Per Datasheet)
+- Bit 15:12=RN, 11=CT, 10:9=M, 8-5=Flags(RO), 4=L, 3=POL, 2=ME, 1:0=FC
+- Reset default: 0xC810
+- Driver config: 0xCC10
+
+##### 2.3 API Functions
+- Initialization: `opt3006_init()`, `opt3006_check_id()`
+- Reading: `opt3006_read_lux()`, `opt3006_read_lux_ex()`
+- Configuration: `opt3006_set_mode()`, `opt3006_set_conversion_time()`, `opt3006_set_range()`
+- Query: `opt3006_get_config()`, `opt3006_is_ready()`
+- Register access: `opt3006_read_reg()`, `opt3006_write_reg()`
+
+##### 2.4 Shell Commands (525 lines)
+- Basic: help, info, read, config, test [count]
+- Config: mode <continuous|single|shutdown>, ct <100|800>
+- Debug: read_reg <addr>, write_reg <addr> <val>
+- File: shell_opt3006.c
+
+##### 2.5 Device Tree Configuration
+- I2C3 bus: SDA=P1.03, SCL=P1.02, Drive=NRF_DRIVE_S0D1
+- Alias: `myals = &i2c3`
+- File: `boards/nrf5340dk_nrf5340_cpuapp_ns.overlay`
+
+##### 2.6 Build System
+- mos_driver/CMakeLists.txt: Added opt3006.c
+- CMakeLists.txt: Added shell_opt3006.c  
+- main.c: Added #include "opt3006.h"
+
+---
+
+#### 3. Testing & Verification
+
+##### 3.1 A6N Display Driver
+- ✅ CS timing fix: Left/right display consistency issue resolved
+- ✅ Register init: All configs executed in LCD_CMD_OPEN
+- ✅ Demura: Bank1 0x55 = 0x00 disabled
+
+##### 3.2 OPT3006 Sensor
+- ✅ I2C comm: Successfully read Manufacturer ID (0x5449) and Device ID (0x3001)
+- ✅ Illuminance: Office environment reads 300-400 lux (matches standards)
+- ✅ Config verification: 0xCC10 written and read back correctly
+- ✅ Calculation accuracy: Raw=0x4938, E=4, M=2360 → 377.60 lux ✓
+- ✅ Shell commands: All functions working
+
+---
+
+#### Breaking Changes
+
+- `a6n_write_reg()` function signature changed, all call sites updated
+- A6N register initialization timing moved from `a6n_init()` to `LCD_CMD_OPEN`
+
+---
+
+#### Test Commands
+
+**A6N Display:**
+```bash
+display help                # View all display commands
+display brightness 80       # Set brightness to 80%
+display pattern 4           # Switch to pattern 4
+```
+
+**OPT3006 Sensor:**
+```bash
+# Basic commands
+opt3006 help                # View all commands
+opt3006 info                # Sensor information
+opt3006 read                # Read illuminance (with Raw/E/M)
+opt3006 test 10             # Test 10 samples
+opt3006 config              # Show config details
+
+# Configuration commands  
+opt3006 mode continuous     # Set continuous mode
+opt3006 ct 100              # Set 100ms conversion time
+
+# Advanced debug commands
+opt3006 read_reg 0x01       # Read config register (auto-parse fields)
+opt3006 read_reg 0x7F       # Read device ID
+opt3006 write_reg 0x01 0xCC10  # Write config (auto read-back verify)
+```
+
+---
+
 ### 🖥️ A6N Display Driver Implementation & Brightness Control - 2025-10-13
 
 #### A6N Display Driver Migration
