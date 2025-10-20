@@ -141,7 +141,7 @@ public class CameraNeo extends LifecycleService {
     }
     
     // Camera keep-alive settings
-    private static final long CAMERA_KEEP_ALIVE_MS = 3000; // Keep camera open for 3 seconds after photo
+    private static final long CAMERA_KEEP_ALIVE_MS = 30000; // Keep camera open for 3 seconds after photo
     private Timer cameraKeepAliveTimer;
     private boolean isCameraKeptAlive = false;
     private String pendingPhotoPath = null;
@@ -149,6 +149,30 @@ public class CameraNeo extends LifecycleService {
     // LED control - tied to camera lifecycle
     private static volatile boolean pendingLedEnabled = false;  // LED state for current/pending requests
     private IHardwareManager hardwareManager;
+
+    // Timing measurements for photo capture steps
+    private long photoRequestStartTime = 0;
+    private long cameraSetupStartTime = 0;
+    private long cameraSessionStartTime = 0;
+    private long aeConvergenceStartTime = 0;
+    private long photoCaptureStartTime = 0;
+    private long imageProcessingStartTime = 0;
+    private static long sPhotoRequestStartTime = 0; // Static for global access
+
+    // Last converged auto-exposure parameters captured at AE convergence
+    private Long lastConvergedExposureTimeNs = null;      // SENSOR_EXPOSURE_TIME
+    private Integer lastConvergedIso = null;              // SENSOR_SENSITIVITY
+    private Integer lastConvergedAeComp = null;           // CONTROL_AE_EXPOSURE_COMPENSATION
+    private Range<Integer> lastConvergedFpsRange = null;  // CONTROL_AE_TARGET_FPS_RANGE
+
+    // Initial AE parameter values based on typical converged values
+    private static final long INITIAL_EXPOSURE_TIME_NS = 30002000L;  // ~30ms exposure
+    private static final int INITIAL_ISO = 300;
+    private static final int INITIAL_AE_COMPENSATION = 0;
+    private static final Range<Integer> INITIAL_FPS_RANGE = Range.create(30, 30);
+
+    // Force manual exposure mode (AE OFF) for capture flow
+    private static final boolean FORCE_MANUAL_EXPOSURE = false;
 
     // Camera characteristics for dynamic auto-exposure and autofocus
     private int[] availableAeModes;
@@ -222,7 +246,7 @@ public class CameraNeo extends LifecycleService {
     private enum ShotState { IDLE, WAITING_AE, SHOOTING }
     private volatile ShotState shotState = ShotState.IDLE;
     private long aeStartTimeNs;
-    private static final long AE_WAIT_NS = 500_000_000L; // 0.5 second max wait for AE
+    private static final long AE_WAIT_NS = 500_000L; // 0.5 second max wait for AE
 
     // Simple AE callback - autofocus handled automatically
     private final SimplifiedAeCallback aeCallback = new SimplifiedAeCallback();
@@ -427,6 +451,10 @@ public class CameraNeo extends LifecycleService {
      */
     public static void enqueuePhotoRequest(Context context, String filePath, String size, boolean enableLed, PhotoCaptureCallback callback) {
         synchronized (SERVICE_LOCK) {
+            // Start timing for photo request
+            sPhotoRequestStartTime = System.currentTimeMillis();
+            Log.d(TAG, "1234 [TIMING] Photo request started at: " + sPhotoRequestStartTime);
+            
             // Create and queue the request immediately
             PhotoRequest request = new PhotoRequest(filePath, size, enableLed, callback);
             globalRequestQueue.offer(request);
@@ -1107,6 +1135,10 @@ public class CameraNeo extends LifecycleService {
 
     @SuppressLint("MissingPermission")
     private void openCameraInternal(String filePath, boolean forVideo) {
+        // Start timing for camera setup
+        cameraSetupStartTime = System.currentTimeMillis();
+        Log.d(TAG, "1234 [TIMING] Camera setup started at: " + cameraSetupStartTime);
+        
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         if (manager == null) {
             Log.e(TAG, "Could not get camera manager");
@@ -1260,6 +1292,10 @@ public class CameraNeo extends LifecycleService {
                     return;
                 }
 
+                // Start timing for image processing
+                imageProcessingStartTime = System.currentTimeMillis();
+                Log.d(TAG, "1234 [TIMING] Image processing started at: " + imageProcessingStartTime);
+                
                 // Process the captured JPEG (only when in SHOOTING state)
                 Log.d(TAG, "Processing final photo capture...");
                 try (Image image = reader.acquireLatestImage()) {
@@ -1283,8 +1319,15 @@ public class CameraNeo extends LifecycleService {
                     boolean success = saveImageDataToFile(bytes, targetPath);
 
                     if (success) {
+                        long imageSavedTime = System.currentTimeMillis();
+                        long imageProcessingDuration = imageSavedTime - imageProcessingStartTime;
+                        long totalPhotoDuration = imageSavedTime - sPhotoRequestStartTime;
+                        
                         lastPhotoPath = targetPath;
                         notifyPhotoCaptured(targetPath);
+                        Log.d(TAG, "1234 [TIMING] Photo saved successfully at: " + imageSavedTime + 
+                                  " | Image processing duration: " + imageProcessingDuration + "ms" +
+                                  " | Total photo duration: " + totalPhotoDuration + "ms");
                         Log.d(TAG, "Photo saved successfully: " + targetPath);
                         // Clear pending photo path and size after successful capture
                         pendingPhotoPath = null;
@@ -1511,7 +1554,10 @@ public class CameraNeo extends LifecycleService {
     private final CameraDevice.StateCallback photoStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
-            Log.d(TAG, "Camera device opened successfully");
+            long cameraOpenTime = System.currentTimeMillis();
+            long setupDuration = cameraOpenTime - cameraSetupStartTime;
+            Log.d(TAG, "1234 [TIMING] Camera device opened successfully at: " + cameraOpenTime + 
+                      " | Setup duration: " + setupDuration + "ms");
             cameraOpenCloseLock.release();
             cameraDevice = camera;
             
@@ -1582,6 +1628,10 @@ public class CameraNeo extends LifecycleService {
     };
 
     private void createCameraSessionInternal(boolean forVideo) {
+        // Start timing for camera session creation
+        cameraSessionStartTime = System.currentTimeMillis();
+        Log.d(TAG, "1234 [TIMING] Camera session creation started at: " + cameraSessionStartTime);
+        
         try {
             if (cameraDevice == null) {
                 Log.e(TAG, "Camera device is null in createCameraSessionInternal");
@@ -1623,15 +1673,23 @@ public class CameraNeo extends LifecycleService {
                 previewBuilder.addTarget(imageReader.getSurface());
             }
 
-            // Configure auto-exposure settings for better photo quality
+            // Configure exposure: either manual (AE OFF) or automatic (AE ON)
             previewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-
-            // Use dynamic FPS range to prevent long exposure times that cause overexposure
-            previewBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
-
-            // Apply user exposure compensation BEFORE capture (not during)
-            previewBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
+            if (FORCE_MANUAL_EXPOSURE) {
+                previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                previewBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, INITIAL_EXPOSURE_TIME_NS);
+                previewBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, INITIAL_ISO);
+                // Keep a stable FPS constraint for encoder/pipeline if relevant
+                previewBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, INITIAL_FPS_RANGE);
+                Log.d(TAG, "1234 Using MANUAL exposure for preview: exposureNs=" + INITIAL_EXPOSURE_TIME_NS +
+                          ", ISO=" + INITIAL_ISO + ", FPS=" + INITIAL_FPS_RANGE.getLower() + "-" + INITIAL_FPS_RANGE.getUpper());
+            } else {
+                previewBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                previewBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, INITIAL_AE_COMPENSATION);
+                previewBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, INITIAL_FPS_RANGE);
+                Log.d(TAG, "1234 Using AUTO exposure for preview: AEcomp=" + INITIAL_AE_COMPENSATION +
+                          ", FPS=" + INITIAL_FPS_RANGE.getLower() + "-" + INITIAL_FPS_RANGE.getUpper());
+            }
 
             // Use center-weighted metering for better subject exposure
             previewBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
@@ -1641,6 +1699,7 @@ public class CameraNeo extends LifecycleService {
             // Enable autofocus with center-weighted focus region for better subject focus
             if (hasAutoFocus) {
                 previewBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                Log.d(TAG, "1234 AF mode set to CONTINUOUS_PICTURE for preview");
 
                 // Add center-weighted AF region for better subject focus
                 int centerX = jpegSize.getWidth() / 2;
@@ -1657,7 +1716,7 @@ public class CameraNeo extends LifecycleService {
 
                 Log.d(TAG, "AF region set to center area: " + left + "," + top + " -> " + right + "," + bottom);
             } else {
-                Log.d(TAG, "Autofocus not available, using fixed focus");
+                Log.d(TAG, "1234 Autofocus not available (hasAutoFocus=false), using fixed focus");
             }
 
             // Set auto white balance
@@ -1679,6 +1738,11 @@ public class CameraNeo extends LifecycleService {
             CameraCaptureSession.StateCallback sessionStateCallback = new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
+                    long sessionConfiguredTime = System.currentTimeMillis();
+                    long sessionDuration = sessionConfiguredTime - cameraSessionStartTime;
+                    Log.d(TAG, "1234 [TIMING] Camera session configured at: " + sessionConfiguredTime + 
+                              " | Session creation duration: " + sessionDuration + "ms");
+                    
                     // Store the session atomically
                     synchronized (SERVICE_LOCK) {
                         cameraCaptureSession = session;
@@ -2308,6 +2372,7 @@ public class CameraNeo extends LifecycleService {
         Log.d(TAG, "Camera capabilities - AE modes: " + java.util.Arrays.toString(availableAeModes));
         Log.d(TAG, "Exposure compensation range: " + exposureCompensationRange + ", step: " + exposureCompensationStep);
         Log.d(TAG, "Selected FPS range: " + selectedFpsRange);
+        Log.d(TAG, "1234 AF modes available: " + java.util.Arrays.toString(availableAfModes));
         Log.d(TAG, "Autofocus available: " + hasAutoFocus + ", min focus distance: " + minimumFocusDistance);
     }
 
@@ -2366,6 +2431,10 @@ public class CameraNeo extends LifecycleService {
      * Start simplified AE convergence sequence
      */
     private void startPrecaptureSequence() {
+        // Start timing for AE convergence
+        aeConvergenceStartTime = System.currentTimeMillis();
+        Log.d(TAG, "1234 [TIMING] AE convergence started at: " + aeConvergenceStartTime);
+        
         try {
             shotState = ShotState.WAITING_AE;
             aeStartTimeNs = System.nanoTime();
@@ -2402,6 +2471,8 @@ public class CameraNeo extends LifecycleService {
                                      @NonNull TotalCaptureResult result) {
 
             Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+            Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
+            Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
             // Suppress verbose AE logging to prevent logcat overflow
             // Only log important state transitions
 
@@ -2423,12 +2494,51 @@ public class CameraNeo extends LifecycleService {
 
                     boolean timeout = (System.nanoTime() - aeStartTimeNs) > AE_WAIT_NS;
 
+                    // Log convergence status on every check
+                    long currentTime = System.currentTimeMillis();
+                    long aeDuration = currentTime - aeConvergenceStartTime;
+                    Log.d(TAG, "1234 AE Convergence Check - AE: " + getAeStateName(aeState) +
+                              " | AWB: " + (awbState != null ? getAwbStateName(awbState) : "null") +
+                              " | AF: " + (afState != null ? getAfStateName(afState) : "null") +
+                              " | AE Converged: " + aeConverged +
+                              " | Timeout: " + timeout +
+                              " | Duration: " + aeDuration + "ms");
+
+                    // Print evolving AE values while converging
+                    Long curExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                    Integer curIso = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                    Integer curAeComp = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+                    Range<Integer> curFpsRange = result.get(CaptureResult.CONTROL_AE_TARGET_FPS_RANGE);
+                    Log.d(TAG, "1234 [AE] Current params -> exposureNs:" + (curExposureTime != null ? curExposureTime : -1) +
+                              ", ISO:" + (curIso != null ? curIso : -1) +
+                              ", AEcomp:" + (curAeComp != null ? curAeComp : -1000) +
+                              ", FPS:" + (curFpsRange != null ? (curFpsRange.getLower() + "-" + curFpsRange.getUpper()) : "null"));
+
                     if (aeConverged || timeout) {
-                        Log.d(TAG, "AE ready (AE: " + getAeStateName(aeState) +
-                             (timeout ? " - timeout)" : ")") + ", capturing photo...");
+                        long aeConvergedTime = System.currentTimeMillis();
+                        long aeDurationFinal = aeConvergedTime - aeConvergenceStartTime;
+
+                        // Read converged AE parameters for logging and future reuse
+                        Long exposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                        Integer iso = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                        Integer aeComp = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+                        Range<Integer> fpsRange = result.get(CaptureResult.CONTROL_AE_TARGET_FPS_RANGE);
+
+                        // Persist the last converged values
+                        lastConvergedExposureTimeNs = exposureTime;
+                        lastConvergedIso = iso;
+                        lastConvergedAeComp = aeComp;
+                        lastConvergedFpsRange = fpsRange;
+
+                        Log.d(TAG, "1234 [TIMING] AE ready at: " + aeConvergedTime +
+                                  " | AE convergence duration: " + aeDurationFinal + "ms" +
+                                  " (AE: " + getAeStateName(aeState) + (timeout ? " - timeout)" : ")") +
+                                  " | AE params -> exposureNs:" + (exposureTime != null ? exposureTime : -1) +
+                                  ", ISO:" + (iso != null ? iso : -1) +
+                                  ", AEcomp:" + (aeComp != null ? aeComp : -1000) +
+                                  ", FPS:" + (fpsRange != null ? (fpsRange.getLower() + "-" + fpsRange.getUpper()) : "null"));
+
                         capturePhoto();
-                    } else {
-                        // Suppress convergence logging - too verbose
                     }
                     break;
 
@@ -2460,6 +2570,10 @@ public class CameraNeo extends LifecycleService {
      * Simplified photo capture - relies on AE convergence and automatic CONTINUOUS_PICTURE autofocus
      */
     private void capturePhoto() {
+        // Start timing for photo capture
+        photoCaptureStartTime = System.currentTimeMillis();
+        Log.d(TAG, "1234 [TIMING] Photo capture started at: " + photoCaptureStartTime);
+        
         try {
             shotState = ShotState.SHOOTING;
 
@@ -2468,15 +2582,25 @@ public class CameraNeo extends LifecycleService {
                 cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             stillBuilder.addTarget(imageReader.getSurface());
 
-            // Copy settings from preview
-            stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            // Copy settings from preview; use manual if forced
+            if (FORCE_MANUAL_EXPOSURE) {
+                stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                stillBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, INITIAL_EXPOSURE_TIME_NS);
+                stillBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, INITIAL_ISO);
+                stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, INITIAL_FPS_RANGE);
+                Log.d(TAG, "1234 Using MANUAL exposure for capture: exposureNs=" + INITIAL_EXPOSURE_TIME_NS +
+                          ", ISO=" + INITIAL_ISO + ", FPS=" + INITIAL_FPS_RANGE.getLower() + "-" + INITIAL_FPS_RANGE.getUpper());
+            } else {
+                stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+                stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, INITIAL_AE_COMPENSATION);
+                stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, INITIAL_FPS_RANGE);
+            }
             stillBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
-            stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
-            stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
 
             // Set up continuous autofocus (no manual triggers needed)
             if (hasAutoFocus) {
                 stillBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                Log.d(TAG, "1234 AF mode set to CONTINUOUS_PICTURE for still capture");
 
                 // Add center-weighted AF region for better subject focus
                 int centerX = jpegSize.getWidth() / 2;
@@ -2495,6 +2619,8 @@ public class CameraNeo extends LifecycleService {
                 stillBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
                     new MeteringRectangle(left, top, right - left, bottom - top, MeteringRectangle.METERING_WEIGHT_MAX)
                 });
+            } else {
+                Log.d(TAG, "1234 Autofocus not available (hasAutoFocus=false) for still capture, using fixed focus");
             }
 
             // High quality settings
@@ -2512,7 +2638,17 @@ public class CameraNeo extends LifecycleService {
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session,
                                              @NonNull CaptureRequest request,
                                              @NonNull TotalCaptureResult result) {
-                    Log.i(TAG, "Photo capture completed successfully");  // Keep as INFO level
+                    long captureCompletedTime = System.currentTimeMillis();
+                    long captureDuration = captureCompletedTime - photoCaptureStartTime;
+                    Long exposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                    Integer iso = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                    Integer aeComp = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+
+                    Log.i(TAG, "1234 [TIMING] Photo capture completed at: " + captureCompletedTime + 
+                               " | Capture duration: " + captureDuration + "ms" +
+                               " | Used exposureNs:" + (exposureTime != null ? exposureTime : -1) +
+                               ", ISO:" + (iso != null ? iso : -1) +
+                               ", AEcomp:" + (aeComp != null ? aeComp : -1000));
                     // Image processing will happen in ImageReader callback
                 }
 
@@ -2567,6 +2703,48 @@ public class CameraNeo extends LifecycleService {
             case CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED: return "FOCUSED_LOCKED";
             case CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED: return "NOT_FOCUSED_LOCKED";
             default: return "UNKNOWN(" + afState + ")";
+        }
+    }
+
+    /**
+     * Get human-readable AWB state name for logging
+     */
+    private String getAwbStateName(int awbState) {
+        switch (awbState) {
+            case CaptureResult.CONTROL_AWB_STATE_INACTIVE: return "INACTIVE";
+            case CaptureResult.CONTROL_AWB_STATE_SEARCHING: return "SEARCHING";
+            case CaptureResult.CONTROL_AWB_STATE_CONVERGED: return "CONVERGED";
+            case CaptureResult.CONTROL_AWB_STATE_LOCKED: return "LOCKED";
+            default: return "UNKNOWN(" + awbState + ")";
+        }
+    }
+
+    /**
+     * Apply last converged AE parameters to a capture builder.
+     * If manual values are available, this sets SENSOR_EXPOSURE_TIME and SENSOR_SENSITIVITY
+     * and turns off auto-exposure. Otherwise, falls back to AE lock if supported.
+     */
+    private void applyLastConvergedAeParams(CaptureRequest.Builder builder) {
+        if (builder == null) return;
+
+        boolean appliedManual = false;
+        if (lastConvergedExposureTimeNs != null && lastConvergedIso != null) {
+            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+            builder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, lastConvergedExposureTimeNs);
+            builder.set(CaptureRequest.SENSOR_SENSITIVITY, lastConvergedIso);
+            appliedManual = true;
+        }
+
+        if (!appliedManual) {
+            builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            builder.set(CaptureRequest.CONTROL_AE_LOCK, true);
+        }
+
+        if (lastConvergedAeComp != null) {
+            builder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, lastConvergedAeComp);
+        }
+        if (lastConvergedFpsRange != null) {
+            builder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, lastConvergedFpsRange);
         }
     }
 

@@ -253,11 +253,72 @@ public class MediaCaptureService {
     // Track requested photo size per request for proper fallback handling
     private Map<String, String> photoRequestedSizes = new HashMap<>();
     
+    // Timer tracking for photo capture performance
+    private Map<String, Long> photoRequestStartTimes = new HashMap<>();
+    
+    // Timer tracking for photo upload performance
+    private Map<String, Long> photoUploadStartTimes = new HashMap<>();
+    
     // Upload state tracking - prevent concurrent uploads
     private volatile boolean isUploadingPhoto = false;
     private final Object uploadLock = new Object();
     
     private final FileManager fileManager;
+
+    /**
+     * Start timing a photo request
+     * @param requestId Unique request ID for tracking
+     */
+    private void startPhotoRequestTimer(String requestId) {
+        long startTime = System.currentTimeMillis();
+        photoRequestStartTimes.put(requestId, startTime);
+        Log.d(TAG, "⏱️ Photo request timer started: requestId=" + requestId + ", timestamp=" + startTime);
+    }
+
+    /**
+     * End timing a photo request and log the duration
+     * @param requestId Unique request ID for tracking
+     * @param success Whether the photo capture was successful
+     */
+    private void endPhotoRequestTimer(String requestId, boolean success) {
+        Long startTime = photoRequestStartTimes.remove(requestId);
+        if (startTime != null) {
+            long duration = System.currentTimeMillis() - startTime;
+            String status = success ? "SUCCESS" : "FAILED";
+            Log.d(TAG, "1234 Photo request timer ended: requestId=" + requestId + 
+                      ", status=" + status + ", duration=" + duration + "ms");
+        } else {
+            Log.w(TAG, "⏱️ Photo request timer not found for requestId: " + requestId);
+        }
+    }
+
+    /**
+     * Start timing a photo upload
+     * @param requestId Unique request ID for tracking
+     */
+    private void startPhotoUploadTimer(String requestId) {
+        long startTime = System.currentTimeMillis();
+        photoUploadStartTimes.put(requestId, startTime);
+        Log.d(TAG, "📤 Photo upload timer started: requestId=" + requestId + ", timestamp=" + startTime);
+    }
+
+    /**
+     * End timing a photo upload and log the duration
+     * @param requestId Unique request ID for tracking
+     * @param success Whether the upload was successful
+     */
+    private void endPhotoUploadTimer(String requestId, boolean success) {
+        Long startTime = photoUploadStartTimes.remove(requestId);
+        if (startTime != null) {
+            long duration = System.currentTimeMillis() - startTime;
+            String status = success ? "SUCCESS" : "FAILED";
+            Log.d(TAG, "1234 Photo upload timer ended: requestId=" + requestId + 
+                      ", status=" + status + ", duration=" + duration + "ms");
+        } else {
+            Log.w(TAG, "📤 Photo upload timer not found for requestId: " + requestId);
+        }
+    }
+
 
     /**
      * Interface for listening to media capture and upload events
@@ -887,32 +948,6 @@ public class MediaCaptureService {
      * @param enableLed Whether to enable camera LED flash
      */
     public void takePhotoLocally(String size, boolean enableLed) {
-        // Check if RTMP streaming is active - photos cannot interrupt streams
-        if (RtmpStreamingService.isStreaming()) {
-            Log.e(TAG, "Cannot take photo - RTMP streaming active");
-            sendPhotoErrorResponse("local", "CAMERA_BUSY", "Camera busy with RTMP streaming");
-            return;
-        }
-        
-        // Check if video recording is active - photos cannot interrupt video recording
-        if (isRecordingVideo) {
-            Log.e(TAG, "Cannot take photo - video recording in progress");
-            if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError("local", "Camera busy with video recording", 
-                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
-            }
-            return;
-        }
-        
-        // Note: No need to check CameraNeo.isCameraInUse() for photos
-        // The camera's keep-alive system handles rapid photo taking gracefully
-        
-        // Check storage availability before taking photo
-        if (!isExternalStorageAvailable()) {
-            Log.e(TAG, "External storage is not available for photo capture");
-            return;
-        }
-
         // Add milliseconds and a random component to ensure uniqueness even in rapid capture
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
         int randomSuffix = (int)(Math.random() * 1000);
@@ -927,9 +962,54 @@ public class MediaCaptureService {
         // Generate a temporary requestId first
         String requestId = "local_" + timeStamp;
         
+        // Start timing the photo request
+        startPhotoRequestTimer(requestId);
+        
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+        
+        // Check if video recording is active - photos cannot interrupt video recording
+        if (isRecordingVideo) {
+            Log.e(TAG, "Cannot take photo - video recording in progress");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
+            if (mMediaCaptureListener != null) {
+                mMediaCaptureListener.onMediaError(requestId, "Camera busy with video recording", 
+                    MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            }
+            return;
+        }
+        
+        // Note: No need to check CameraNeo.isCameraInUse() for photos
+        // The camera's keep-alive system handles rapid photo taking gracefully
+        
+        // Check storage availability before taking photo
+        if (!isExternalStorageAvailable()) {
+            Log.e(TAG, "External storage is not available for photo capture");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
+            return;
+        }
+        
         // TESTING: Check for fake camera initialization failure
         if (PhotoCaptureTestFramework.shouldFail("CAMERA_INIT")) {
             Log.e(TAG, "TESTING: Simulating camera initialization failure");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
                 PhotoCaptureTestFramework.getErrorMessage());
             return;
@@ -950,6 +1030,10 @@ public class MediaCaptureService {
         // TESTING: Check for fake camera capture failure
         if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
             Log.e(TAG, "TESTING: Simulating camera capture failure");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
                 PhotoCaptureTestFramework.getErrorMessage());
             return;
@@ -969,6 +1053,9 @@ public class MediaCaptureService {
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
                         
+                        // End timing for successful photo capture
+                        endPhotoRequestTimer(requestId, true);
+                        
                         // LED is now managed by CameraNeo and will turn off when camera closes
                         
                         // Notify through standard capture listener if set up
@@ -984,6 +1071,9 @@ public class MediaCaptureService {
                     @Override
                     public void onPhotoError(String errorMessage) {
                         Log.e(TAG, "Failed to capture offline photo: " + errorMessage);
+
+                        // End timing for failed photo capture
+                        endPhotoRequestTimer(requestId, false);
 
                         // LED is now managed by CameraNeo and will turn off when camera closes
 
@@ -1007,6 +1097,10 @@ public class MediaCaptureService {
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
             return;
         }
@@ -1015,6 +1109,9 @@ public class MediaCaptureService {
         synchronized (uploadLock) {
             if (isUploadingPhoto) {
                 Log.w(TAG, "🚫 Upload busy - skipping photo request: " + requestId);
+
+                // End timing for failed photo capture
+                endPhotoRequestTimer(requestId, false);
 
                 // Send error response to phone using existing photo error function
                 sendPhotoErrorResponse(requestId, "UPLOAD_SYSTEM_BUSY", "Upload system busy - request skipped");
@@ -1032,6 +1129,9 @@ public class MediaCaptureService {
         // Track requested size for potential fallbacks
         photoRequestedSizes.put(requestId, size);
 
+        // Start timing the photo request
+        startPhotoRequestTimer(requestId);
+
         Log.d(TAG, "Taking photo and uploading to " + webhookUrl);
 
         // Proceed directly with upload attempt (internet test removed due to unreliability)
@@ -1047,6 +1147,10 @@ public class MediaCaptureService {
         // TESTING: Check for fake camera capture failure
         if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
             Log.e(TAG, "TESTING: Simulating camera capture failure");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
                 PhotoCaptureTestFramework.getErrorMessage());
             return;
@@ -1073,6 +1177,9 @@ public class MediaCaptureService {
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
 
+                            // End timing for successful photo capture
+                            endPhotoRequestTimer(requestId, true);
+
                             // LED is now managed by CameraNeo and will turn off when camera closes
 
                             // Notify that we've captured the photo
@@ -1092,6 +1199,9 @@ public class MediaCaptureService {
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo: " + errorMessage);
                             
+                            // End timing for failed photo capture
+                            endPhotoRequestTimer(requestId, false);
+                            
                             // LED is now managed by CameraNeo and will turn off when camera closes
                             
                             sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1104,6 +1214,10 @@ public class MediaCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo", e);
+            
+            // End timing for failed photo capture due to exception
+            endPhotoRequestTimer(requestId, false);
+            
             sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
             if (mMediaCaptureListener != null) {
@@ -1144,6 +1258,9 @@ public class MediaCaptureService {
             Log.d(TAG, "📤 Starting upload - system marked as busy: " + requestId);
         }
 
+        // Start timing the photo upload
+        startPhotoUploadTimer(requestId);
+
         // Create a new thread for the upload
         new Thread(() -> {
             try {
@@ -1163,7 +1280,7 @@ public class MediaCaptureService {
                 // - 10 seconds to write the photo data
                 // - 5 seconds to read the response
                 OkHttpClient client = new OkHttpClient.Builder()
-                        .connectTimeout(1, java.util.concurrent.TimeUnit.SECONDS)  // Fast fail if no internet
+                        .connectTimeout(2, java.util.concurrent.TimeUnit.SECONDS)  // Fast fail if no internet
                         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)   // Time to upload photo data
                         .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)     // Time to get response
                         .build();
@@ -1199,6 +1316,9 @@ public class MediaCaptureService {
                     Log.d(TAG, "Photo uploaded successfully to webhook: " + webhookUrl);
                     Log.d(TAG, "Response: " + responseBody);
 
+                    // End timing for successful upload
+                    endPhotoUploadTimer(requestId, true);
+
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
                     if (save == null || !save) {
@@ -1233,6 +1353,9 @@ public class MediaCaptureService {
                 } else {
                     String errorMessage = "Upload failed with status: " + response.code();
                     Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
+
+                    // End timing for failed upload
+                    endPhotoUploadTimer(requestId, false);
 
                     // Check if we can fallback to BLE
                     String bleImgId = photoBleIds.get(requestId);
@@ -1299,6 +1422,9 @@ public class MediaCaptureService {
 
             } catch (Exception e) {
                 Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
+
+                // End timing for failed upload due to exception
+                endPhotoUploadTimer(requestId, false);
 
                 // Check if we can fallback to BLE on exception
                 String bleImgId = photoBleIds.get(requestId);
@@ -1388,6 +1514,9 @@ public class MediaCaptureService {
         // First save the media to device gallery
         saveMediaToGallery(mediaFilePath, mediaType);
 
+        // Start timing the photo upload
+        startPhotoUploadTimer(requestId);
+
         // Upload the media to AugmentOS Cloud
         MediaUploadService.uploadMedia(
                 mContext,
@@ -1399,6 +1528,10 @@ public class MediaCaptureService {
                     public void onSuccess(String url) {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.d(TAG, mediaTypeStr + " uploaded successfully: " + url);
+                        
+                        // End timing for successful upload
+                        endPhotoUploadTimer(requestId, true);
+                        
                         sendMediaSuccessResponse(requestId, url, mediaType);
 
                         // Check if we should save the photo
@@ -1439,6 +1572,10 @@ public class MediaCaptureService {
                     public void onFailure(String errorMessage) {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.e(TAG, mediaTypeStr + " upload failed: " + errorMessage);
+                        
+                        // End timing for failed upload
+                        endPhotoUploadTimer(requestId, false);
+                        
                         sendMediaErrorResponse(requestId, errorMessage, mediaType);
 
                         // Check if we can fallback to BLE for photos
@@ -1591,6 +1728,9 @@ public class MediaCaptureService {
         photoOriginalPaths.put(requestId, photoFilePath);
         photoRequestedSizes.put(requestId, size);
 
+        // Start timing the photo request
+        startPhotoRequestTimer(requestId);
+
         // Attempt direct upload (internet test removed due to unreliability)
         Log.d(TAG, "Attempting direct upload for " + requestId);
             takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
@@ -1610,6 +1750,10 @@ public class MediaCaptureService {
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
             return;
         }
@@ -1618,6 +1762,10 @@ public class MediaCaptureService {
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
         photoRequestedSizes.put(requestId, size);
+        
+        // Start timing the photo request
+        startPhotoRequestTimer(requestId);
+        
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -1629,6 +1777,10 @@ public class MediaCaptureService {
         if (PhotoCaptureTestFramework.shouldFail("CAMERA_CAPTURE")) {
             Log.e(TAG, "TESTING: Simulating camera capture failure for BLE transfer - " + 
                 PhotoCaptureTestFramework.getErrorCode() + ": " + PhotoCaptureTestFramework.getErrorMessage());
+            
+            // End timing for failed photo capture
+            endPhotoRequestTimer(requestId, false);
+            
             sendPhotoErrorResponse(requestId, PhotoCaptureTestFramework.getErrorCode(), 
                 PhotoCaptureTestFramework.getErrorMessage());
             return;
@@ -1651,6 +1803,9 @@ public class MediaCaptureService {
                         public void onPhotoCaptured(String filePath) {
                             Log.d(TAG, "Photo captured successfully for BLE transfer: " + filePath);
 
+                            // End timing for successful photo capture
+                            endPhotoRequestTimer(requestId, true);
+
                             // LED is now managed by CameraNeo and will turn off when camera closes
 
                             // Notify that we've captured the photo
@@ -1666,6 +1821,9 @@ public class MediaCaptureService {
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo for BLE: " + errorMessage);
                             
+                            // End timing for failed photo capture
+                            endPhotoRequestTimer(requestId, false);
+                            
                             // LED is now managed by CameraNeo and will turn off when camera closes
                             
                             sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
@@ -1679,6 +1837,10 @@ public class MediaCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo for BLE", e);
+            
+            // End timing for failed photo capture due to exception
+            endPhotoRequestTimer(requestId, false);
+            
             sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
             if (mMediaCaptureListener != null) {
