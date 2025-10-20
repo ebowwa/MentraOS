@@ -115,6 +115,46 @@ protected async onSession(session: AppSession, sessionId: string, userId: string
 }
 ```
 
+### Checking for LED Capabilities
+
+```typescript
+protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
+  const caps = session.capabilities;
+  if (!caps) return;
+
+  if (caps.hasLight) {
+    const light = caps.light!;
+    
+    session.logger.info(`Device has ${light.count || 0} LEDs`);
+    
+    // Check specific LED types
+    if (light.lights) {
+      light.lights.forEach((led, index) => {
+        const ledType = led.isFullColor ? 'RGB' : led.color || 'unknown';
+        const purpose = led.purpose || 'general';
+        session.logger.info(`LED ${index}: ${purpose} (${ledType})`);
+      });
+    }
+
+    // Adapt LED usage based on available types
+    const hasRGB = light.lights?.some(led => led.isFullColor);
+    const hasWhite = light.lights?.some(led => !led.isFullColor && led.color === 'white');
+    
+    if (hasRGB) {
+      // Can use all colors
+      await session.led.turnOn({ color: 'blue', ontime: 1000 });
+    } else if (hasWhite) {
+      // Only white LED available
+      await session.led.turnOn({ color: 'white', ontime: 1000 });
+    }
+  } else {
+    // No LEDs - use alternative feedback methods
+    session.logger.info("No LED support - using display/audio feedback");
+    session.layouts.showTextWall("💡 Notification");
+  }
+}
+```
+
 ### Adaptive Feature Selection
 
 ```typescript
@@ -167,6 +207,15 @@ class AdaptiveApp extends AppServer {
       features.push("🌐 Internet connectivity")
     }
 
+    if (caps.hasLight) {
+      features.push("💡 LED notifications")
+      const lights = caps.light?.lights || []
+      const hasRGB = lights.some(light => light.isFullColor)
+      if (hasRGB) {
+        features.push("🌈 RGB LED control")
+      }
+    }
+
     return features
   }
 
@@ -197,6 +246,8 @@ class AdaptiveApp extends AppServer {
 
 For reference, here are the capabilities of some common devices:
 
-- **Even Realities G1**: Green monochrome display, microphone, no camera
-- **Vuzix Z100**: Green monochrome display, no microphone, no camera
-- **Mentra Live**: No display, camera with streaming, microphone, speaker
+| Device | Display | Camera | Microphone | Speaker | LEDs | Other Features |
+|--------|---------|--------|------------|---------|------|----------------|
+| **Even Realities G1** | Green monochrome | ❌ No | ✅ Yes | ❌ No | ❌ No | Button controls |
+| **Vuzix Z100** | Green monochrome | ❌ No | ❌ No | ❌ No | ❌ No | Basic display only |
+| **Mentra Live** | ❌ No | ✅ 1080p streaming | ✅ Yes | ✅ Yes | ✅ RGB + White | IMU, WiFi, Button |

@@ -370,6 +370,9 @@ export function createTouchEventStream(gesture: string): ExtendedStreamType {
   }
 
   return `${StreamType.TOUCH_EVENT}:${gesture}` as ExtendedStreamType;
+}
+
+/**
  * Create a universal translation stream identifier that translates from any language to target
  * This is useful when you want to support all languages translating to a single target
  * Returns a type-safe stream type that can be used like a StreamType

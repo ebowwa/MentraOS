@@ -39,7 +39,7 @@ public class RgbLedCommandHandler implements ICommandHandler {
     private static final String CMD_RGB_LED_CONTROL_ON = "rgb_led_control_on";
     private static final String CMD_RGB_LED_CONTROL_OFF = "rgb_led_control_off";
     private static final String CMD_RGB_LED_PHOTO_FLASH = "rgb_led_photo_flash";
-    private static final String CMD_RGB_LED_VIDEO_PULSE = "rgb_led_video_pulse";
+    private static final String CMD_RGB_LED_VIDEO_SOLID = "rgb_led_video_solid";
 
     private final AsgClientServiceManager serviceManager;
     private final IHardwareManager hardwareManager;
@@ -78,7 +78,7 @@ public class RgbLedCommandHandler implements ICommandHandler {
             CMD_RGB_LED_CONTROL_ON,
             CMD_RGB_LED_CONTROL_OFF,
             CMD_RGB_LED_PHOTO_FLASH,
-            CMD_RGB_LED_VIDEO_PULSE
+            CMD_RGB_LED_VIDEO_SOLID
         );
     }
     
@@ -104,8 +104,8 @@ public class RgbLedCommandHandler implements ICommandHandler {
                 case CMD_RGB_LED_PHOTO_FLASH:
                     return handlePhotoFlash(data);
 
-                case CMD_RGB_LED_VIDEO_PULSE:
-                    return handleVideoPulse(data);
+                case CMD_RGB_LED_VIDEO_SOLID:
+                    return handleVideoSolid(data);
 
                 default:
                     Log.w(TAG, "⚠️ Unknown RGB LED command type: " + commandType);
@@ -225,19 +225,19 @@ public class RgbLedCommandHandler implements ICommandHandler {
     }
 
     /**
-     * Handle video pulse LED command - solid white LED for video recording.
+     * Handle video solid LED command - solid white LED for video recording.
      */
-    private boolean handleVideoPulse(JSONObject data) {
+    private boolean handleVideoSolid(JSONObject data) {
         Log.d(TAG, "🎥 Processing video recording LED command");
 
         try {
             Log.i(TAG, "🎥 ⚪ Video recording LED - Solid WHITE");
 
-            // Route to hardware manager (60 second duration, manually turned off when recording stops)
-            hardwareManager.setRgbLedSolidWhite(60000);
+            // Route to hardware manager (30 minute duration, manually turned off when recording stops)
+            hardwareManager.setRgbLedSolidWhite(1800000);
 
             Log.i(TAG, "✅ Video recording LED command sent via hardware manager");
-            sendSuccessResponse(CMD_RGB_LED_VIDEO_PULSE);
+            sendSuccessResponse(CMD_RGB_LED_VIDEO_SOLID);
             return true;
 
         } catch (Exception e) {

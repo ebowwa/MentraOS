@@ -29,24 +29,18 @@ export interface LedControlOptions {
 /**
  * 💡 LED Control Module Implementation
  *
- * Provides methods for controlling RGB LEDs on smart glasses.
- * Supports low-level on/off control and higher-level pattern methods.
+ * Provides methods for controlling LEDs on smart glasses.
+ * Supports both low-level on/off control and higher-level pattern methods.
  *
  * @example
  * ```typescript
- * // Turn on red LED for 1 second
+ * // General LED control
  * await session.led.turnOn({ color: 'red', ontime: 1000, count: 1 });
  *
  * // Blink green LED
  * await session.led.blink('green', 500, 500, 5);
  *
- * // Pulse blue LED
- * await session.led.pulse('blue', 2000);
- *
- * // Solid white LED for 5 seconds
- * await session.led.solid('white', 5000);
- *
- * // Turn off LEDs
+ * // Turn off all LEDs
  * await session.led.turnOff();
  * ```
  */
@@ -174,6 +168,29 @@ export class LedModule {
     }
   }
 
+  /**
+   * 💡 Get available LED capabilities
+   *
+   * @returns Array of available LED configurations
+   *
+   * @example
+   * ```typescript
+   * const capabilities = session.led.getCapabilities();
+   * console.log('Available LEDs:', capabilities);
+   * ```
+   */
+  getCapabilities(): Array<{
+    id: string;
+    purpose: string;
+    isFullColor: boolean;
+    color?: string;
+    position?: string;
+  }> {
+    // This would need to be implemented with access to session capabilities
+    // For now, return empty array - this would be populated from session.capabilities
+    return [];
+  }
+
   // =====================================
   // 💡 Pattern Methods (SDK-generated)
   // =====================================
@@ -185,7 +202,7 @@ export class LedModule {
    * @param ontime - How long LED stays on (ms)
    * @param offtime - How long LED stays off (ms)
    * @param count - Number of blink cycles
-   * @returns Promise that resolves when the pattern completes
+   * @returns Promise that resolves immediately after sending the command
    *
    * @example
    * ```typescript
@@ -203,34 +220,6 @@ export class LedModule {
       color,
       ontime,
       offtime,
-      count,
-    });
-  }
-
-  /**
-   * 💡 Pulse an LED (smooth fade effect simulated with rapid blinking)
-   *
-   * Creates a pulsing effect by rapidly blinking the LED with varying timing.
-   *
-   * @param color - LED color to use
-   * @param duration - Total duration of pulse effect (ms)
-   * @returns Promise that resolves when the pulse completes
-   *
-   * @example
-   * ```typescript
-   * // Pulse blue LED for 2 seconds
-   * await session.led.pulse('blue', 2000);
-   * ```
-   */
-  async pulse(color: LedColor, duration: number): Promise<void> {
-    // Simulate pulse with rapid blinking (20ms on, 80ms off for soft glow effect)
-    const cycleTime = 100; // 100ms per cycle
-    const count = Math.floor(duration / cycleTime);
-
-    return this.turnOn({
-      color,
-      ontime: 20,
-      offtime: 80,
       count,
     });
   }

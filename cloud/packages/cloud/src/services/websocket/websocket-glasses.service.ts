@@ -43,7 +43,7 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
 
 // SAFETY FLAG: Set to false to disable grace period cleanup entirely
-const GRACE_PERIOD_CLEANUP_ENABLED = false; // TODO: Set to true when ready to enable auto-cleanup
+const GRACE_PERIOD_CLEANUP_ENABLED = true; // Enable auto-cleanup when WebSocket disconnects
 
 const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,

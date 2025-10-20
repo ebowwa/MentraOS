@@ -21,3 +21,6 @@ services:
       LIVEKIT_PCM_ENDIAN: "off"
       # Add any Go service environment variables here
       LOG_LEVEL: "info"
+      # Better Stack logging for Go bridge
+      BETTERSTACK_SOURCE_TOKEN: "${BETTERSTACK_SOURCE_TOKEN}"
+      BETTERSTACK_INGESTING_HOST: "s1311181.eu-nbg-2.betterstackdata.com"

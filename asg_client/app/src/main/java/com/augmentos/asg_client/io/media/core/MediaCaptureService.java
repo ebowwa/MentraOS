@@ -381,11 +381,11 @@ public class MediaCaptureService {
     /**
      * Trigger solid white LED for video recording duration
      */
-    private void triggerVideoPulseLed() {
-        Log.i(TAG, "🎥 triggerVideoPulseLed() called");
+    private void triggerVideoRecordingLed() {
+        Log.i(TAG, "🎥 triggerVideoRecordingLed() called");
 
         if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
-            hardwareManager.setRgbLedSolidWhite(60000); // 60 second solid white LED
+            hardwareManager.setRgbLedSolidWhite(1800000); // 30 minute solid white LED
             Log.i(TAG, "🎥 Video recording LED (solid white) triggered via hardware manager");
         } else {
             Log.w(TAG, "⚠️ RGB LED not supported on this device");
@@ -395,8 +395,8 @@ public class MediaCaptureService {
     /**
      * Stop video recording LED (turn off LED)
      */
-    private void stopVideoPulseLed() {
-        Log.d(TAG, "stopVideoPulseLed called");
+    private void stopVideoRecordingLed() {
+        Log.d(TAG, "stopVideoRecordingLed called");
 
         if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
             hardwareManager.setRgbLedOff();
@@ -581,7 +581,7 @@ public class MediaCaptureService {
             // Play video start sound
             playVideoStartSound();
             if (enableLed) {
-                triggerVideoPulseLed(); // Trigger solid white LED for video recording duration
+                triggerVideoRecordingLed(); // Trigger solid white LED for video recording duration
             }
 
             // Start video recording using CameraNeo
@@ -671,7 +671,7 @@ public class MediaCaptureService {
                     isRecordingVideo = false;
                     
                     // Turn off RGB white LED on error (error path may not go through stopVideoRecording)
-                    stopVideoPulseLed();
+                    stopVideoRecordingLed();
                     
                     // Turn off recording LED on error if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
@@ -700,7 +700,7 @@ public class MediaCaptureService {
             Log.e(TAG, "Error starting video recording", e);
 
             // Turn off RGB white LED if error occurred during start
-            stopVideoPulseLed();
+            stopVideoRecordingLed();
 
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(requestId, "Error starting video: " + e.getMessage(),
@@ -725,7 +725,7 @@ public class MediaCaptureService {
         try {
             // Play video stop sound
             playVideoStopSound();
-            stopVideoPulseLed(); // Stop white LED when video recording stops
+            stopVideoRecordingLed(); // Stop white LED when video recording stops
 
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);

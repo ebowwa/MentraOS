@@ -50,10 +50,8 @@ export class LiveKitGrpcClient {
   private currentParams: JoinRoomParams | null = null;
   private eventHandlers: Map<string, (evt: PlayAudioEvent) => void> = new Map();
 
-  // Endianness handling
-  private readonly endianMode: "auto" | "swap" | "off";
-  private endianSwapDetermined = false;
-  private shouldSwapBytes = false;
+  // Endianness handling: "swap" to force byte swapping, "off" for no swapping (default)
+  private readonly shouldSwapBytes: boolean;
 
   constructor(userSession: UserSession, bridgeUrl?: string) {
     this.userSession = userSession;
@@ -74,9 +72,21 @@ export class LiveKitGrpcClient {
         "livekit-bridge:9090";
     }
 
-    // Initialize endianness mode from environment
-    const mode = (process.env.LIVEKIT_PCM_ENDIAN || "auto").toLowerCase();
-    this.endianMode = mode as "auto" | "swap" | "off";
+    // Initialize endianness mode from environment: "swap" or "off" (default)
+    const mode = (process.env.LIVEKIT_PCM_ENDIAN || "off").toLowerCase();
+    this.shouldSwapBytes = mode === "swap";
+
+    if (this.shouldSwapBytes) {
+      this.logger.info(
+        { feature: "livekit-grpc" },
+        "Endianness: SWAP mode enabled - will convert big-endian to little-endian",
+      );
+    } else {
+      this.logger.info(
+        { feature: "livekit-grpc" },
+        "Endianness: OFF mode - no byte swapping",
+      );
+    }
 
     // Load proto and create gRPC client
     this.initializeGrpcClient();
@@ -261,9 +271,9 @@ export class LiveKitGrpcClient {
       try {
         let pcmData = Buffer.from(chunk.pcm_data);
 
-        // Handle endianness if needed
-        if (this.endianMode !== "off" && pcmData.length >= 2) {
-          pcmData = this.handleEndianness(pcmData, receivedChunks);
+        // Swap bytes if mode is "swap"
+        if (this.shouldSwapBytes && pcmData.length >= 2) {
+          pcmData = this.swapBytes(pcmData);
         }
 
         receivedChunks++;
@@ -398,17 +408,11 @@ export class LiveKitGrpcClient {
   }
 
   /**
-   * Handle endianness detection and byte swapping
+   * Swap bytes for endianness conversion (big-endian to little-endian)
    */
-  private handleEndianness(buf: Buffer, frameCount: number): Buffer {
-    // Guard: ensure even-length PCM data
-    if ((buf.length & 1) === 1) {
-      if (frameCount % 200 === 0) {
-        this.logger.warn(
-          { feature: "livekit-grpc", rawLen: buf.length },
-          "Odd-length PCM payload detected; dropping last byte",
-        );
-      }
+  private swapBytes(buf: Buffer): Buffer {
+    // Ensure even-length buffer
+    if (buf.length % 2 === 1) {
       buf = buf.slice(0, buf.length - 1);
     }
 
@@ -416,72 +420,11 @@ export class LiveKitGrpcClient {
       return buf;
     }
 
-    // Force swap if mode is "swap" (check FIRST before auto-detection)
-    if (this.endianMode === "swap") {
-      this.shouldSwapBytes = true;
-      this.endianSwapDetermined = true;
-    }
-
-    // Detect endianness once in 'auto' mode (only if not already forced)
-    if (
-      !this.endianSwapDetermined &&
-      this.endianMode === "auto" &&
-      buf.length >= 16
-    ) {
-      let oddAreMostlyFFor00 = 0; // count of MSB being 0xFF or 0x00 (sign-extension in BE)
-      let evenAreMostlyFFor00 = 0; // count of LSB being 0xFF or 0x00 (sign-extension in LE)
-      const pairs = Math.min(16, Math.floor(buf.length / 2));
-
-      for (let i = 0; i < pairs; i++) {
-        const b0 = buf[2 * i]; // LSB if LE, MSB if BE
-        const b1 = buf[2 * i + 1]; // MSB if LE, LSB if BE
-        if (b0 === 0x00 || b0 === 0xff) evenAreMostlyFFor00++;
-        if (b1 === 0x00 || b1 === 0xff) oddAreMostlyFFor00++;
-      }
-
-      // If upper byte (b1) has more sign-extension pattern than lower byte,
-      // it's likely big-endian and needs swapping to little-endian
-      if (oddAreMostlyFFor00 >= evenAreMostlyFFor00 + 6) {
-        this.shouldSwapBytes = true;
-      } else {
-        this.shouldSwapBytes = false;
-      }
-
-      this.endianSwapDetermined = true;
-      this.logger.info(
-        {
-          feature: "livekit-grpc",
-          oddFF00: oddAreMostlyFFor00,
-          evenFF00: evenAreMostlyFFor00,
-          willSwap: this.shouldSwapBytes,
-        },
-        "PCM endianness detection result",
-      );
-    }
-
-    // Perform byte swapping if needed
-    if (this.shouldSwapBytes) {
-      // Log once to confirm swapping is happening
-      if (frameCount === 0) {
-        this.logger.info(
-          { feature: "livekit-grpc", mode: this.endianMode },
-          "SWAPPING BYTES - converting big-endian to little-endian",
-        );
-      }
-      // Create new buffer for swapped data
-      const swapped = Buffer.allocUnsafe(buf.length);
-      for (let i = 0; i + 1 < buf.length; i += 2) {
-        swapped[i] = buf[i + 1];
-        swapped[i + 1] = buf[i];
-      }
-      return swapped;
-    }
-
-    if (frameCount === 0) {
-      this.logger.info(
-        { feature: "livekit-grpc", mode: this.endianMode },
-        "NOT SWAPPING BYTES - data is already little-endian",
-      );
+    // Swap bytes in-place
+    for (let i = 0; i < buf.length; i += 2) {
+      const tmp = buf[i];
+      buf[i] = buf[i + 1];
+      buf[i + 1] = tmp;
     }
 
     return buf;
