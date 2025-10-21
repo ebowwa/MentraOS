@@ -13,17 +13,28 @@ import android.graphics.SurfaceTexture;
 import android.media.AudioFormat;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URI;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
 import androidx.core.app.NotificationCompat;
@@ -47,11 +58,15 @@ import io.github.thibaultbee.streampack.error.StreamPackError;
 import io.github.thibaultbee.streampack.ext.rtmp.streamers.CameraRtmpLiveStreamer;
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener;
 import io.github.thibaultbee.streampack.listeners.OnErrorListener;
+//import io.github.thibaultbee.streampack.listeners.OnPacketListener;
 import io.github.thibaultbee.streampack.views.PreviewView;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 @SuppressLint("MissingPermission")
 public class RtmpStreamingService extends Service {
@@ -67,6 +82,8 @@ public class RtmpStreamingService extends Service {
 
     private final IBinder mBinder = new LocalBinder();
     private CameraRtmpLiveStreamer mStreamer;
+    // Tracks the most recent streamer so we can still tear down the camera even if mStreamer is cleared
+    private CameraRtmpLiveStreamer mLastStreamerForCleanup;
     private String mRtmpUrl;
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
@@ -74,6 +91,7 @@ public class RtmpStreamingService extends Service {
     private static final int SURFACE_WIDTH = 1280;  // 16:9 aspect ratio for proper video streaming
     private static final int SURFACE_HEIGHT = 720;  // HD resolution (720p)
 
+    private static final int START_BITRATE = 800000; //2,000,000 => 800,000
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
@@ -338,7 +356,7 @@ public class RtmpStreamingService extends Service {
         synchronized (mStateLock) {
             if (mStreamer != null) {
                 Log.d(TAG, "Releasing existing streamer before reinitializing");
-                releaseStreamer();
+                releaseStreamer(true);
 
                 // Wait a bit for cleanup
                 try {
@@ -460,11 +478,12 @@ public class RtmpStreamingService extends Service {
 
                             // Only notify server immediately for fatal errors that won't be retried
                             if (!isRetryableErrorString(message)) {
-                                Log.w(TAG, "Fatal error detected - notifying server to stop stream");
+                                Log.w(TAG, "Fatal error detected - stopping stream");
                                 if (sStatusCallback != null) {
                                     sStatusCallback.onStreamError("RTMP connection failed: " + message);
                                 }
-                                return; // Don't attempt recovery for fatal errors
+                                stopStreaming(); // Clean up properly for fatal errors
+                                return;
                             }
 
                             // Give the StreamPack library time to recover internally before we take over
@@ -549,6 +568,7 @@ public class RtmpStreamingService extends Service {
                         }
                     }
             );
+            //mStreamer.setOnPacketListener(packet -> mLastPacketSentAt = SystemClock.elapsedRealtime());
 
             // For MIME type, use the actual mime type instead of null
             String audioMimeType = MediaFormat.MIMETYPE_AUDIO_AAC; // Default to AAC
@@ -561,7 +581,7 @@ public class RtmpStreamingService extends Service {
                     MediaFormat.MIMETYPE_AUDIO_AAC, // Use actual mime type instead of null
                     64000, // 128 kbps
                     44100, // 44.1 kHz
-                    AudioFormat.CHANNEL_IN_STEREO, // Switch to mono for better compatibility
+                    AudioFormat.CHANNEL_IN_MONO, // Switch to mono for better compatibility
                     audioProfile, // Default profile
                     0, // Default byte format
                     false, // Enable echo cancellation
@@ -576,7 +596,7 @@ public class RtmpStreamingService extends Service {
             // Configure video settings using proper constructor
             VideoConfig videoConfig = new VideoConfig(
                     MediaFormat.MIMETYPE_VIDEO_AVC,
-                    2000000, // 1 Mbps
+                    START_BITRATE,
                     new Size(SURFACE_WIDTH, SURFACE_HEIGHT),
                     15, // Increase to 15 FPS minimum
                     profile,
@@ -587,6 +607,9 @@ public class RtmpStreamingService extends Service {
             // Apply configurations
             mStreamer.configure(videoConfig);
             mStreamer.configure(audioConfig);
+
+            // Remember this streamer so stop flows can clean up even if mStreamer gets swapped/null
+            mLastStreamerForCleanup = mStreamer;
 
             // Start the preview with our surface
             if (mSurface != null && mSurface.isValid()) {
@@ -614,8 +637,12 @@ public class RtmpStreamingService extends Service {
     }
 
     private void releaseStreamer() {
+        releaseStreamer(false);
+    }
+
+    private void releaseStreamer(boolean preserveSession) {
         // Just call forceStopStreamingInternal which handles everything
-        forceStopStreamingInternal();
+        forceStopStreamingInternal(preserveSession);
 
         // Release wake locks after everything is cleaned up
         releaseWakeLocks();
@@ -647,7 +674,7 @@ public class RtmpStreamingService extends Service {
                 }
 
                 // Force stop and clean up everything
-                forceStopStreamingInternal();
+                forceStopStreamingInternal(mReconnecting);
 
                 // Restore stream ID if this was a reconnection
                 if (preservedStreamId != null) {
@@ -881,15 +908,15 @@ public class RtmpStreamingService extends Service {
         }
 
         Log.i(TAG, "Stopping streaming");
-        forceStopStreamingInternal();
+        forceStopStreamingInternal(false);
     }
 
     /**
      * Force stop streaming and clean up all resources
      * This method performs a complete cleanup regardless of current state
      */
-    private void forceStopStreamingInternal() {
-        Log.d(TAG, "Force stopping stream and cleaning up resources");
+    private void forceStopStreamingInternal(boolean preserveSession) {
+        Log.d(TAG, "Force stopping stream and cleaning up resources (preserveSession=" + preserveSession + ")");
 
         // Increment reconnection sequence to invalidate any pending handlers
         mReconnectionSequence++;
@@ -900,18 +927,28 @@ public class RtmpStreamingService extends Service {
             mReconnectHandler.removeCallbacksAndMessages(null);
         }
 
-        // Cancel timeout timer
-        cancelStreamTimeout();
+        if (!preserveSession) {
+            cancelStreamTimeout();
+        } else {
+            Log.d(TAG, "Preserving stream timeout and stream ID for reconnection");
+        }
 
-        // Reset state flags
-        mReconnecting = false;
-        mReconnectAttempts = 0;
+        if (preserveSession) {
+            mReconnecting = true;
+        } else {
+            mReconnecting = false;
+            mReconnectAttempts = 0;
+        }
 
-        // Stop the stream if we have a streamer
-        if (mStreamer != null) {
+        // Stop the stream if we have a streamer (or the last known instance)
+        CameraRtmpLiveStreamer streamerToCleanup = mStreamer != null ? mStreamer : mLastStreamerForCleanup;
+        if (streamerToCleanup != null) {
+            if (mStreamer == null) {
+                Log.w(TAG, "No active streamer reference, using last known instance for cleanup");
+            }
             try {
                 // Force stop the stream
-                mStreamer.stopStream(new Continuation<kotlin.Unit>() {
+                streamerToCleanup.stopStream(new Continuation<kotlin.Unit>() {
                     @Override
                     public CoroutineContext getContext() {
                         return EmptyCoroutineContext.INSTANCE;
@@ -940,7 +977,7 @@ public class RtmpStreamingService extends Service {
 
             // Stop preview
             try {
-                mStreamer.stopPreview();
+                streamerToCleanup.stopPreview();
                 Log.d(TAG, "Camera preview stopped");
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping preview", e);
@@ -957,7 +994,7 @@ public class RtmpStreamingService extends Service {
 
             // Release the streamer completely
             try {
-                mStreamer.release();
+                streamerToCleanup.release();
                 Log.d(TAG, "Streamer released");
             } catch (Exception e) {
                 Log.e(TAG, "Error releasing streamer", e);
@@ -972,30 +1009,30 @@ public class RtmpStreamingService extends Service {
                 }
             }
 
-            mStreamer = null;
+            if (mStreamer == streamerToCleanup) {
+                mStreamer = null;
+            }
+            mLastStreamerForCleanup = null;
         }
 
         // Release surface
         releaseSurface();
 
-        // Save stream ID before clearing it so callback can include it in status
-        String finalStreamId = mCurrentStreamId;
-
         // Update state
         synchronized (mStateLock) {
             mStreamState = StreamState.IDLE;
             mIsStreaming = false;
-            mIsStreamingActive = false;
-
-            // Log stream ID being cleared for debugging
-            if (mCurrentStreamId != null) {
-                Log.d(TAG, "Clearing stream ID: " + mCurrentStreamId);
+            if (!preserveSession) {
+                mIsStreamingActive = false;
+                if (mCurrentStreamId != null) {
+                    Log.d(TAG, "Clearing stream ID: " + mCurrentStreamId);
+                }
+                mCurrentStreamId = null;
+                mStreamStartTime = 0;
+                mLastReconnectionTime = 0;
+            } else {
+                Log.d(TAG, "Keeping stream ID active for reconnection: " + mCurrentStreamId);
             }
-            mCurrentStreamId = null;
-
-            // Reset stream timing
-            mStreamStartTime = 0;
-            mLastReconnectionTime = 0;
         }
 
         // Notify listeners
@@ -1003,24 +1040,23 @@ public class RtmpStreamingService extends Service {
 
         // Turn off LED if it was on
         if (mLedEnabled && mHardwareManager != null && mHardwareManager.supportsRecordingLed()) {
-            mHardwareManager.setRecordingLedOff();
-            Log.d(TAG, "📹 Recording LED turned OFF (stream stopped)");
+            if (preserveSession) {
+                Log.d(TAG, "📹 Preserving recording LED state during reconnection");
+            } else {
+                mHardwareManager.setRecordingLedOff();
+                Log.d(TAG, "📹 Recording LED turned OFF (stream stopped)");
+            }
         }
 
-        // Temporarily restore stream ID for callback
-        if (finalStreamId != null) {
-            mCurrentStreamId = finalStreamId;
+        if (preserveSession) {
+            Log.d(TAG, "Stream resources released for reconnection");
+        } else {
+            if (sStatusCallback != null) {
+                sStatusCallback.onStreamStopped();
+            }
+            EventBus.getDefault().post(new StreamingEvent.Stopped());
+            Log.i(TAG, "Streaming stopped and cleaned up");
         }
-
-        if (sStatusCallback != null) {
-            sStatusCallback.onStreamStopped();
-        }
-
-        // Clear it again after callback
-        mCurrentStreamId = null;
-        EventBus.getDefault().post(new StreamingEvent.Stopped());
-
-        Log.i(TAG, "Streaming stopped and cleaned up");
     }
 
     /**
@@ -1162,7 +1198,7 @@ public class RtmpStreamingService extends Service {
                 }
 
                 // Force stop the stream immediately
-                forceStopStreamingInternal();
+                forceStopStreamingInternal(false);
             } else {
                 Log.d(TAG, "Ignoring timeout for old stream: " + streamId +
                       " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
@@ -1398,41 +1434,48 @@ public class RtmpStreamingService extends Service {
         // Log the error for debugging
         Log.d(TAG, "Classifying error message: " + message);
 
+        // Convert to lowercase for case-insensitive matching
+        String lowerMessage = message.toLowerCase();
+
         // Network/connection errors that should trigger reconnection
-        if (message.contains("SocketException") ||
-            message.contains("Connection") ||
-            message.contains("Timeout") ||
-            message.contains("Network") ||
-            message.contains("UnknownHostException") ||
-            message.contains("IOException") ||
-            message.contains("ECONNREFUSED") ||
-            message.contains("ETIMEDOUT")) {
+        if (lowerMessage.contains("socket") ||
+            lowerMessage.contains("connection") ||
+            lowerMessage.contains("timeout") ||
+            lowerMessage.contains("network") ||
+            lowerMessage.contains("unknownhost") ||
+            lowerMessage.contains("ioexception") ||
+            lowerMessage.contains("unreachable") ||
+            lowerMessage.contains("disconnected") ||
+            lowerMessage.contains("pipe") ||        // "Broken pipe"
+            lowerMessage.contains("closed") ||      // "Socket closed"
+            lowerMessage.contains("refused") ||
+            lowerMessage.contains("reset") ||
+            lowerMessage.contains("host") ||        // "Host is unreachable"
+            lowerMessage.contains("econnrefused") ||
+            lowerMessage.contains("etimedout") ||
+            lowerMessage.contains("peer")) {        // "Peer disconnected"
             Log.d(TAG, "Error classified as RETRYABLE (network issue)");
             return true;
         }
 
         // Fatal errors that shouldn't retry
-        if (message.contains("Permission") ||
-            message.contains("permission") ||
-            message.contains("Invalid URL") ||
-            message.contains("invalid url") ||
-            message.contains("Authentication") ||
-            message.contains("authentication") ||
-            message.contains("Unauthorized") ||
-            message.contains("Codec") ||
-            message.contains("codec") ||
-            message.contains("Not supported") ||
-            message.contains("Illegal") ||
-            message.contains("Invalid parameter")) {
+        if (lowerMessage.contains("permission") ||
+            lowerMessage.contains("invalid url") ||
+            lowerMessage.contains("authentication") ||
+            lowerMessage.contains("unauthorized") ||
+            lowerMessage.contains("codec") ||
+            lowerMessage.contains("not supported") ||
+            lowerMessage.contains("illegal") ||
+            lowerMessage.contains("invalid parameter")) {
             Log.d(TAG, "Error classified as FATAL (configuration/permission issue)");
             return false;
         }
 
         // Camera-specific errors that are usually fatal
-        if (message.contains("Camera") &&
-            (message.contains("busy") ||
-             message.contains("in use") ||
-             message.contains("failed to connect"))) {
+        if (lowerMessage.contains("camera") &&
+            (lowerMessage.contains("busy") ||
+             lowerMessage.contains("in use") ||
+             lowerMessage.contains("failed to connect"))) {
             Log.d(TAG, "Error classified as FATAL (camera unavailable)");
             return false;
         }

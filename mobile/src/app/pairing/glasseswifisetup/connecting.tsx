@@ -1,16 +1,15 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, ActivityIndicator, TouchableOpacity} from "react-native"
-import {useLocalSearchParams, router} from "expo-router"
-import {Screen, Header, Button} from "@/components/ignite"
-import bridge from "@/bridge/MantleBridge"
+import {Button, Header, Screen} from "@/components/ignite"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {ThemedStyle} from "@/theme"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
-import {ViewStyle, TextStyle} from "react-native"
-import ActionButton from "@/components/ui/ActionButton"
 import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Ionicons, MaterialIcons} from "@expo/vector-icons"
+import CoreModule from "core"
+import {useLocalSearchParams} from "expo-router"
+import {useEffect, useRef, useState} from "react"
+import {ActivityIndicator, TextStyle, View, ViewStyle} from "react-native"
+import {Text} from "@/components/ignite"
 
 export default function WifiConnectingScreen() {
   const params = useLocalSearchParams()
@@ -23,9 +22,9 @@ export default function WifiConnectingScreen() {
 
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "success" | "failed">("connecting")
   const [errorMessage, setErrorMessage] = useState("")
-  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const failureGracePeriodRef = useRef<NodeJS.Timeout | null>(null)
-  const {push, goBack, navigate} = useNavigationHistory()
+  const connectionTimeoutRef = useRef<number | null>(null)
+  const failureGracePeriodRef = useRef<number | null>(null)
+  const {goBack, navigate} = useNavigationHistory()
 
   useEffect(() => {
     // Start connection attempt
@@ -85,22 +84,16 @@ export default function WifiConnectingScreen() {
   const attemptConnection = async () => {
     try {
       console.log("Attempting to send wifi credentials to Core", ssid, password)
-      await bridge.sendWifiCredentials(ssid, password)
+      await CoreModule.sendWifiCredentials(ssid, password)
 
       // Set timeout for connection attempt (20 seconds)
       connectionTimeoutRef.current = setTimeout(() => {
         if (connectionStatus === "connecting") {
-          console.log("321321 Connection timed out. Please try again.")
           setConnectionStatus("failed")
           setErrorMessage("Connection timed out. Please try again.")
-          // GlobalEventEmitter.emit("SHOW_BANNER", {
-          //   message: "WiFi connection timed out",
-          //   type: "error",
-          // })
         }
       }, 20000)
     } catch (error) {
-      console.log("^&*()__+ Error sending WiFi credentials:", error)
       console.error("Error sending WiFi credentials:", error)
       setConnectionStatus("failed")
       setErrorMessage("Failed to send credentials to glasses. Please try again.")
@@ -378,10 +371,4 @@ const $failureTipText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.textDim,
   flex: 1,
-})
-
-const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  gap: spacing.sm,
-  width: "100%",
-  maxWidth: 300,
 })

@@ -79,7 +79,7 @@ Pain points:
     - If `correlationId` matches a pending poll, resolve it and send a targeted response to the App.
     - Otherwise, set as lastLocation and broadcast to subscribed Apps.
 
-    2.3 WebSocket behavior unchanged (back-compat)
+      2.3 WebSocket behavior unchanged (back-compat)
 
 - Device WebSocket `LOCATION_UPDATE` → `locationManager.updateFromWebsocket(message)`
 - Device WebSocket `SET_LOCATION_TIER` and `REQUEST_SINGLE_LOCATION` remain the commands we send to devices when needed.

@@ -1,20 +1,21 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ViewStyle, TextStyle} from "react-native"
+import {useEffect, useState} from "react"
+import {ScrollView, TextInput, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
+import {Text} from "@/components/ignite"
 
 import bridge from "@/bridge/MantleBridge"
+import {PillButton} from "@/components/ignite"
+import RouteButton from "@/components/ui/RouteButton"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n/translate"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
+import showAlert from "@/utils/AlertUtils"
+import {MOCK_CONNECTION} from "@/utils/Constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
 import ToggleSetting from "../settings/ToggleSetting"
-import {translate} from "@/i18n/translate"
-import showAlert from "@/utils/AlertUtils"
-import RouteButton from "@/components/ui/RouteButton"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures} from "@/config/glassesFeatures"
-import {PillButton} from "@/components/ignite"
-import {MOCK_CONNECTION} from "@/consts"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import CoreModule from "core"
 
 // Nex Interface Version - Single source of truth
 export const NEX_INTERFACE_VERSION = "1.0.0"
@@ -257,7 +258,7 @@ export default function NexDeveloperSettings() {
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
 
   // Mentra Nex BLE test state variables
   const [text, setText] = useState("Hello World")
@@ -325,7 +326,7 @@ export default function NexDeveloperSettings() {
 
   // Mentra Nex BLE test handlers
   const onSendTextClick = async () => {
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+    if (status.glasses_info?.model_name) {
       if (text === "" || positionX === null || positionY === null || size === null) {
         showAlert("Please fill all the fields", "Please fill all the fields", [
           {
@@ -335,7 +336,12 @@ export default function NexDeveloperSettings() {
         ])
         return
       }
-      await bridge.sendDisplayText(text, parseInt(positionX, 0), parseInt(positionY, 0), parseInt(size, 10))
+      await CoreModule.displayText({
+        text,
+        x: parseInt(positionX, 0),
+        y: parseInt(positionY, 0),
+        size: parseInt(size, 10),
+      })
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -355,8 +361,8 @@ export default function NexDeveloperSettings() {
   }
 
   const onSendImageClick = async () => {
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await bridge.sendDisplayImage(selectedImageType, selectedImageSize)
+    if (status.glasses_info?.model_name) {
+      await CoreModule.displayImage(selectedImageType, selectedImageSize)
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -369,8 +375,8 @@ export default function NexDeveloperSettings() {
   }
 
   const onClearDisplayClick = async () => {
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      await bridge.sendClearDisplay()
+    if (status.glasses_info?.model_name) {
+      await CoreModule.clearDisplay()
     } else {
       showAlert("Please connect to the device", "Please connect to the device", [
         {
@@ -384,7 +390,7 @@ export default function NexDeveloperSettings() {
 
   const onLc3AudioToggle = async (enabled: boolean) => {
     setLc3AudioEnabled(enabled)
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
+    if (status.glasses_info?.model_name) {
       await bridge.setLc3AudioEnabled(enabled)
     }
   }
@@ -787,7 +793,7 @@ const $textInput: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 14,
   marginBottom: 12,
   backgroundColor: colors.background,
-  borderColor: colors.inputBorderHighlight,
+  borderColor: colors.border,
   color: colors.text,
 })
 

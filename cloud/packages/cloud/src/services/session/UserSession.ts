@@ -18,7 +18,7 @@ import AudioManager from "./AudioManager";
 import MicrophoneManager from "./MicrophoneManager";
 import DisplayManager from "../layout/DisplayManager6.1";
 import { DashboardManager } from "./dashboard";
-import VideoManager from "./VideoManager";
+import UnmanagedStreamingExtension from "./UnmanagedStreamingExtension";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 // Session map will be maintained statically on UserSession to avoid an external SessionStorage singleton
@@ -27,11 +27,12 @@ import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
+import { StreamRegistry } from "../streaming/StreamRegistry";
 
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
-import LiveKitManager from "./LiveKitManager";
-import SpeakerManager from "./SpeakerManager";
+import LiveKitManager from "./livekit/LiveKitManager";
+import SpeakerManager from "./livekit/SpeakerManager";
 import DeviceManager from "./DeviceManager";
 import CalendarManager from "./CalendarManager";
 import LocationManager from "./LocationManager";
@@ -92,7 +93,8 @@ export class UserSession {
   public userSettingsManager: UserSettingsManager;
   public deviceManager: DeviceManager;
 
-  public videoManager: VideoManager;
+  public streamRegistry: StreamRegistry;
+  public unmanagedStreamingExtension: UnmanagedStreamingExtension;
   public photoManager: PhotoManager;
   public managedStreamingExtension: ManagedStreamingExtension;
 
@@ -106,7 +108,7 @@ export class UserSession {
   private readonly PONG_TIMEOUT_MS = 30000; // 30 seconds - 3x heartbeat interval
 
   // SAFETY FLAG: Set to false to disable pong timeout behavior entirely
-  private static readonly PONG_TIMEOUT_ENABLED = false; // TODO: Set to true when ready to enable connection tracking
+  private static readonly PONG_TIMEOUT_ENABLED = true; // Enabled to track phone connection reliability in production
 
   // Connection state tracking
   public phoneConnected: boolean = false;
@@ -116,6 +118,9 @@ export class UserSession {
 
   // Audio play request tracking - maps requestId to packageName
   public audioPlayRequestMapping: Map<string, string> = new Map();
+
+  // App health status cache (for client apps API)
+  public appHealthCache: Map<string, boolean> = new Map();
 
   // Other state
   public userDatetime?: string;
@@ -147,8 +152,12 @@ export class UserSession {
     this.calendarManager = new CalendarManager(this);
     this.locationManager = new LocationManager(this);
     this.photoManager = new PhotoManager(this);
-    this.videoManager = new VideoManager(this);
-    this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
+    this.streamRegistry = new StreamRegistry(this.logger);
+    this.unmanagedStreamingExtension = new UnmanagedStreamingExtension(this);
+    this.managedStreamingExtension = new ManagedStreamingExtension(
+      this.logger,
+      this.streamRegistry,
+    );
     this.liveKitManager = new LiveKitManager(this);
     this.userSettingsManager = new UserSettingsManager(this);
     this.speakerManager = new SpeakerManager(this);
@@ -167,6 +176,58 @@ export class UserSession {
 
     // Register for leak detection
     memoryLeakDetector.register(this, `UserSession:${userId}`);
+  }
+
+  /**
+   * Update tracked glasses connection state and optionally log source of the update.
+   */
+  public setGlassesConnectionState(
+    isConnected: boolean,
+    modelName?: string | null,
+    options: { source?: string } = {},
+  ): void {
+    const normalizedModel =
+      isConnected && modelName
+        ? String(modelName).trim() || undefined
+        : undefined;
+    const previousState = this.glassesConnected;
+    const previousModel = this.glassesModel;
+
+    this.glassesConnected = isConnected;
+    this.glassesModel = normalizedModel;
+    this.lastGlassesStatusUpdate = new Date();
+
+    if (previousState !== isConnected || previousModel !== normalizedModel) {
+      this.logger.info(
+        {
+          source: options.source || "unknown",
+          previousState,
+          newState: isConnected,
+          previousModel,
+          newModel: normalizedModel,
+        },
+        "[UserSession:setGlassesConnectionState] Updated glasses connection state",
+      );
+    }
+  }
+
+  /**
+   * Handle phone WebSocket closure by resetting connection state trackers.
+   */
+  public handlePhoneConnectionClosed(reason?: string): void {
+    const logContext = { reason };
+    const logMessage =
+      "[UserSession] Phone WebSocket closed, marking connections as disconnected";
+    if (reason && reason.includes("ping_timeout")) {
+      this.logger.warn(logContext, logMessage);
+    } else {
+      this.logger.info(logContext, logMessage);
+    }
+    this.phoneConnected = false;
+    this.setGlassesConnectionState(false, null, {
+      source: reason ? `websocket_close:${reason}` : "websocket_close",
+    });
+    this.clearGlassesHeartbeat();
   }
 
   /**
@@ -273,8 +334,7 @@ export class UserSession {
       );
 
       // Mark connections as dead
-      this.phoneConnected = false;
-      this.glassesConnected = false; // If phone is dead, glasses are unreachable
+      this.handlePhoneConnectionClosed("ping_timeout");
 
       // Close the zombie WebSocket connection
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
@@ -283,19 +343,6 @@ export class UserSession {
         );
         this.websocket.close(1001, "Ping timeout - no pong received");
       }
-
-      // Clear the heartbeat since connection is dead
-      this.clearGlassesHeartbeat();
-
-      // Log the disconnection for debugging
-      this.logger.warn(
-        {
-          userId: this.userId,
-          phoneConnected: this.phoneConnected,
-          glassesConnected: this.glassesConnected,
-        },
-        `[UserSession:pongTimeout] Connection state updated after timeout`,
-      );
     }, this.PONG_TIMEOUT_MS);
   }
 
@@ -628,7 +675,8 @@ export class UserSession {
     if (this.translationManager) this.translationManager.dispose();
     if (this.subscriptionManager) this.subscriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
-    if (this.videoManager) this.videoManager.dispose();
+    if (this.unmanagedStreamingExtension)
+      this.unmanagedStreamingExtension.dispose();
     if (this.photoManager) this.photoManager.dispose();
     if (this.managedStreamingExtension)
       this.managedStreamingExtension.dispose();

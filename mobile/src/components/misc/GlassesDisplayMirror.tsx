@@ -16,7 +16,7 @@ interface GlassesDisplayMirrorProps {
 }
 
 const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
-  fallbackMessage = "No display data available",
+  fallbackMessage = "",
   containerStyle,
   fullscreen = false,
   demo = false,
@@ -186,6 +186,9 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
   }, [layout, containerWidth])
 
   if (!layout || !layout.layoutType) {
+    if (!fallbackMessage) {
+      return null
+    }
     return (
       <View style={[themed($glassesScreen), containerStyle]}>
         <View style={themed($emptyContainer)}>
@@ -210,7 +213,7 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 140,
   backgroundColor: colors.backgroundAlt,
-  borderRadius: 10,
+  borderRadius: spacing.md,
   paddingHorizontal: spacing.md,
   paddingVertical: spacing.sm,
   borderWidth: 2,
@@ -259,7 +262,7 @@ const styles = {
   cardTitle: {
     fontFamily: "glassesMirror",
     fontSize: 18,
-    marginBottom: 5,
+    // marginBottom: 5,
   },
 }
 

@@ -22,7 +22,7 @@ graph TD
     D --> H[TranscriptionManager]
     D --> I[MicrophoneManager]
     D --> J[PhotoManager]
-    D --> K[VideoManager]
+    D --> K[UnmanagedStreamingExtension]
     D --> L[DashboardManager]
     D --> M[TranslationManager]
     D --> N[ManagedStreamingExtension]
@@ -66,7 +66,7 @@ public appManager: AppManager;                      // App lifecycle
 public audioManager: AudioManager;                  // Audio processing
 public transcriptionManager: TranscriptionManager;  // Speech-to-text
 public translationManager: TranslationManager;      // Translation services
-public videoManager: VideoManager;                  // Video streaming
+public unmanagedStreamingExtension: UnmanagedStreamingExtension; // Unmanaged RTMP streaming
 public photoManager: PhotoManager;                  // Photo capture
 public managedStreamingExtension: ManagedStreamingExtension; // RTMP streaming
 ```

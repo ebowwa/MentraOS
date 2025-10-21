@@ -64,7 +64,7 @@ Limitations:
   - `userSession.calendarManager`
   - `userSession.userSettingsManager`
 
-  2.2 CalendarManager (session-scoped)
+    2.2 CalendarManager (session-scoped)
 
 - Ingest from both sources:
   - Glasses WS `CALENDAR_EVENT` (legacy supported).
@@ -118,7 +118,7 @@ Proposed methods (internal design):
 - `clearCache(): void`
   - Clear cache when the session is disposed.
 
-  3.2 UserSettingsManager
+    3.2 UserSettingsManager
 
 Primary responsibilities:
 
@@ -163,7 +163,7 @@ Proposed methods (internal design):
   - Prioritize present/future events first; sort by soonest start time
   - Evict oldest items when the cap is reached
 
-  4.2 UserSettings
+    4.2 UserSettings
 
 - Client-defined keys under `UserSettings.settings` (map).
 - Values are arbitrary JSON-compatible types.
@@ -184,7 +184,7 @@ Proposed methods (internal design):
   - Direct broadcast on REST calendar update ingest (new).
   - Replay of cached events when an App newly subscribes to `calendar_event`.
 
-  5.2 User settings updates (bridge for metric system)
+    5.2 User settings updates (bridge for metric system)
 
 - Special-case bridge: when REST user settings include the key `metric_system_enabled`, map and broadcast to legacy Apps using the existing AugmentOS settings update event:
   - New key → old legacy key: `metric_system_enabled` (boolean) → `metricSystemEnabled` (boolean)
@@ -222,14 +222,14 @@ Proposed methods (internal design):
   - When `isNewCalendarSubscription` is true:
     - Replace calls to `subscriptionManager.getAllCalendarEvents()` with `userSession.calendarManager.getCachedEvents()`.
 
-  6.5 api/client/calendar.api.ts
+    6.5 api/client/calendar.api.ts
 
 - Mount under `/api/client/calendar` in `api/index.ts`.
 - In handler:
   - Validate body contains `calendar`.
   - Call `userSession.calendarManager.updateFromClient(calendar)`; return `{ success: true }` with minimal echo.
 
-  6.6 api/client/user-settings.api.ts
+    6.6 api/client/user-settings.api.ts
 
 - After successful persistence of settings:
   - If an active `UserSession` exists for the email, invoke:
@@ -238,7 +238,7 @@ Proposed methods (internal design):
       - If `updatedSettingsSubset` contains `metric_system_enabled`, it will bridge and broadcast a legacy `"augmentos_settings_update"` with `{ metricSystemEnabled: boolean }` to subscribed Apps (backward-compatible path).
       - It does NOT write anything to the deprecated `User.augmentosSettings`.
 
-  6.7 SubscriptionManager
+    6.7 SubscriptionManager
 
 - Deprecate and remove calendar event cache from here after the new manager is wired.
 - For a short transition, you may keep a shim that delegates to `CalendarManager` to avoid churn; goal is to fully remove calendar caching from `SubscriptionManager`.

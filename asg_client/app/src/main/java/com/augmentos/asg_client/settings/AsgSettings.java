@@ -19,12 +19,10 @@ public class AsgSettings {
     private static final String KEY_BUTTON_MAX_RECORDING_TIME_MINUTES = "button_max_recording_time_minutes";
     private static final String KEY_BUTTON_PHOTO_SIZE = "button_photo_size";
     private static final String KEY_BUTTON_CAMERA_LED = "button_camera_led";
-    
+    private static final String KEY_SAVE_IN_GALLERY_MODE = "save_in_gallery_mode";
+
     private final SharedPreferences prefs;
     private final Context context;
-    
-    // Transient state - not persisted, resets on restart
-    private volatile boolean saveInGalleryMode = true;
     
     public AsgSettings(Context context) {
         this.context = context;
@@ -150,20 +148,25 @@ public class AsgSettings {
     
     /**
      * Check if currently in gallery mode (save/capture mode active)
-     * This is transient state set by the phone when gallery view is active
+     * Persisted state set by the phone when camera/gallery app is active
+     * Defaults to true (take photos) - only false when connected to phone with no camera app running
      * @return true if in gallery mode, false otherwise
      */
     public boolean isSaveInGalleryMode() {
-        return saveInGalleryMode;
+        boolean inGalleryMode = prefs.getBoolean(KEY_SAVE_IN_GALLERY_MODE, true);
+        Log.d(TAG, "Retrieved save in gallery mode: " + inGalleryMode);
+        return inGalleryMode;
     }
-    
+
     /**
      * Set the gallery mode state
-     * Called when phone notifies that gallery view is active/inactive
+     * Called when phone notifies that camera/gallery app is active/inactive
+     * Persisted to survive reboots
      * @param inGalleryMode true if gallery mode active, false otherwise
      */
     public void setSaveInGalleryMode(boolean inGalleryMode) {
         Log.d(TAG, "📸 Gallery mode state changed: " + (inGalleryMode ? "ACTIVE" : "INACTIVE"));
-        this.saveInGalleryMode = inGalleryMode;
+        // Using commit() for immediate persistence
+        prefs.edit().putBoolean(KEY_SAVE_IN_GALLERY_MODE, inGalleryMode).commit();
     }
 }

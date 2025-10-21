@@ -1,156 +1,24 @@
-import {NativeEventEmitter, NativeModules, Platform} from "react-native"
-import {EventEmitter} from "events"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {INTENSE_LOGGING} from "@/consts"
-import {
-  isAugmentOsCoreInstalled,
-  isLocationServicesEnabled as checkLocationServices,
-  startExternalService,
-} from "@/bridge/CoreServiceStarter"
-import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
-import BleManager from "react-native-ble-manager"
-import AudioPlayService, {AudioPlayResponse} from "@/services/AudioPlayService"
+import {INTENSE_LOGGING} from "@/utils/Constants"
 import {translate} from "@/i18n"
+import livekit from "@/services/Livekit"
+import mantle from "@/services/MantleManager"
+import socketComms from "@/services/SocketComms"
+import {useSettingsStore} from "@/stores/settings"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
-import socketComms from "@/managers/SocketComms"
-import livekitManager from "@/managers/LivekitManager"
-import mantle from "@/managers/MantleManager"
-import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
-const {BridgeModule, CoreCommsService} = NativeModules
-const coreBridge = new NativeEventEmitter(BridgeModule)
+import CoreModule from "core"
+import Toast from "react-native-toast-message"
 
-export class MantleBridge extends EventEmitter {
+export class MantleBridge {
   private static instance: MantleBridge | null = null
   private messageEventSubscription: any = null
-  private validationInProgress: Promise<boolean> | null = null
-  private reconnectionTimer: NodeJS.Timeout | null = null
-  private isConnected: boolean = false
   private lastMessage: string = ""
 
   // Private constructor to enforce singleton pattern
   private constructor() {
-    super()
-  }
-
-  // Utility methods for checking permissions and device capabilities
-  async isBluetoothEnabled(): Promise<boolean> {
-    try {
-      console.log("Checking Bluetooth state...")
-      await BleManager.start({showAlert: false})
-
-      // Poll for Bluetooth state every 50ms, up to 10 times (max 500ms)
-      for (let attempt = 0; attempt < 10; attempt++) {
-        const state = await BleManager.checkState()
-        console.log(`Bluetooth state check ${attempt + 1}:`, state)
-
-        if (state !== "unknown") {
-          console.log("Bluetooth state determined:", state)
-          return state === "on"
-        }
-
-        // Wait 50ms before next check
-        await new Promise(resolve => setTimeout(resolve, 50))
-      }
-
-      // If still unknown after 10 attempts, assume it's available
-      console.log("Bluetooth state still unknown after 500ms, assuming available")
-      return true
-    } catch (error) {
-      console.error("Error checking Bluetooth state:", error)
-      return false
-    }
-  }
-
-  async isLocationPermissionGranted(): Promise<boolean> {
-    try {
-      if (Platform.OS === "android") {
-        const result = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
-        return result === RESULTS.GRANTED
-      } else if (Platform.OS === "ios") {
-        // iOS doesn't require location permission for BLE scanning since iOS 13
-        return true
-      }
-      return false
-    } catch (error) {
-      console.error("Error checking location permission:", error)
-      return false
-    }
-  }
-
-  async isLocationServicesEnabled(): Promise<boolean> {
-    try {
-      if (Platform.OS === "android") {
-        // Use our native module to check if location services are enabled
-        const locationServicesEnabled = await checkLocationServices()
-        console.log("Location services enabled (native check):", locationServicesEnabled)
-        return locationServicesEnabled
-      } else if (Platform.OS === "ios") {
-        // iOS doesn't require location for BLE scanning since iOS 13
-        return true
-      }
-      return true
-    } catch (error) {
-      console.error("Error checking if location services are enabled:", error)
-      return false
-    }
-  }
-
-  async checkConnectivityRequirements(): Promise<{
-    isReady: boolean
-    message?: string
-    requirement?: "bluetooth" | "location" | "locationServices" | "permissions"
-  }> {
-    console.log("Checking connectivity requirements")
-
-    // Check Bluetooth state on both iOS and Android
-    const isBtEnabled = await this.isBluetoothEnabled()
-    console.log("Is Bluetooth enabled:", isBtEnabled)
-    if (!isBtEnabled) {
-      console.log("Bluetooth is disabled, showing error")
-      return {
-        isReady: false,
-        message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
-        requirement: "bluetooth",
-      }
-    }
-
-    // iOS doesn't require location permission for BLE scanning since iOS 13
-    if (Platform.OS === "ios") {
-      return {isReady: true}
-    }
-
-    // Only check location on Android
-    if (Platform.OS === "android") {
-      // First check if location permission is granted
-      const isLocationPermissionGranted = await this.isLocationPermissionGranted()
-      console.log("Is Location permission granted:", isLocationPermissionGranted)
-      if (!isLocationPermissionGranted) {
-        console.log("Location permission missing, showing error")
-        return {
-          isReady: false,
-          message:
-            "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
-          requirement: "location",
-        }
-      }
-
-      // Then check if location services are enabled
-      const isLocationServicesEnabled = await this.isLocationServicesEnabled()
-      console.log("Are Location services enabled:", isLocationServicesEnabled)
-      if (!isLocationServicesEnabled) {
-        console.log("Location services disabled, showing error")
-        return {
-          isReady: false,
-          message:
-            "Location services are disabled. Please enable location services in your device settings and try again.",
-          requirement: "locationServices",
-        }
-      }
-    }
-
-    console.log("All requirements met")
-    return {isReady: true}
+    // Initialize message event listener
+    this.initializeMessageEventListener()
   }
 
   /**
@@ -163,37 +31,9 @@ export class MantleBridge extends EventEmitter {
     return MantleBridge.instance
   }
 
-  /**
-   * Initializes the communication channel with Core
-   */
-  async initialize() {
-    setTimeout(async () => {
-      const defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable)
-      const deviceName = await useSettingsStore.getState().getSetting(SETTINGS_KEYS.device_name)
-      if (defaultWearable && defaultWearable != "" && deviceName && deviceName != "") {
-        this.sendConnectWearable(defaultWearable, deviceName)
-      }
-    }, 3000)
-
-    // Start the external service
-    startExternalService()
-
-    // Initialize message event listener
-    this.initializeMessageEventListener()
-
-    // set the backend server url
-    if (Platform.OS === "android") {
-      const backendServerUrl = await useSettingsStore.getState().getRestUrl() // TODO: config: remove
-      await this.setServerUrl(backendServerUrl) // TODO: config: remove
-    }
-
-    this.sendSettings()
-
-    // Start periodic status checks
-    this.startStatusPolling()
-
-    // Request initial status
-    this.sendRequestStatus()
+  // does nothing but ensures we initialize the class:
+  public async dummy() {
+    await Promise.resolve()
   }
 
   /**
@@ -207,7 +47,10 @@ export class MantleBridge extends EventEmitter {
     }
 
     // Create a fresh subscription
-    this.messageEventSubscription = coreBridge.addListener("CoreMessageEvent", this.handleCoreMessage.bind(this))
+    this.messageEventSubscription = CoreModule.addListener("CoreMessageEvent", (event: any) => {
+      // expo adds the body to the event object
+      this.handleCoreMessage(event.body)
+    })
 
     console.log("Core message event listener initialized")
   }
@@ -220,13 +63,8 @@ export class MantleBridge extends EventEmitter {
       console.log("Received message from core:", jsonString)
     }
 
-    if (jsonString.startsWith("SWIFT:")) {
-      console.log("SWIFT:", jsonString.slice(6))
-      return
-    }
-
-    if (jsonString.startsWith("JAVA:")) {
-      console.log("JAVA: ", jsonString.slice(6))
+    if (jsonString.startsWith("CORE:")) {
+      console.log("CORE:", jsonString.slice(5))
       return
     }
 
@@ -236,17 +74,15 @@ export class MantleBridge extends EventEmitter {
       // Only check for duplicates on status messages, not other event types
       if ("status" in data) {
         if (this.lastMessage === jsonString) {
-          console.log("DUPLICATE STATUS MESSAGE FROM CORE")
+          console.log("BRIDGE: DUPLICATE STATUS MESSAGE FROM CORE")
           return
         }
         this.lastMessage = jsonString
       }
 
-      this.isConnected = true
-      this.emit("dataReceived", data)
       this.parseDataFromCore(data)
     } catch (e) {
-      console.error("Failed to parse JSON from core message:", e)
+      console.error("BRIDGE: Failed to parse JSON from core message:", e)
       console.log(jsonString)
     }
   }
@@ -263,94 +99,6 @@ export class MantleBridge extends EventEmitter {
         return
       }
 
-      // TODO: config: remove all of these and just use the typed messages
-      if ("glasses_wifi_status_change" in data) {
-        // console.log("Received glasses_wifi_status_change event from Core", data.glasses_wifi_status_change)
-        GlobalEventEmitter.emit("GLASSES_WIFI_STATUS_CHANGE", {
-          connected: data.glasses_wifi_status_change.connected,
-          ssid: data.glasses_wifi_status_change.ssid,
-          local_ip: data.glasses_wifi_status_change.local_ip,
-        })
-      } else if ("glasses_hotspot_status_change" in data) {
-        // console.log("Received glasses_hotspot_status_change event from Core", data.glasses_hotspot_status_change)
-        GlobalEventEmitter.emit("GLASSES_HOTSPOT_STATUS_CHANGE", {
-          enabled: data.glasses_hotspot_status_change.enabled,
-          ssid: data.glasses_hotspot_status_change.ssid,
-          password: data.glasses_hotspot_status_change.password,
-          local_ip: data.glasses_hotspot_status_change.local_ip,
-        })
-      } else if ("glasses_gallery_status" in data) {
-        console.log("Received glasses_gallery_status event from Core", data.glasses_gallery_status)
-        GlobalEventEmitter.emit("GLASSES_GALLERY_STATUS", {
-          photos: data.glasses_gallery_status.photos,
-          videos: data.glasses_gallery_status.videos,
-          total: data.glasses_gallery_status.total,
-          has_content: data.glasses_gallery_status.has_content,
-          camera_busy: data.glasses_gallery_status.camera_busy, // Add camera busy state
-        })
-      } else if ("glasses_display_event" in data) {
-        console.log(
-          "🎯 MantleBridge: RECEIVED GLASSES_DISPLAY_EVENT from Android Core:",
-          JSON.stringify(data.glasses_display_event, null, 2),
-        )
-
-        // Extract and log text content from the display event
-        const displayEvent = data.glasses_display_event
-
-        // TODO: remove this once we have a proper display event handling system
-        socketComms.handle_display_event(displayEvent)
-        console.log("✅ MantleBridge: Android display event processed successfully")
-      } else if ("ping" in data) {
-        // Heartbeat response - nothing to do
-      } else if ("heartbeat_sent" in data) {
-        console.log("💓 Received heartbeat_sent event from Core", data.heartbeat_sent)
-        GlobalEventEmitter.emit("heartbeat_sent", {
-          timestamp: data.heartbeat_sent.timestamp,
-        })
-      } else if ("heartbeat_received" in data) {
-        console.log("💓 Received heartbeat_received event from Core", data.heartbeat_received)
-        GlobalEventEmitter.emit("heartbeat_received", {
-          timestamp: data.heartbeat_received.timestamp,
-        })
-      } else if ("notify_manager" in data) {
-        GlobalEventEmitter.emit("SHOW_BANNER", {
-          message: translate(data.notify_manager.message),
-          type: data.notify_manager.type,
-        })
-      } else if ("compatible_glasses_search_result" in data) {
-        GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_RESULT", {
-          modelName: data.compatible_glasses_search_result.model_name,
-          deviceName: data.compatible_glasses_search_result.device_name,
-          deviceAddress: data.compatible_glasses_search_result.device_address,
-        })
-      } else if ("compatible_glasses_search_stop" in data) {
-        GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
-          modelName: data.compatible_glasses_search_stop.model_name,
-        })
-      } else if ("wifi_scan_results" in data) {
-        console.log("🔍 ========= WIFI SCAN RESULTS RECEIVED =========")
-        console.log("🔍 Received WiFi scan results from Core:", data)
-
-        // Check for enhanced format first (from iOS)
-        if ("wifi_scan_results_enhanced" in data) {
-          console.log("🔍 Enhanced networks array:", data.wifi_scan_results_enhanced)
-          console.log("🔍 Enhanced networks count:", data.wifi_scan_results_enhanced?.length || 0)
-          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
-            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
-            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
-          })
-          console.log("🔍 Emitted enhanced WIFI_SCAN_RESULTS event to GlobalEventEmitter")
-        } else {
-          console.log("🔍 Networks array:", data.wifi_scan_results)
-          console.log("🔍 Networks count:", data.wifi_scan_results?.length || 0)
-          GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
-            networks: data.wifi_scan_results,
-          })
-          console.log("🔍 Emitted legacy WIFI_SCAN_RESULTS event to GlobalEventEmitter")
-        }
-        console.log("🔍 ========= END WIFI SCAN RESULTS =========")
-      }
-
       if (!("type" in data)) {
         return
       }
@@ -359,48 +107,130 @@ export class MantleBridge extends EventEmitter {
       let bytes
 
       switch (data.type) {
-        case "app_started":
-          console.log("APP_STARTED_EVENT", data.packageName)
-          GlobalEventEmitter.emit("APP_STARTED_EVENT", data.packageName)
+        case "wifi_status_change":
+          GlobalEventEmitter.emit("WIFI_STATUS_CHANGE", {
+            connected: data.connected,
+            ssid: data.ssid,
+            local_ip: data.local_ip,
+          })
           break
-        case "app_stopped":
-          console.log("APP_STOPPED_EVENT", data.packageName)
-          GlobalEventEmitter.emit("APP_STOPPED_EVENT", data.packageName)
+        case "hotspot_status_change":
+          GlobalEventEmitter.emit("HOTSPOT_STATUS_CHANGE", {
+            enabled: data.enabled,
+            ssid: data.ssid,
+            password: data.password,
+            local_ip: data.local_ip,
+          })
           break
-        case "audio_play_request":
-          await AudioPlayService.handle_audio_play_request(data)
+        case "gallery_status":
+          GlobalEventEmitter.emit("GALLERY_STATUS", {
+            photos: data.photos,
+            videos: data.videos,
+            total: data.total,
+            has_content: data.has_content,
+            camera_busy: data.camera_busy, // Add camera busy state
+          })
           break
-        case "audio_stop_request":
-          await bridge.sendCommand("audio_stop_request")
+        case "compatible_glasses_search_result":
+          console.log("Received compatible_glasses_search_result event from Core", data)
+          GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_RESULT", {
+            modelName: data.model_name,
+            deviceName: data.device_name,
+            deviceAddress: data.device_address,
+          })
           break
+        case "compatible_glasses_search_stop":
+          GlobalEventEmitter.emit("COMPATIBLE_GLASSES_SEARCH_STOP", {
+            model_name: data.model_name,
+          })
+          break
+        case "heartbeat_sent":
+          console.log("💓 Received heartbeat_sent event from Core", data.heartbeat_sent)
+          GlobalEventEmitter.emit("heartbeat_sent", {
+            timestamp: data.heartbeat_sent.timestamp,
+          })
+          break
+        case "heartbeat_received":
+          console.log("💓 Received heartbeat_received event from Core", data.heartbeat_received)
+          GlobalEventEmitter.emit("heartbeat_received", {
+            timestamp: data.heartbeat_received.timestamp,
+          })
+          break
+        case "notify_manager":
+        case "show_banner":
+          Toast.show({
+            type: data.notify_manager.type,
+            text1: translate(data.notify_manager.message),
+          })
+          break
+        case "button_press":
+          console.log("🔘 BUTTON_PRESS event received:", data)
+          // Emit event to React Native layer for handling
+          GlobalEventEmitter.emit("BUTTON_PRESS", {
+            buttonId: data.buttonId,
+            pressType: data.pressType,
+            timestamp: data.timestamp,
+          })
+          // Also forward to server for apps that need it
+          socketComms.sendButtonPress(data.buttonId, data.pressType)
+          break
+        case "touch_event": {
+          const deviceModel = data.device_model ?? "Mentra Live"
+          const gestureName = data.gesture_name ?? "unknown"
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          GlobalEventEmitter.emit("TOUCH_EVENT", {
+            deviceModel,
+            gestureName,
+            timestamp,
+          })
+          socketComms.sendTouchEvent({
+            device_model: deviceModel,
+            gesture_name: gestureName,
+            timestamp,
+          })
+          break
+        }
+        case "swipe_volume_status": {
+          const enabled = !!data.enabled
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          socketComms.sendSwipeVolumeStatus(enabled, timestamp)
+          GlobalEventEmitter.emit("SWIPE_VOLUME_STATUS", {enabled, timestamp})
+          break
+        }
+        case "switch_status": {
+          const switchType = typeof data.switch_type === "number" ? data.switch_type : (data.switchType ?? -1)
+          const switchValue = typeof data.switch_value === "number" ? data.switch_value : (data.switchValue ?? -1)
+          const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
+          socketComms.sendSwitchStatus(switchType, switchValue, timestamp)
+          GlobalEventEmitter.emit("SWITCH_STATUS", {switchType, switchValue, timestamp})
+          break
+        }
+        case "rgb_led_control_response": {
+          const requestId = data.requestId ?? ""
+          const success = !!data.success
+          const errorMessage = typeof data.error === "string" ? data.error : null
+          socketComms.sendRgbLedControlResponse(requestId, success, errorMessage)
+          GlobalEventEmitter.emit("RGB_LED_CONTROL_RESPONSE", {requestId, success, error: errorMessage})
+          break
+        }
         case "wifi_scan_results":
           GlobalEventEmitter.emit("WIFI_SCAN_RESULTS", {
-            networks: data.wifi_scan_results, // Legacy format for backwards compatibility
-            networksEnhanced: data.wifi_scan_results_enhanced, // Enhanced format with security info
+            networks: data.networks,
           })
           break
         case "pair_failure":
           GlobalEventEmitter.emit("PAIR_FAILURE", data.error)
           break
-        case "show_banner":
-          GlobalEventEmitter.emit("SHOW_BANNER", {
-            message: data.message,
-            type: data.type,
-          })
-          break
         case "save_setting":
           await useSettingsStore.getState().setSetting(data.key, data.value, false)
           break
-        case "head_up":
-          socketComms.sendHeadPosition(data.position)
-          break
-        // TODO: config: remove (this is legacy/android only)
-        case "transcription_result":
-          mantle.handleLocalTranscription(data)
+        case "head_position":
+          socketComms.sendHeadPosition(data.position === "up")
           break
         case "local_transcription":
           mantle.handleLocalTranscription(data)
           break
+        // TODO: this is a bit of a hack, we should have dedicated functions for ws endpoints in the core:
         case "ws_text":
           socketComms.sendText(data.text)
           break
@@ -418,8 +248,8 @@ export class MantleBridge extends EventEmitter {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          if (livekitManager.isRoomConnected()) {
-            livekitManager.addPcm(bytes)
+          if (livekit.isRoomConnected()) {
+            livekit.addPcm(bytes)
           } else {
             socketComms.sendBinary(bytes)
           }
@@ -442,111 +272,15 @@ export class MantleBridge extends EventEmitter {
     }
   }
 
-  private async sendSettings() {
-    this.sendData({
-      command: "update_settings",
-      params: {...(await useSettingsStore.getState().getCoreSettings())},
-    })
-  }
-
-  /**
-   * Starts periodic status polling to maintain connection
-   */
-  private startStatusPolling() {
-    this.stopStatusPolling()
-
-    const pollStatus = () => {
-      this.sendRequestStatus()
-      this.reconnectionTimer = setTimeout(
-        pollStatus,
-        this.isConnected ? 999000 : 2000, // Poll more frequently when not connected
-      )
-    }
-
-    pollStatus()
-  }
-
-  /**
-   * Stops the status polling timer
-   */
-  private stopStatusPolling() {
-    if (this.reconnectionTimer) {
-      clearTimeout(this.reconnectionTimer)
-      this.reconnectionTimer = null
-    }
-  }
-
-  /**
-   * Validates that Core is responding to commands
-   */
-  private async validateResponseFromCore(): Promise<boolean> {
-    if (this.validationInProgress || (await isAugmentOsCoreInstalled())) {
-      return this.validationInProgress ?? true
-    }
-
-    this.validationInProgress = new Promise<boolean>((resolve, _reject) => {
-      const dataReceivedListener = () => {
-        resolve(true)
-      }
-
-      this.once("dataReceived", dataReceivedListener)
-
-      setTimeout(() => {
-        this.removeListener("dataReceived", dataReceivedListener)
-        resolve(false)
-      }, 4500)
-    }).then(result => {
-      this.validationInProgress = null
-      return result
-    })
-
-    return this.validationInProgress
-  }
-
-  /**
-   * Sends data to Core
-   */
-  private async sendData(dataObj: any): Promise<any> {
-    try {
-      if (INTENSE_LOGGING) {
-        console.log("Sending data to Core:", JSON.stringify(dataObj))
-      }
-
-      if (Platform.OS === "android") {
-        // Ensure the service is running
-        if (!(await CoreCommsService.isServiceRunning())) {
-          CoreCommsService.startService()
-        }
-        return await CoreCommsService.sendCommandToCore(JSON.stringify(dataObj))
-      }
-
-      if (Platform.OS === "ios") {
-        return await BridgeModule.sendCommand(JSON.stringify(dataObj))
-      }
-    } catch (error) {
-      console.error("Failed to send data to Core:", error)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: `Error sending command to Core: ${error}`,
-        type: "error",
-      })
-    }
-  }
-
   /**
    * Cleans up resources and resets the state
    */
   public cleanup() {
-    // Stop the status polling
-    this.stopStatusPolling()
-
     // Remove message event listener
     if (this.messageEventSubscription) {
       this.messageEventSubscription.remove()
       this.messageEventSubscription = null
     }
-
-    // Reset connection state
-    this.isConnected = false
 
     // Reset the singleton instance
     MantleBridge.instance = null
@@ -556,598 +290,93 @@ export class MantleBridge extends EventEmitter {
 
   /* Command methods to interact with Core */
 
-  async sendRequestStatus() {
-    await this.sendData({command: "request_status"})
-    return this.validateResponseFromCore()
-  }
-
-  async sendHeartbeat() {
-    await this.sendData({command: "ping"})
-    return this.validateResponseFromCore()
-  }
-
-  async sendSearchForCompatibleDeviceNames(modelName: string) {
-    return await this.sendData({
-      command: "search_for_compatible_device_names",
-      params: {
-        model_name: modelName,
-      },
-    })
-  }
-
-  async sendConnectWearable(modelName: string, deviceName: string = "", deviceAddress: string = "") {
-    console.log(
-      "sendConnectWearable modelName:",
-      modelName,
-      " deviceName",
-      deviceName,
-      " deviceAddress " + deviceAddress,
-    )
-    return await this.sendData({
-      command: "connect_wearable",
-      params: {
-        model_name: modelName,
-        device_name: deviceName,
-        device_address: deviceAddress,
-      },
-    })
-  }
-
-  async sendPhoneNotification(
-    appName: string = "",
-    title: string = "",
-    text: string = "",
-    timestamp: number = -1,
-    uuid: string = "",
-  ) {
-    return await this.sendData({
-      command: "phone_notification",
-      params: {
-        appName: appName,
-        title: title,
-        text: text,
-        timestamp: timestamp,
-        uuid: uuid,
-      },
-    })
-  }
-
-  async sendDisconnectWearable() {
-    return await this.sendData({command: "disconnect_wearable"})
-  }
-
-  async sendForgetSmartGlasses() {
-    return await this.sendData({command: "forget_smart_glasses"})
-  }
-
-  // TODO: config: remove
-  async sendToggleSensing(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_sensing",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  async sendToggleForceCoreOnboardMic(enabled: boolean) {
-    return await this.sendData({
-      command: "force_core_onboard_mic",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  async restartTranscription() {
-    console.log("Restarting transcription with new model...")
-
-    // Send restart command to native side
-    await this.sendData({
-      command: "restart_transcriber",
-    })
-  }
-
-  // TODO: config: remove
-  async sendSetPreferredMic(mic: string) {
-    return await this.sendData({
-      command: "set_preferred_mic",
-      params: {
-        mic: mic,
-      },
-    })
-  }
-
-  // DEPRECATED: Button mode is now controlled by gallery mode state
-  // Keeping method for backward compatibility but it does nothing
-  async sendSetButtonMode(_mode: string) {
-    console.log("sendSetButtonMode is deprecated - gallery mode controls capture now")
-    return Promise.resolve()
-  }
-
-  async sendGalleryModeActive(active: boolean) {
-    return await this.sendData({
-      command: "send_gallery_mode_active",
-      params: {
-        active: active,
-      },
-    })
-  }
-
-  async sendSetButtonPhotoSize(size: string) {
-    return await this.sendData({
-      command: "set_button_photo_size",
-      params: {
-        size: size,
-      },
-    })
-  }
-
-  async sendSetButtonVideoSettings(width: number, height: number, fps: number) {
-    return await this.sendData({
-      command: "set_button_video_settings",
-      params: {
-        width: width,
-        height: height,
-        fps: fps,
-      },
-    })
-  }
-
-  async sendSetButtonMaxRecordingTime(minutes: number) {
-    return await this.sendData({
-      command: "set_button_max_recording_time",
-      params: {
-        minutes: minutes,
-      },
-    })
-  }
-
-  async sendSetButtonCameraLed(enabled: boolean) {
-    return await this.sendData({
-      command: "set_button_camera_led",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleContextualDashboard(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_contextual_dashboard",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleBypassVadForDebugging(enabled: boolean) {
-    return await this.sendData({
-      command: "bypass_vad_for_debugging",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendTogglePowerSavingMode(enabled: boolean) {
-    return await this.sendData({
-      command: "enable_power_saving_mode",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async sendToggleBypassAudioEncodingForDebugging(enabled: boolean) {
-    return await this.sendData({
-      command: "bypass_audio_encoding_for_debugging",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
   async sendToggleEnforceLocalTranscription(enabled: boolean) {
-    return await this.sendData({
-      command: "enforce_local_transcription",
-      params: {
-        enabled: enabled,
-      },
+    console.log("Toggling enforce local transcription:", enabled)
+    return await CoreModule.updateSettings({
+      enforce_local_transcription: enabled,
     })
   }
 
-  async toggleOfflineApps(enabled: boolean) {
-    console.log("toggleOfflineApss", enabled)
-    return await this.sendData({
-      command: "enable_offline_mode",
-      params: {
-        enabled: enabled,
-      },
+  async updateButtonPhotoSize(size: string) {
+    return await CoreModule.updateSettings({
+      button_photo_size: size,
     })
   }
 
-  // TODO: config: remove
-  async sendToggleAlwaysOnStatusBar(enabled: boolean) {
-    console.log("sendToggleAlwaysOnStatusBar")
-    return await this.sendData({
-      command: "enable_always_on_status_bar",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
-    return await this.sendData({
-      command: "update_glasses_brightness",
-      params: {
-        brightness: brightness,
-        autoBrightness: autoBrightness,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesHeadUpAngle(headUpAngle: number) {
-    return await this.sendData({
-      command: "update_glasses_head_up_angle",
-      params: {
-        headUpAngle: headUpAngle,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesHeight(height: number) {
-    return await this.sendData({
-      command: "update_glasses_height",
-      params: {height: height},
-    })
-  }
-
-  // TODO: config: remove
-  async setGlassesDepth(depth: number) {
-    return await this.sendData({
-      command: "update_glasses_depth",
-      params: {depth: depth},
+  async updateButtonVideoSettings(width: number, height: number, fps: number) {
+    return await CoreModule.updateSettings({
+      button_video_width: width,
+      button_video_height: height,
+      button_video_fps: fps,
     })
   }
 
   async showDashboard() {
-    return await this.sendData({
-      command: "show_dashboard",
-    })
-  }
-
-  async startAppByPackageName(packageName: string) {
-    await this.sendData({
-      command: "start_app",
-      params: {
-        target: packageName,
-        repository: packageName,
-      },
-    })
-    return this.validateResponseFromCore()
-  }
-
-  async stopAppByPackageName(packageName: string) {
-    await this.sendData({
-      command: "stop_app",
-      params: {
-        target: packageName,
-      },
-    })
-    return this.validateResponseFromCore()
-  }
-
-  async installAppByPackageName(packageName: string) {
-    await this.sendData({
-      command: "install_app_from_repository",
-      params: {
-        target: packageName,
-      },
-    })
-    return this.validateResponseFromCore()
-  }
-
-  async sendRequestAppDetails(packageName: string) {
-    return await this.sendData({
-      command: "request_app_info",
-      params: {
-        target: packageName,
-      },
-    })
-  }
-
-  async sendUpdateAppSetting(packageName: string, settingsDeltaObj: any) {
-    return await this.sendData({
-      command: "update_app_settings",
-      params: {
-        target: packageName,
-        settings: settingsDeltaObj,
-      },
-    })
-  }
-
-  async sendUninstallApp(packageName: string) {
-    return await this.sendData({
-      command: "uninstall_app",
-      params: {
-        target: packageName,
-      },
-    })
-  }
-
-  async setup() {
-    return await this.sendData({
-      command: "setup",
-    })
-  }
-
-  // TODO: config: remove
-  async setAuthCreds(coreToken: string, userId: string) {
-    return await this.sendData({
-      command: "set_auth_secret_key",
-      params: {
-        userId: userId,
-        authSecretKey: coreToken,
-      },
-    })
-  }
-
-  // TODO: config: remove
-  async setServerUrl(url: string) {
-    return await this.sendData({
-      command: "set_server_url",
-      params: {
-        url: url,
-      },
-    })
+    return await CoreModule.showDashboard()
   }
 
   async updateSettings(settings: any) {
-    return await this.sendData({
-      command: "update_settings",
-      params: {
-        ...settings,
-      },
-    })
+    return await CoreModule.updateSettings(settings)
   }
 
-  async setGlassesWifiCredentials(ssid: string, password: string) {
-    return await this.sendData({
-      command: "set_glasses_wifi_credentials",
-      params: {
-        ssid,
-        password,
-      },
-    })
-  }
-
-  async sendWifiCredentials(ssid: string, password: string) {
-    console.log("Sending wifi credentials to Core", ssid, password)
-    return await this.sendData({
-      command: "send_wifi_credentials",
-      params: {
-        ssid,
-        password,
-      },
-    })
-  }
-
-  async requestWifiScan() {
-    return await this.sendData({
-      command: "request_wifi_scan",
-    })
+  async setGlassesWifiCredentials(ssid: string, _password: string) {
+    // TODO: Add setGlassesWifiCredentials to CoreModule
+    console.warn("setGlassesWifiCredentials not yet implemented in new CoreModule API")
+    console.log("Would set credentials:", ssid)
   }
 
   async disconnectFromWifi() {
     console.log("Sending WiFi disconnect command to Core")
-    return await this.sendData({
-      command: "disconnect_wifi",
-    })
-  }
-
-  async stopService() {
-    // Clean up any active listeners
-    this.cleanup()
-
-    if (Platform.OS === "android") {
-      // Stop the service if it's running
-      if (CoreCommsService && typeof CoreCommsService.stopService === "function") {
-        CoreCommsService.stopService()
-      }
-    }
-  }
-
-  async sendSetMetricSystemEnabled(metricSystemEnabled: boolean) {
-    return await this.sendData({
-      command: "set_metric_system_enabled",
-      params: {
-        enabled: metricSystemEnabled,
-      },
-    })
-  }
-
-  async toggleUpdatingScreen(enabled: boolean) {
-    return await this.sendData({
-      command: "toggle_updating_screen",
-      params: {
-        enabled: enabled,
-      },
-    })
-  }
-
-  async simulateHeadPosition(position: "up" | "down") {
-    return await this.sendData({
-      command: "simulate_head_position",
-      params: {
-        position: position,
-      },
-    })
-  }
-
-  async simulateButtonPress(buttonId: string = "camera", pressType: "short" | "long" = "short") {
-    return await this.sendData({
-      command: "simulate_button_press",
-      params: {
-        buttonId: buttonId,
-        pressType: pressType,
-      },
-    })
-  }
-
-  async sendDisplayText(text: string, x: number, y: number, size: number) {
-    console.log("sendDisplayText", text, x, y, size)
-
-    return await this.sendData({
-      command: "display_text",
-      params: {
-        text: text,
-        x: x,
-        y: y,
-        size: size,
-      },
-    })
-  }
-
-  async sendDisplayImage(imageType: string, imageSize: string) {
-    return await this.sendData({
-      command: "display_image",
-      params: {
-        imageType: imageType,
-        imageSize: imageSize,
-      },
-    })
-  }
-
-  async sendClearDisplay() {
-    return await this.sendData({
-      command: "clear_display",
-    })
+    // TODO: Add disconnectWifi to CoreModule
+    console.warn("disconnectFromWifi not yet implemented in new CoreModule API")
   }
 
   async setLc3AudioEnabled(enabled: boolean) {
     console.log("setLc3AudioEnabled", enabled)
-    return await this.sendData({
-      command: "set_lc3_audio_enabled",
-      enabled: enabled,
-    })
+    // TODO: Add setLc3AudioEnabled to CoreModule
+    console.warn("setLc3AudioEnabled not yet implemented in new CoreModule API")
   }
   // Buffer recording commands
   async sendStartBufferRecording() {
-    return await this.sendData({
-      command: "start_buffer_recording",
-    })
+    return await CoreModule.startBufferRecording()
   }
 
   async sendStopBufferRecording() {
-    return await this.sendData({
-      command: "stop_buffer_recording",
-    })
+    return await CoreModule.stopBufferRecording()
   }
 
   async sendSaveBufferVideo(requestId: string, durationSeconds: number = 30) {
-    return await this.sendData({
-      command: "save_buffer_video",
-      params: {
-        request_id: requestId,
-        duration_seconds: durationSeconds,
-      },
-    })
+    return await CoreModule.saveBufferVideo(requestId, durationSeconds)
   }
 
   // Video recording commands
   async sendStartVideoRecording(requestId: string, save: boolean = true) {
-    return await this.sendData({
-      command: "start_video_recording",
-      params: {
-        request_id: requestId,
-        save: save,
-      },
-    })
+    return await CoreModule.startVideoRecording(requestId, save)
   }
 
   async sendStopVideoRecording(requestId: string) {
-    return await this.sendData({
-      command: "stop_video_recording",
-      params: {
-        request_id: requestId,
-      },
-    })
-  }
-
-  async sendCommand(command: string, params?: any) {
-    return await this.sendData({
-      command: command,
-      params: params || {},
-    })
-  }
-
-  /**
-   * Sends audio play response back to Core
-   */
-  private async sendAudioPlayResponse(response: AudioPlayResponse) {
-    console.log(
-      `Bridge: Sending audio play response for requestId: ${response.requestId}, success: ${response.success}`,
-    )
-    await this.sendData({
-      command: "audio_play_response",
-      params: {
-        requestId: response.requestId,
-        success: response.success,
-        error: response.error,
-        duration: response.duration,
-      },
-    })
+    return await CoreModule.stopVideoRecording(requestId)
   }
 
   async setSttModelDetails(path: string, languageCode: string) {
-    return await this.sendData({
-      command: "set_stt_model_details",
-      params: {
-        path: path,
-        languageCode: languageCode,
-      },
-    })
+    return await CoreModule.setSttModelDetails(path, languageCode)
   }
 
   async getSttModelPath(): Promise<string> {
-    return await this.sendData({
-      command: "get_stt_model_path",
-    })
+    return await CoreModule.getSttModelPath()
   }
 
   async validateSTTModel(path: string): Promise<boolean> {
-    return await this.sendData({
-      command: "validate_stt_model",
-      params: {
-        path: path,
-      },
-    })
+    return await CoreModule.validateSttModel(path)
   }
 
   async extractTarBz2(sourcePath: string, destinationPath: string) {
-    return await this.sendData({
-      command: "extract_tar_bz2",
-      params: {
-        source_path: sourcePath,
-        destination_path: destinationPath,
-      },
-    })
+    return await CoreModule.extractTarBz2(sourcePath, destinationPath)
   }
 
   async queryGalleryStatus() {
     console.log("[Bridge] Querying gallery status from glasses...")
-    // Just send the command, the response will come through the event system
-    return this.sendCommand("query_gallery_status")
+    return await CoreModule.queryGalleryStatus()
   }
 }
 

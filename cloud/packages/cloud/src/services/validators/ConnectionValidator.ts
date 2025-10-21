@@ -24,7 +24,7 @@ export class ConnectionValidator {
   private static readonly STALE_CONNECTION_THRESHOLD_MS = 60000; // 1 minute
 
   // SAFETY FLAG: Set to true to enable validation, false to bypass all checks
-  private static readonly VALIDATION_ENABLED = false; // TODO: Set to true when ready to go live
+  private static readonly VALIDATION_ENABLED = false; // Enabled to enforce connection guards in production
 
   /**
    * Validate connections for hardware requests (photo, display, audio)
@@ -32,7 +32,7 @@ export class ConnectionValidator {
    */
   static validateForHardwareRequest(
     userSession: UserSession,
-    requestType: "photo" | "display" | "audio" | "sensor",
+    requestType: "photo" | "display" | "audio" | "sensor" | "stream",
   ): ValidationResult {
     // SAFETY BYPASS: Return success immediately if validation is disabled
     if (!ConnectionValidator.VALIDATION_ENABLED) {

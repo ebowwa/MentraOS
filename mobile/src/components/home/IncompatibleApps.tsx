@@ -4,12 +4,12 @@ import {View, FlatList, TouchableOpacity, ViewStyle, TextStyle, ImageStyle} from
 import {Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useIncompatibleApps} from "@/contexts/AppletStatusProvider"
-import {AppletInterface} from "@/types/AppletTypes"
+import {ClientAppletInterface, DUMMY_APPLET} from "@/types/AppletTypes"
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {ThemedStyle} from "@/theme"
+import {useIncompatibleApps} from "@/stores/applets"
 
 const GRID_COLUMNS = 4
 
@@ -31,20 +31,14 @@ export const IncompatibleApps: React.FC = () => {
     // Add empty placeholders to align items to the left
     const paddedApps = [...incompatibleApps]
     for (let i = 0; i < emptySlots; i++) {
-      paddedApps.push({
-        packageName: `empty-${i}`,
-        name: "",
-        type: "standard",
-        logoURL: "",
-        permissions: [],
-      } as AppletInterface)
+      paddedApps.push(DUMMY_APPLET)
     }
 
     return paddedApps
   }, [incompatibleApps])
 
   const handleAppPress = useCallback(
-    (app: AppletInterface) => {
+    (app: ClientAppletInterface) => {
       // Show alert explaining why the app is incompatible
       const missingHardware =
         app.compatibility?.missingRequired?.map(req => req.type.toLowerCase()).join(", ") || "required features"
@@ -67,7 +61,7 @@ export const IncompatibleApps: React.FC = () => {
   )
 
   const renderItem = useCallback(
-    ({item}: {item: AppletInterface}) => {
+    ({item}: {item: ClientAppletInterface}) => {
       // Don't render empty placeholders
       if (!item.name) {
         return <View style={themed($gridItem)} />
@@ -121,7 +115,7 @@ const $header: ThemedStyle<ViewStyle> = ({spacing}) => ({
 const $headerText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   fontWeight: "600",
-  color: colors.text,
+  color: colors.textDim,
   flex: 1,
 })
 

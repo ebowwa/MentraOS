@@ -1,4 +1,4 @@
-import React, {useState} from "react"
+import {useState} from "react"
 import {View, TextInput, ScrollView, TextStyle, ViewStyle, KeyboardAvoidingView, Platform} from "react-native"
 import {Header, Screen} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -7,7 +7,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
-import restComms from "@/managers/RestComms"
+import restComms from "@/services/RestComms"
 
 export default function FeedbackPage() {
   const [feedbackText, setFeedbackText] = useState("")

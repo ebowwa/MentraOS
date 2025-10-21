@@ -1,9 +1,6 @@
 import RNFS from "react-native-fs"
 import {Platform} from "react-native"
-import {NativeModules} from "react-native"
 import bridge from "@/bridge/MantleBridge"
-
-const {FileProviderModule} = NativeModules
 
 export interface ModelInfo {
   name: string
@@ -111,16 +108,7 @@ class STTModelManager {
 
   async getCurrentModelIdFromPreferences(): Promise<string> {
     try {
-      let path = null
-      if (Platform.OS === "android") {
-        const module = FileProviderModule
-        if (module.getSTTModelPath) {
-          path = await module.getSTTModelPath()
-        }
-      }
-      if (Platform.OS === "ios") {
-        path = await bridge.getSttModelPath()
-      }
+      let path = await bridge.getSttModelPath()
       const modelId = path && path.length > 0 ? this.getModelIdFromPath(path) : ""
 
       this.setCurrentModelId(modelId)
@@ -193,21 +181,8 @@ class STTModelManager {
       }
 
       // Validate model with native module
-      if (Platform.OS === "ios") {
-        const isValid = await bridge.validateSTTModel(modelPath)
-        return isValid
-      } else {
-        const nativeModule = FileProviderModule
-        if (nativeModule.validateSTTModel) {
-          const isValid = await nativeModule.validateSTTModel(modelPath)
-          if (!isValid && id.includes("be-de-en-es-fr")) {
-            console.log(`Native validation failed for multilingual model`)
-          }
-          return isValid
-        }
-      }
-
-      return true
+      const isValid = await bridge.validateSTTModel(modelPath)
+      return isValid
     } catch (error) {
       console.error("Error checking model availability:", error)
       return false
@@ -302,42 +277,18 @@ class STTModelManager {
       // Extract the tar.bz2 file
       onExtractionProgress?.({percentage: 0})
 
-      if (Platform.OS === "ios") {
-        console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
-        try {
-          onExtractionProgress?.({percentage: 25})
-          const extractionResult = await bridge.extractTarBz2(tempPath, finalPath)
-          if (!extractionResult) {
-            throw new Error("Native extraction returned failure status")
-          }
-          onExtractionProgress?.({percentage: 90})
-          console.log("Native extraction completed")
-        } catch (extractError) {
-          console.error("Native extraction failed:", extractError)
-          throw extractError
+      console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
+      try {
+        onExtractionProgress?.({percentage: 25})
+        const extractionResult = await bridge.extractTarBz2(tempPath, finalPath)
+        if (!extractionResult) {
+          throw new Error("Native extraction returned failure status")
         }
-      }
-
-      if (Platform.OS === "android") {
-        const nativeModule = FileProviderModule
-
-        if (nativeModule.extractTarBz2) {
-          console.log(`Calling native extractTarBz2 for ${Platform.OS}...`)
-          try {
-            onExtractionProgress?.({percentage: 25})
-            const extractionResult = await nativeModule.extractTarBz2(tempPath, finalPath)
-            if (!extractionResult) {
-              throw new Error("Native extraction returned failure status")
-            }
-            onExtractionProgress?.({percentage: 90})
-            console.log("Native extraction completed")
-          } catch (extractError) {
-            console.error("Native extraction failed:", extractError)
-            throw extractError
-          }
-        } else {
-          throw new Error("Model extraction not available on this platform.")
-        }
+        onExtractionProgress?.({percentage: 90})
+        console.log("Native extraction completed")
+      } catch (extractError) {
+        console.error("Native extraction failed:", extractError)
+        throw extractError
       }
 
       // Use native extraction on both platforms
@@ -398,17 +349,8 @@ class STTModelManager {
   }
 
   private async setNativeModelPath(path: string, languageCode: string): Promise<void> {
-    if (Platform.OS === "ios") {
-      bridge.setSttModelDetails(path, languageCode)
-      return
-    }
-
-    const nativeModule = FileProviderModule
-    if (nativeModule.setSttModelDetails) {
-      console.log("Setting STT model path to: " + path)
-      console.log("Setting STT model language to: " + languageCode)
-      await nativeModule.setSttModelDetails(path, languageCode)
-    }
+    bridge.setSttModelDetails(path, languageCode)
+    return
   }
 
   async getStorageInfo(): Promise<{free: number; total: number}> {

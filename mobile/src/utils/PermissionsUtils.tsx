@@ -1,15 +1,16 @@
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import {Alert, Platform, Linking} from "react-native"
-import {request, check, PERMISSIONS, RESULTS} from "react-native-permissions"
-import {PermissionsAndroid} from "react-native"
+import {translate} from "@/i18n"
+import {Theme} from "@/theme"
+import {AppletPermission} from "@/types/AppletTypes"
+import {AppletInterface} from "@/../../cloud/packages/types/src"
 import {
   checkAndRequestNotificationAccessSpecialPermission,
   checkNotificationAccessSpecialPermission,
 } from "@/utils/NotificationServiceUtils"
-import {translate} from "@/i18n"
-import showAlert from "./AlertUtils"
-import {Theme} from "@/theme"
-import {AppletInterface, AppletPermission} from "@/types/AppletTypes"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import {Alert, Linking, PermissionsAndroid, Platform} from "react-native"
+import BleManager from "react-native-ble-manager"
+import {check, PERMISSIONS, request, RESULTS} from "react-native-permissions"
+import showAlert, {showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
@@ -777,6 +778,156 @@ export const requestPermissionsUI = async (permissions: string[]) => {
   if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
     await checkAndRequestNotificationAccessSpecialPermission()
   }
+}
+
+// Utility methods for checking permissions and device capabilities
+async function isBluetoothEnabled(): Promise<boolean> {
+  try {
+    console.log("Checking Bluetooth state...")
+    await BleManager.start({showAlert: false})
+
+    // Poll for Bluetooth state every 50ms, up to 10 times (max 500ms)
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const state = await BleManager.checkState()
+      console.log(`Bluetooth state check ${attempt + 1}:`, state)
+
+      if (state !== "unknown") {
+        console.log("Bluetooth state determined:", state)
+        return state === "on"
+      }
+
+      // Wait 50ms before next check
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+
+    // If still unknown after 10 attempts, assume it's available
+    console.log("Bluetooth state still unknown after 500ms, assuming available")
+    return true
+  } catch (error) {
+    console.error("Error checking Bluetooth state:", error)
+    return false
+  }
+}
+
+async function isLocationPermissionGranted(): Promise<boolean> {
+  try {
+    if (Platform.OS === "android") {
+      const result = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION)
+      return result === RESULTS.GRANTED
+    } else if (Platform.OS === "ios") {
+      // iOS doesn't require location permission for BLE scanning since iOS 13
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error("Error checking location permission:", error)
+    return false
+  }
+}
+
+async function isLocationServicesEnabled(): Promise<boolean> {
+  try {
+    if (Platform.OS === "android") {
+      // // Use our native module to check if location services are enabled
+      // const locationServicesEnabled = await checkLocationServices()
+      // console.log("Location services enabled (native check):", locationServicesEnabled)
+      // return locationServicesEnabled
+      return true // TODO: fix this!
+    } else if (Platform.OS === "ios") {
+      // iOS doesn't require location for BLE scanning since iOS 13
+      return true
+    }
+    return true
+  } catch (error) {
+    console.error("Error checking if location services are enabled:", error)
+    return false
+  }
+}
+
+async function checkConnectivityRequirements(): Promise<{
+  isReady: boolean
+  message?: string
+  requirement?: "bluetooth" | "location" | "locationServices" | "permissions"
+}> {
+  console.log("Checking connectivity requirements")
+
+  // Check Bluetooth state on both iOS and Android
+  const isBtEnabled = await isBluetoothEnabled()
+  console.log("Is Bluetooth enabled:", isBtEnabled)
+  if (!isBtEnabled) {
+    console.log("Bluetooth is disabled, showing error")
+    return {
+      isReady: false,
+      message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
+      requirement: "bluetooth",
+    }
+  }
+
+  // Only check location on Android
+  if (Platform.OS === "android") {
+    // First check if location permission is granted
+    const locationPermissionGranted = await isLocationPermissionGranted()
+    console.log("Is Location permission granted:", locationPermissionGranted)
+    if (!locationPermissionGranted) {
+      console.log("Location permission missing, showing error")
+      return {
+        isReady: false,
+        message:
+          "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
+        requirement: "location",
+      }
+    }
+
+    // Then check if location services are enabled
+    const locationServicesEnabled = await isLocationServicesEnabled()
+    console.log("Are Location services enabled:", locationServicesEnabled)
+    if (!locationServicesEnabled) {
+      console.log("Location services disabled, showing error")
+      return {
+        isReady: false,
+        message:
+          "Location services are disabled. Please enable location services in your device settings and try again.",
+        requirement: "locationServices",
+      }
+    }
+  }
+
+  console.log("All requirements met")
+  return {isReady: true}
+}
+
+export async function checkConnectivityRequirementsUI() {
+  const requirementsCheck = await checkConnectivityRequirements()
+  if (!requirementsCheck.isReady) {
+    switch (requirementsCheck.requirement) {
+      case "bluetooth":
+        showBluetoothAlert(
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+        )
+        break
+      case "location":
+        showLocationAlert(
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+        )
+        break
+      case "locationServices":
+        showLocationServicesAlert(
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+        )
+        break
+      default:
+        showAlert(
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+          [{text: translate("common:ok")}],
+        )
+    }
+    return false
+  }
+  return true
 }
 
 export {PERMISSION_CONFIG}

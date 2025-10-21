@@ -1,14 +1,13 @@
 import React, {useCallback, useState} from "react"
 import {TouchableOpacity, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
-import bridge from "@/bridge/MantleBridge"
 import {Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useFocusEffect} from "@react-navigation/native"
 import {useDisplayStore} from "@/stores/display"
-import socketComms from "@/managers/SocketComms"
+import socketComms from "@/services/SocketComms"
 
 interface SimulatedGlassesControlsProps {}
 

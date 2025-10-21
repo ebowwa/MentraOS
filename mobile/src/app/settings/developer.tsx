@@ -1,7 +1,6 @@
 import {useState} from "react"
 import {View, ScrollView, TextInput} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import bridge from "@/bridge/MantleBridge"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton, Text} from "@/components/ignite"
@@ -11,8 +10,8 @@ import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {spacing} from "@/theme"
-import {glassesFeatures} from "@/config/glassesFeatures"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
 
 export default function DeveloperSettingsScreen() {
   // const {status} = useCoreStatus()
@@ -27,6 +26,7 @@ export default function DeveloperSettingsScreen() {
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useSetting(SETTINGS_KEYS.reconnect_on_app_foreground)
   const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
   const [enableSquircles, setEnableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
+  const [debugConsole, setDebugConsole] = useSetting(SETTINGS_KEYS.debug_console)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -35,11 +35,6 @@ export default function DeveloperSettingsScreen() {
   const toggleReconnectOnAppForeground = async () => {
     const newSetting = !reconnectOnAppForeground
     await setReconnectOnAppForeground(newSetting)
-  }
-
-  const toggleNewUi = async () => {
-    const newSetting = !newUi
-    await setNewUi(newSetting)
   }
 
   const toggleEnableSquircles = async () => {
@@ -88,7 +83,6 @@ export default function DeveloperSettingsScreen() {
 
           // Save the URL if the test passes
           await setCustomBackendUrl(urlToTest)
-          await bridge.setServerUrl(urlToTest) // TODO: config: remove
 
           await showAlert(
             "Success",
@@ -138,7 +132,6 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     setCustomBackendUrl(null)
-    await bridge.setServerUrl("") // TODO: config: remove
     setCustomUrlInput("")
     showAlert("Success", "Reset backend URL to default.", [
       {
@@ -215,7 +208,16 @@ export default function DeveloperSettingsScreen() {
           label={translate("settings:newUi")}
           subtitle={translate("settings:newUiSubtitle")}
           value={newUi}
-          onValueChange={toggleNewUi}
+          onValueChange={newValue => setNewUi(newValue)}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={translate("devSettings:debugConsole")}
+          subtitle={translate("devSettings:debugConsoleSubtitle")}
+          value={debugConsole}
+          onValueChange={value => setDebugConsole(value)}
         />
 
         <Spacer height={theme.spacing.md} />
@@ -229,7 +231,7 @@ export default function DeveloperSettingsScreen() {
         <Spacer height={theme.spacing.md} />
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
-        {defaultWearable && glassesFeatures[defaultWearable] && glassesFeatures[defaultWearable].powerSavingMode && (
+        {defaultWearable && defaultWearable.includes(DeviceTypes.G1) && (
           <>
             <Text style={[styles.sectionTitle, {color: theme.colors.textDim}]}>G1 Specific Settings</Text>
             <ToggleSetting
@@ -238,7 +240,6 @@ export default function DeveloperSettingsScreen() {
               value={powerSavingMode}
               onValueChange={async value => {
                 await setPowerSavingMode(value)
-                await bridge.sendTogglePowerSavingMode(value) // TODO: config: remove
               }}
             />
             <Spacer height={theme.spacing.md} />

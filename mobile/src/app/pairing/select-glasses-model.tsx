@@ -8,33 +8,34 @@ import {Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, RadialGradient, Rect, Stop} from "react-native-svg"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
+import {useLocalSearchParams} from "expo-router"
 
 export default function SelectGlassesModelScreen() {
-  const [hasOnboarded, _setHasOnboarded] = useSetting(SETTINGS_KEYS.onboarding_completed)
   const {theme, themed} = useAppTheme()
   const {push, replace, goBack} = useNavigationHistory()
+  const {onboarding} = useLocalSearchParams()
 
   // Platform-specific glasses options
   const glassesOptions =
     Platform.OS === "ios"
       ? [
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
-          {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
-          // {modelName: "Mentra Nex", key: "mentra_nex"},
-          {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          {modelName: DeviceTypes.SIMULATED, key: DeviceTypes.SIMULATED},
+          {modelName: DeviceTypes.G1, key: "evenrealities_g1"},
+          {modelName: DeviceTypes.LIVE, key: "mentra_live"},
+          {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
+          // {modelName: DeviceTypes.NEX, key: "mentra_nex"},
+          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
           // Android:
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
-          {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
+          {modelName: DeviceTypes.SIMULATED, key: DeviceTypes.SIMULATED},
+          {modelName: DeviceTypes.G1, key: "evenrealities_g1"},
+          {modelName: DeviceTypes.LIVE, key: "mentra_live"},
+          {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           // {modelName: "Mentra Nex", key: "mentra_nex"},
-          {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 
@@ -59,7 +60,7 @@ export default function SelectGlassesModelScreen() {
             gradientUnits="objectBoundingBox"
             gradientTransform={`rotate(${rotation} 10 10)`}>
             <Stop offset="0" stopColor={theme.colors.tint} />
-            <Stop offset="1" stopColor={theme.colors.accent} />
+            <Stop offset="1" stopColor={theme.colors.backgroundAlt} />
           </RadialGradient>
         </Defs>
         <Rect
@@ -83,7 +84,7 @@ export default function SelectGlassesModelScreen() {
         titleTx="pairing:selectModel"
         leftIcon="caretLeft"
         onLeftPress={() => {
-          if (!hasOnboarded) {
+          if (onboarding) {
             goBack()
           } else {
             replace("/(tabs)/home")
@@ -95,7 +96,7 @@ export default function SelectGlassesModelScreen() {
         {glassesOptions
           .filter(glasses => {
             // Hide simulated glasses during onboarding (users get there via "I don't have glasses yet")
-            if (!hasOnboarded && glasses.modelName === "Simulated Glasses") {
+            if (onboarding && glasses.modelName === DeviceTypes.SIMULATED) {
               return false
             }
             return true

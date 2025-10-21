@@ -25,6 +25,7 @@ import {
   StreamStatusCheckRequest,
   StreamStatusCheckResponse,
   PermissionType,
+  RgbLedControlRequest,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
@@ -256,6 +257,70 @@ export class AppWebSocketService {
           break;
         }
 
+        // RGB LED control message handling
+        case AppToCloudMessageType.RGB_LED_CONTROL:
+          // Forward RGB LED control request to glasses
+          try {
+            const ledRequestMsg = message as RgbLedControlRequest;
+
+            this.logger.info(
+              {
+                requestId: ledRequestMsg.requestId,
+                packageName: ledRequestMsg.packageName,
+                action: ledRequestMsg.action,
+                color: ledRequestMsg.color,
+              },
+              "💡 RGB LED control request received from app",
+            );
+
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesLedRequest = {
+              type: CloudToGlassesMessageType.RGB_LED_CONTROL,
+              sessionId: userSession.sessionId,
+              requestId: ledRequestMsg.requestId,
+              packageName: ledRequestMsg.packageName,
+              action: ledRequestMsg.action,
+              color: ledRequestMsg.color,
+              ontime: ledRequestMsg.ontime,
+              offtime: ledRequestMsg.offtime,
+              count: ledRequestMsg.count,
+              timestamp: new Date(),
+            };
+
+            // Send to glasses via WebSocket
+            if (
+              userSession.websocket &&
+              userSession.websocket.readyState === 1
+            ) {
+              userSession.websocket.send(JSON.stringify(glassesLedRequest));
+              this.logger.info(
+                {
+                  requestId: ledRequestMsg.requestId,
+                  action: ledRequestMsg.action,
+                },
+                "💡 RGB LED control request forwarded to glasses",
+              );
+            } else {
+              this.sendError(
+                appWebsocket,
+                AppErrorCode.INTERNAL_ERROR,
+                "Glasses not connected",
+              );
+            }
+          } catch (e) {
+            this.logger.error(
+              { e, packageName: message.packageName },
+              "Error forwarding RGB LED control request",
+            );
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message ||
+                "Failed to forward RGB LED control request.",
+            );
+          }
+          break;
+
         // Mentra Live Photo / Video Stream Request message handling.
         case AppToCloudMessageType.RTMP_STREAM_REQUEST:
           // Check camera permission before processing RTMP stream request
@@ -283,17 +348,22 @@ export class AppWebSocketService {
               break;
             }
 
-            // Delegate to VideoManager
+            // Delegate to the unmanaged streaming extension
             const streamId =
-              await userSession.videoManager.startRtmpStream(rtmpRequestMsg);
+              await userSession.unmanagedStreamingExtension.startRtmpStream(
+                rtmpRequestMsg,
+              );
             this.logger.info(
               { streamId, packageName: rtmpRequestMsg.packageName },
-              "RTMP Stream request processed by VideoManager.",
+              "RTMP Stream request processed by UnmanagedStreamingExtension.",
             );
           } catch (e) {
             this.logger
               .child({ packageName: message.packageName })
-              .error(e, "Error starting RTMP stream via VideoManager");
+              .error(
+                e,
+                "Error starting RTMP stream via UnmanagedStreamingExtension",
+              );
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -303,9 +373,9 @@ export class AppWebSocketService {
           break;
 
         case AppToCloudMessageType.RTMP_STREAM_STOP:
-          // Delegate to VideoManager
+          // Delegate to the unmanaged streaming extension
           try {
-            await userSession.videoManager.stopRtmpStream(
+            await userSession.unmanagedStreamingExtension.stopRtmpStream(
               message as RtmpStreamStopRequest,
             );
             this.logger.info(
@@ -313,7 +383,7 @@ export class AppWebSocketService {
                 packageName: message.packageName,
                 streamId: (message as RtmpStreamStopRequest).streamId,
               },
-              "RTMP Stream stop request processed by VideoManager.",
+              "RTMP Stream stop request processed by UnmanagedStreamingExtension.",
             );
           } catch (e) {
             this.logger
@@ -321,7 +391,10 @@ export class AppWebSocketService {
                 packageName: message.packageName,
                 userId: userSession.userId,
               })
-              .error(e, "Error stopping RTMP stream via VideoManager");
+              .error(
+                e,
+                "Error stopping RTMP stream via UnmanagedStreamingExtension",
+              );
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -597,9 +670,9 @@ export class AppWebSocketService {
                 userSession.userId,
               );
 
-            // Then check for unmanaged streams via VideoManager
+            // Then check for unmanaged streams via UnmanagedStreamingExtension
             const unmanagedStreamInfo =
-              userSession.videoManager.getActiveStreamInfo();
+              userSession.unmanagedStreamingExtension.getActiveStreamInfo();
 
             // Build response based on what we found
             const response: StreamStatusCheckResponse = {
@@ -638,7 +711,7 @@ export class AppWebSocketService {
                 };
               }
             } else if (unmanagedStreamInfo) {
-              // Unmanaged stream found (handled by VideoManager)
+              // Unmanaged stream found (handled by the unmanaged streaming extension)
               response.streamInfo = {
                 type: "unmanaged",
                 streamId: unmanagedStreamInfo.streamId,
@@ -660,7 +733,7 @@ export class AppWebSocketService {
                 streamSource: managedStreamState
                   ? "ManagedStreamingExtension"
                   : unmanagedStreamInfo
-                    ? "VideoManager"
+                    ? "UnmanagedStreamingExtension"
                     : "none",
               },
               "Stream status check processed",

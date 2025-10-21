@@ -10,20 +10,13 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export default function ThemeSettingsPage() {
-  const {theme, themed, setThemeContextOverride} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   const {replace} = useNavigationHistory()
 
   const [themePreference, setThemePreference] = useSetting(SETTINGS_KEYS.theme_preference)
 
   const handleThemeChange = async (newTheme: ThemeType) => {
     await setThemePreference(newTheme)
-
-    // Apply theme immediately
-    if (newTheme === "system") {
-      setThemeContextOverride(undefined)
-    } else {
-      setThemeContextOverride(newTheme)
-    }
   }
 
   const renderThemeOption = (themeKey: ThemeType, label: string, subtitle?: string, isLast: boolean = false) => (
@@ -35,11 +28,7 @@ export default function ThemeSettingsPage() {
           <Text text={label} style={{color: theme.colors.text}} />
           {subtitle && <Text text={subtitle} style={themed($subtitle)} />}
         </View>
-        <MaterialCommunityIcons
-          name="check"
-          size={24}
-          color={themePreference === themeKey ? theme.colors.primary : "transparent"}
-        />
+        {themePreference === themeKey && <MaterialCommunityIcons name="check" size={24} color={theme.colors.primary} />}
       </TouchableOpacity>
       {/* @ts-ignore */}
       {!isLast && (

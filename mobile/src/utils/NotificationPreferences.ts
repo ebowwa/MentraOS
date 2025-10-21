@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import {SETTINGS_KEYS} from "./SettingsHelper"
+import {SETTINGS_KEYS} from "@/stores/settings"
 
 export interface NotificationAppPreference {
   packageName: string
@@ -63,22 +63,6 @@ export class NotificationPreferences {
       console.log("📋 Updated simple blacklist:", simpleBlacklist)
     } catch (error) {
       console.error("Error setting app preference:", error)
-    }
-  }
-
-  /**
-   * Check if notifications are enabled for a specific app
-   */
-  static async isAppEnabled(packageName: string): Promise<boolean> {
-    try {
-      const preferences = await this.getAppPreferences()
-      const appPref = preferences[packageName]
-
-      // If no preference set, default to enabled
-      return appPref ? appPref.enabled : true
-    } catch (error) {
-      console.error("Error checking app preference:", error)
-      return true // Default to enabled on error
     }
   }
 

@@ -11,6 +11,7 @@ import com.augmentos.asg_client.service.communication.interfaces.IResponseBuilde
 import com.augmentos.asg_client.service.communication.managers.CommunicationManager;
 import com.augmentos.asg_client.service.communication.managers.ResponseBuilder;
 import com.augmentos.asg_client.service.core.processors.CommandProcessor;
+import com.augmentos.asg_client.service.core.handlers.RgbLedCommandHandler;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.media.managers.MediaManager;
@@ -63,6 +64,12 @@ public class ServiceContainer {
         this.streamingManager = new MediaManager(context, serviceManager);
 
 
+        // Create RGB LED command handler and set reference in service manager
+        RgbLedCommandHandler rgbLedHandler = new RgbLedCommandHandler(serviceManager);
+        Log.i("ServiceContainer", "🚨 Created RGB LED command handler: " + (rgbLedHandler != null ? "✅ SUCCESS" : "❌ FAILED"));
+        serviceManager.setRgbLedCommandHandler(rgbLedHandler);
+        Log.i("ServiceContainer", "🚨 Set RGB LED handler in service manager: " + (serviceManager.getRgbLedCommandHandler() != null ? "✅ SUCCESS" : "❌ FAILED"));
+
         // Initialize CommandProcessor with interface-based managers
         this.responseBuilder = new ResponseBuilder();
         this.commandProcessor = new CommandProcessor(context,
@@ -72,7 +79,8 @@ public class ServiceContainer {
                 responseBuilder,
                 configurationManager,
                 serviceManager,
-                fileManager);
+                fileManager,
+                rgbLedHandler);
 
         // Initialize lifecycle manager with all components
         this.lifecycleManager = new ServiceLifecycleManager(context, serviceManager, commandProcessor, notificationManager);

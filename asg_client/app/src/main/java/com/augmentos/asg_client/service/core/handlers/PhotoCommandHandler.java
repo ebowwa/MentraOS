@@ -84,6 +84,15 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
                 return false;
             }
 
+            // VIDEO RECORDING CHECK: Reject photo requests if video is currently recording
+            if (captureService.isRecordingVideo()) {
+                Log.w(TAG, "🚫 Photo request rejected - video recording in progress");
+                logCommandResult("take_photo", false, "Video recording in progress - request rejected");
+                // Send immediate error response to phone
+                captureService.sendPhotoErrorResponse(requestId, "VIDEO_RECORDING_ACTIVE", "Video recording in progress - request rejected");
+                return false;
+            }
+
             // COOLDOWN CHECK: Reject photo requests if BLE transfer is in progress
             if (captureService.isBleTransferInProgress()) {
                 Log.w(TAG, "🚫 Photo request rejected - BLE transfer in progress (cooldown active)");
@@ -122,6 +131,7 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
     private boolean processPhotoCapture(MediaCaptureService captureService, String photoFilePath,
                                       String requestId, String webhookUrl, String authToken, String bleImgId,
                                       boolean save, String size, String transferMethod, boolean enableLed) {
+        Log.d(TAG, "789789Processing photo capture with transfer method: " + transferMethod);
         switch (transferMethod) {
             case "ble":
                 captureService.takePhotoForBleTransfer(photoFilePath, requestId, bleImgId, save, size, enableLed);

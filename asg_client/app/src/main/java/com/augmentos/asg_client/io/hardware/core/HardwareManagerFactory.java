@@ -7,6 +7,7 @@ import android.util.Log;
 import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.managers.K900HardwareManager;
 import com.augmentos.asg_client.io.hardware.managers.StandardHardwareManager;
+import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 /**
  * Factory class for creating the appropriate IHardwareManager implementation
@@ -33,12 +34,12 @@ public class HardwareManagerFactory {
     
     /**
      * Create a new hardware manager based on device detection.
-     * 
+     *
      * @param context The application context
      * @return A new IHardwareManager implementation
      */
     private static IHardwareManager createHardwareManager(Context context) {
-        DeviceType deviceType = detectDeviceType();
+        DeviceType deviceType = detectDeviceType(context);
         Log.d(TAG, "🔧 Hardware manager selection: " + deviceType);
 
         switch (deviceType) {
@@ -53,8 +54,9 @@ public class HardwareManagerFactory {
 
     /**
      * Detect the device platform so the appropriate hardware manager can be used.
+     * Uses centralized device detection from ServiceUtils.
      */
-    private static DeviceType detectDeviceType() {
+    private static DeviceType detectDeviceType(Context context) {
         Log.d(TAG, "Device fingerprint:");
         Log.d(TAG, "  Manufacturer: " + Build.MANUFACTURER);
         Log.d(TAG, "  Brand: " + Build.BRAND);
@@ -64,11 +66,12 @@ public class HardwareManagerFactory {
         Log.d(TAG, "  Hardware: " + Build.HARDWARE);
 
         final String model = Build.MODEL != null ? Build.MODEL.toLowerCase() : "";
-        final String product = Build.PRODUCT != null ? Build.PRODUCT.toLowerCase() : "";
         final String device = Build.DEVICE != null ? Build.DEVICE.toLowerCase() : "";
         final String brand = Build.BRAND != null ? Build.BRAND.toLowerCase() : "";
 
-        if (model.contains("k900") || product.contains("k900") || device.contains("k900")) {
+        // Use centralized K900 detection from ServiceUtils
+        if (ServiceUtils.isK900Device(context)) {
+            Log.i(TAG, "K900 device detected via ServiceUtils");
             return DeviceType.K900;
         }
 

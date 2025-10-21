@@ -1,10 +1,10 @@
-import React, {useEffect, useRef} from "react"
+import {useRef} from "react"
 import {Tabs} from "expo-router/tabs"
 import {translate} from "@/i18n"
-import {colors, spacing, ThemedStyle, typography} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
-import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
+import {useAppTheme} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import HomeIcon from "assets/icons/navbar/HomeIcon"
@@ -14,7 +14,6 @@ import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {SETTINGS_KEYS} from "@/stores/settings"
-import {router, usePathname} from "expo-router"
 import {useSettingsStore} from "@/stores/settings"
 
 export default function Layout() {
@@ -30,7 +29,7 @@ export default function Layout() {
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
-  const pressTimeout = useRef<NodeJS.Timeout | null>(null)
+  const pressTimeout = useRef<number | null>(null)
 
   const handleQuickPress = () => {
     replace("/settings")
@@ -191,7 +190,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => {
+          tabBarIcon: ({focused}) => {
             const mColor = focused ? iconFocusedColor : iconInactiveColor
             return <StoreIcon size={28} color={mColor} />
           },
@@ -203,7 +202,7 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => {
+          tabBarIcon: ({focused}) => {
             const mColor = focused ? iconFocusedColor : iconInactiveColor
             return (
               <TouchableOpacity onPress={handleQuickPress}>
@@ -219,7 +218,7 @@ export default function Layout() {
   )
 }
 
-const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $tabBar: ThemedStyle<ViewStyle> = ({spacing}) => ({
   // backgroundColor: colors.background,
   // borderTopColor: colors.separator,
   // borderTopWidth: 10,

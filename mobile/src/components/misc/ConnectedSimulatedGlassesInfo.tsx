@@ -1,14 +1,13 @@
-import React, {useEffect, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Animated, Linking} from "react-native"
-import GlassesDisplayMirror from "./GlassesDisplayMirror"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {translate} from "@/i18n/translate"
-import {useCameraPermissions} from "expo-camera"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import showAlert from "@/utils/AlertUtils"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {ViewStyle, TextStyle} from "react-native"
+import {translate} from "@/i18n/translate"
 import {ThemedStyle} from "@/theme"
+import showAlert from "@/utils/AlertUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useCameraPermissions} from "expo-camera"
+import {useEffect, useRef} from "react"
+import {Animated, Linking, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import GlassesDisplayMirror from "./GlassesDisplayMirror"
 
 export default function ConnectedSimulatedGlassesInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -106,33 +105,33 @@ export default function ConnectedSimulatedGlassesInfo() {
   )
 }
 
-export const $bottomBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+export const $bottomBar: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   backgroundColor: "#6750A414",
-  borderBottomLeftRadius: 10,
-  borderBottomRightRadius: 10,
+  borderBottomLeftRadius: spacing.xs,
+  borderBottomRightRadius: spacing.xs,
   flexDirection: "row",
   justifyContent: "space-between",
-  padding: 10,
+  padding: spacing.xs,
   width: "100%",
 })
 
-export const $connectedContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
+export const $connectedContent: ThemedStyle<ViewStyle> = () => ({
   alignItems: "center",
   justifyContent: "center",
-  marginBottom: 10,
+  // marginBottom: spacing.md,
 })
 
-export const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  borderRadius: 10,
+export const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  borderRadius: spacing.sm,
   display: "flex",
   flexDirection: "column",
   height: 230,
   justifyContent: "space-between",
-  marginTop: 16,
+  marginTop: spacing.md,
   paddingBottom: 0,
-  paddingHorizontal: 10,
-  paddingTop: 10,
+  paddingHorizontal: spacing.sm,
+  paddingTop: spacing.sm,
   width: "100%", // Increased space above component to match ConnectedDeviceInfo
 })
 

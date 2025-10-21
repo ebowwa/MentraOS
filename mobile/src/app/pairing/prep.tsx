@@ -1,16 +1,15 @@
-import {View, Platform, Linking, ScrollView} from "react-native"
-import {useRoute} from "@react-navigation/native"
-import {getPairingGuide} from "@/utils/getPairingGuide"
-import {PermissionsAndroid} from "react-native"
-import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
-import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {Button, Header} from "@/components/ignite"
-import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
-import bridge from "@/bridge/MantleBridge"
-import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {translate} from "@/i18n"
+import {DeviceTypes} from "@/utils/Constants"
+import {showAlert} from "@/utils/AlertUtils"
+import {getPairingGuide} from "@/utils/getPairingGuide"
+import {PermissionFeatures, checkConnectivityRequirementsUI, requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useRoute} from "@react-navigation/native"
+import {Linking, PermissionsAndroid, Platform, ScrollView, View} from "react-native"
+import CoreModule from "core"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -42,7 +41,7 @@ export default function PairingPrepScreen() {
     // Always request Bluetooth permissions - required for Android 14+ foreground service
     let needsBluetoothPermissions = true
     // we don't need bluetooth permissions for simulated glasses
-    if (glassesModelName.startsWith("Simulated") && Platform.OS === "ios") {
+    if (glassesModelName.startsWith(DeviceTypes.SIMULATED) && Platform.OS === "ios") {
       needsBluetoothPermissions = false
     }
 
@@ -149,35 +148,8 @@ export default function PairingPrepScreen() {
       console.log("DEBUG: needsBluetoothPermissions:", needsBluetoothPermissions, "Platform.OS:", Platform.OS)
       if (needsBluetoothPermissions && Platform.OS === "ios") {
         console.log("DEBUG: Running iOS connectivity check early")
-        const requirementsCheck = await bridge.checkConnectivityRequirements()
-        if (!requirementsCheck.isReady) {
-          // Show alert about missing requirements with "Turn On" button
-          switch (requirementsCheck.requirement) {
-            case "bluetooth":
-              showBluetoothAlert(
-                translate("pairing:connectionIssueTitle"),
-                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-              )
-              break
-            case "location":
-              showLocationAlert(
-                translate("pairing:connectionIssueTitle"),
-                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-              )
-              break
-            case "locationServices":
-              showLocationServicesAlert(
-                translate("pairing:connectionIssueTitle"),
-                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-              )
-              break
-            default:
-              showAlert(
-                translate("pairing:connectionIssueTitle"),
-                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-                [{text: translate("common:ok")}],
-              )
-          }
+        const requirementsCheck = await checkConnectivityRequirementsUI()
+        if (!requirementsCheck) {
           return
         }
       }
@@ -236,35 +208,8 @@ export default function PairingPrepScreen() {
 
     // Check connectivity for Android after permissions are granted
     if (needsBluetoothPermissions && Platform.OS === "android") {
-      const requirementsCheck = await bridge.checkConnectivityRequirements()
-      if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements with "Turn On" button
-        switch (requirementsCheck.requirement) {
-          case "bluetooth":
-            showBluetoothAlert(
-              translate("pairing:connectionIssueTitle"),
-              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-            )
-            break
-          case "location":
-            showLocationAlert(
-              translate("pairing:connectionIssueTitle"),
-              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-            )
-            break
-          case "locationServices":
-            showLocationServicesAlert(
-              translate("pairing:connectionIssueTitle"),
-              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-            )
-            break
-          default:
-            showAlert(
-              translate("pairing:connectionIssueTitle"),
-              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-              [{text: translate("common:ok")}],
-            )
-        }
+      const requirementsCheck = await checkConnectivityRequirementsUI()
+      if (!requirementsCheck) {
         return
       }
     }
@@ -272,10 +217,8 @@ export default function PairingPrepScreen() {
     console.log("needsBluetoothPermissions", needsBluetoothPermissions)
 
     // skip pairing for simulated glasses:
-    if (glassesModelName.startsWith("Simulated")) {
-      await useSettingsStore.getState().setSetting(SETTINGS_KEYS.default_wearable, "Simulated Glasses")
-      bridge.sendSearchForCompatibleDeviceNames("Simulated Glasses")
-      bridge.sendConnectWearable("Simulated Glasses", "Simulated Glasses", "")
+    if (glassesModelName.startsWith(DeviceTypes.SIMULATED)) {
+      await CoreModule.connectSimulated()
       clearHistoryAndGoHome()
       return
     }

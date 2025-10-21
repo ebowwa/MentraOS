@@ -1,31 +1,36 @@
-import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle} from "react-native"
+import {ImageStyle, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 
-import AppIcon from "@/components/misc/AppIcon"
 import {Text} from "@/components/ignite"
-import {useActiveForegroundApp, useAppStatus} from "@/contexts/AppletStatusProvider"
+import AppIcon from "@/components/misc/AppIcon"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useActiveForegroundApp, useStopApplet} from "@/stores/applets"
+import {ThemedStyle} from "@/theme"
+import {showAlert} from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {CloseXIcon} from "assets/icons/component/CloseXIcon"
-import restComms from "@/managers/RestComms"
-import {showAlert} from "@/utils/AlertUtils"
-import {ThemedStyle} from "@/theme"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {attemptAppStop} from "@/utils/cameraAppProtection"
 
 export const ActiveForegroundApp: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
   const activeForegroundApp = useActiveForegroundApp()
-  const {optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const {status} = useCoreStatus()
+  const stopApplet = useStopApplet()
 
   const handlePress = () => {
     if (activeForegroundApp) {
+      // Handle offline apps - navigate directly to React Native route
+      if (activeForegroundApp.isOffline) {
+        const offlineRoute = activeForegroundApp.offlineRoute
+        if (offlineRoute) {
+          push(offlineRoute)
+          return
+        }
+      }
+
       // Check if app has webviewURL and navigate directly to it
-      if (activeForegroundApp.webviewURL && activeForegroundApp.isOnline !== false) {
+      if (activeForegroundApp.webviewUrl && activeForegroundApp.healthy) {
         push("/applet/webview", {
-          webviewURL: activeForegroundApp.webviewURL,
+          webviewURL: activeForegroundApp.webviewUrl,
           appName: activeForegroundApp.name,
           packageName: activeForegroundApp.packageName,
         })
@@ -40,26 +45,13 @@ export const ActiveForegroundApp: React.FC = () => {
 
   const handleLongPress = () => {
     if (activeForegroundApp) {
-      // Check for Camera app protection
-      if (attemptAppStop(activeForegroundApp.packageName, status, theme)) {
-        return // Block the stop operation
-      }
-
       showAlert("Stop App", `Do you want to stop ${activeForegroundApp.name}?`, [
         {text: "Cancel", style: "cancel"},
         {
           text: "Stop",
           style: "destructive",
           onPress: async () => {
-            optimisticallyStopApp(activeForegroundApp.packageName)
-
-            try {
-              await restComms.stopApp(activeForegroundApp.packageName)
-              clearPendingOperation(activeForegroundApp.packageName)
-            } catch (error) {
-              refreshAppStatus()
-              console.error("Stop app error:", error)
-            }
+            stopApplet(activeForegroundApp.packageName)
           },
         },
       ])
@@ -71,20 +63,7 @@ export const ActiveForegroundApp: React.FC = () => {
     event.stopPropagation()
 
     if (activeForegroundApp) {
-      // Check for Camera app protection
-      if (attemptAppStop(activeForegroundApp.packageName, status, theme)) {
-        return // Block the stop operation
-      }
-
-      optimisticallyStopApp(activeForegroundApp.packageName)
-
-      try {
-        await restComms.stopApp(activeForegroundApp.packageName)
-        clearPendingOperation(activeForegroundApp.packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Stop app error:", error)
-      }
+      stopApplet(activeForegroundApp.packageName)
     }
   }
 
@@ -106,7 +85,7 @@ export const ActiveForegroundApp: React.FC = () => {
       onLongPress={handleLongPress}
       activeOpacity={0.7}>
       <View style={themed($rowContent)}>
-        <AppIcon app={activeForegroundApp as any} style={themed($appIcon)} hideLoadingIndicator />
+        <AppIcon app={activeForegroundApp as any} style={themed($appIcon)} />
         <View style={themed($appInfo)}>
           <Text style={themed($appName)} numberOfLines={1} ellipsizeMode="tail">
             {activeForegroundApp.name}
@@ -126,10 +105,14 @@ export const ActiveForegroundApp: React.FC = () => {
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  borderRadius: spacing.sm,
+const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginVertical: spacing.xs,
   minHeight: 72,
+  borderWidth: 2,
+  borderColor: colors.border,
+  borderRadius: spacing.md,
+  backgroundColor: colors.backgroundAlt,
+  paddingHorizontal: spacing.sm,
 })
 
 const $rowContent: ThemedStyle<ViewStyle> = ({spacing}) => ({

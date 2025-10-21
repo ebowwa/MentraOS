@@ -1,0 +1,18 @@
+# Metro bundler config
+metro.config.js
+
+# Build outputs
+dist/
+build/
+android/
+ios/
+
+# Dependencies
+node_modules/
+
+# Cache
+.expo/
+.bundle/
+
+# Logs
+*.log

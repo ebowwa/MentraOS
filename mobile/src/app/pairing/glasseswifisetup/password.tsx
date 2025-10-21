@@ -5,10 +5,10 @@ import {Screen, Icon, Header, Checkbox, Button, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ScrollView} from "react-native"
+import Toast from "react-native-toast-message"
 
 export default function WifiPasswordScreen() {
   const params = useLocalSearchParams()
@@ -49,9 +49,9 @@ export default function WifiPasswordScreen() {
 
   const handleConnect = async () => {
     if (!ssid) {
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Please enter a network name",
+      Toast.show({
         type: "error",
+        text1: "Please enter a network name",
       })
       return
     }

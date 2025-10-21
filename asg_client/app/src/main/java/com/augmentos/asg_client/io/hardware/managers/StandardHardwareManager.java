@@ -126,6 +126,65 @@ public class StandardHardwareManager extends BaseHardwareManager {
     }
 
     @Override
+    public void setBluetoothManager(Object bluetoothManager) {
+        // Standard Android devices don't use Bluetooth for LED control
+        // This is a no-op for non-K900 devices
+    }
+
+    // ============================================
+    // MTK LED Brightness Control (Not Supported)
+    // ============================================
+
+    @Override
+    public boolean supportsLedBrightness() {
+        return false;
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent) {
+        Log.w(TAG, "LED brightness not supported on this device");
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent, int durationMs) {
+        Log.w(TAG, "LED brightness not supported on this device");
+    }
+
+    @Override
+    public int getRecordingLedBrightness() {
+        return 0;
+    }
+
+    // ============================================
+    // RGB LED Control (Not Supported)
+    // ============================================
+
+    @Override
+    public boolean supportsRgbLed() {
+        return false;
+    }
+
+    @Override
+    public void setRgbLedOn(int ledIndex, int ontime, int offtime, int count) {
+        Log.w(TAG, "RGB LED not supported on this device");
+    }
+
+    @Override
+    public void setRgbLedOff() {
+        Log.w(TAG, "RGB LED not supported on this device");
+    }
+
+    @Override
+    public void flashRgbLedWhite(int durationMs) {
+        Log.w(TAG, "RGB LED not supported on this device");
+    }
+
+    @Override
+    public void setRgbLedSolidWhite(int durationMs) {
+        Log.w(TAG, "RGB LED not supported on this device");
+    }
+
+    @Override
     public void shutdown() {
         stopTorch();
         stopAudioPlayback();

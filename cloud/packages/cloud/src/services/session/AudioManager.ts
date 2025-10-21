@@ -139,6 +139,8 @@ export class AudioManager {
           );
         }
 
+        // Capture audio if enabled
+
         // Relay to Apps if there are subscribers
         this.relayAudioToApps(buf);
 

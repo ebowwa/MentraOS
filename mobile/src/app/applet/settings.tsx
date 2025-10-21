@@ -1,62 +1,43 @@
-// src/AppSettings.tsx
-import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  ViewStyle,
-  TextStyle,
-  Animated,
-  BackHandler,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native"
-import {useSafeAreaInsets} from "react-native-safe-area-context"
-import GroupTitle from "@/components/settings/GroupTitle"
-import ToggleSetting from "@/components/settings/ToggleSetting"
-import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
-import SliderSetting from "@/components/settings/SliderSetting"
-import SelectSetting from "@/components/settings/SelectSetting"
-import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
-import TitleValueSetting from "@/components/settings/TitleValueSetting"
-import LoadingOverlay from "@/components/misc/LoadingOverlay"
-import restComms from "@/managers/RestComms"
-import FontAwesome from "react-native-vector-icons/FontAwesome"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import {Header, PillButton, Screen, Text} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
-import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
-import NumberSetting from "@/components/settings/NumberSetting"
-import TimeSetting from "@/components/settings/TimeSetting"
-import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
-import {useFocusEffect, useLocalSearchParams} from "expo-router"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen, PillButton} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import ActionButton from "@/components/ui/ActionButton"
 import Divider from "@/components/misc/Divider"
+import LoadingOverlay from "@/components/misc/LoadingOverlay"
+import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
+import GroupTitle from "@/components/settings/GroupTitle"
 import {InfoRow} from "@/components/settings/InfoRow"
+import MultiSelectSetting from "@/components/settings/MultiSelectSetting"
+import NumberSetting from "@/components/settings/NumberSetting"
+import SelectSetting from "@/components/settings/SelectSetting"
+import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import {SettingsGroup} from "@/components/settings/SettingsGroup"
-import {showAlert} from "@/utils/AlertUtils"
-import {
-  askPermissionsUI,
-  checkPermissionsUI,
-  PERMISSION_CONFIG,
-  PermissionFeatures,
-  requestPermissionsUI,
-} from "@/utils/PermissionsUtils"
+import SliderSetting from "@/components/settings/SliderSetting"
+import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
+import TimeSetting from "@/components/settings/TimeSetting"
+import TitleValueSetting from "@/components/settings/TitleValueSetting"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import ActionButton from "@/components/ui/ActionButton"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n"
+import restComms from "@/services/RestComms"
+import {useApplets, useRefreshApplets, useStartApplet, useStopApplet} from "@/stores/applets"
 import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
+import {showAlert} from "@/utils/AlertUtils"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import {useFocusEffect, useLocalSearchParams} from "expo-router"
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react"
+import {Animated, BackHandler, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
+import {useSafeAreaInsets} from "react-native-safe-area-context"
+import Toast from "react-native-toast-message"
+import FontAwesome from "react-native-vector-icons/FontAwesome"
 
 export default function AppSettings() {
   const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
-  const {goBack, push, replace, navigate} = useNavigationHistory()
+  const {goBack, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
   const hasLoadedData = useRef(false)
 
@@ -76,16 +57,19 @@ export default function AppSettings() {
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({})
 
-  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
-    useAppStatus()
+  const startApp = useStartApplet()
+  const applets = useApplets()
+  const refreshApplets = useRefreshApplets()
+  const stopApp = useStopApplet()
+
   const appInfo = useMemo(() => {
-    return appStatus.find(app => app.packageName === packageName) || null
-  }, [appStatus, packageName])
+    return applets.find(app => app.packageName === packageName) || null
+  }, [applets, packageName])
 
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
-  const [newUi, setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
+  const [newUi, _setNewUi] = useSetting(SETTINGS_KEYS.new_ui)
 
   if (!packageName || typeof packageName !== "string") {
     console.error("No packageName found in params")
@@ -110,9 +94,9 @@ export default function AppSettings() {
         goBack()
         return true
       }
-      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress)
       return () => {
-        BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+        subscription.remove()
       }
     }, [goBack]),
   )
@@ -122,13 +106,13 @@ export default function AppSettings() {
     if (!appInfo) return
 
     try {
-      if (appInfo.is_running) {
-        optimisticallyStopApp(packageName)
+      if (appInfo.running) {
+        stopApp(packageName)
         return
       }
 
       // If the app appears offline, confirm before proceeding
-      if (appInfo.isOnline === false) {
+      if (!appInfo.healthy) {
         const developerName = (
           " " +
           ((serverAppInfo as any)?.organization?.name ||
@@ -168,12 +152,12 @@ export default function AppSettings() {
         return
       }
 
-      optimisticallyStartApp(packageName)
+      startApp(packageName)
     } catch (error) {
       // Refresh the app status to get the accurate state from the server
-      refreshAppStatus()
+      refreshApplets()
 
-      console.error(`Error ${appInfo.is_running ? "stopping" : "starting"} app:`, error)
+      console.error(`Error ${appInfo.running ? "stopping" : "starting"} app:`, error)
     }
   }
 
@@ -195,30 +179,28 @@ export default function AppSettings() {
             try {
               setIsUninstalling(true)
               // First stop the app if it's running
-              if (appInfo?.is_running) {
+              if (appInfo?.running) {
                 // Optimistically update UI first
-                optimisticallyStopApp(packageName)
+                stopApp(packageName)
                 await restComms.stopApp(packageName)
-                clearPendingOperation(packageName)
               }
 
               // Then uninstall it
               await restComms.uninstallApp(packageName)
 
               // Show success message
-              GlobalEventEmitter.emit("SHOW_BANNER", {
-                message: `${appInfo?.name || appName} has been uninstalled successfully`,
+              Toast.show({
                 type: "success",
+                text1: `${appInfo?.name || appName} has been uninstalled successfully`,
               })
 
               replace("/(tabs)/home")
             } catch (error: any) {
               console.error("Error uninstalling app:", error)
-              clearPendingOperation(packageName)
-              refreshAppStatus()
-              GlobalEventEmitter.emit("SHOW_BANNER", {
-                message: `Error uninstalling app: ${error.message || "Unknown error"}`,
+              refreshApplets()
+              Toast.show({
                 type: "error",
+                text1: `Error uninstalling app: ${error.message || "Unknown error"}`,
               })
             } finally {
               setIsUninstalling(false)
@@ -267,10 +249,6 @@ export default function AppSettings() {
 
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
-        // Get cached settings to preserve user values for existing settings
-        const cached = JSON.parse((await AsyncStorage.getItem(SETTINGS_CACHE_KEY(packageName))) ?? "{}")
-        const cachedState = cached?.settingsState || {}
-
         const initialState: {[key: string]: any} = {}
         data.settings.forEach((setting: any) => {
           if (setting.type !== "group") {
@@ -325,11 +303,6 @@ export default function AppSettings() {
     }))
 
     // Build an array of settings to send.
-    const updatedPayload = Object.keys(settingsState).map(settingKey => ({
-      key: settingKey,
-      value: settingKey === key ? value : settingsState[settingKey],
-    }))
-
     restComms
       .updateAppSetting(packageName, {key, value})
       .then(data => {
@@ -794,36 +767,10 @@ const $descriptionSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.md,
 })
 
-const $appInfoHeader: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  padding: spacing.md,
-  borderRadius: spacing.sm,
-  borderWidth: 1,
-  elevation: 2,
-  shadowColor: "#000",
-  shadowOffset: {width: 0, height: 2},
-  shadowOpacity: 0.1,
-  shadowRadius: spacing.xxs,
-})
-
-const $descriptionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingTop: spacing.sm,
-  borderTopWidth: 1,
-  borderTopColor: colors.separator,
-})
-
 const $descriptionText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   fontFamily: "Montserrat-Regular",
   lineHeight: 22,
-  color: colors.text,
-})
-
-const $appName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 24,
-  fontWeight: "bold",
-  fontFamily: "Montserrat-Bold",
-  marginBottom: spacing.xxs,
   color: colors.text,
 })
 
@@ -866,13 +813,6 @@ const $noSettingsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   textAlign: "center",
   padding: spacing.md,
   color: colors.textDim,
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  marginHorizontal: spacing.md + spacing.xxs, // 20px
 })
 
 const $groupTitle: ThemedStyle<TextStyle> = () => ({})

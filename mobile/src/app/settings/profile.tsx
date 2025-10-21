@@ -10,7 +10,7 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
 import {LogoutUtils} from "@/utils/LogoutUtils"
-import restComms from "@/managers/RestComms"
+import restComms from "@/services/RestComms"
 import {useAuth} from "@/contexts/AuthContext"
 
 export default function ProfileSettingsPage() {

@@ -760,7 +760,7 @@ export class AppServer {
           }
 
           // Handle error response (no photo file, but has error info)
-          if (type === "photo_error" || !success) {
+          if (type === "photo_error" || success === false) {
             // Create error response object
             const errorResponse = {
               requestId,

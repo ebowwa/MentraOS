@@ -16,6 +16,7 @@ import com.augmentos.asg_client.io.server.services.AsgCameraServer;
 import com.augmentos.asg_client.logging.Logger;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.core.AsgClientService;
+import com.augmentos.asg_client.service.core.handlers.RgbLedCommandHandler;
 import com.augmentos.asg_client.settings.AsgSettings;
 
 /**
@@ -43,6 +44,9 @@ public class AsgClientServiceManager {
     private boolean isInitialized = false;
     private boolean isWebServerEnabled = true;
     private boolean isK900Device = false;
+    
+    // RGB LED command handler reference
+    private RgbLedCommandHandler rgbLedCommandHandler;
 
     private final FileManager fileManager;
 
@@ -232,6 +236,14 @@ public class AsgClientServiceManager {
 
             Log.i(TAG, "📊 Bluetooth initialization complete - Device type: " +
                     (isK900Device ? "K900" : "Standard Android"));
+
+            // Initialize RGB LED handler with Bluetooth Manager (deferred initialization)
+            if (rgbLedCommandHandler != null) {
+                Log.d(TAG, "🚨 Initializing RGB LED Command Handler with Bluetooth Manager");
+                rgbLedCommandHandler.initializeBluetoothManager();
+            } else {
+                Log.w(TAG, "⚠️ RGB LED Command Handler not set - cannot initialize Bluetooth Manager");
+            }
         } catch (Exception e) {
             Log.e(TAG, "💥 Error initializing bluetooth manager", e);
             throw e;
@@ -325,6 +337,10 @@ public class AsgClientServiceManager {
                 mediaCaptureService.setServiceCallback(service.getServiceCallback());
                 Log.d(TAG, "📡 Service callback set");
 
+                // Note: RGB LED control now handled directly via hardware manager
+                // MediaCaptureService uses HardwareManagerFactory.getInstance() internally
+                // RgbLedCommandHandler initializes the hardware manager's BluetoothManager
+
             } catch (Exception e) {
                 Log.e(TAG, "💥 Error creating MediaCaptureService", e);
                 throw e;
@@ -402,6 +418,10 @@ public class AsgClientServiceManager {
     }
 
     // Getters for components
+    public Context getContext() {
+        return context;
+    }
+
     public AsgSettings getAsgSettings() {
         Log.d(TAG, "📋 getAsgSettings() called - returning: " + (asgSettings != null ? "valid" : "null"));
         return asgSettings;
@@ -435,6 +455,23 @@ public class AsgClientServiceManager {
     public AsgServerManager getServerManager() {
         Log.d(TAG, "📡 getServerManager() called - returning: " + (serverManager != null ? "valid" : "null"));
         return serverManager;
+    }
+    
+    /**
+     * Set the RGB LED command handler reference.
+     * This should be called by the service container after command handlers are initialized.
+     */
+    public void setRgbLedCommandHandler(RgbLedCommandHandler handler) {
+        this.rgbLedCommandHandler = handler;
+        Log.d(TAG, "RGB LED command handler set: " + (handler != null ? "valid" : "null"));
+    }
+    
+    /**
+     * Get the RGB LED command handler reference.
+     */
+    public RgbLedCommandHandler getRgbLedCommandHandler() {
+        Log.d(TAG, "getRgbLedCommandHandler() called - returning: " + (rgbLedCommandHandler != null ? "valid" : "null"));
+        return rgbLedCommandHandler;
     }
 
     public boolean isInitialized() {

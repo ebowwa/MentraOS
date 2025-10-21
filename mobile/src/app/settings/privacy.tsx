@@ -143,7 +143,6 @@ export default function PrivacySettingsScreen() {
   const toggleSensing = async () => {
     const newSensing = !sensingEnabled
     await setSensingEnabled(newSensing)
-    await bridge.sendToggleSensing(newSensing) // TODO: config: remove
   }
 
   const handleToggleNotifications = async () => {

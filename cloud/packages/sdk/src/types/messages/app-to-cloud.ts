@@ -9,7 +9,8 @@ import {
   DashboardModeChange,
   DashboardSystemUpdate,
 } from "../dashboard";
-import { VideoConfig, AudioConfig, StreamConfig } from "../rtmp-stream";
+import type { VideoConfig, AudioConfig, StreamConfig } from "../rtmp-stream";
+import { LedColor } from "./cloud-to-glasses";
 
 // a subscription can now be either a simple string or our new rich object
 export type SubscriptionRequest = ExtendedStreamType | LocationStreamRequest;
@@ -45,6 +46,20 @@ export interface PhotoRequest extends BaseMessage {
   authToken?: string; // Auth token for custom webhook authentication
   /** Desired photo size sent by App. Defaults to 'medium' if omitted. */
   size?: "small" | "medium" | "large";
+}
+
+/**
+ * RGB LED control request from App
+ */
+export interface RgbLedControlRequest extends BaseMessage {
+  type: AppToCloudMessageType.RGB_LED_CONTROL;
+  packageName: string;
+  requestId: string; // SDK-generated request ID to track the request
+  action: "on" | "off"; // Only low-level on/off actions
+  color?: LedColor; // LED color name
+  ontime?: number; // LED on duration in ms
+  offtime?: number; // LED off duration in ms
+  count?: number; // Number of on/off cycles
 }
 
 // Video, Audio and Stream configuration interfaces are imported from '../rtmp-stream'
@@ -152,6 +167,7 @@ export type AppToCloudMessage =
   | AppLocationPollRequest
   | DisplayRequest
   | PhotoRequest
+  | RgbLedControlRequest
   | AudioPlayRequest
   | AudioStopRequest
   | RtmpStreamRequest
@@ -203,6 +219,15 @@ export function isPhotoRequest(
   message: AppToCloudMessage,
 ): message is PhotoRequest {
   return message.type === AppToCloudMessageType.PHOTO_REQUEST;
+}
+
+/**
+ * Type guard to check if a message is a RGB LED control request
+ */
+export function isRgbLedControlRequest(
+  message: AppToCloudMessage,
+): message is RgbLedControlRequest {
+  return message.type === AppToCloudMessageType.RGB_LED_CONTROL;
 }
 
 /**

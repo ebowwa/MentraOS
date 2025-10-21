@@ -87,6 +87,16 @@ export interface HeadPosition extends BaseMessage {
 }
 
 /**
+ * Touch gesture event from glasses
+ */
+export interface TouchEvent extends BaseMessage {
+  type: GlassesToCloudMessageType.TOUCH_EVENT;
+  device_model: string;
+  gesture_name: string;
+  timestamp: Date;
+}
+
+/**
  * Glasses battery update from glasses
  */
 export interface GlassesBatteryUpdate extends BaseMessage {
@@ -319,6 +329,16 @@ export interface PhotoResponse extends BaseMessage {
 }
 
 /**
+ * RGB LED control response from glasses
+ */
+export interface RgbLedControlResponse extends BaseMessage {
+  type: GlassesToCloudMessageType.RGB_LED_CONTROL_RESPONSE;
+  requestId: string;
+  success: boolean;
+  error?: string;
+}
+
+/**
  * RTMP stream status update from glasses
  */
 export interface RtmpStreamStatus extends BaseMessage {
@@ -390,6 +410,7 @@ export type GlassesToCloudMessage =
   | OpenDashboard
   | ButtonPress
   | HeadPosition
+  | TouchEvent
   | GlassesBatteryUpdate
   | PhoneBatteryUpdate
   | GlassesConnectionState
@@ -404,6 +425,7 @@ export type GlassesToCloudMessage =
   | RtmpStreamStatus
   | KeepAliveAck
   | PhotoResponse
+  | RgbLedControlResponse
   | PhotoTaken
   | AudioPlayResponse
   | LocalTranscription;
@@ -513,6 +535,12 @@ export function isPhotoResponse(
   message: GlassesToCloudMessage,
 ): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isRgbLedControlResponse(
+  message: GlassesToCloudMessage,
+): message is RgbLedControlResponse {
+  return message.type === GlassesToCloudMessageType.RGB_LED_CONTROL_RESPONSE;
 }
 
 export function isKeepAliveAck(

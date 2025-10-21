@@ -33,7 +33,9 @@ import {Header, Text} from "@/components/ignite"
 import * as Linking from "expo-linking"
 import {MediaLibraryPermissions} from "@/utils/MediaLibraryPermissions"
 import {gallerySettingsService} from "@/services/asg/gallerySettingsService"
-import {hasGallery} from "@/config/glassesFeatures"
+import {getModelCapabilities} from "../../../../../cloud/packages/types/src"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import CoreModule from "core"
 
 // Gallery timing constants
 const TIMING = {
@@ -79,6 +81,8 @@ export function GalleryScreen() {
   const ITEM_SPACING = 2 // Minimal spacing between items (1-2px hairline)
   const numColumns = screenWidth < 320 ? 2 : 3 // 2 columns for very small screens, otherwise 3
   const itemWidth = (screenWidth - ITEM_SPACING * (numColumns - 1)) / numColumns
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const features = getModelCapabilities(defaultWearable)
 
   const [networkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
 
@@ -597,7 +601,7 @@ export function GalleryScreen() {
   const handleRequestHotspot = async () => {
     transitionToState(GalleryState.REQUESTING_HOTSPOT)
     try {
-      await bridge.sendCommand("set_hotspot_state", {enabled: true})
+      await CoreModule.setHotspotState(true)
       setGalleryOpenedHotspot(true)
       galleryOpenedHotspotRef.current = true
       console.log("[GalleryScreen] Gallery initiated hotspot")
@@ -614,7 +618,7 @@ export function GalleryScreen() {
   const handleStopHotspot = async () => {
     console.log("[GalleryScreen] Stopping hotspot...")
     try {
-      const result = await bridge.sendCommand("set_hotspot_state", {enabled: false})
+      const result = await CoreModule.setHotspotState(false)
       console.log("[GalleryScreen] Hotspot stop command sent")
       setGalleryOpenedHotspot(false)
       galleryOpenedHotspotRef.current = false
@@ -872,7 +876,7 @@ export function GalleryScreen() {
       loadDownloadedPhotos()
 
       // Only query glasses if we have glasses info (meaning glasses are connected) AND glasses have gallery capability
-      if (status.glasses_info?.model_name && hasGallery(status.glasses_info.model_name)) {
+      if (status.glasses_info?.model_name && features?.hasCamera) {
         console.log(
           "[GalleryScreen] Glasses connected with gallery capability - querying gallery status",
           status.glasses_info,
@@ -907,8 +911,8 @@ export function GalleryScreen() {
         return true
       }
 
-      BackHandler.addEventListener("hardwareBackPress", onBackPress)
-      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress)
+      return () => subscription.remove()
     }, [selectedPhoto]),
   )
 
@@ -936,13 +940,15 @@ export function GalleryScreen() {
           data.camera_busy === "stream"
             ? "streaming"
             : data.camera_busy === "video"
-              ? "recording video"
-              : "using the camera"
+            ? "recording video"
+            : "using the camera"
         const itemText = data.total === 1 ? "item" : "items"
 
         showAlert(
           "Camera Busy",
-          `Cannot fetch ${data.total || 0} ${itemText} from glasses while ${busyMessage}. Please stop ${busyMessage} first to sync.`,
+          `Cannot fetch ${
+            data.total || 0
+          } ${itemText} from glasses while ${busyMessage}. Please stop ${busyMessage} first to sync.`,
           [{text: "OK"}],
           {iconName: "camera", iconColor: "#FF9800"},
         )
@@ -981,9 +987,9 @@ export function GalleryScreen() {
       }
     }
 
-    GlobalEventEmitter.addListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
+    GlobalEventEmitter.addListener("GALLERY_STATUS", handleGalleryStatus)
     return () => {
-      GlobalEventEmitter.removeListener("GLASSES_GALLERY_STATUS", handleGalleryStatus)
+      GlobalEventEmitter.removeListener("GALLERY_STATUS", handleGalleryStatus)
     }
   }, [galleryState, networkStatus.phoneSSID, hotspotSsid])
 
@@ -1003,9 +1009,9 @@ export function GalleryScreen() {
       connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
     }
 
-    GlobalEventEmitter.addListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
+    GlobalEventEmitter.addListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     return () => {
-      GlobalEventEmitter.removeListener("GLASSES_HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
+      GlobalEventEmitter.removeListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     }
   }, [])
 
@@ -1050,8 +1056,7 @@ export function GalleryScreen() {
       if (!galleryOpenedHotspot) return
 
       console.log("[GalleryScreen] Gallery unmounting - closing hotspot")
-      bridge
-        .sendCommand("set_hotspot_state", {enabled: false})
+      CoreModule.setHotspotState(false)
         .then(() => console.log("[GalleryScreen] Closed hotspot on exit"))
         .catch(error => console.error("[GalleryScreen] Failed to close hotspot on exit:", error))
     }
@@ -1169,12 +1174,12 @@ export function GalleryScreen() {
                       ? "item"
                       : "items"
                     : (glassesGalleryStatus?.photos || 0) > 0
-                      ? (glassesGalleryStatus?.photos || 0) === 1
-                        ? "photo"
-                        : "photos"
-                      : (glassesGalleryStatus?.videos || 0) === 1
-                        ? "video"
-                        : "videos"}
+                    ? (glassesGalleryStatus?.photos || 0) === 1
+                      ? "photo"
+                      : "photos"
+                    : (glassesGalleryStatus?.videos || 0) === 1
+                    ? "video"
+                    : "videos"}
                 </Text>
               </View>
             </View>
@@ -1230,12 +1235,12 @@ export function GalleryScreen() {
                       ? "item"
                       : "items"
                     : (glassesGalleryStatus?.photos || 0) > 0
-                      ? (glassesGalleryStatus?.photos || 0) === 1
-                        ? "photo"
-                        : "photos"
-                      : (glassesGalleryStatus?.videos || 0) === 1
-                        ? "video"
-                        : "videos"}
+                    ? (glassesGalleryStatus?.photos || 0) === 1
+                      ? "photo"
+                      : "photos"
+                    : (glassesGalleryStatus?.videos || 0) === 1
+                    ? "video"
+                    : "videos"}
                 </Text>
               </View>
             </View>

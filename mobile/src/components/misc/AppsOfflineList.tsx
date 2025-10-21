@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from "react"
+import {useCallback, useEffect} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -36,7 +36,7 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
   const [isLocalTranscriptionEnforced, setIsLocalTranscriptionEnforced] = useSetting(
     SETTINGS_KEYS.enforce_local_transcription,
   )
-  const [isOfflineCaptionsEnabled, setIsOfflineCaptionsEnabled] = useSetting(SETTINGS_KEYS.offline_captions_app_running)
+  const [isOfflineCaptionsEnabled, setIsOfflineCaptionsEnabled] = useSetting(SETTINGS_KEYS.offline_captions_running)
 
   // Load saved states on mount and when screen comes into focus
   const loadState = useCallback(async () => {
@@ -126,8 +126,6 @@ export const AppsOfflineList: React.FC<AppsOfflineListProps> = ({isSearchPage = 
 
     // Update the bridge with the new offline mode
     // Update the local state
-    // TODO: Later remove this during android refactor
-    bridge.toggleOfflineApps(newOfflineMode)
     setIsOfflineCaptionsEnabled(newOfflineMode)
   }, [isOfflineCaptionsEnabled, isLocalTranscriptionEnforced])
 

@@ -1,4 +1,3 @@
-// AppIcon.tsx
 import {memo} from "react"
 import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle, Platform, ActivityIndicator} from "react-native"
 import {Image} from "expo-image"
@@ -22,8 +21,19 @@ const AppIcon = ({app, onClick, style, showLabel = false, hideLoadingIndicator =
 
   const WrapperComponent = onClick ? TouchableOpacity : View
 
-  const [newUi] = useSetting(SETTINGS_KEYS.new_ui)
   const [enableSquircles] = useSetting(SETTINGS_KEYS.enable_squircles)
+
+  // Use custom camera icon for camera app
+  // const isCameraApp = app.packageName === "com.mentra.camera"
+  // // Determine size based on style prop - handle various sizes used across the app
+  // const getIconSize = (): "small" | "medium" | "large" => {
+  //   const width = style?.width
+  //   if (!width) return "medium"
+  //   if (width <= 40) return "small"
+  //   if (width >= 64) return "large"
+  //   return "medium"
+  // }
+  // const iconSize = getIconSize()
 
   return (
     <WrapperComponent
@@ -50,7 +60,7 @@ const AppIcon = ({app, onClick, style, showLabel = false, hideLoadingIndicator =
             </View>
           )}
           <Image
-            source={typeof app.logoURL === "string" ? {uri: app.logoURL} : app.logoURL}
+            source={app.logoUrl}
             style={themed($icon)}
             contentFit="cover"
             transition={200}
@@ -59,13 +69,13 @@ const AppIcon = ({app, onClick, style, showLabel = false, hideLoadingIndicator =
         </SquircleView>
       ) : (
         <>
-          {app.loading && newUi && !hideLoadingIndicator && (
+          {app.loading && !hideLoadingIndicator && (
             <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="small" color={theme.colors.tint} />
+              <ActivityIndicator size="large" color={theme.colors.tint} />
             </View>
           )}
           <Image
-            source={typeof app.logoURL === "string" ? {uri: app.logoURL} : app.logoURL}
+            source={app.logoUrl}
             style={[themed($icon), {borderRadius: 60, width: style?.width ?? 56, height: style?.height ?? 56}]}
             contentFit="cover"
             transition={200}

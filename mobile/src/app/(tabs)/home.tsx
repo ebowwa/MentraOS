@@ -1,91 +1,37 @@
-import {useRef, useCallback, useState} from "react"
-import {View, ViewStyle, ScrollView} from "react-native"
-import {useFocusEffect} from "@react-navigation/native"
-import {Header, Screen} from "@/components/ignite"
-import AppsActiveList from "@/components/misc/AppsActiveList"
-import AppsInactiveList from "@/components/misc/AppsInactiveList"
-import AppsIncompatibleListOld from "@/components/misc/AppsIncompatibleListOld"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import CloudConnection from "@/components/misc/CloudConnection"
-import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
-import NonProdWarning from "@/components/misc/NonProdWarning"
-import {spacing, ThemedStyle} from "@/theme"
-import {useAppTheme} from "@/utils/useAppTheme"
-import MicIcon from "assets/icons/component/MicIcon"
-import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
-import {Spacer} from "@/components/misc/Spacer"
-import Divider from "@/components/misc/Divider"
-import {OnboardingSpotlight} from "@/components/misc/OnboardingSpotlight"
-import {translate} from "@/i18n"
-import {AppsOfflineList} from "@/components/misc/AppsOfflineList"
-import {OfflineModeButton} from "@/components/misc/OfflineModeButton"
-import PermissionsWarning from "@/components/home/PermissionsWarning"
-import {Reconnect, OtaUpdateChecker} from "@/components/utils/utils"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {HomeContainer} from "@/components/home/HomeContainer"
-import {CompactDeviceStatus} from "@/components/home/CompactDeviceStatus"
+import {OfflineModeButton} from "@/components/home/OfflineModeButton"
+import {OnboardingSpotlight} from "@/components/home/OnboardingSpotlight"
+import PermissionsWarning from "@/components/home/PermissionsWarning"
+import {Header, Screen} from "@/components/ignite"
+import CloudConnection from "@/components/misc/CloudConnection"
+import NonProdWarning from "@/components/misc/NonProdWarning"
+import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
+import {OtaUpdateChecker} from "@/components/utils/OtaUpdateChecker"
+import {Reconnect} from "@/components/utils/Reconnect"
+import {translate} from "@/i18n"
+import {useRefreshApplets} from "@/stores/applets"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useFocusEffect} from "@react-navigation/native"
+import MicIcon from "assets/icons/component/MicIcon"
+import {useCallback, useRef, useState} from "react"
+import {ScrollView, View, ViewStyle} from "react-native"
 
 export default function Homepage() {
-  const {refreshAppStatus} = useAppStatus()
   const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
   const {themed, theme} = useAppTheme()
-  const [showNewUi, _setShowNewUi] = useSetting(SETTINGS_KEYS.new_ui)
-  const [isOfflineMode, _setIsOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
+  const refreshApplets = useRefreshApplets()
 
   useFocusEffect(
     useCallback(() => {
-      refreshAppStatus()
+      refreshApplets()
     }, []),
   )
 
-  if (showNewUi) {
-    return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-        <Header
-          leftTx="home:title"
-          RightActionComponent={
-            <View style={themed($headerRight)}>
-              <PermissionsWarning />
-              <OfflineModeButton />
-              <MicIcon width={24} height={24} />
-              <NonProdWarning />
-            </View>
-          }
-        />
-
-        <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
-          <CloudConnection />
-          <SensingDisabledWarning />
-
-          {isOfflineMode ? (
-            <>
-              <CompactDeviceStatus />
-              <Divider variant="full" />
-              <AppsOfflineList />
-            </>
-          ) : (
-            <HomeContainer />
-          )}
-        </ScrollView>
-
-        <OnboardingSpotlight
-          targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
-          setOnboardingTarget={setOnboardingTarget}
-          onboardingTarget={onboardingTarget}
-          message={
-            onboardingTarget === "glasses"
-              ? translate("home:connectGlassesToStart")
-              : translate("home:tapToStartLiveCaptions")
-          }
-        />
-      </Screen>
-    )
-  }
-
   return (
-    <Screen preset="fixed" style={themed($screen)}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         leftTx="home:title"
         RightActionComponent={
@@ -98,39 +44,11 @@ export default function Homepage() {
         }
       />
 
-      <CloudConnection />
-      <ScrollView
-        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
-        contentInsetAdjustmentBehavior="automatic">
+      <ScrollView contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
+        <CloudConnection />
         <SensingDisabledWarning />
-
-        <ConnectedGlasses showTitle={false} />
-        <DeviceToolbar />
-        <Spacer height={theme.spacing.md} />
-        <View ref={connectButtonRef}>
-          <ConnectDeviceButton />
-        </View>
-        <Spacer height={theme.spacing.lg} />
-
-        <Divider variant="full" />
-        <Spacer height={theme.spacing.md} />
-
-        {isOfflineMode ? (
-          <AppsOfflineList />
-        ) : (
-          <>
-            <AppsActiveList />
-            <Spacer height={spacing.xl} />
-            <AppsInactiveList liveCaptionsRef={liveCaptionsRef} />
-            <Spacer height={spacing.md} />
-            <AppsIncompatibleListOld />
-            <Spacer height={spacing.xl} />
-          </>
-        )}
+        <HomeContainer />
       </ScrollView>
-
-      <Reconnect />
-      <OtaUpdateChecker />
 
       <OnboardingSpotlight
         targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
@@ -142,13 +60,11 @@ export default function Homepage() {
             : translate("home:tapToStartLiveCaptions")
         }
       />
+      <Reconnect />
+      <OtaUpdateChecker />
     </Screen>
   )
 }
-
-const $screen: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.lg,
-})
 
 const $headerRight: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",

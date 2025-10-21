@@ -222,7 +222,7 @@ public class CameraNeo extends LifecycleService {
     private enum ShotState { IDLE, WAITING_AE, SHOOTING }
     private volatile ShotState shotState = ShotState.IDLE;
     private long aeStartTimeNs;
-    private static final long AE_WAIT_NS = 500_000_000L; // 0.5 second max wait for AE
+    private static final long AE_WAIT_NS = 1_000_000_000L; // 1 second max wait for AE
 
     // Simple AE callback - autofocus handled automatically
     private final SimplifiedAeCallback aeCallback = new SimplifiedAeCallback();

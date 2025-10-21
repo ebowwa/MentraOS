@@ -1,5 +1,5 @@
 import React, {useState} from "react"
-import {Alert, BackHandler, Platform, StyleSheet, View, Animated} from "react-native"
+import {Alert, BackHandler, Platform, Animated} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "./useAppTheme"
@@ -9,6 +9,7 @@ import * as NavigationBar from "expo-navigation-bar"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {useEffect, useRef} from "react"
 // eslint-disable-next-line
+import {StyleSheet} from "react-native"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"

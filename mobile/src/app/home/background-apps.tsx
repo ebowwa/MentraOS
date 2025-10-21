@@ -6,12 +6,10 @@ import {Header, Screen, Text, Switch} from "@/components/ignite"
 import AppIcon from "@/components/misc/AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {GetMoreAppsIcon} from "@/components/misc/GetMoreAppsIcon"
-import {useAppStatus, useBackgroundApps} from "@/contexts/AppletStatusProvider"
 import {AppletInterface, isOfflineApp} from "@/types/AppletTypes"
-import {isOfflineAppPackage} from "@/types/OfflineApps"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
-import restComms from "@/managers/RestComms"
+import restComms from "@/services/RestComms"
 import Divider from "@/components/misc/Divider"
 import {Spacer} from "@/components/misc/Spacer"
 import {performHealthCheckFlow} from "@/utils/healthCheckFlow"
@@ -19,17 +17,17 @@ import {askPermissionsUI} from "@/utils/PermissionsUtils"
 import {showAlert} from "@/utils/AlertUtils"
 import {ThemedStyle} from "@/theme"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {attemptAppStop, shouldBlockCameraAppStop} from "@/utils/cameraAppProtection"
+import {useBackgroundApps, useRefreshApplets, useStartApplet, useStopApplet} from "@/stores/applets"
+// Camera app protection removed - now handled by default button action system
 
 export default function BackgroundAppsScreen() {
   const {themed, theme} = useAppTheme()
   const {push, goBack} = useNavigationHistory()
-  const {optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
-  const {status} = useCoreStatus()
   const [defaultWearable, _setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
-
   const {active, inactive} = useBackgroundApps()
+  const startApplet = useStartApplet()
+  const stopApplet = useStopApplet()
+  const refreshApplets = useRefreshApplets()
 
   const incompatibleApps = useMemo(
     () => inactive.filter(app => app.compatibility != null && app.compatibility.isCompatible === false),
@@ -37,11 +35,6 @@ export default function BackgroundAppsScreen() {
   )
 
   const toggleApp = async (app: AppletInterface) => {
-    // Check for Camera app protection
-    if (attemptAppStop(app.packageName, status, theme)) {
-      return // Block the toggle operation
-    }
-
     if (app.is_running) {
       await stopApp(app.packageName)
     } else {
@@ -59,7 +52,7 @@ export default function BackgroundAppsScreen() {
     // Handle offline apps - activate only
     if (isOfflineApp(app)) {
       // Activate the app (make it appear in active apps)
-      optimisticallyStartApp(packageName, app.type)
+      startApplet(packageName, app.type)
       return
     }
 
@@ -73,26 +66,25 @@ export default function BackgroundAppsScreen() {
 
     if (app.isOnline !== false) {
       console.log("Background app is online, starting optimistically:", packageName)
-      optimisticallyStartApp(packageName)
+      await startApplet(packageName, app.type)
 
       performHealthCheckFlow({
         app,
         onStartApp: async () => {
           try {
             await restComms.startApp(packageName)
-            clearPendingOperation(packageName)
           } catch (error) {
-            refreshAppStatus()
+            refreshApplets()
             console.error("Start app error:", error)
           }
         },
         onAppUninstalled: async () => {
-          await refreshAppStatus()
+          await refreshApplets()
         },
         onHealthCheckFailed: async () => {
           console.log("Health check failed, reverting background app to inactive:", packageName)
-          optimisticallyStopApp(packageName)
-          refreshAppStatus()
+          stopApplet(packageName)
+          refreshApplets()
         },
         optimisticallyStopApp,
         clearPendingOperation,
@@ -120,22 +112,21 @@ export default function BackgroundAppsScreen() {
   }
 
   const stopApp = async (packageName: string) => {
-    optimisticallyStopApp(packageName)
+    stopApplet(packageName)
 
-    // Skip offline apps - they don't need server communication
-    if (isOfflineAppPackage(packageName)) {
-      console.log("Skipping offline app stop in background-apps:", packageName)
-      clearPendingOperation(packageName)
-      return
-    }
+    // // Skip offline apps - they don't need server communication
+    // const appToStop = active.find(a => a.packageName === packageName)
+    // if (appToStop && isOfflineApp(appToStop)) {
+    //   console.log("Skipping offline app stop in background-apps:", packageName)
+    //   return
+    // }
 
-    try {
-      await restComms.stopApp(packageName)
-      clearPendingOperation(packageName)
-    } catch (error) {
-      refreshAppStatus()
-      console.error("Stop app error:", error)
-    }
+    // try {
+    //   await restComms.stopApp(packageName)
+    // } catch (error) {
+    //   refreshApplets()
+    //   console.error("Stop app error:", error)
+    // }
   }
 
   const openAppSettings = (app: AppletInterface) => {
@@ -182,14 +173,6 @@ export default function BackgroundAppsScreen() {
                   <Text text="Offline" style={themed($offlineText)} />
                 </View>
               )}
-              {app.packageName === "com.mentra.camera" &&
-                app.is_running &&
-                shouldBlockCameraAppStop(app.packageName, status) && (
-                  <View style={themed($offlineRow)}>
-                    <MaterialCommunityIcons name="shield-check" size={14} color={theme.colors.tint} />
-                    <Text text="Required" style={[themed($offlineText), {color: theme.colors.tint}]} />
-                  </View>
-                )}
             </View>
           </View>
           <View style={themed($rightControls)}>
@@ -210,11 +193,7 @@ export default function BackgroundAppsScreen() {
                 toggleApp(app)
               }}
               activeOpacity={1}>
-              <Switch
-                value={app.is_running}
-                onValueChange={() => toggleApp(app)}
-                disabled={shouldBlockCameraAppStop(app.packageName, status)}
-              />
+              <Switch value={app.is_running} onValueChange={() => toggleApp(app)} />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

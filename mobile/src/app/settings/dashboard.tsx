@@ -1,56 +1,40 @@
-import React, {useState, useEffect} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Platform,
-  Alert,
-  Modal,
-  ViewStyle,
-  TextStyle,
-  ScrollView,
-} from "react-native"
+import {useState} from "react"
+import {Alert, Platform, ScrollView, StyleSheet, TextStyle, ViewStyle} from "react-native"
 
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/MantleBridge"
+import {Header, Screen} from "@/components/ignite"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
-import {Header} from "@/components/ignite"
+import {Spacer} from "@/components/misc/Spacer"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import RouteButton from "@/components/ui/RouteButton"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {Screen} from "@/components/ignite"
+import {translate} from "@/i18n/translate"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import ToggleSetting from "@/components/settings/ToggleSetting"
-import {translate} from "@/i18n/translate"
-import {Spacer} from "@/components/misc/Spacer"
-import RouteButton from "@/components/ui/RouteButton"
-import {glassesFeatures} from "@/config/glassesFeatures"
-import {useSettings, useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {getModelCapabilities} from "@/../../cloud/packages/types/src"
 
 export default function DashboardSettingsScreen() {
   const {status} = useCoreStatus()
-  const {themed, theme} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const {theme} = useAppTheme()
+  const {goBack} = useNavigationHistory()
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
-  const [defaultWearable, setDefaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
+  const [defaultWearable] = useSetting(SETTINGS_KEYS.default_wearable)
   const [headUpAngle, setHeadUpAngle] = useSetting(SETTINGS_KEYS.head_up_angle)
-  const [contextualDashboardEnabled, setContextualDashboardEnabled] = useSetting(
-    SETTINGS_KEYS.contextual_dashboard_enabled,
-  )
-  const [metricSystemEnabled, setMetricSystemEnabled] = useSetting(SETTINGS_KEYS.metric_system_enabled)
+  const [contextualDashboardEnabled, setContextualDashboardEnabled] = useSetting(SETTINGS_KEYS.contextual_dashboard)
+  const [metricSystemEnabled, setMetricSystemEnabled] = useSetting(SETTINGS_KEYS.metric_system)
+  const features = getModelCapabilities(defaultWearable)
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !contextualDashboardEnabled
     await setContextualDashboardEnabled(newVal)
-    await bridge.sendToggleContextualDashboard(newVal) // TODO: config: remove
   }
 
   const toggleMetricSystem = async () => {
     const newVal = !metricSystemEnabled
     try {
       await setMetricSystemEnabled(newVal)
-      await bridge.sendSetMetricSystemEnabled(newVal) // TODO: config: remove
     } catch (error) {
       console.error("Error toggling metric system:", error)
     }
@@ -66,7 +50,6 @@ export default function DashboardSettingsScreen() {
     }
 
     setHeadUpAngleComponentVisible(false)
-    await bridge.setGlassesHeadUpAngle(newHeadUpAngle) // TODO: config: remove
     await setHeadUpAngle(newHeadUpAngle)
   }
 
@@ -154,7 +137,7 @@ export default function DashboardSettingsScreen() {
             )}
           </TouchableOpacity>
         </View> */}
-        {defaultWearable && glassesFeatures[defaultWearable]?.imu && (
+        {defaultWearable && features?.hasIMU && (
           <RouteButton
             label={translate("settings:adjustHeadAngleLabel")}
             subtitle={translate("settings:adjustHeadAngleSubtitle")}

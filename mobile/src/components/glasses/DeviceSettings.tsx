@@ -1,26 +1,28 @@
-import {useCallback, useEffect, useRef, useState} from "react"
-import {View, TouchableOpacity, Animated, ViewStyle, TextStyle, Platform} from "react-native"
-import {useFocusEffect} from "@react-navigation/native"
 import {Icon, Text} from "@/components/ignite"
-import bridge from "@/bridge/MantleBridge"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
-import ToggleSetting from "@/components/settings/ToggleSetting"
+import {AppPicker} from "@/components/misc/AppPicker"
 import SliderSetting from "@/components/settings/SliderSetting"
-import {MaterialCommunityIcons} from "@expo/vector-icons"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import ActionButton from "@/components/ui/ActionButton"
+import InfoSection from "@/components/ui/InfoSection"
+import RouteButton from "@/components/ui/RouteButton"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
+import {localStorageService} from "@/services/asg/localStorageService"
+import {useApplets} from "@/stores/applets"
+import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
 import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import RouteButton from "@/components/ui/RouteButton"
-import ActionButton from "@/components/ui/ActionButton"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {glassesFeatures, hasBrightness, hasCustomMic} from "@/config/glassesFeatures"
-import {localStorageService} from "@/services/asg/localStorageService"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {getModelCapabilities, Capabilities, DeviceTypes} from "../../../../cloud/packages/types/src"
+import {MaterialCommunityIcons} from "@expo/vector-icons"
+import {useFocusEffect} from "@react-navigation/native"
+import {useCallback, useEffect, useRef, useState} from "react"
+import {Animated, Platform, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 import {SvgXml} from "react-native-svg"
-import OtaProgressSection from "./OtaProgressSection"
-import InfoSection from "@/components/ui/InfoSection"
-import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import OtaProgressSection from "@/components/glasses/OtaProgressSection"
+import CoreModule from "core"
 
 // Icon components defined directly in this file to avoid path resolution issues
 interface CaseIconProps {
@@ -32,14 +34,22 @@ interface CaseIconProps {
 
 const CaseIcon = ({size = 24, color, isCharging = false, isDark = false}: CaseIconProps) => {
   const caseSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M3 16.125L10.5 16.125L10.5 17.625L3 17.625L3 16.125Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M3 4.875L21 4.875L21 6.375L3 6.375L3 4.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M3 13.125L10.5 13.125L10.5 14.625L3 14.625L3 13.125Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 16.125L10.5 16.125L10.5 17.625L3 17.625L3 16.125Z" fill="${
+    color || (isDark ? "#D3D3D3" : "#232323")
+  }"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 4.875L21 4.875L21 6.375L3 6.375L3 4.875Z" fill="${
+    color || (isDark ? "#D3D3D3" : "#232323")
+  }"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 13.125L10.5 13.125L10.5 14.625L3 14.625L3 13.125Z" fill="${
+    color || (isDark ? "#D3D3D3" : "#232323")
+  }"/>
 <rect x="1.5" y="6.375" width="1.5" height="9.75" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <rect x="21" y="6.375" width="1.5" height="4.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <rect x="10.5" y="10.125" width="3" height="1.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M13.5 12.375H21V13.875H13.5V12.375Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
-<path d="M13.5 13.875H21V17.625H13.5V13.875Z" fill="${isCharging ? "#FEF991" : color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M13.5 13.875H21V17.625H13.5V13.875Z" fill="${
+    isCharging ? "#FEF991" : color || (isDark ? "#D3D3D3" : "#232323")
+  }"/>
 <path d="M13.5 17.625H21V19.125H13.5V17.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M21 13.875H22.5V17.625H21V13.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
 <path d="M22.5 14.625H23.25V16.875H22.5V14.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
@@ -73,8 +83,6 @@ const GlassesIcon = ({size = 24, color, isDark = false}: GlassesIconProps) => {
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const slideAnim = useRef(new Animated.Value(-50)).current
   const {theme, themed} = useAppTheme()
   const {status} = useCoreStatus()
   const isGlassesConnected = Boolean(status.glasses_info?.model_name)
@@ -82,16 +90,23 @@ export default function DeviceSettings() {
   const [preferredMic, setPreferredMic] = useSetting(SETTINGS_KEYS.preferred_mic)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS_KEYS.auto_brightness)
   const [brightness, setBrightness] = useSetting(SETTINGS_KEYS.brightness)
-  const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.SHOW_ADVANCED_SETTINGS)
+  const [showAdvancedSettings, setShowAdvancedSettings] = useSetting(SETTINGS_KEYS.show_advanced_settings)
   const [_hasLocalPhotos, setHasLocalPhotos] = useState(false)
+  const [defaultButtonActionEnabled, setDefaultButtonActionEnabled] = useSetting(
+    SETTINGS_KEYS.default_button_action_enabled,
+  )
+  const [defaultButtonActionApp, setDefaultButtonActionApp] = useSetting(SETTINGS_KEYS.default_button_action_app)
+  const [showAppPicker, setShowAppPicker] = useState(false)
 
   const {push} = useNavigationHistory()
+  const applets = useApplets()
+  const features: Capabilities = getModelCapabilities(defaultWearable)
 
   // Check if we have any advanced settings to show
   const hasMicrophoneSelector =
     isGlassesConnected &&
     defaultWearable &&
-    hasCustomMic(defaultWearable) &&
+    features?.hasMicrophone &&
     (defaultWearable !== "Mentra Live" ||
       (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900"))
 
@@ -130,39 +145,11 @@ export default function DeviceSettings() {
 
   useFocusEffect(
     useCallback(() => {
-      // Reset animations to initial values
-      fadeAnim.setValue(0)
-      scaleAnim.setValue(0.8)
-      slideAnim.setValue(-50)
-
       // Check for local photos when component gains focus
       checkLocalPhotos()
-
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 60,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ]).start()
       // Cleanup function
-      return () => {
-        fadeAnim.stopAnimation()
-        scaleAnim.stopAnimation()
-        slideAnim.stopAnimation()
-      }
-    }, [fadeAnim, scaleAnim, slideAnim, checkLocalPhotos]),
+      return () => {}
+    }, [checkLocalPhotos]),
   )
 
   const setMic = async (val: string) => {
@@ -187,7 +174,6 @@ export default function DeviceSettings() {
 
     setPreferredMic(val)
     await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, val)
-    await bridge.sendSetPreferredMic(val) // TODO: config: remove
   }
 
   const confirmForgetGlasses = () => {
@@ -199,7 +185,7 @@ export default function DeviceSettings() {
         {
           text: translate("common:yes"),
           onPress: () => {
-            bridge.sendForgetSmartGlasses()
+            CoreModule.forget()
           },
         },
       ],
@@ -213,17 +199,6 @@ export default function DeviceSettings() {
   if (!defaultWearable) {
     return (
       <View style={themed($container)}>
-        {/* Show gallery button if there are local photos, even without glasses */}
-        {
-          <View style={themed($galleryButtonContainer)}>
-            <RouteButton
-              label={translate("glasses:gallery")}
-              subtitle={translate("glasses:galleryDescription")}
-              onPress={() => push("/asg/gallery")}
-            />
-          </View>
-        }
-
         <View style={themed($emptyStateContainerWithGallery)}>
           <Text style={themed($emptyStateText)}>
             Glasses settings will appear here.{"\n"}Pair glasses to adjust settings.
@@ -300,20 +275,13 @@ export default function DeviceSettings() {
           </View>
         )}
 
-      <RouteButton
-        label={translate("glasses:gallery")}
-        subtitle={translate("glasses:galleryDescription")}
-        onPress={() => push("/asg/gallery")}
-      />
-
-      {hasBrightness(defaultWearable) && isGlassesConnected && (
+      {features?.display?.adjustBrightness && isGlassesConnected && (
         <View style={themed($settingsGroup)}>
           <ToggleSetting
             label="Auto Brightness"
             value={autoBrightness}
             onValueChange={value => {
               setAutoBrightness(value)
-              bridge.setGlassesBrightnessMode(brightness, value)
             }}
             containerStyle={{
               paddingHorizontal: 0,
@@ -339,7 +307,7 @@ export default function DeviceSettings() {
                 min={0}
                 max={100}
                 onValueSet={value => {
-                  bridge.setGlassesBrightnessMode(value, autoBrightness)
+                  setBrightness(value)
                 }}
                 containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
                 disableBorder
@@ -350,7 +318,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Nex Developer Settings - Only show when connected to Mentra Nex */}
-      {defaultWearable && defaultWearable.toLowerCase().includes("nex") && (
+      {defaultWearable && defaultWearable.includes(DeviceTypes.NEX) && (
         <RouteButton
           label="Nex Developer Settings"
           subtitle="Advanced developer tools and debugging features"
@@ -359,17 +327,72 @@ export default function DeviceSettings() {
       )}
       {/* Mic selector has been moved to Advanced Settings section below */}
 
-      {/* Camera Settings button for glasses with configurable button */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.configurableButton && (
-        <RouteButton
-          label={translate("settings:cameraSettings")}
-          subtitle={translate("settings:cameraSettingsDescription")}
-          onPress={() => push("/settings/camera")}
-        />
+      {/* Camera Settings button moved to Gallery Settings page */}
+
+      {/* Button Settings - Only show for glasses with configurable buttons */}
+      {defaultWearable && features?.hasButton && (
+        <View style={themed($settingsGroup)}>
+          <ToggleSetting
+            label="Default Button Action"
+            value={defaultButtonActionEnabled}
+            onValueChange={value => {
+              setDefaultButtonActionEnabled(value)
+            }}
+            containerStyle={{
+              paddingHorizontal: 0,
+              paddingTop: 0,
+              paddingBottom: defaultButtonActionEnabled ? theme.spacing.sm : 0,
+              borderWidth: 0,
+            }}
+          />
+
+          {defaultButtonActionEnabled && (
+            <>
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: theme.colors.separator,
+                  marginBottom: theme.spacing.sm,
+                }}
+              />
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+                onPress={() => setShowAppPicker(true)}>
+                <View style={{flex: 1}}>
+                  <Text style={{color: theme.colors.text, fontSize: 14, fontWeight: "500", marginBottom: 4}}>
+                    Default App
+                  </Text>
+                  <Text style={{color: theme.colors.textDim, fontSize: 13}}>
+                    {applets.find(app => app.packageName === defaultButtonActionApp)?.name || "Select app"}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.textDim} />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       )}
 
+      {/* AppPicker Modal */}
+      <AppPicker
+        visible={showAppPicker}
+        onClose={() => setShowAppPicker(false)}
+        onSelect={app => {
+          setDefaultButtonActionApp(app.packageName)
+        }}
+        apps={applets}
+        selectedPackageName={defaultButtonActionApp}
+        title="Select Default App"
+        filterPredicate={app => app.type === "standard"} // Only show foreground apps
+        showCompatibilityWarnings={true}
+      />
+
       {/* Only show WiFi settings if connected glasses support WiFi */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.wifi && (
+      {defaultWearable && features?.hasWifi && (
         <RouteButton
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
@@ -382,12 +405,12 @@ export default function DeviceSettings() {
       {/* Device info is rendered within the Advanced Settings section below */}
 
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
-      {defaultWearable && isGlassesConnected && defaultWearable.toLowerCase().includes("live") && (
+      {defaultWearable && isGlassesConnected && defaultWearable.includes(DeviceTypes.LIVE) && (
         <OtaProgressSection otaProgress={status.ota_progress} />
       )}
 
       {/* Only show dashboard settings if glasses have display capability */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.display && (
+      {defaultWearable && features?.hasDisplay && (
         <RouteButton
           label={translate("settings:dashboardSettings")}
           subtitle={translate("settings:dashboardDescription")}
@@ -396,7 +419,7 @@ export default function DeviceSettings() {
       )}
 
       {/* Screen settings for binocular glasses */}
-      {defaultWearable && glassesFeatures[defaultWearable]?.binocular && (
+      {defaultWearable && (features?.display?.count ?? 0 > 1) && (
         <RouteButton
           label={translate("settings:screenSettings")}
           subtitle={translate("settings:screenDescription")}
@@ -404,12 +427,12 @@ export default function DeviceSettings() {
         />
       )}
 
-      {defaultWearable && isGlassesConnected && defaultWearable !== "Simulated Glasses" && (
+      {isGlassesConnected && defaultWearable !== DeviceTypes.SIMULATED && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
           onPress={() => {
-            bridge.sendDisconnectWearable()
+            CoreModule.disconnect()
           }}
         />
       )}
@@ -444,7 +467,10 @@ export default function DeviceSettings() {
               {/* Microphone Selector - moved from above */}
               {hasMicrophoneSelector && (
                 <View style={themed($settingsGroup)}>
-                  <Text style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}>Microphone Selection</Text>
+                  <Text
+                    tx="deviceSettings:microphoneSelection"
+                    style={[themed($settingLabel), {marginBottom: theme.spacing.sm}]}
+                  />
                   <TouchableOpacity
                     style={{
                       flexDirection: "row",
@@ -453,12 +479,21 @@ export default function DeviceSettings() {
                       paddingTop: theme.spacing.xs,
                     }}
                     onPress={() => setMic("phone")}>
-                    <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
-                    <MaterialCommunityIcons
-                      name="check"
-                      size={24}
-                      color={preferredMic === "phone" ? theme.colors.icon : "transparent"}
-                    />
+                    <View style={{flexDirection: "row", alignItems: "center", gap: 8}}>
+                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:systemMic")}</Text>
+                      <View
+                        style={{
+                          backgroundColor: theme.colors.primary + "20",
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                        }}>
+                        <Text style={{color: theme.colors.primary, fontSize: 11, fontWeight: "600"}}>Recommended</Text>
+                      </View>
+                    </View>
+                    {preferredMic === "phone" && (
+                      <MaterialCommunityIcons name="check" size={24} color={theme.colors.primary} />
+                    )}
                   </TouchableOpacity>
                   {/* divider */}
                   <View
@@ -476,13 +511,11 @@ export default function DeviceSettings() {
                     }}
                     onPress={() => setMic("glasses")}>
                     <View style={{flexDirection: "column", gap: 4}}>
-                      <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+                      <Text tx="deviceSettings:glassesMic" style={{color: theme.colors.text}} />
                     </View>
-                    <MaterialCommunityIcons
-                      name="check"
-                      size={24}
-                      color={preferredMic === "glasses" ? theme.colors.icon : "transparent"}
-                    />
+                    {preferredMic === "glasses" && (
+                      <MaterialCommunityIcons name="check" size={24} color={theme.colors.primary} />
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -495,7 +528,7 @@ export default function DeviceSettings() {
                 <InfoSection
                   title="Device Information"
                   items={[
-                    {label: "Bluetooth Name", value: status.glasses_info?.bluetooth_name},
+                    {label: "Bluetooth Name", value: status.glasses_info?.bluetooth_name?.split("_")[3]},
                     {label: "Build Number", value: status.glasses_info?.glasses_build_number},
                     {label: "Local IP Address", value: status.glasses_info?.glasses_wifi_local_ip},
                   ]}
@@ -511,15 +544,15 @@ export default function DeviceSettings() {
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = () => ({
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
   borderRadius: 12,
   width: "100%",
   minHeight: 240,
   justifyContent: "center",
-  marginTop: -13, // Reduced space above component
+  // marginTop: -13, // Reduced space above component
   // backgroundColor: colors.palette.neutral200,
   backgroundColor: "transparent",
-  gap: 16,
+  gap: spacing.md,
 })
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -573,11 +606,6 @@ const $advancedSettingsLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 16,
   fontWeight: "600",
-})
-
-const $galleryButtonContainer: ThemedStyle<ViewStyle> = ({spacing: _spacing}) => ({
-  marginTop: _spacing.xl,
-  marginBottom: _spacing.lg,
 })
 
 const $emptyStateContainerWithGallery: ThemedStyle<ViewStyle> = ({spacing}) => ({

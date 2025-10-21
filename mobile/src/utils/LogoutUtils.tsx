@@ -1,10 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {supabase} from "@/supabase/supabaseClient"
 import bridge from "@/bridge/MantleBridge"
-import {stopExternalService} from "@/bridge/CoreServiceStarter"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import restComms from "@/managers/RestComms"
+import restComms from "@/services/RestComms"
 import {SETTINGS_KEYS} from "@/stores/settings"
+import CoreModule from "core"
 
 export class LogoutUtils {
   private static readonly TAG = "LogoutUtils"
@@ -53,7 +53,7 @@ export class LogoutUtils {
 
     try {
       // First try to disconnect any connected glasses
-      await bridge.sendDisconnectWearable()
+      await CoreModule.disconnect()
       console.log(`${this.TAG}: Disconnected glasses`)
     } catch (error) {
       console.warn(`${this.TAG}: Error disconnecting glasses:`, error)
@@ -61,7 +61,7 @@ export class LogoutUtils {
 
     try {
       // Then forget the glasses completely
-      await bridge.sendForgetSmartGlasses()
+      await CoreModule.forget()
       console.log(`${this.TAG}: Forgot glasses pairing`)
     } catch (error) {
       console.warn(`${this.TAG}: Error forgetting glasses:`, error)
@@ -122,22 +122,6 @@ export class LogoutUtils {
    */
   private static async stopCoreServices(): Promise<void> {
     console.log(`${this.TAG}: Stopping core services...`)
-
-    try {
-      // Stop the core communicator service
-      bridge.stopService()
-      console.log(`${this.TAG}: Stopped core communicator service`)
-    } catch (error) {
-      console.error(`${this.TAG}: Error stopping core service:`, error)
-    }
-
-    try {
-      // Stop external services
-      stopExternalService()
-      console.log(`${this.TAG}: Stopped external services`)
-    } catch (error) {
-      console.error(`${this.TAG}: Error stopping external services:`, error)
-    }
 
     try {
       // Clean up communicator resources
@@ -206,9 +190,6 @@ export class LogoutUtils {
     console.log(`${this.TAG}: Resetting status providers...`)
 
     try {
-      // Emit a logout event for any components that need to reset
-      GlobalEventEmitter.emit("USER_LOGGED_OUT")
-
       // Emit event to clear WebView data and cache
       GlobalEventEmitter.emit("CLEAR_WEBVIEW_DATA")
 

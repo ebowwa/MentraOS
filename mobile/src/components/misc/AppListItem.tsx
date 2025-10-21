@@ -14,6 +14,7 @@ interface AppModel {
   packageName: string
   type: string
   isOnline?: boolean | null
+  isOffline?: boolean
   compatibility?: {
     isCompatible: boolean
     message?: string
@@ -89,7 +90,7 @@ export const AppListItem = ({
           <Tag
             isActive={isActive}
             isForeground={app.type == "standard"}
-            isOfflineApp={app.type === "offline"}
+            isOfflineApp={app.isOffline}
             isIncompatible={isIncompatible}
           />
         </View>

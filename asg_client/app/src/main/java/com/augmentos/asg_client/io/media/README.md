@@ -17,7 +17,7 @@ io/media/
 ├── managers/
 │   ├── MediaUploadQueueManager.java     # Media upload queue management
 │   ├── PhotoQueueManager.java           # Photo queue management
-│   └── GlassesMicrophoneManager.java    # Microphone management
+│   └── GlassesMicrophoneManager.java    # Microphone management (REMOVED)
 ├── upload/
 │   ├── MediaUploadService.java          # Media upload service
 │   └── PhotoUploadService.java          # Photo upload service
@@ -25,6 +25,8 @@ io/media/
 │   └── MediaUtils.java                  # Media utility functions
 └── README.md                            # This documentation
 ```
+
+**Note:** GlassesMicrophoneManager was removed in recent refactoring. Audio management is now handled elsewhere in the codebase.
 
 ## 🔧 Components
 
@@ -104,15 +106,6 @@ Specialized queue manager for photo uploads:
 - **Metadata Management**: Track photo metadata and settings
 - **Compression**: Automatic photo compression for upload
 - **Gallery Integration**: Save photos to device gallery
-
-#### **GlassesMicrophoneManager**
-
-Manages microphone on smart glasses:
-
-- **Audio Streaming**: Stream audio to connected devices
-- **LC3 Encoding**: High-quality audio encoding
-- **Bluetooth Integration**: Stream via Bluetooth LE
-- **Real-time Processing**: Low-latency audio processing
 
 ### **Media Upload Services**
 
@@ -208,28 +201,6 @@ photoService.setPhotoCaptureListener(new PhotoCaptureService.PhotoCaptureListene
 photoService.takePhotoAndUpload("/path/to/photo.jpg", "request123", "app456");
 ```
 
-### **Audio Recording**
-
-```java
-// Initialize microphone manager
-GlassesMicrophoneManager micManager = new GlassesMicrophoneManager(context, bluetoothManager);
-
-// Set up audio callbacks
-micManager.setLC3DataCallback(new GlassesMicrophoneManager.LC3DataCallback() {
-    @Override
-    public void onLC3DataAvailable(byte[] lc3Data) {
-        // Process encoded audio data
-        Log.d("Audio", "LC3 data received: " + lc3Data.length + " bytes");
-    }
-});
-
-// Start recording
-micManager.startRecording();
-
-// Stop recording
-micManager.stopRecording();
-```
-
 ### **Media Upload Management**
 
 ```java
@@ -307,16 +278,6 @@ Log.d("Media", "File size: " + sizeStr);
 7. **Upload**: Video is uploaded to cloud service
 8. **Cleanup**: Temporary files are cleaned up
 
-### **Audio Streaming Workflow**
-
-1. **Initialize**: Microphone manager is initialized
-2. **Start Recording**: Audio recording begins
-3. **Encoding**: Audio is encoded using LC3 codec
-4. **Streaming**: Encoded audio is streamed via Bluetooth
-5. **Processing**: Audio is processed in real-time
-6. **Stop Recording**: Audio recording stops
-7. **Cleanup**: Resources are cleaned up
-
 ## 🛡️ Features
 
 ### **High-Quality Capture**
@@ -332,13 +293,6 @@ Log.d("Media", "File size: " + sizeStr);
 - **Retry Logic**: Automatic retry of failed uploads
 - **Network Handling**: Graceful network connectivity handling
 - **Progress Tracking**: Real-time upload progress tracking
-
-### **Audio Excellence**
-
-- **LC3 Encoding**: High-quality audio encoding
-- **Low Latency**: Real-time audio processing
-- **Bluetooth Integration**: Seamless Bluetooth streaming
-- **Noise Reduction**: Automatic noise reduction
 
 ### **Storage Management**
 
@@ -359,10 +313,9 @@ Log.d("Media", "File size: " + sizeStr);
 1. **Unified Interface**: Single interface for all media operations
 2. **High Quality**: Professional-grade media capture
 3. **Reliable Upload**: Robust upload system with retry logic
-4. **Real-time Audio**: Low-latency audio streaming
-5. **Storage Efficient**: Optimized storage usage
-6. **User Friendly**: Intuitive user experience
-7. **Extensible**: Easy to add new media types and features
+4. **Storage Efficient**: Optimized storage usage
+5. **User Friendly**: Intuitive user experience
+6. **Extensible**: Easy to add new media types and features
 
 ## 🔮 Future Enhancements
 

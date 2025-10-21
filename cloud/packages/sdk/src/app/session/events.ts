@@ -31,6 +31,8 @@ import {
   ManagedStreamStatus,
   PhoneNotificationDismissed,
   Capabilities,
+  TouchEvent,
+  createTouchEventStream,
 } from "../../types";
 import { DashboardMode } from "../../types/dashboard";
 import { PermissionErrorDetail } from "../../types/messages/cloud-to-app";
@@ -220,6 +222,21 @@ export class EventManager {
 
   onButtonPress(handler: Handler<ButtonPress>) {
     return this.addHandler(StreamType.BUTTON_PRESS, handler);
+  }
+
+  onTouchEvent(
+    gestureOrHandler: string | Handler<TouchEvent>,
+    handler?: Handler<TouchEvent>,
+  ): () => void {
+    // Handle both: onTouchEvent(handler) and onTouchEvent("forward_swipe", handler)
+    if (typeof gestureOrHandler === "function") {
+      // Subscribe to all touch events
+      return this.addHandler(StreamType.TOUCH_EVENT, gestureOrHandler);
+    } else {
+      // Subscribe to specific gesture
+      const gestureStream = createTouchEventStream(gestureOrHandler);
+      return this.addHandler(gestureStream, handler!);
+    }
   }
 
   onPhoneNotifications(handler: Handler<PhoneNotification>) {

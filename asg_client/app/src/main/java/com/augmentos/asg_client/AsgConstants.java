@@ -33,4 +33,21 @@ public class AsgConstants {
     
     // Battery status broadcast action
     public static final String ACTION_GLASSES_BATTERY_STATUS = "com.augmentos.otaupdater.ACTION_GLASSES_BATTERY_STATUS";
+    
+    // RGB LED Control Constants (Glasses BES Chipset - Remote Control via Bluetooth)
+    // NOTE: These are different from the local MTK recording LED
+    
+    // K900 Protocol Commands for RGB LEDs
+    public static final String K900_CMD_RGB_LED_ON = "cs_ledon";
+    public static final String K900_CMD_RGB_LED_OFF = "cs_ledoff";
+    public static final String K900_CMD_ANDROID_CONTROL_LED = "android_control_led";  // Authority handoff
+    
+    // RGB LED Color Indices (BES Chipset on Glasses)
+    public static final int RGB_LED_RED = 0;
+    public static final int RGB_LED_GREEN = 1;
+    public static final int RGB_LED_BLUE = 2;
+    
+    // RGB LED Command Types (from phone to glasses)
+    public static final String CMD_RGB_LED_CONTROL_ON = "rgb_led_control_on";
+    public static final String CMD_RGB_LED_CONTROL_OFF = "rgb_led_control_off";
 }

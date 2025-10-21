@@ -10,6 +10,7 @@ export enum StreamType {
   // Hardware streams
   BUTTON_PRESS = "button_press",
   HEAD_POSITION = "head_position",
+  TOUCH_EVENT = "touch_event",
   GLASSES_BATTERY_UPDATE = "glasses_battery_update",
   PHONE_BATTERY_UPDATE = "phone_battery_update",
   GLASSES_CONNECTION_STATE = "glasses_connection_state",
@@ -80,6 +81,7 @@ export enum StreamCategory {
 export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.BUTTON_PRESS]: StreamCategory.HARDWARE,
   [StreamType.HEAD_POSITION]: StreamCategory.HARDWARE,
+  [StreamType.TOUCH_EVENT]: StreamCategory.HARDWARE,
   [StreamType.GLASSES_BATTERY_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.PHONE_BATTERY_UPDATE]: StreamCategory.HARDWARE,
   [StreamType.GLASSES_CONNECTION_STATE]: StreamCategory.HARDWARE,
@@ -199,18 +201,26 @@ export function parseLanguageStream(
     }
   }
 
-  // Handle translation format (translation:es-ES-to-en-US or translation:es-ES-to-en-US?options)
+  // Handle translation format (translation:es-ES-to-en-US, translation:all-to-en-US, or with ?options)
   if (subscription.startsWith(`${StreamType.TRANSLATION}:`)) {
     const [baseType, rest] = subscription.split(":");
     const [languagePair, queryString] = rest?.split("?") ?? [];
     const [sourceLanguage, targetLanguage] = languagePair?.split("-to-") ?? [];
 
-    if (
+    // Check for "all-to-LANG" format (one-way translation from any language)
+    const isAllToFormat =
+      sourceLanguage === "all" &&
+      targetLanguage &&
+      isValidLanguageCode(targetLanguage);
+
+    // Check for "LANG-to-LANG" format (two-way translation between specific languages)
+    const isSpecificPairFormat =
       sourceLanguage &&
       targetLanguage &&
       isValidLanguageCode(sourceLanguage) &&
-      isValidLanguageCode(targetLanguage)
-    ) {
+      isValidLanguageCode(targetLanguage);
+
+    if (isAllToFormat || isSpecificPairFormat) {
       const options: Record<string, string | boolean> = {};
 
       // Parse query parameters if present
@@ -231,7 +241,7 @@ export function parseLanguageStream(
       return {
         type: StreamType.TRANSLATION,
         baseType,
-        transcribeLanguage: sourceLanguage,
+        transcribeLanguage: sourceLanguage, // "all" for all-to-LANG, or specific language code
         translateLanguage: targetLanguage,
         options: Object.keys(options).length > 0 ? options : undefined,
         original: subscription,
@@ -273,7 +283,7 @@ export function createTranscriptionStream(
  * Create a translation stream identifier for a language pair
  * Returns a type-safe stream type that can be used like a StreamType
  *
- * @param sourceLanguage Source language code (e.g., "es-ES")
+ * @param sourceLanguage Source language code (e.g., "es-ES") or "all" for one-way translation
  * @param targetLanguage Target language code (e.g., "en-US")
  * @param options Optional configuration options
  * @returns Typed stream identifier
@@ -287,8 +297,11 @@ export function createTranslationStream(
   const cleanSourceLanguage = sourceLanguage.split("?")[0];
   const cleanTargetLanguage = targetLanguage.split("?")[0];
 
+  // Support "all" as source for one-way translation (all languages → target)
+  const isAllToFormat = cleanSourceLanguage === "all";
+
   if (
-    !isValidLanguageCode(cleanSourceLanguage) ||
+    (!isAllToFormat && !isValidLanguageCode(cleanSourceLanguage)) ||
     !isValidLanguageCode(cleanTargetLanguage)
   ) {
     throw new Error(
@@ -296,6 +309,91 @@ export function createTranslationStream(
     );
   }
   const base = `${StreamType.TRANSLATION}:${cleanSourceLanguage}-to-${cleanTargetLanguage}`;
+  if (options?.disableLanguageIdentification) {
+    return `${base}?no-language-identification=true` as ExtendedStreamType;
+  }
+  return createLanguageStream(base);
+}
+
+/**
+ * Parse a touch event subscription to extract gesture information
+ * @param subscription Subscription string (e.g., "touch_event:forward_swipe")
+ * @returns Gesture name or null if not a gesture-specific subscription
+ */
+export function parseTouchEventStream(
+  subscription: ExtendedStreamType,
+): string | null {
+  if (typeof subscription !== "string") {
+    return null;
+  }
+
+  if (subscription.startsWith(`${StreamType.TOUCH_EVENT}:`)) {
+    const [, gestureName] = subscription.split(":");
+    const validGestures = [
+      "single_tap",
+      "double_tap",
+      "triple_tap",
+      "long_press",
+      "forward_swipe",
+      "backward_swipe",
+      "up_swipe",
+      "down_swipe",
+    ];
+
+    if (gestureName && validGestures.includes(gestureName)) {
+      return gestureName;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Create a touch event subscription for a specific gesture
+ * @param gesture Gesture name (e.g., "forward_swipe")
+ * @returns Typed stream identifier
+ */
+export function createTouchEventStream(gesture: string): ExtendedStreamType {
+  const validGestures = [
+    "single_tap",
+    "double_tap",
+    "triple_tap",
+    "long_press",
+    "forward_swipe",
+    "backward_swipe",
+    "up_swipe",
+    "down_swipe",
+  ];
+
+  if (!validGestures.includes(gesture)) {
+    throw new Error(`Invalid gesture: ${gesture}`);
+  }
+
+  return `${StreamType.TOUCH_EVENT}:${gesture}` as ExtendedStreamType;
+}
+
+/**
+ * Create a universal translation stream identifier that translates from any language to target
+ * This is useful when you want to support all languages translating to a single target
+ * Returns a type-safe stream type that can be used like a StreamType
+ *
+ * Example: createUniversalTranslationStream('es-ES') creates "translation:all-to-es-ES"
+ *
+ * @param targetLanguage Target language code (e.g., "es-ES")
+ * @param options Optional configuration options
+ * @returns Typed stream identifier
+ */
+export function createUniversalTranslationStream(
+  targetLanguage: string,
+  options?: { disableLanguageIdentification?: boolean },
+): ExtendedStreamType {
+  const cleanTargetLanguage = targetLanguage.split("?")[0];
+
+  if (!isValidLanguageCode(cleanTargetLanguage)) {
+    throw new Error(`Invalid target language code: ${cleanTargetLanguage}`);
+  }
+
+  const base = `${StreamType.TRANSLATION}:all-to-${cleanTargetLanguage}`;
   if (options?.disableLanguageIdentification) {
     return `${base}?no-language-identification=true` as ExtendedStreamType;
   }
@@ -317,7 +415,17 @@ export function isValidStreamType(subscription: ExtendedStreamType): boolean {
 
   // Check if it's a valid language-specific stream
   const languageStream = parseLanguageStream(subscription);
-  return languageStream !== null;
+  if (languageStream !== null) {
+    return true;
+  }
+
+  // Check if it's a valid gesture-specific stream
+  const gestureStream = parseTouchEventStream(subscription);
+  if (gestureStream !== null) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -360,7 +468,17 @@ export function getBaseStreamType(
 
   // Check if it's a language-specific stream
   const languageStream = parseLanguageStream(subscription);
-  return languageStream?.type ?? null;
+  if (languageStream) {
+    return languageStream.type;
+  }
+
+  // Check if it's a gesture-specific stream
+  const gestureStream = parseTouchEventStream(subscription);
+  if (gestureStream) {
+    return StreamType.TOUCH_EVENT;
+  }
+
+  return null;
 }
 
 /**

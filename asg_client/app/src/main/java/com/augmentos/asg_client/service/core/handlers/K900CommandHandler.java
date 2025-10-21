@@ -1,11 +1,14 @@
 package com.augmentos.asg_client.service.core.handlers;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.settings.AsgSettings;
 import com.augmentos.asg_client.settings.VideoSettings;
+import com.augmentos.asg_client.service.core.AsgClientService;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
@@ -24,10 +27,12 @@ public class K900CommandHandler {
     private final AsgClientServiceManager serviceManager;
     private final IStateManager stateManager;
     private final ICommunicationManager communicationManager;
+    private final Handler mainHandler;
 
     public K900CommandHandler(AsgClientServiceManager serviceManager,
                               IStateManager stateManager,
                               ICommunicationManager communicationManager) {
+        this.mainHandler = new Handler(Looper.getMainLooper());
         this.serviceManager = serviceManager;
         this.stateManager = stateManager;
         this.communicationManager = communicationManager;
@@ -97,9 +102,12 @@ public class K900CommandHandler {
 
     /**
      * Handle camera button short press
+     * 1. Immediately send RGB LED authority claim
+     * 2. After 5 seconds, activate blue LED
      */
     private void handleCameraButtonShortPress() {
         Log.d(TAG, "📸 Camera button short pressed - handling with configurable mode");
+
         handleConfigurableButtonPress(false); // false = short press
     }
 
@@ -172,6 +180,7 @@ public class K900CommandHandler {
      * Handle button press with universal forwarding and gallery mode check
      * Button presses are ALWAYS forwarded to phone/apps
      * Local capture only happens when camera/gallery app is active
+     * Also enables BES touch/swipe event listening
      */
     private void handleConfigurableButtonPress(boolean isLongPress) {
         if (serviceManager != null && serviceManager.getAsgSettings() != null) {
@@ -196,17 +205,22 @@ public class K900CommandHandler {
         boolean isSaveInGalleryMode = serviceManager
             .getAsgSettings()
             .isSaveInGalleryMode();
-        
-        // Check if glasses are disconnected from phone
-        boolean isDisconnected = !serviceManager.isConnected();
-        
-        if (!isSaveInGalleryMode && !isDisconnected) {
-            Log.d(TAG, "📸 Camera app not active and glasses connected - skipping local capture (button press already forwarded to apps)");
+
+        // Check if glasses are connected to phone
+        boolean isConnected = serviceManager.isConnected();
+
+        // LOG CONNECTION STATE FOR DEBUGGING
+        Log.i(TAG, "📸 Photo capture decision - Gallery Mode: " + (isSaveInGalleryMode ? "ACTIVE" : "INACTIVE") +
+                   ", Connection State: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+
+        // Skip capture only if: camera app NOT running AND phone IS connected
+        if (!isSaveInGalleryMode && isConnected) {
+            Log.d(TAG, "📸 Camera app not active and connected to phone - skipping local capture (button press already forwarded to apps)");
             return;
         }
-        
-        if (isDisconnected) {
-            Log.d(TAG, "📸 Glasses disconnected from phone - proceeding with local capture regardless of gallery mode");
+
+        if (!isConnected) {
+            Log.d(TAG, "📸 Disconnected from phone - proceeding with local capture regardless of gallery mode");
         } else {
             Log.d(TAG, "📸 Camera app active - proceeding with local capture");
         }
@@ -224,18 +238,26 @@ public class K900CommandHandler {
         int batteryLevel = stateManager.getBatteryLevel();
 
         if (isLongPress) {
-            Log.d(TAG, "📹 Starting video recording (long press) with LED: " + ledEnabled + ", battery: " + batteryLevel + "%");
+            // Long press behavior:
+            // - If video is recording, stop it (pause/stop with video stop feedback)
+            // - If video is not recording, start it
+            if (captureService.isRecordingVideo()) {
+                Log.d(TAG, "⏹️ Stopping video recording (long press during recording)");
+                captureService.stopVideoRecording();
+            } else {
+                Log.d(TAG, "📹 Starting video recording (long press) with LED: " + ledEnabled + ", battery: " + batteryLevel + "%");
 
-            // Check if battery is too low to start recording
-            if (batteryLevel >= 0 && batteryLevel < 10) {
-                Log.w(TAG, "⚠️ Battery too low to start recording: " + batteryLevel + "% (minimum 10% required)");
-                return;
+                // Check if battery is too low to start recording
+                if (batteryLevel >= 0 && batteryLevel < 10) {
+                    Log.w(TAG, "⚠️ Battery too low to start recording: " + batteryLevel + "% (minimum 10% required)");
+                    return;
+                }
+
+                // Get saved video settings for button press
+                VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
+                int maxRecordingTimeMinutes = serviceManager.getAsgSettings().getButtonMaxRecordingTimeMinutes();
+                captureService.startVideoRecording(videoSettings, ledEnabled, maxRecordingTimeMinutes, batteryLevel);
             }
-
-            // Get saved video settings for button press
-            VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
-            int maxRecordingTimeMinutes = serviceManager.getAsgSettings().getButtonMaxRecordingTimeMinutes();
-            captureService.startVideoRecording(videoSettings, ledEnabled, maxRecordingTimeMinutes, batteryLevel);
         } else {
             // Short press behavior
             // If video is recording, stop it. Otherwise take a photo.
@@ -303,6 +325,55 @@ public class K900CommandHandler {
         }
     }
 
+    /**
+     * Activate blue RGB LED
+     * Uses full K900 format (C, V, B) to avoid double-wrapping by K900ProtocolUtils
+     */
+    private void activateBlueRgbLedViaService() {
+        Log.d(TAG, "🚨 💙 activateBlueRgbLedViaService() called");
+        
+        try {
+            // Build LED parameters JSON string
+            JSONObject ledParams = new JSONObject();
+            ledParams.put("led", 2);  // Blue LED
+            ledParams.put("ontime", 5000);  // 5 seconds on
+            ledParams.put("offime", 1000);  // 1 second off
+            ledParams.put("count", 1);  // Single cycle
+            
+            // Build full K900 format: C, V, B (all three required to avoid double-wrapping!)
+            JSONObject k900Command = new JSONObject();
+            k900Command.put("C", "cs_ledon");
+            k900Command.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            k900Command.put("B", ledParams.toString());
+            
+            String commandStr = k900Command.toString();
+            Log.i(TAG, "🚨 💙 Sending blue RGB LED command: " + commandStr);
+            
+            if (serviceManager == null || serviceManager.getBluetoothManager() == null) {
+                Log.w(TAG, "⚠️ ServiceManager or Bluetooth manager unavailable");
+                return;
+            }
+
+            if (!serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; cannot activate blue RGB LED");
+                return;
+            }
+
+            boolean sent = serviceManager.getBluetoothManager().sendData(
+                commandStr.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            
+            if (sent) {
+                Log.i(TAG, "✅ 💙 Blue RGB LED activated successfully via camera button");
+            } else {
+                Log.e(TAG, "❌ 💙 Failed to activate blue RGB LED");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating blue RGB LED command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error activating blue RGB LED", e);
+        }
+    }
+
     // ---------------------------------------------
     // BES → MTK Response Handlers (Touch/Swipe Only)
     // ---------------------------------------------
@@ -327,10 +398,56 @@ public class K900CommandHandler {
     }
 
     /**
+     * Send RGB LED control authority command to BES chipset.
+     * This tells BES whether MTK (our app) or BES should control the RGB LEDs.
+     * 
+     * @param claimControl true = MTK claims control, false = BES resumes control
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        Log.d(TAG, "🚨 sendRgbLedControlAuthority() called - Claim: " + claimControl);
+        
+        try {
+            // Build full K900 format (C, V, B) to avoid double-wrapping
+            JSONObject authorityCommand = new JSONObject();
+            authorityCommand.put("C", "android_control_led");
+            authorityCommand.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            
+            // Create proper JSON object for B field
+            JSONObject bField = new JSONObject();
+            bField.put("on", claimControl);
+            authorityCommand.put("B", bField.toString());
+            
+            String commandStr = authorityCommand.toString();
+            Log.i(TAG, "🚨 Sending RGB LED authority command: " + commandStr);
+            
+            if (serviceManager == null || serviceManager.getBluetoothManager() == null) {
+                Log.w(TAG, "⚠️ ServiceManager or Bluetooth manager unavailable");
+                return;
+            }
+
+            if (!serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; RGB LED authority will be sent when connected");
+                return;
+            }
+
+            boolean sent = serviceManager.getBluetoothManager().sendData(commandStr.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (sent) {
+                Log.i(TAG, "✅ RGB LED control authority " + (claimControl ? "CLAIMED" : "RELEASED") + " successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send RGB LED authority command");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating RGB LED authority command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending RGB LED authority command", e);
+        }
+    }
+
+    /**
      * Handle touch event report
      */
     private void handleTouchEventReport(JSONObject bData) {
-        Log.d(TAG, "📦 Processing touch event report");
+        Log.d(TAG, "#@$@@$Processing touch event report");
         
         if (bData != null) {
             int type = bData.optInt("type", -1);
@@ -438,6 +555,7 @@ public class K900CommandHandler {
      */
     private String getTouchGestureType(int type) {
         switch (type) {
+            case 0: return "single_tap";
             case 1: return "double_tap";
             case 2: return "triple_tap";
             case 3: return "long_press";

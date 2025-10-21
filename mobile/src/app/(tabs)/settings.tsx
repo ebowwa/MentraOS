@@ -1,4 +1,4 @@
-import {useEffect, useRef} from "react"
+import {useRef} from "react"
 import {View, Platform, ViewStyle} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -7,33 +7,21 @@ import showAlert from "@/utils/AlertUtils"
 import RouteButton from "@/components/ui/RouteButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {isMentraUser} from "@/utils/isMentraUser"
-import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {isAppStoreProductionBuild} from "@/utils/buildDetection"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
 import {ScrollView} from "react-native-gesture-handler"
-import {useAuth} from "@/contexts/AuthContext"
 
 export default function SettingsPage() {
-  const {user} = useAuth()
   const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
-
   const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
-
-  useEffect(() => {
-    const checkDevMode = async () => {
-      const devModeSetting = devMode
-      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
-    }
-    checkDevMode()
-  }, [])
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
-  const pressTimeout = useRef<NodeJS.Timeout | null>(null)
+  const pressTimeout = useRef<number | null>(null)
 
   const handleQuickPress = () => {
     push("/settings")

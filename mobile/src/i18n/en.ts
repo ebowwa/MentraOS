@@ -1,8 +1,9 @@
 const en = {
   deviceSettings: {
+    microphoneSelection: "Microphone Selection",
     glassesNeededForGlassesMic: "Connect glasses to enable",
-    systemMic: "System Microphone",
-    glassesMic: "Glasses Microphone",
+    systemMic: "Automatic",
+    glassesMic: "Glasses only",
   },
   screenSettings: {
     title: "Display Position Settings",
@@ -220,7 +221,6 @@ const en = {
     wifiUnavailable: "Connect a pair of glasses that support WiFi to access WiFi settings.",
     developerSettings: "Developer Settings",
     forgetGlasses: "Forget Glasses",
-    disconnectGlasses: "Disconnect Glasses",
     forgetGlassesConfirm: "Are you sure you want to forget your glasses?",
     signOut: "Sign Out",
     signOutConfirm: "Are you sure you want to sign out?",
@@ -247,6 +247,10 @@ const en = {
     feedback: "Give Feedback",
     offlineSTT: "Offline Transcriptions",
     offlineSTTSubtitle: "Transcribe audio and display on connected glasses completely offline.",
+  },
+  devSettings: {
+    debugConsole: "Debug Console",
+    debugConsoleSubtitle: "Enable the debug console.",
   },
   transcription: {
     downloadModelToEnableLocalTranscription: "Download a model to enable local transcription",

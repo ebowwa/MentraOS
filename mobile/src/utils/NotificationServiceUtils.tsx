@@ -1,5 +1,6 @@
-import {Alert, NativeModules, Platform} from "react-native"
+import {NativeModules, Platform} from "react-native"
 import showAlert from "./AlertUtils"
+import CoreModule from "modules/core/src/CoreModule"
 
 const {NotificationAccess} = NativeModules
 
@@ -8,7 +9,7 @@ export async function checkNotificationAccessSpecialPermission() {
     return false
   }
 
-  return await NotificationAccess.hasNotificationAccess()
+  return await CoreModule.hasNotificationListenerPermission()
 }
 
 export async function checkAndRequestNotificationAccessSpecialPermission() {
@@ -17,7 +18,7 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
   }
 
   try {
-    const hasAccess = await NotificationAccess.hasNotificationAccess()
+    const hasAccess = await CoreModule.hasNotificationListenerPermission()
     if (!hasAccess) {
       await showAlert(
         "Enable Notification Access",

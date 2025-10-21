@@ -14,7 +14,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Executors;
 
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils;
+import com.augmentos.asg_client.utils.smartglasses.K900ProtocolUtils;
 import com.augmentos.asg_client.reporting.domains.BluetoothReporting;
 
 import java.io.File;

@@ -262,7 +262,7 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
     $styles.row,
     $baseViewStyle,
     ({colors}) => ({
-      backgroundColor: colors.accent,
+      backgroundColor: colors.warning,
     }),
   ],
   destructive: [

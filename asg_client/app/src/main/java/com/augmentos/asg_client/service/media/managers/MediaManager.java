@@ -323,6 +323,12 @@ public class MediaManager implements IMediaManager {
             public void onStreamStopped() {
                 Log.d(TAG, "RTMP Stream stopped");
 
+                // Check if we're reconnecting - if so, don't send "stopped" status
+                if (RtmpStreamingService.isReconnecting()) {
+                    Log.d(TAG, "Stream stopped for reconnection - not sending stopped status to TPA");
+                    return; // Skip status update during reconnection
+                }
+
                 try {
                     JSONObject status = new JSONObject();
                     status.put("type", "rtmp_stream_status");

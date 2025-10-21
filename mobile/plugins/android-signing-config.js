@@ -52,21 +52,21 @@ def releaseKeyAlias = project.hasProperty("MENTRAOS_UPLOAD_KEY_ALIAS") ? project
     }
 
     // Only add AugmentOS dependencies if they don't exist
-    if (!buildGradle.includes("implementation project(path: ':AugmentOSLib')")) {
-      const augmentosDependendies = `
-    // AugmentOSLib project dependency
-    implementation project(path: ':AugmentOSLib')
-    implementation project(path: ":augmentos_core")
-    implementation project(path: ":SmartGlassesManager")
-    implementation "androidx.lifecycle:lifecycle-service:2.6.1"
-    implementation("org.greenrobot:eventbus:3.3.1")
-`
+    //     if (!buildGradle.includes("implementation project(path: ':AugmentOSLib')")) {
+    //       const augmentosDependendies = `
+    //     // AugmentOSLib project dependency
+    //     implementation project(path: ':AugmentOSLib')
+    //     implementation project(path: ":augmentos_core")
+    //     implementation project(path: ":SmartGlassesManager")
+    //     implementation "androidx.lifecycle:lifecycle-service:2.6.1"
+    //     implementation("org.greenrobot:eventbus:3.3.1")
+    // `
 
-      buildGradle = buildGradle.replace(
-        /implementation\("com\.facebook\.react:react-android"\)/,
-        `implementation("com.facebook.react:react-android")${augmentosDependendies}`,
-      )
-    }
+    //       buildGradle = buildGradle.replace(
+    //         /implementation\("com\.facebook\.react:react-android"\)/,
+    //         `implementation("com.facebook.react:react-android")${augmentosDependendies}`,
+    //       )
+    //     }
 
     config.modResults.contents = buildGradle
     return config

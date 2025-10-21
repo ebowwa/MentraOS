@@ -1,15 +1,15 @@
-import React, {useEffect} from "react"
+import {useEffect} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
-import {router, useLocalSearchParams} from "expo-router"
+import {useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen, Header, Text, Button} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
-import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n/translate"
 import {TxKeyPath} from "@/i18n"
+import CoreModule from "core"
 
 export default function PairingFailureScreen() {
   const {themed, theme} = useAppTheme()
@@ -31,7 +31,7 @@ export default function PairingFailureScreen() {
   }, [])
 
   const handleRetry = () => {
-    bridge.sendForgetSmartGlasses()
+    CoreModule.forget()
     clearHistory()
     replace("/pairing/select-glasses-model")
   }
@@ -134,19 +134,4 @@ const $secondaryButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.palette.neutral600,
   borderWidth: 1,
   borderColor: colors.border,
-})
-
-const $helpContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  marginTop: spacing.xxl,
-  paddingHorizontal: spacing.lg,
-  gap: spacing.xs,
-})
-
-const $helpText: ThemedStyle<TextStyle> = ({colors}) => ({
-  flex: 1,
-  fontSize: 13,
-  textAlign: "center",
-  color: colors.textDim,
 })

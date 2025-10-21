@@ -26,6 +26,7 @@ import com.augmentos.asg_client.service.core.handlers.WifiCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.BatteryCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.ImuCommandHandler;
 import com.augmentos.asg_client.service.core.handlers.GalleryCommandHandler;
+import com.augmentos.asg_client.service.core.handlers.RgbLedCommandHandler;
 
 import org.json.JSONObject;
 
@@ -65,8 +66,9 @@ public class CommandProcessor {
     private final K900CommandHandler k900CommandHandler;
     private final ResponseSender responseSender;
     private final ChunkReassembler chunkReassembler;
+    private final RgbLedCommandHandler rgbLedCommandHandler;
 
-    public CommandProcessor(Context context, ICommunicationManager communicationManager, IStateManager stateManager, IMediaManager streamingManager, IResponseBuilder responseBuilder, IConfigurationManager configurationManager, AsgClientServiceManager serviceManager, FileManager fileManager) {
+    public CommandProcessor(Context context, ICommunicationManager communicationManager, IStateManager stateManager, IMediaManager streamingManager, IResponseBuilder responseBuilder, IConfigurationManager configurationManager, AsgClientServiceManager serviceManager, FileManager fileManager, RgbLedCommandHandler rgbLedCommandHandler) {
         Log.d(TAG, "🔧 Initializing CommandProcessor with dependencies");
         this.context = context;
         this.communicationManager = communicationManager;
@@ -76,6 +78,7 @@ public class CommandProcessor {
         this.configurationManager = configurationManager;
         this.serviceManager = serviceManager;
         this.fileManager = fileManager;
+        this.rgbLedCommandHandler = rgbLedCommandHandler;
 
         // Initialize components (Single Responsibility Principle)
         Log.d(TAG, "📦 Creating command processing components");
@@ -133,6 +136,7 @@ public class CommandProcessor {
     private void processJsonCommand(JSONObject json) {
         // processJsonCommand() started
 
+        Log.d(TAG, "📊 processJsonCommand() started" + json.toString());
         try {
             // Check for ACK first (from phone acknowledging our sent messages)
             String type = json.optString("type", "");
@@ -150,7 +154,7 @@ public class CommandProcessor {
             // Extracting command data from JSON
             CommandData commandData = extractCommandData(json);
             if (commandData == null) {
-                Log.w(TAG, "⚠️ No command data extracted - processing complete");
+                Log.w(TAG, "⚠️ No command data extracted - processing complete" + json.toString());
                 return;
             }
 
@@ -322,6 +326,9 @@ public class CommandProcessor {
 
             commandHandlerRegistry.registerHandler(new com.augmentos.asg_client.service.core.handlers.TransferCompleteCommandHandler(serviceManager));
             Log.d(TAG, "✅ Registered TransferCompleteCommandHandler");
+
+            commandHandlerRegistry.registerHandler(rgbLedCommandHandler);
+            Log.d(TAG, "✅ Registered RgbLedCommandHandler");
 
             commandHandlerRegistry.registerHandler(new com.augmentos.asg_client.service.core.handlers.GalleryModeCommandHandler(serviceManager));
             Log.d(TAG, "✅ Registered GalleryModeCommandHandler");

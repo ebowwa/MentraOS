@@ -29,7 +29,8 @@ import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.system.managers.StateManager;
-import com.augmentos.augmentos_core.AugmentosService;
+// Note: AugmentosService removed - legacy dependency no longer needed
+// import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 import org.greenrobot.eventbus.EventBus;
@@ -97,8 +98,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     // Service State
     // ---------------------------------------------
-    private AugmentosService augmentosService = null;
-    private boolean isAugmentosBound = false;
+    // Note: AugmentosService removed - legacy dependency no longer needed
+    // private AugmentosService augmentosService = null;
+    // private boolean isAugmentosBound = false;
     private static AsgClientService instance;
     private boolean lastI2sPlaying = false;
     private boolean isConnected = false; // Track connection state based on heartbeat
@@ -126,8 +128,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private Runnable heartbeatTimeoutRunnable;
 
     // ---------------------------------------------
-    // ServiceConnection for AugmentosService
+    // ServiceConnection for AugmentosService - DISABLED (legacy code)
     // ---------------------------------------------
+    // Note: AugmentosService binding removed - no longer needed for standalone ASG client
+    /*
     private final ServiceConnection augmentosConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -173,6 +177,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     };
+    */
 
     // ---------------------------------------------
     // Lifecycle Methods
@@ -291,6 +296,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📻 Unregistering broadcast receivers");
             unregisterReceivers();
 
+            // Note: AugmentosService unbinding removed - no longer used
+            /*
             // Unbind from AugmentosService
             if (isAugmentosBound) {
                 Log.d(TAG, "🔌 Unbinding from AugmentosService");
@@ -300,6 +307,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } else {
                 Log.d(TAG, "⏭️ Not bound to AugmentosService - skipping unbind");
             }
+            */
 
             // Clean up WiFi debouncing
             if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
@@ -312,6 +320,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📹 Stopping RTMP streaming");
             streamingManager.stopRtmpStreaming();
             Log.d(TAG, "✅ RTMP streaming stopped");
+
+            // Release RGB LED control authority back to BES
+            Log.d(TAG, "🚨 Releasing RGB LED control authority back to BES");
+            sendRgbLedControlAuthority(false);
+            
+            // Disable touch/swipe event reporting on service destroy
+            Log.d(TAG, "🎯 Disabling touch event reporting on service destroy");
+            handleTouchEventControl(true);
+            
+            Log.d(TAG, "🎯 Disabling swipe volume control on service destroy");
+            handleSwipeVolumeControl(true);
 
             Log.i(TAG, "✅ AsgClientServiceV2 onDestroy() completed successfully");
         } catch (Exception e) {
@@ -345,6 +364,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             JSONObject payload = new JSONObject();
             payload.put("C", command);
+            payload.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
             payload.put("B", new JSONObject());
 
             boolean sent = sendK900Command(command);
@@ -370,11 +390,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("C", "cs_swst");
+            payload.put("C", "cs_swit");
+            payload.put("V", 1);
             JSONObject bData = new JSONObject();
             bData.put("type", 26);
             bData.put("switch", enable);
-            payload.put("B", bData);
+            payload.put("B", bData.toString());
 
             boolean sent = sendK900Command(payload.toString());
             if (sent) {
@@ -395,9 +416,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             JSONObject payload = new JSONObject();
             payload.put("C", "cs_fbvol");
+            payload.put("V", 1);
             JSONObject bData = new JSONObject();
             bData.put("switch", enable);
-            payload.put("B", bData);
+            payload.put("B", bData.toString());
 
             boolean sent = sendK900Command(payload.toString());
             if (sent) {
@@ -428,6 +450,58 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         boolean sent = bluetoothManager.sendData(payload.getBytes(StandardCharsets.UTF_8));
         Log.i(TAG, "I2S command sent (" + payload + ") result=" + sent);
         return sent;
+    }
+
+    /**
+     * Send RGB LED control authority command to BES chipset.
+     * This tells BES whether MTK (our app) or BES should control the RGB LEDs.
+     * 
+     * @param claimControl true = MTK claims control, false = BES resumes control
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        Log.d(TAG, "🚨 sendRgbLedControlAuthority() called - Claim: " + claimControl);
+        
+        try {
+            // Build full K900 format (C, V, B) to avoid double-wrapping
+            JSONObject authorityCommand = new JSONObject();
+            authorityCommand.put("C", "android_control_led");
+            authorityCommand.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            
+            // Create proper JSON object for B field
+            JSONObject bField = new JSONObject();
+            bField.put("on", claimControl);
+            authorityCommand.put("B", bField.toString());
+            
+            String commandStr = authorityCommand.toString();
+            Log.i(TAG, "🚨 Sending RGB LED authority command: " + commandStr);
+            
+            if (serviceContainer == null || serviceContainer.getServiceManager() == null) {
+                Log.w(TAG, "⚠️ ServiceContainer not initialized; deferring RGB LED authority claim");
+                return;
+            }
+
+            var bluetoothManager = serviceContainer.getServiceManager().getBluetoothManager();
+            if (bluetoothManager == null) {
+                Log.w(TAG, "⚠️ Bluetooth manager unavailable; cannot send RGB LED authority command");
+                return;
+            }
+
+            if (!bluetoothManager.isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; RGB LED authority will be sent when connected");
+                return;
+            }
+
+            boolean sent = bluetoothManager.sendData(commandStr.getBytes(StandardCharsets.UTF_8));
+            if (sent) {
+                Log.i(TAG, "✅ RGB LED control authority " + (claimControl ? "CLAIMED" : "RELEASED") + " successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send RGB LED authority command");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating RGB LED authority command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending RGB LED authority command", e);
+        }
     }
 
     // ---------------------------------------------
@@ -654,6 +728,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             Log.d(TAG, "📋 Sending version information after Bluetooth connection");
             sendVersionInfo();
+            
+            // Claim RGB LED control authority when Bluetooth connects
+            Log.d(TAG, "🚨 Claiming RGB LED control authority on Bluetooth connection");
+            sendRgbLedControlAuthority(true);
+            
+            // Enable touch/swipe event reporting when Bluetooth connects
+            Log.d(TAG, "🎯 Enabling touch event reporting on Bluetooth connection");
+            handleTouchEventControl(true);
+            
+            Log.d(TAG, "🎯 Enabling swipe volume control on Bluetooth connection");
+            handleSwipeVolumeControl(false);
         } else {
             Log.d(TAG, "📶 Bluetooth disconnected - no additional actions needed");
         }
@@ -690,11 +775,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void onWifiConnected() {
         Log.i(TAG, "🌐 Connected to WiFi network");
         
+        // Note: AugmentosService check removed - no longer used
+        /*
         if (isAugmentosBound && augmentosService != null) {
             Log.i(TAG, "🔗 AugmentOS service is available, connecting to backend...");
         } else {
             Log.d(TAG, "⏭️ AugmentOS service not available - waiting for binding");
         }
+        */
     }
 
     private void processMediaQueue() {
