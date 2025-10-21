@@ -222,6 +222,7 @@ public class CameraNeo extends LifecycleService {
     private enum ShotState { IDLE, WAITING_AE, SHOOTING }
     private volatile ShotState shotState = ShotState.IDLE;
     private long aeStartTimeNs;
+    private long aeConvergenceStartTime;
     private static final long AE_WAIT_NS = 1_000_000_000L; // 1 second max wait for AE
 
     // Simple AE callback - autofocus handled automatically
@@ -2369,6 +2370,7 @@ public class CameraNeo extends LifecycleService {
         try {
             shotState = ShotState.WAITING_AE;
             aeStartTimeNs = System.nanoTime();
+            aeConvergenceStartTime = System.currentTimeMillis();
 
             // Start AE convergence - autofocus runs automatically in CONTINUOUS_PICTURE mode
             Log.d(TAG, "Starting AE convergence" + (hasAutoFocus ? " (autofocus runs automatically)" : "") + "...");
@@ -2402,6 +2404,8 @@ public class CameraNeo extends LifecycleService {
                                      @NonNull TotalCaptureResult result) {
 
             Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+            Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
+            Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
             // Suppress verbose AE logging to prevent logcat overflow
             // Only log important state transitions
 
@@ -2428,7 +2432,52 @@ public class CameraNeo extends LifecycleService {
                              (timeout ? " - timeout)" : ")") + ", capturing photo...");
                         capturePhoto();
                     } else {
-                        // Suppress convergence logging - too verbose
+                        // Log convergence status on every check
+                        final long currentTime = System.currentTimeMillis();
+                        final long aeDuration = currentTime - aeConvergenceStartTime;
+                        Log.d(TAG, "1234 AE Convergence Check - AE: " + getAeStateName(aeState) +
+                                  " | AWB: " + (awbState != null ? getAwbStateName(awbState) : "null") +
+                                  " | AF: " + (afState != null ? getAfStateName(afState) : "null") +
+                                  " | AE Converged: " + aeConverged +
+                                  " | Timeout: " + timeout +
+                                  " | Duration: " + aeDuration + "ms");
+
+                        // Print evolving AE values while converging
+                        final Long curExposureTime = result.get(CaptureResult.SENSOR_EXPOSURE_TIME);
+                        final Integer curIso = result.get(CaptureResult.SENSOR_SENSITIVITY);
+                        final Integer curAeComp = result.get(CaptureResult.CONTROL_AE_EXPOSURE_COMPENSATION);
+                        final Range<Integer> curFpsRange = result.get(CaptureResult.CONTROL_AE_TARGET_FPS_RANGE);
+                        Log.d(TAG, "1234 [AE] Current params -> exposureNs:" + (curExposureTime != null ? curExposureTime : -1) +
+                                  ", ISO:" + (curIso != null ? curIso : -1) +
+                                  ", AEcomp:" + (curAeComp != null ? curAeComp : -1000) +
+                                  ", FPS:" + (curFpsRange != null ? (curFpsRange.getLower() + "-" + curFpsRange.getUpper()) : "null"));
+
+                        // Print auto exposure levels
+                        final Integer aeMode = result.get(CaptureResult.CONTROL_AE_MODE);
+                        final Boolean aeLock = result.get(CaptureResult.CONTROL_AE_LOCK);
+                        final Integer aePrecaptureTrigger = result.get(CaptureResult.CONTROL_AE_PRECAPTURE_TRIGGER);
+                        final MeteringRectangle[] aeRegions = result.get(CaptureResult.CONTROL_AE_REGIONS);
+                        final Integer aeAntibandingMode = result.get(CaptureResult.CONTROL_AE_ANTIBANDING_MODE);
+                        
+                        Log.d(TAG, "1234 [AE Levels] -> Mode:" + (aeMode != null ? getAeModeName(aeMode) : "null") +
+                                  ", Lock:" + (aeLock != null ? (aeLock ? "LOCKED" : "UNLOCKED") : "null") +
+                                  ", PrecaptureTrigger:" + (aePrecaptureTrigger != null ? getAePrecaptureTriggerName(aePrecaptureTrigger) : "null") +
+                                  ", Antibanding:" + (aeAntibandingMode != null ? getAeAntibandingModeName(aeAntibandingMode) : "null"));
+                        
+                        if (aeRegions != null && aeRegions.length > 0) {
+                            StringBuilder regionsStr = new StringBuilder();
+                            for (int i = 0; i < aeRegions.length; i++) {
+                                MeteringRectangle region = aeRegions[i];
+                                regionsStr.append("[").append(i).append("]:(")
+                                         .append(region.getX()).append(",").append(region.getY()).append(",")
+                                         .append(region.getWidth()).append(",").append(region.getHeight()).append(",")
+                                         .append(region.getMeteringWeight()).append(")");
+                                if (i < aeRegions.length - 1) regionsStr.append(" ");
+                            }
+                            Log.d(TAG, "1234 [AE Regions] -> " + regionsStr.toString());
+                        } else {
+                            Log.d(TAG, "1234 [AE Regions] -> null");
+                        }
                     }
                     break;
 
@@ -2551,6 +2600,58 @@ public class CameraNeo extends LifecycleService {
             case CaptureResult.CONTROL_AE_STATE_FLASH_REQUIRED: return "FLASH_REQUIRED";
             case CaptureResult.CONTROL_AE_STATE_PRECAPTURE: return "PRECAPTURE";
             default: return "UNKNOWN(" + aeState + ")";
+        }
+    }
+
+    /**
+     * Get human-readable AE mode name for logging
+     */
+    private String getAeModeName(int aeMode) {
+        switch (aeMode) {
+            case CaptureRequest.CONTROL_AE_MODE_OFF: return "OFF";
+            case CaptureRequest.CONTROL_AE_MODE_ON: return "ON";
+            case CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH: return "ON_AUTO_FLASH";
+            case CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH: return "ON_ALWAYS_FLASH";
+            case CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH_REDEYE: return "ON_AUTO_FLASH_REDEYE";
+            default: return "UNKNOWN(" + aeMode + ")";
+        }
+    }
+
+    /**
+     * Get human-readable AE precapture trigger name for logging
+     */
+    private String getAePrecaptureTriggerName(int trigger) {
+        switch (trigger) {
+            case CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_IDLE: return "IDLE";
+            case CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START: return "START";
+            case CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_CANCEL: return "CANCEL";
+            default: return "UNKNOWN(" + trigger + ")";
+        }
+    }
+
+    /**
+     * Get human-readable AE antibanding mode name for logging
+     */
+    private String getAeAntibandingModeName(int mode) {
+        switch (mode) {
+            case CaptureRequest.CONTROL_AE_ANTIBANDING_MODE_OFF: return "OFF";
+            case CaptureRequest.CONTROL_AE_ANTIBANDING_MODE_50HZ: return "50HZ";
+            case CaptureRequest.CONTROL_AE_ANTIBANDING_MODE_60HZ: return "60HZ";
+            case CaptureRequest.CONTROL_AE_ANTIBANDING_MODE_AUTO: return "AUTO";
+            default: return "UNKNOWN(" + mode + ")";
+        }
+    }
+
+    /**
+     * Get human-readable AWB state name for logging
+     */
+    private String getAwbStateName(int awbState) {
+        switch (awbState) {
+            case CaptureResult.CONTROL_AWB_STATE_INACTIVE: return "INACTIVE";
+            case CaptureResult.CONTROL_AWB_STATE_SEARCHING: return "SEARCHING";
+            case CaptureResult.CONTROL_AWB_STATE_CONVERGED: return "CONVERGED";
+            case CaptureResult.CONTROL_AWB_STATE_LOCKED: return "LOCKED";
+            default: return "UNKNOWN(" + awbState + ")";
         }
     }
 
