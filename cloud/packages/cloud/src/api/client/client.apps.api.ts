@@ -16,6 +16,9 @@ import {
   RequestWithEmail,
 } from "../middleware/client.middleware";
 import { logger } from "../../services/logging/pino-logger";
+import { AppsManager } from "../../services/session/apps/AppsManager";
+import { AppSession } from "../../services/session/apps/AppSession";
+import UserSession from "../../services/session/UserSession";
 
 const router = Router();
 
@@ -25,7 +28,8 @@ const router = Router();
 
 // GET /api/client/apps - Get apps for home screen
 router.get("/", clientAuthWithEmail, getApps);
-
+router.post("/start/:packageName", clientAuthWithEmail, startApp);
+router.post("/stop/:packageName", clientAuthWithEmail, stopApp);
 // ============================================================================
 // Handlers
 // ============================================================================
@@ -70,6 +74,117 @@ async function getApps(req: Request, res: Response) {
       success: false,
       message: "Failed to fetch apps",
       timestamp: new Date(),
+    });
+  }
+}
+
+/**
+ * Start an app for the current user session (new system only)
+ */
+async function startApp(req: Request, res: Response) {
+  const startedAt = Date.now();
+  const { packageName } = req.params as { packageName: string };
+  const { email } = req as RequestWithEmail;
+  const userSession = UserSession.getById(email);
+  if (!userSession) {
+    return res.status(401).json({ success: false, message: "No user session" });
+  }
+
+  try {
+    // Ensure new AppsManager exists for this session (no legacy in /api/client)
+    if (!userSession.appsManagerNew) {
+      throw new Error("AppsManagerNew not initialized");
+    }
+
+    const result = await userSession.appsManagerNew.startApp(packageName);
+
+    if (!result?.success) {
+      const status =
+        result?.error?.stage === "AUTHENTICATION"
+          ? 401
+          : result?.error?.stage === "HARDWARE_CHECK"
+            ? 400
+            : result?.error?.stage === "TIMEOUT"
+              ? 504
+              : 502; // WEBHOOK/CONNECTION/default infra error
+
+      logger.error(
+        result?.error,
+        "AppsManagerNew.startApp failed (client endpoint)",
+      );
+      return res.status(status).json({
+        success: false,
+        message: result?.error?.message || "Failed to start app",
+        stage: result?.error?.stage,
+        duration: Date.now() - startedAt,
+      });
+    }
+
+    // New broadcast (temporary scaffold) // TODO: this should be done in AppsManagerNew.startApp
+    try {
+      await userSession.appManager.broadcastAppState();
+    } catch (error) {
+      userSession.logger
+        .child({ packageName, service: "client.apps.api" })
+        .error(error, "AppsManagerNew.broadcastAppState failed after start");
+    }
+
+    return res.json({
+      success: true,
+      message: "App started successfully",
+      duration: Date.now() - startedAt,
+    });
+  } catch (error) {
+    logger.error(error, "AppsManagerNew.startApp threw (client endpoint)");
+    return res.status(502).json({
+      success: false,
+      message: "Error starting app",
+      duration: Date.now() - startedAt,
+    });
+  }
+}
+
+/**
+ * Stop an app for the current user session (new system only)
+ */
+async function stopApp(req: Request, res: Response) {
+  const { packageName } = req.params as { packageName: string };
+  // const userSession = (req as RequestWithEmail).userSession;
+  const userSession = UserSession.getById((req as RequestWithEmail).email);
+
+  if (!userSession) {
+    return res.status(401).json({ success: false, message: "No user session" });
+  }
+
+  // Ensure new AppsManager exists for this session (no legacy in /api/client)
+  if (!userSession.appManager) {
+    const factory = (pkg: string, session: any) => new AppSession(pkg, session);
+    userSession.appManager = new AppsManager(userSession, factory);
+  }
+
+  const startedAt = Date.now();
+
+  try {
+    await userSession.appManager.stopApp(packageName);
+
+    // New broadcast (temporary scaffold)
+    try {
+      await userSession.appManager.broadcastAppState();
+    } catch (e) {
+      logger.error(e, "AppsManagerNew.broadcastAppState failed after stop");
+    }
+
+    return res.json({
+      success: true,
+      message: "App stopped successfully",
+      duration: Date.now() - startedAt,
+    });
+  } catch (error) {
+    logger.error(error, "AppsManagerNew.stopApp threw (client endpoint)");
+    return res.status(502).json({
+      success: false,
+      message: "Error stopping app",
+      duration: Date.now() - startedAt,
     });
   }
 }

@@ -805,8 +805,8 @@ export class TranslationManager {
           if (!result.sent) {
             this.logger.warn(
               {
+                // resurrectionTriggered: result.resurrectionTriggered,
                 packageName,
-                resurrectionTriggered: result.resurrectionTriggered,
                 error: result.error,
               },
               `Failed to send translation data to App ${packageName}`,

@@ -660,261 +660,486 @@ async function getAppByPackage(req: Request, res: Response) {
   }
 }
 
-/**
- * Start app for session
- */
+// New startApp handler (thin, feature-flagged)
 async function startApp(req: Request, res: Response) {
   const { packageName } = req.params;
-  // console.log('@#$%^&#@42342 startApp', packageName);
   const userSession: UserSession = (req as any).userSession;
 
-  // Use req.log from pino-http with service context
-  const routeLogger = req.log.child({
-    service: SERVICE_NAME,
-    userId: userSession.userId,
-    packageName,
-    route: "POST /apps/:packageName/start",
-    sessionId: userSession.sessionId,
-    feature: "app-start",
-  });
+  // Route logger (prefer req.log)
+  const routeLogger =
+    (req as any).log?.child?.({
+      service: SERVICE_NAME,
+      userId: userSession.userId,
+      packageName,
+      route: "POST /apps/:packageName/start",
+      feature: "app-start",
+      sessionId: userSession.sessionId,
+    }) ||
+    userSession.logger.child({
+      service: SERVICE_NAME,
+      userId: userSession.userId,
+      packageName,
+      route: "POST /apps/:packageName/start",
+      feature: "app-start",
+      sessionId: userSession.sessionId,
+    });
 
-  const startTime = Date.now();
+  const startedAt = Date.now();
+  routeLogger.info({ phase: "route-entry", ts: startedAt }, "startApp route");
 
-  // INFO: Route entry
-  routeLogger.info(
-    {
-      phase: "route-entry",
-      timestamp: startTime,
-      sessionState: {
-        websocketConnected:
-          userSession.websocket?.readyState === WebSocket.OPEN,
-        runningAppsCount: userSession.runningApps.size,
-        loadingAppsCount: userSession.loadingApps.size,
-      },
-    },
-    `Starting app ${packageName} for user ${userSession.userId}`,
-  );
-
-  // DEBUG: Detailed context
-  routeLogger.debug(
-    {
-      detailedSessionState: {
-        runningApps: Array.from(userSession.runningApps),
-        loadingApps: Array.from(userSession.loadingApps),
-        installedAppsCount: userSession.installedApps.size,
-        appWebsocketsCount: userSession.appWebsockets.size,
-      },
-    },
-    "Route entry context",
-  );
-
+  // Feature-flagged new path (AppsManager)
   try {
-    // Validate that the app exists before attempting to start it
-    const dbQueryStart = Date.now();
-    routeLogger.info(
-      {
-        phase: "db-query-start",
-        query: "appService.getApp",
-        timestamp: dbQueryStart,
-      },
-      `Fetching app ${packageName} from database`,
-    );
-    const app = await appService.getApp(packageName);
-    const dbQueryDuration = Date.now() - dbQueryStart;
-    routeLogger.info(
-      {
-        phase: "db-query-complete",
-        query: "appService.getApp",
-        duration: dbQueryDuration,
-        timestamp: Date.now(),
-      },
-      `App fetch completed in ${dbQueryDuration}ms`,
-    );
-    if (!app) {
-      const totalDuration = Date.now() - startTime;
-      routeLogger.error(
-        {
-          totalDuration,
-        },
-        `App ${packageName} not found in database`,
-      );
-
-      return res.status(404).json({
-        success: false,
-        message: "App not found",
-      });
-    }
-
-    // WARN: Already running (weird but we handle gracefully)
-    if (userSession.runningApps.has(packageName)) {
-      routeLogger.warn("App already in runningApps before startApp call");
-    }
-
-    // WARN: Already loading (weird but we handle gracefully)
-    if (userSession.loadingApps.has(packageName)) {
-      routeLogger.warn("App already in loadingApps before startApp call");
-    }
-
-    // DEBUG: AppManager call
-    const appManagerStartTime = Date.now();
-    routeLogger.info(
-      {
-        phase: "appmanager-start",
-        timestamp: appManagerStartTime,
-      },
-      "Calling userSession.appManager.startApp()",
-    );
-
     const result = await userSession.appManager.startApp(packageName);
-    const appManagerDuration = Date.now() - appManagerStartTime;
 
-    // DEBUG: AppManager result
-    routeLogger.info(
-      {
-        phase: "appmanager-complete",
-        duration: appManagerDuration,
-        timestamp: Date.now(),
-        appManagerResult: result,
-        postStartState: {
-          isNowRunning: userSession.runningApps.has(packageName),
-          isStillLoading: userSession.loadingApps.has(packageName),
-          hasWebsocket: userSession.appWebsockets.has(packageName),
-        },
-      },
-      `AppManager.startApp completed in ${appManagerDuration}ms`,
-    );
+    // Map error stage to HTTP status
+    if (!result.success) {
+      const status =
+        result.error?.stage === "AUTHENTICATION"
+          ? 401
+          : result.error?.stage === "HARDWARE_CHECK"
+            ? 400
+            : result.error?.stage === "TIMEOUT"
+              ? 504
+              : 502; // WEBHOOK/CONNECTION/default infra error
 
-    // DEBUG: Broadcast call
-    const broadcastStartTime = Date.now();
-    routeLogger.info(
-      {
-        phase: "broadcast-start",
-        timestamp: broadcastStartTime,
-      },
-      "Calling userSession.appManager.broadcastAppState()",
-    );
-
-    const appStateChange = userSession.appManager.broadcastAppState();
-    const broadcastDuration = Date.now() - broadcastStartTime;
-
-    // DEBUG: Broadcast result
-    routeLogger.info(
-      {
-        phase: "broadcast-complete",
-        duration: broadcastDuration,
-        timestamp: Date.now(),
-        appStateChangeGenerated: !!appStateChange,
-        appStateChangeSize: appStateChange
-          ? JSON.stringify(appStateChange).length
-          : 0,
-      },
-      `App state broadcast completed in ${broadcastDuration}ms`,
-    );
-
-    // ERROR: This shouldn't happen - broadcast should always work
-    if (!appStateChange) {
-      const totalDuration = Date.now() - startTime;
       routeLogger.error(
-        {
-          totalDuration,
-          sessionState: {
-            websocketReady:
-              userSession.websocket?.readyState === WebSocket.OPEN,
-            runningApps: Array.from(userSession.runningApps),
-            loadingApps: Array.from(userSession.loadingApps),
-          },
-        },
-        "Broadcast failed to generate app state change - this should not happen",
+        result.error,
+        "AppsManagerNew startApp failed (feature path)",
       );
 
-      return res.status(500).json({
+      routeLogger.info(
+        {
+          phase: "route-complete",
+          duration: Date.now() - startedAt,
+          httpStatus: status,
+        },
+        "startApp route (new) complete",
+      );
+
+      return res.status(status).json({
         success: false,
-        message: "Error generating app state change",
+        message: result.error?.message || "Failed to start app",
+        stage: result.error?.stage,
       });
     }
 
-    const totalDuration = Date.now() - startTime;
+    // Temporary: broadcast via legacy manager until new path owns broadcast
+    try {
+      await userSession.appManager.broadcastAppState();
+    } catch (e) {
+      routeLogger.error(
+        e,
+        "Legacy broadcast after AppsManagerNew success failed",
+      );
+    }
 
-    // INFO: Successful completion
     routeLogger.info(
       {
         phase: "route-complete",
-        totalDuration,
-        timestamp: Date.now(),
-        success: result.success,
+        duration: Date.now() - startedAt,
+        httpStatus: 200,
       },
-      `App start route completed in ${totalDuration}ms`,
+      "startApp route (new) complete",
     );
 
-    // DEBUG: Final state details
-    routeLogger.debug(
-      {
-        appManagerDuration,
-        broadcastDuration,
-        finalState: {
-          runningApps: Array.from(userSession.runningApps),
-          loadingApps: Array.from(userSession.loadingApps),
-        },
-      },
-      "Route completion details",
-    );
-
-    res.json({
+    return res.json({
       success: true,
-      data: {
-        status: "started",
-        packageName,
-        appState: appStateChange,
-      },
+      message: "App started successfully",
     });
-
-    // Send app started notification to WebSocket
-    if (userSession.websocket) {
-      webSocketService.sendAppStarted(userSession, packageName);
-    }
   } catch (error) {
-    const totalDuration = Date.now() - startTime;
+    routeLogger.error(error, "AppsManagerNew startApp threw");
 
-    // ERROR: Route execution failed
-    routeLogger.error(
+    routeLogger.info(
       {
-        error:
-          error instanceof Error
-            ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-              }
-            : error,
-        totalDuration,
+        phase: "route-complete",
+        duration: Date.now() - startedAt,
+        httpStatus: 502,
       },
-      `Route failed after ${totalDuration}ms`,
+      "startApp route (new) complete (threw)",
     );
 
-    // DEBUG: Error context for debugging
-    routeLogger.debug(
-      {
-        sessionStateOnError: {
-          websocketState: userSession.websocket?.readyState,
-          runningApps: Array.from(userSession.runningApps),
-          loadingApps: Array.from(userSession.loadingApps),
-          appWebsockets: Array.from(userSession.appWebsockets.keys()),
-        },
-        requestContext: {
-          method: req.method,
-          url: req.url,
-          userAgent: req.headers["user-agent"],
-        },
-      },
-      "Error context details",
-    );
-
-    res.status(500).json({
+    return res.status(502).json({
       success: false,
       message: "Error starting app",
     });
   }
+
+  // Legacy path (fallback): keep minimal and delegate to legacy manager
+  // try {
+  //   const legacyStartedAt = Date.now();
+  //   routeLogger.info({ phase: "legacy-start" }, "Calling AppManager.startApp");
+
+  //   const legacyResult = await userSession.appManager.startApp(packageName);
+
+  //   routeLogger.info(
+  //     {
+  //       phase: "legacy-complete",
+  //       appManagerDuration: Date.now() - legacyStartedAt,
+  //       result: legacyResult,
+  //     },
+  //     "Legacy AppManager.startApp completed",
+  //   );
+
+  //   if (!legacyResult?.success) {
+  //     routeLogger.error(
+  //       legacyResult?.error,
+  //       "Legacy AppManager.startApp failed",
+  //     );
+
+  //     return res.status(500).json({
+  //       success: false,
+  //       message: "Failed to start app",
+  //     });
+  //   }
+
+  //   // Broadcast state via legacy manager (as today)
+  //   try {
+  //     await userSession.appManager.broadcastAppState();
+  //   } catch (e) {
+  //     routeLogger.error(e, "Legacy broadcast failed");
+  //     // Continue; starting succeeded, broadcast failure is non-fatal to route
+  //   }
+
+  //   routeLogger.info(
+  //     {
+  //       phase: "route-complete",
+  //       duration: Date.now() - startedAt,
+  //       httpStatus: 200,
+  //     },
+  //     "startApp route (legacy) complete",
+  //   );
+
+  //   return res.json({
+  //     success: true,
+  //     data: { status: "started", packageName },
+  //   });
+  // } catch (error) {
+  //   routeLogger.error(error, "Legacy AppManager.startApp threw");
+
+  //   routeLogger.info(
+  //     {
+  //       phase: "route-complete",
+  //       duration: Date.now() - startedAt,
+  //       httpStatus: 500,
+  //     },
+  //     "startApp route (legacy) complete (threw)",
+  //   );
+
+  //   return res.status(500).json({
+  //     success: false,
+  //     message: "Error starting app",
+  //   });
+  // }
 }
+
+// /**
+//  * Start app for session
+//  */
+// async function startApp(req: Request, res: Response) {
+//   const { packageName } = req.params;
+//   const userSession: UserSession = (req as any).userSession;
+
+//   // if USE_APP_SESSION=1
+//   if (userSession.appsManagerNew) {
+//     // Start app for session.
+//     try {
+//       const appStartResult =
+//         await userSession.appsManagerNew.startApp(packageName);
+
+//       if (appStartResult.success) {
+//         res.json({
+//           success: true,
+//           message: "App started successfully",
+//         });
+//       } else {
+//         const _logger =
+//           userSession?.logger.child({
+//             service: SERVICE_NAME,
+//             userId: userSession.userId,
+//             packageName,
+//             route: "POST /apps/:packageName/start",
+//           }) ||
+//           logger.child({
+//             service: SERVICE_NAME,
+//             userId: userSession.userId,
+//             packageName,
+//             route: "POST /apps/:packageName/start",
+//           });
+//         _logger.error(appStartResult.error, "Error starting app");
+//         res.status(400).json({
+//           success: false,
+//           message: "Failed to start app",
+//         });
+//       }
+//     } catch (error) {
+//       const _logger =
+//         userSession?.logger.child({
+//           service: SERVICE_NAME,
+//           userId: userSession.userId,
+//           packageName,
+//           route: "POST /apps/:packageName/start",
+//         }) ||
+//         logger.child({
+//           service: SERVICE_NAME,
+//           userId: userSession.userId,
+//           packageName,
+//           route: "POST /apps/:packageName/start",
+//         });
+//       _logger.error(error, "Error starting app");
+//       res.status(500).json({
+//         success: false,
+//         message: "Error starting app",
+//       });
+//     }
+//   }
+
+//   // Use req.log from pino-http with service context
+//   const routeLogger = req.log.child({
+//     service: SERVICE_NAME,
+//     userId: userSession.userId,
+//     packageName,
+//     route: "POST /apps/:packageName/start",
+//     sessionId: userSession.sessionId,
+//     feature: "app-start",
+//   });
+
+//   const startTime = Date.now();
+
+//   // INFO: Route entry
+//   routeLogger.info(
+//     {
+//       phase: "route-entry",
+//       timestamp: startTime,
+//       sessionState: {
+//         websocketConnected:
+//           userSession.websocket?.readyState === WebSocket.OPEN,
+//         runningAppsCount: userSession.runningApps.size,
+//         loadingAppsCount: userSession.loadingApps.size,
+//       },
+//     },
+//     `Starting app ${packageName} for user ${userSession.userId}`,
+//   );
+
+//   // DEBUG: Detailed context
+//   routeLogger.debug(
+//     {
+//       detailedSessionState: {
+//         runningApps: Array.from(userSession.runningApps),
+//         loadingApps: Array.from(userSession.loadingApps),
+//         installedAppsCount: userSession.installedApps.size,
+//         appWebsocketsCount: userSession.appWebsockets.size,
+//       },
+//     },
+//     "Route entry context",
+//   );
+
+//   try {
+//     // Validate that the app exists before attempting to start it
+//     const dbQueryStart = Date.now();
+//     routeLogger.info(
+//       {
+//         phase: "db-query-start",
+//         query: "appService.getApp",
+//         timestamp: dbQueryStart,
+//       },
+//       `Fetching app ${packageName} from database`,
+//     );
+//     const app = await appService.getApp(packageName);
+//     const dbQueryDuration = Date.now() - dbQueryStart;
+//     routeLogger.info(
+//       {
+//         phase: "db-query-complete",
+//         query: "appService.getApp",
+//         duration: dbQueryDuration,
+//         timestamp: Date.now(),
+//       },
+//       `App fetch completed in ${dbQueryDuration}ms`,
+//     );
+//     if (!app) {
+//       const totalDuration = Date.now() - startTime;
+//       routeLogger.error(
+//         {
+//           totalDuration,
+//         },
+//         `App ${packageName} not found in database`,
+//       );
+
+//       return res.status(404).json({
+//         success: false,
+//         message: "App not found",
+//       });
+//     }
+
+//     // WARN: Already running (weird but we handle gracefully)
+//     if (userSession.runningApps.has(packageName)) {
+//       routeLogger.warn("App already in runningApps before startApp call");
+//     }
+
+//     // WARN: Already loading (weird but we handle gracefully)
+//     if (userSession.loadingApps.has(packageName)) {
+//       routeLogger.warn("App already in loadingApps before startApp call");
+//     }
+
+//     // DEBUG: AppManager call
+//     const appManagerStartTime = Date.now();
+//     routeLogger.info(
+//       {
+//         phase: "appmanager-start",
+//         timestamp: appManagerStartTime,
+//       },
+//       "Calling userSession.appManager.startApp()",
+//     );
+
+//     const result = await userSession.appManager.startApp(packageName);
+//     const appManagerDuration = Date.now() - appManagerStartTime;
+
+//     // DEBUG: AppManager result
+//     routeLogger.info(
+//       {
+//         phase: "appmanager-complete",
+//         duration: appManagerDuration,
+//         timestamp: Date.now(),
+//         appManagerResult: result,
+//         postStartState: {
+//           isNowRunning: userSession.runningApps.has(packageName),
+//           isStillLoading: userSession.loadingApps.has(packageName),
+//           hasWebsocket: userSession.appWebsockets.has(packageName),
+//         },
+//       },
+//       `AppManager.startApp completed in ${appManagerDuration}ms`,
+//     );
+
+//     // DEBUG: Broadcast call
+//     const broadcastStartTime = Date.now();
+//     routeLogger.info(
+//       {
+//         phase: "broadcast-start",
+//         timestamp: broadcastStartTime,
+//       },
+//       "Calling userSession.appManager.broadcastAppState()",
+//     );
+
+//     const appStateChange = userSession.appManager.broadcastAppState();
+//     const broadcastDuration = Date.now() - broadcastStartTime;
+
+//     // DEBUG: Broadcast result
+//     routeLogger.info(
+//       {
+//         phase: "broadcast-complete",
+//         duration: broadcastDuration,
+//         timestamp: Date.now(),
+//         appStateChangeGenerated: !!appStateChange,
+//         appStateChangeSize: appStateChange
+//           ? JSON.stringify(appStateChange).length
+//           : 0,
+//       },
+//       `App state broadcast completed in ${broadcastDuration}ms`,
+//     );
+
+//     // ERROR: This shouldn't happen - broadcast should always work
+//     if (!appStateChange) {
+//       const totalDuration = Date.now() - startTime;
+//       routeLogger.error(
+//         {
+//           totalDuration,
+//           sessionState: {
+//             websocketReady:
+//               userSession.websocket?.readyState === WebSocket.OPEN,
+//             runningApps: Array.from(userSession.runningApps),
+//             loadingApps: Array.from(userSession.loadingApps),
+//           },
+//         },
+//         "Broadcast failed to generate app state change - this should not happen",
+//       );
+
+//       return res.status(500).json({
+//         success: false,
+//         message: "Error generating app state change",
+//       });
+//     }
+
+//     const totalDuration = Date.now() - startTime;
+
+//     // INFO: Successful completion
+//     routeLogger.info(
+//       {
+//         phase: "route-complete",
+//         totalDuration,
+//         timestamp: Date.now(),
+//         success: result.success,
+//       },
+//       `App start route completed in ${totalDuration}ms`,
+//     );
+
+//     // DEBUG: Final state details
+//     routeLogger.debug(
+//       {
+//         appManagerDuration,
+//         broadcastDuration,
+//         finalState: {
+//           runningApps: Array.from(userSession.runningApps),
+//           loadingApps: Array.from(userSession.loadingApps),
+//         },
+//       },
+//       "Route completion details",
+//     );
+
+//     res.json({
+//       success: true,
+//       data: {
+//         status: "started",
+//         packageName,
+//         appState: appStateChange,
+//       },
+//     });
+
+//     // Send app started notification to WebSocket
+//     if (userSession.websocket) {
+//       webSocketService.sendAppStarted(userSession, packageName);
+//     }
+//   } catch (error) {
+//     const totalDuration = Date.now() - startTime;
+
+//     // ERROR: Route execution failed
+//     routeLogger.error(
+//       {
+//         error:
+//           error instanceof Error
+//             ? {
+//                 name: error.name,
+//                 message: error.message,
+//                 stack: error.stack,
+//               }
+//             : error,
+//         totalDuration,
+//       },
+//       `Route failed after ${totalDuration}ms`,
+//     );
+
+//     // DEBUG: Error context for debugging
+//     routeLogger.debug(
+//       {
+//         sessionStateOnError: {
+//           websocketState: userSession.websocket?.readyState,
+//           runningApps: Array.from(userSession.runningApps),
+//           loadingApps: Array.from(userSession.loadingApps),
+//           appWebsockets: Array.from(userSession.appWebsockets.keys()),
+//         },
+//         requestContext: {
+//           method: req.method,
+//           url: req.url,
+//           userAgent: req.headers["user-agent"],
+//         },
+//       },
+//       "Error context details",
+//     );
+
+//     res.status(500).json({
+//       success: false,
+//       message: "Error starting app",
+//     });
+//   }
+// }
 
 /**
  * Stop app for session

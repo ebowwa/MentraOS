@@ -14,6 +14,8 @@ import {
 import { logger as rootLogger } from "../logging/pino-logger";
 import { Capabilities } from "@mentra/sdk";
 import AppManager from "./AppManager";
+import { AppsManager as AppsManagerNew } from "./apps/AppsManager";
+import { AppSession as NewAppSession } from "./apps/AppSession";
 import AudioManager from "./AudioManager";
 import MicrophoneManager from "./MicrophoneManager";
 import DisplayManager from "../layout/DisplayManager6.1";
@@ -82,6 +84,7 @@ export class UserSession {
   public dashboardManager: DashboardManager;
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
+  public appsManagerNew?: AppsManagerNew;
   public audioManager: AudioManager;
   public transcriptionManager: TranscriptionManager;
   public translationManager: TranslationManager;
@@ -141,6 +144,26 @@ export class UserSession {
 
     // Initialize managers
     this.appManager = new AppManager(this);
+
+    // Initialize new AppsManager (feature-flagged). Legacy AppManager remains the primary manager.
+    try {
+      const useNew =
+        process.env.USE_APP_SESSION === "1" ||
+        process.env.USE_APP_SESSION === "true" ||
+        process.env.USE_APP_SESSION === "on";
+      if (useNew) {
+        const factory = (pkg: string, session: UserSession) =>
+          new NewAppSession(pkg, session);
+        this.appsManagerNew = new AppsManagerNew(this, factory);
+        this.logger.info(
+          { feature: "app-start" },
+          "New AppsManager enabled for session",
+        );
+      }
+    } catch (error) {
+      this.logger.error(error, "Failed to initialize new AppsManager");
+    }
+
     this.audioManager = new AudioManager(this);
     this.dashboardManager = new DashboardManager(this);
     this.displayManager = new DisplayManager(this);
