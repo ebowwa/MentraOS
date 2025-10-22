@@ -7,7 +7,7 @@ import {HardwareRequirement} from "./hardware"
 /**
  * App execution model types
  */
-export type AppletType = "standard" | "background" | "system_dashboard";
+export type AppletType = "standard" | "background" | "system_dashboard"
 
 /**
  * Permission types that apps can request
@@ -20,15 +20,15 @@ export type AppPermissionType =
   | "LOCATION"
   | "BACKGROUND_LOCATION"
   | "READ_NOTIFICATIONS"
-  | "POST_NOTIFICATIONS";
+  | "POST_NOTIFICATIONS"
 
 /**
  * Permission object with type and description
  */
 export interface AppletPermission {
-  type: AppPermissionType;
-  description?: string;
-  required?: boolean;
+  type: AppPermissionType
+  description?: string
+  required?: boolean
 }
 
 /**
@@ -39,13 +39,13 @@ export interface AppletPermission {
  * Internal cloud services use AppI from models (more fields).
  */
 export interface AppletInterface {
-  packageName: string;
-  name: string;
-  webviewUrl: string;
-  logoUrl: string;
-  type: AppletType;
-  permissions: AppletPermission[];
-  running: boolean;
-  healthy: boolean;
-  hardwareRequirements: HardwareRequirement[];
+  packageName: string
+  name: string
+  webviewUrl: string
+  logoUrl: string
+  type: AppletType
+  permissions: AppletPermission[]
+  running: boolean
+  healthy: boolean
+  hardwareRequirements: HardwareRequirement[]
 }

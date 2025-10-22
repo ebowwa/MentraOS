@@ -7,7 +7,7 @@
  * Uses @mentra/types for client-facing interfaces.
  */
 
-import { AppletInterface } from "@mentra/types";
+import type { AppletInterface } from "@mentra/types";
 import { User } from "../../models/user.model";
 import App from "../../models/app.model";
 import UserSession from "../session/UserSession";
