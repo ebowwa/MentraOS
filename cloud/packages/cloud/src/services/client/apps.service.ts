@@ -59,12 +59,11 @@ export class ClientAppsService {
 
       // 3. Get session state (in-memory, fast)
       const session = UserSession.getById(userId);
-      const runningApps = session?.runningApps || new Set<string>();
 
       // 4. Get cached health status (in-memory, no external calls)
       const healthCache = session?.appHealthCache || new Map<string, boolean>();
 
-      // 5. Map to minimal interface
+      // 5. Map to minimal interface - use appManager.isAppRunning() for each app
       const result: AppletInterface[] = apps.map((app: any) => ({
         packageName: app.packageName,
         name: app.name,
@@ -72,7 +71,7 @@ export class ClientAppsService {
         logoUrl: app.logoURL,
         type: app.appType as AppletInterface["type"],
         permissions: app.permissions || [],
-        running: runningApps.has(app.packageName),
+        running: session?.appManager.isAppRunning(app.packageName) ?? false,
         healthy: healthCache.get(app.packageName) ?? true,
         hardwareRequirements: app.hardwareRequirements || [],
       }));

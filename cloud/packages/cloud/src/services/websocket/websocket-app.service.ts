@@ -132,7 +132,11 @@ export class AppWebSocketService {
           sessionId: sessionId,
           apiKey: appJwtPayload.apiKey,
         };
-        await userSession.appManager.handleAppInit(ws, initMessage);
+        await userSession.appManager.handleAppInit(
+          appJwtPayload.packageName,
+          ws,
+          initMessage,
+        );
         // Mark app reconnect for subscription grace handling
         userSession.subscriptionManager.markAppReconnected(
           appJwtPayload.packageName,
@@ -178,7 +182,11 @@ export class AppWebSocketService {
             );
             return;
           }
-          await userSession.appManager.handleAppInit(ws, initMessage);
+          await userSession.appManager.handleAppInit(
+            initMessage.packageName,
+            ws,
+            initMessage,
+          );
           userSession.subscriptionManager.markAppReconnected(
             initMessage.packageName,
           );

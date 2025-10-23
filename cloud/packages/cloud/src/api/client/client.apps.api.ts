@@ -16,8 +16,6 @@ import {
   RequestWithEmail,
 } from "../middleware/client.middleware";
 import { logger } from "../../services/logging/pino-logger";
-import { AppsManager } from "../../services/session/apps/AppsManager";
-import { AppSession } from "../../services/session/apps/AppSession";
 import UserSession from "../../services/session/UserSession";
 
 const router = Router();
@@ -92,11 +90,8 @@ async function startApp(req: Request, res: Response) {
 
   try {
     // Ensure new AppsManager exists for this session (no legacy in /api/client)
-    if (!userSession.appsManagerNew) {
-      throw new Error("AppsManagerNew not initialized");
-    }
 
-    const result = await userSession.appsManagerNew.startApp(packageName);
+    const result = await userSession.appManager.startApp(packageName);
 
     if (!result?.success) {
       const status =
@@ -154,12 +149,6 @@ async function stopApp(req: Request, res: Response) {
 
   if (!userSession) {
     return res.status(401).json({ success: false, message: "No user session" });
-  }
-
-  // Ensure new AppsManager exists for this session (no legacy in /api/client)
-  if (!userSession.appManager) {
-    const factory = (pkg: string, session: any) => new AppSession(pkg, session);
-    userSession.appManager = new AppsManager(userSession, factory);
   }
 
   const startedAt = Date.now();

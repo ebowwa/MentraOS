@@ -142,7 +142,7 @@ class DisplayManager {
       // 2. The display is still valid/active
       // if (userSession.activeAppSessions.includes(currentDisplayPackage) && displayIsValid) {
       if (
-        this.userSession.runningApps.has(currentDisplayPackage) &&
+        this.userSession.appManager.isAppRunning(currentDisplayPackage) &&
         displayIsValid
       ) {
         this.logger.info(
@@ -151,7 +151,9 @@ class DisplayManager {
         );
         this.displayState.savedDisplayBeforeBoot =
           this.displayState.currentDisplay;
-      } else if (!this.userSession.runningApps.has(currentDisplayPackage)) {
+      } else if (
+        !this.userSession.appManager.isAppRunning(currentDisplayPackage)
+      ) {
         this.logger.info(
           { currentDisplayPackage },
           `[${this.userSession.userId}] Not saving display from ${currentDisplayPackage} - app is no longer running`,
@@ -380,7 +382,8 @@ class DisplayManager {
       const savedAppName =
         this.displayState.savedDisplayBeforeBoot.displayRequest.packageName;
       // const isAppStillRunning = this.userSession.activeAppSessions.includes(savedAppName);
-      const isAppStillRunning = this.userSession.runningApps.has(savedAppName);
+      const isAppStillRunning =
+        this.userSession.appManager.isAppRunning(savedAppName);
 
       // Check if the saved display is still valid using our enhanced check
       const isSavedDisplayValid = this.hasRemainingDuration(
@@ -807,7 +810,7 @@ class DisplayManager {
       for (const [appName, request] of this.throttledRequests.entries()) {
         // Skip requests from apps that aren't running
         // if (!this.userSession.activeAppSessions.includes(appName)) {
-        if (!this.userSession.runningApps.has(appName)) {
+        if (!this.userSession.appManager.isAppRunning(appName)) {
           continue;
         }
 
@@ -865,7 +868,7 @@ class DisplayManager {
       // Check if the app with the lock is still active/running
       // const isLockHolderStillRunning = this.userSession?.activeAppSessions.includes(packageName);
       const isLockHolderStillRunning =
-        this.userSession.runningApps.has(packageName);
+        this.userSession.appManager.isAppRunning(packageName);
 
       // Check if lock should be released due to inactivity or app being stopped
       if (!isLockHolderStillRunning) {
@@ -964,7 +967,10 @@ class DisplayManager {
   private canBackgroundAppDisplay(packageName: string): boolean {
     // First check if the app is still running
     // if (!this.userSession || !this.userSession.activeAppSessions.includes(packageName)) {
-    if (!this.userSession || !this.userSession.runningApps.has(packageName)) {
+    if (
+      !this.userSession ||
+      !this.userSession.appManager.isAppRunning(packageName)
+    ) {
       this.logger.info(
         { packageName },
         `[${this.userSession?.userId}] ❌ ${packageName} can't display - app not running`,
@@ -1011,7 +1017,7 @@ class DisplayManager {
     }
 
     // Check if the current lock holder is still running
-    const lockHolderStillRunning = this.userSession.runningApps.has(
+    const lockHolderStillRunning = this.userSession.appManager.isAppRunning(
       this.displayState.backgroundLock.packageName,
     );
 

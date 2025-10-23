@@ -192,8 +192,8 @@ export class MemoryTelemetryService {
         keepAliveActive,
       },
       apps: {
-        running: session.runningApps.size,
-        websockets: session.appWebsockets.size,
+        running: session.appManager.getRunningApps().length,
+        websockets: session.appManager.getTrackedApps().length,
       },
     };
   }

@@ -1815,7 +1815,9 @@ function enhanceAppsWithSessionState(
       is_foreground: false,
     };
 
-    enhancedApp.is_running = userSession.runningApps.has(app.packageName);
+    enhancedApp.is_running = userSession.appManager.isAppRunning(
+      app.packageName,
+    );
     // This is deprecated, will be removed in future versions.
     if (enhancedApp.is_running) {
       enhancedApp.is_foreground = app.appType === AppType.STANDARD;

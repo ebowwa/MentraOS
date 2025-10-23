@@ -12,6 +12,7 @@ import type { Logger } from "pino";
 import UserSession from "../UserSession";
 import { logger as rootLogger } from "../../logging/pino-logger";
 import AppSession from "./AppSession";
+import { CloudToGlassesMessageType, AppStateChange } from "@mentra/sdk";
 
 /**
  * Minimal App start result used by the new manager/session path.
@@ -51,6 +52,15 @@ export interface AppSessionI {
    * Handle App WebSocket connection init (validate, ACK, heartbeat, resolve pending).
    */
   handleConnection(ws: WebSocket, initMessage: unknown): Promise<void>;
+
+  /**
+   * Send a message to the app.
+   */
+  sendMessage?(message: any): Promise<{
+    sent: boolean;
+    resurrectionTriggered?: boolean;
+    error?: string;
+  }>;
 
   /**
    * Dispose all resources (idempotent).
@@ -257,21 +267,162 @@ export class AppsManager {
   }
 
   /**
-   * Broadcast state to clients.
-   * Intentionally minimal scaffold — concrete implementation should be added
-   * once we decide the payload contract and routing for the new path.
+   * Broadcast app state to connected clients.
+   * Uses session cache only (no DB calls per architecture).
    */
-  async broadcastAppState(): Promise<void> {
+  async broadcastAppState(): Promise<AppStateChange | null> {
     const logger = this.logger.child({ function: "broadcastAppState" });
+    logger.debug("Broadcasting app state");
+
     try {
-      const running = this.getRunningApps();
-      logger.debug(
-        { running, feature: "app-start" },
-        "Broadcasting app state (scaffold)",
-      );
-      // TODO: Implement message construction and delivery via userSession when contract is finalized.
+      // Build app state change message using session cache
+      const appStateChange: AppStateChange = {
+        type: CloudToGlassesMessageType.APP_STATE_CHANGE,
+        sessionId: this.userSession.sessionId,
+        timestamp: new Date(),
+      };
+
+      // Check WebSocket availability
+      if (
+        !this.userSession.websocket ||
+        this.userSession.websocket.readyState !== 1 // WebSocket.OPEN = 1
+      ) {
+        logger.warn("WebSocket not open for app state broadcast");
+        return appStateChange;
+      }
+
+      // Send to client
+      this.userSession.websocket.send(JSON.stringify(appStateChange));
+      logger.debug({ feature: "app-start" }, "Sent APP_STATE_CHANGE to client");
+
+      return appStateChange;
     } catch (error) {
-      logger.error({ error }, "Error broadcasting app state");
+      logger.error(error, "Error broadcasting app state");
+      return null;
+    }
+  }
+
+  /**
+   * Check if an app is currently running.
+   * Bridges to UserSession state for compatibility during migration.
+   * TODO: Once migration complete, read from AppSession.isRunning() only.
+   */
+  isAppRunning(packageName: string): boolean {
+    // Bridge to legacy state during migration
+    return this.userSession.runningApps.has(packageName);
+  }
+
+  /**
+   * Send a message to a running app.
+   * Delegates to AppSession if available, falls back to legacy path.
+   */
+  async sendMessageToApp(
+    packageName: string,
+    message: any,
+  ): Promise<{
+    sent: boolean;
+    resurrectionTriggered?: boolean;
+    error?: string;
+  }> {
+    const logger = this.logger.child({
+      packageName,
+      function: "sendMessageToApp",
+    });
+
+    // Try to delegate to AppSession first
+    const session = this.appSessions.get(packageName);
+    if (session && session.sendMessage) {
+      logger.debug("Delegating to AppSession.sendMessage()");
+      return session.sendMessage(message);
+    }
+
+    // Fallback: Bridge to legacy state during migration
+    logger.debug("Using legacy bridge (no AppSession)");
+    const websocket = this.userSession.appWebsockets.get(packageName);
+
+    if (!websocket || websocket.readyState !== 1) {
+      // WebSocket.OPEN = 1
+      logger.warn("WebSocket not available for messaging");
+      return {
+        sent: false,
+        resurrectionTriggered: false,
+        error: "Connection not available",
+      };
+    }
+
+    try {
+      websocket.send(JSON.stringify(message));
+      logger.debug(
+        { messageType: message.type || "unknown" },
+        "Message sent to app",
+      );
+      return { sent: true, resurrectionTriggered: false };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      logger.error(error, "Failed to send message to app");
+      return {
+        sent: false,
+        resurrectionTriggered: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Start all previously running apps from the database.
+   * Fetches user's running apps and starts each one.
+   */
+  async startPreviouslyRunningApps(): Promise<void> {
+    const logger = this.logger.child({
+      function: "startPreviouslyRunningApps",
+    });
+
+    try {
+      // Import User model at runtime to avoid circular dependencies
+      const { User } = await import("../../../models/user.model");
+      const user = await User.findOrCreateUser(this.userSession.userId);
+      const previouslyRunningApps = user.runningApps;
+
+      if (previouslyRunningApps.length === 0) {
+        logger.debug("No previously running apps");
+        return;
+      }
+
+      logger.info(
+        { count: previouslyRunningApps.length },
+        "Starting previously running apps",
+      );
+
+      const startedApps: string[] = [];
+
+      await Promise.all(
+        previouslyRunningApps.map(async (packageName) => {
+          try {
+            const result = await this.startApp(packageName);
+            if (result.success) {
+              startedApps.push(packageName);
+            } else {
+              logger.warn(
+                { packageName, error: result.error },
+                "Failed to start previously running app",
+              );
+            }
+          } catch (error) {
+            logger.error(
+              error,
+              `Error starting previously running app ${packageName}`,
+            );
+          }
+        }),
+      );
+
+      logger.info(
+        { startedApps, total: previouslyRunningApps.length },
+        `Started ${startedApps.length}/${previouslyRunningApps.length} previously running apps`,
+      );
+    } catch (error) {
+      logger.error(error, "Error starting previously running apps");
     }
   }
 
@@ -284,7 +435,7 @@ export class AppsManager {
       try {
         session.dispose();
       } catch (error) {
-        this.logger.error({ error }, "Error disposing AppSession");
+        this.logger.error(error, "Error disposing AppSession");
       }
     }
     this.appSessions.clear();

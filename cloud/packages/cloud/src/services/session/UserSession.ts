@@ -476,7 +476,8 @@ export class UserSession {
   async snapshotForClient(): Promise<any> {
     try {
       const appSubscriptions: Record<string, string[]> = {};
-      for (const packageName of this.runningApps) {
+      const runningApps = this.appManager.getRunningApps();
+      for (const packageName of runningApps) {
         appSubscriptions[packageName] =
           this.subscriptionManager.getAppSubscriptions(packageName);
       }
@@ -497,7 +498,7 @@ export class UserSession {
       return {
         userId: this.userId,
         startTime: this.startTime,
-        activeAppSessions: Array.from(this.runningApps),
+        activeAppSessions: this.appManager.getRunningApps(),
         loadingApps: Array.from(this.loadingApps),
         appSubscriptions,
         requiresAudio,
@@ -509,7 +510,7 @@ export class UserSession {
       return {
         userId: this.userId,
         startTime: this.startTime,
-        activeAppSessions: Array.from(this.runningApps),
+        activeAppSessions: this.appManager.getRunningApps(),
         loadingApps: Array.from(this.loadingApps),
         isTranscribing: this.isTranscribing || false,
       };
