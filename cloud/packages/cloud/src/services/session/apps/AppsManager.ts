@@ -45,8 +45,9 @@ export interface AppSessionI {
 
   /**
    * Stop the app gracefully (close WS, cleanup timers/state).
+   * @param restart - If true, this is a resurrection (keep state as RESURRECTING)
    */
-  stop(): Promise<void>;
+  stop(restart?: boolean): Promise<void>;
 
   /**
    * Handle App WebSocket connection init (validate, ACK, heartbeat, resolve pending).
@@ -126,7 +127,7 @@ export class AppsManager {
     this.createSession =
       factory ||
       ((packageName: string, userSession: UserSession) => {
-        return new AppSession(packageName, userSession, this.logger);
+        return new AppSession(packageName, userSession, this.logger, this);
       });
     this.logger.info(
       { userId: userSession.userId, feature: "app-start" },
@@ -423,6 +424,66 @@ export class AppsManager {
       );
     } catch (error) {
       logger.error(error, "Error starting previously running apps");
+    }
+  }
+
+  /**
+   * Handle app resurrection - restart an app that failed to reconnect
+   * Called internally when AppSession triggers resurrection after grace period
+   */
+  async handleResurrection(packageName: string): Promise<void> {
+    const logger = this.logger.child({
+      packageName,
+      function: "handleResurrection",
+    });
+
+    logger.info({ feature: "app-start" }, "Handling app resurrection");
+
+    try {
+      // Get the existing session
+      const session = this.appSessions.get(packageName);
+      if (!session) {
+        logger.warn("No session found for resurrection");
+        return;
+      }
+
+      // Check state to prevent duplicate resurrections
+      const state = session.getState?.() as any;
+      if (state?.connectionState === "resurrecting") {
+        logger.debug("Session already in resurrecting state");
+        return; // Don't resurrect if already resurrecting
+      }
+
+      logger.info(
+        { feature: "app-start" },
+        "Cleaning up old session before resurrection",
+      );
+
+      // Stop old session (with restart=true for resurrection cleanup)
+      // This sends stop webhook, removes subscriptions, cleans UI
+      await session.stop(true);
+
+      // Remove old session from registry
+      this.appSessions.delete(packageName);
+
+      logger.info(
+        { feature: "app-start" },
+        "Starting fresh session after resurrection cleanup",
+      );
+
+      // Start fresh session (triggers start webhook)
+      const result = await this.startApp(packageName);
+
+      if (result.success) {
+        logger.info({ feature: "app-start" }, "✅ App resurrection successful");
+      } else {
+        logger.error(
+          { feature: "app-start", error: result.error },
+          "❌ App resurrection failed",
+        );
+      }
+    } catch (error) {
+      logger.error(error, "Error during app resurrection");
     }
   }
 

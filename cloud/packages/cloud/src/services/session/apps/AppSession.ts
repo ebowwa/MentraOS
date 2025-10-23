@@ -12,7 +12,7 @@ import type WebSocket from "ws";
 import type { Logger } from "pino";
 import UserSession from "../UserSession";
 import { logger as rootLogger } from "../../logging/pino-logger";
-import type { AppStartResult, AppSessionI } from "./AppsManager";
+import type { AppStartResult, AppSessionI, AppsManager } from "./AppsManager";
 import {
   CloudToAppMessageType,
   WebhookRequestType,
@@ -44,6 +44,18 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
 } as const;
 
 /**
+ * Connection state machine for tracking app lifecycle
+ */
+enum AppConnectionState {
+  DISCONNECTED = "disconnected", // Not connected
+  CONNECTING = "connecting", // Connection in progress
+  RUNNING = "running", // Active WebSocket connection
+  GRACE_PERIOD = "grace_period", // Waiting for natural reconnection (5s)
+  RESURRECTING = "resurrecting", // System actively restarting app
+  STOPPING = "stopping", // User/system initiated stop in progress
+}
+
+/**
  * Minimal AppSession intended to encapsulate per-app lifecycle:
  * - start(): trigger webhook, create pending connection, timeouts (future)
  * - handleConnection(): validate, ACK, heartbeat (future)
@@ -56,11 +68,13 @@ export class AppSession implements AppSessionI {
   private readonly packageName: string;
   private readonly userSession: UserSession;
   private readonly logger: Logger;
+  private readonly appsManager: AppsManager; // Reference to parent AppsManager for resurrection
 
   // Connection state
   private ws: WebSocket | null = null;
   private disposed = false;
   private startTime: number = 0;
+  private state: AppConnectionState = AppConnectionState.DISCONNECTED;
 
   // Pending connection tracking
   private pendingResolve: ((result: AppStartResult) => void) | null = null;
@@ -69,10 +83,17 @@ export class AppSession implements AppSessionI {
   // Timers
   private connectionTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private graceTimer: NodeJS.Timeout | null = null;
 
-  constructor(packageName: string, userSession: UserSession, logger?: Logger) {
+  constructor(
+    packageName: string,
+    userSession: UserSession,
+    logger?: Logger,
+    appsManager?: any,
+  ) {
     this.packageName = packageName;
     this.userSession = userSession;
+    this.appsManager = appsManager || userSession.appManager; // Fall back to userSession.appManager
     this.logger =
       logger ||
       userSession.logger?.child({
@@ -107,6 +128,7 @@ export class AppSession implements AppSessionI {
     }
 
     this.startTime = Date.now();
+    this.state = AppConnectionState.CONNECTING;
     this.logger.info({ feature: "app-start" }, "⚡️ Starting app session");
 
     // Mark as loading in UserSession (bridge during migration)
@@ -245,7 +267,25 @@ export class AppSession implements AppSessionI {
     const init = initMessage as AppConnectionInit;
     const { packageName, apiKey, sessionId } = init;
 
-    this.logger.info({ feature: "app-start", sessionId }, "App connecting");
+    this.logger.info(
+      { feature: "app-start", sessionId, currentState: this.state },
+      "App connecting",
+    );
+
+    // Check if this is a reconnection during grace period
+    const isReconnection = this.state === AppConnectionState.GRACE_PERIOD;
+    if (isReconnection) {
+      this.logger.info(
+        { feature: "app-start" },
+        "App reconnected during grace period!",
+      );
+
+      // Cancel grace period timer
+      if (this.graceTimer) {
+        clearTimeout(this.graceTimer);
+        this.graceTimer = null;
+      }
+    }
 
     // Validate API key
     const isValidApiKey = await developerService.validateApiKey(
@@ -289,6 +329,9 @@ export class AppSession implements AppSessionI {
 
     // Set up heartbeat
     this.setupHeartbeat();
+
+    // Update connection state
+    this.state = AppConnectionState.RUNNING;
 
     // Update session state (bridge during migration)
     this.userSession.runningApps.add(packageName);
@@ -350,9 +393,19 @@ export class AppSession implements AppSessionI {
   /**
    * Stop the app session gracefully.
    * Implements complete stop flow with webhook, subscription cleanup, and analytics.
+   *
+   * @param restart - If true, this is a resurrection (keep state as RESURRECTING)
    */
-  async stop(): Promise<void> {
-    this.logger.info("Stopping app session");
+  async stop(restart?: boolean): Promise<void> {
+    this.logger.info(
+      { currentState: this.state, restart },
+      restart ? "Stopping app for resurrection" : "Stopping app session",
+    );
+
+    // Set state based on restart flag
+    this.state = restart
+      ? AppConnectionState.RESURRECTING
+      : AppConnectionState.STOPPING;
 
     // 1. Clean up timers
     this.cleanup();
@@ -402,9 +455,14 @@ export class AppSession implements AppSessionI {
     this.userSession.displayManager.handleAppStop(this.packageName);
     this.userSession.dashboardManager.cleanupAppContent(this.packageName);
 
+    // 7. Set final state (keep RESURRECTING if this is for resurrection)
+    if (!restart) {
+      this.state = AppConnectionState.DISCONNECTED;
+    }
+
     // AFTER FUNCTION RETURNS: Background tasks (fire-and-forget, off critical path)
 
-    // 7. Remove from DB (fire-and-forget)
+    // 8. Remove from DB (fire-and-forget)
     User.findOrCreateUser(this.userSession.userId)
       .then((user) => user.removeRunningApp(this.packageName))
       .catch((error) => {
@@ -414,15 +472,17 @@ export class AppSession implements AppSessionI {
         );
       });
 
-    // 8. Track in PostHog (fire-and-forget)
+    // 9. Track in PostHog (fire-and-forget)
+    // Track different event based on restart flag
     const sessionDuration = Date.now() - this.startTime;
-    PosthogService.trackEvent("app_stop", this.userSession.userId, {
+    const eventName = restart ? "app_resurrection" : "app_stop";
+    PosthogService.trackEvent(eventName, this.userSession.userId, {
       packageName: this.packageName,
       userId: this.userSession.userId,
       sessionId: this.userSession.sessionId,
       sessionDuration,
     }).catch((error) => {
-      this.logger.error(error, "Error tracking app_stop in PostHog");
+      this.logger.error(error, `Error tracking ${eventName} in PostHog`);
     });
   }
 
@@ -479,21 +539,61 @@ export class AppSession implements AppSessionI {
   /**
    * Send a message to the app.
    * Returns info about send status and resurrection.
+   * Triggers resurrection if connection is dead.
    */
   async sendMessage(message: any): Promise<{
     sent: boolean;
     resurrectionTriggered?: boolean;
     error?: string;
   }> {
-    if (!this.ws || this.ws.readyState !== 1) {
-      this.logger.warn("WebSocket not available for messaging");
+    // Check connection state first
+    if (this.state === AppConnectionState.GRACE_PERIOD) {
+      this.logger.warn("Message send rejected - app in grace period");
       return {
         sent: false,
         resurrectionTriggered: false,
+        error: "Connection lost, waiting for reconnection",
+      };
+    }
+
+    if (this.state === AppConnectionState.RESURRECTING) {
+      this.logger.warn("Message send rejected - app is restarting");
+      return {
+        sent: false,
+        resurrectionTriggered: false,
+        error: "App is restarting",
+      };
+    }
+
+    if (this.state === AppConnectionState.STOPPING) {
+      this.logger.warn("Message send rejected - app is stopping");
+      return {
+        sent: false,
+        resurrectionTriggered: false,
+        error: "App is being stopped",
+      };
+    }
+
+    // Check WebSocket availability
+    if (!this.ws || this.ws.readyState !== 1) {
+      this.logger.warn(
+        "WebSocket not available for messaging - triggering resurrection",
+      );
+
+      // Connection is dead - trigger grace period/resurrection
+      this.handleConnectionClosed(
+        1006,
+        "Connection not available for messaging",
+      );
+
+      return {
+        sent: false,
+        resurrectionTriggered: true,
         error: "Connection not available",
       };
     }
 
+    // Try to send message
     try {
       this.ws.send(JSON.stringify(message));
       this.logger.debug(
@@ -505,9 +605,13 @@ export class AppSession implements AppSessionI {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(error, "Failed to send message to app");
+
+      // Send failed - connection likely dead, trigger resurrection
+      this.handleConnectionClosed(1006, "Message send failed");
+
       return {
         sent: false,
-        resurrectionTriggered: false,
+        resurrectionTriggered: true,
         error: errorMessage,
       };
     }
@@ -520,11 +624,13 @@ export class AppSession implements AppSessionI {
     packageName: string;
     hasWebSocket: boolean;
     disposed: boolean;
+    connectionState: string;
   } {
     return {
       packageName: this.packageName,
       hasWebSocket: Boolean(this.ws),
       disposed: this.disposed,
+      connectionState: this.state,
     };
   }
 
@@ -574,6 +680,10 @@ export class AppSession implements AppSessionI {
       clearTimeout(this.connectionTimer);
       this.connectionTimer = null;
     }
+    if (this.graceTimer) {
+      clearTimeout(this.graceTimer);
+      this.graceTimer = null;
+    }
   }
 
   private resolvePending(result: AppStartResult): void {
@@ -586,14 +696,109 @@ export class AppSession implements AppSessionI {
   }
 
   private handleConnectionClosed(code: number, reason: string): void {
-    this.logger.warn({ code, reason }, "App connection closed");
+    this.logger.warn(
+      { code, reason, currentState: this.state },
+      "App connection closed",
+    );
 
-    // Clean up state
+    // Clean up WebSocket and heartbeat
     this.ws = null;
+    this.clearHeartbeat();
     this.userSession.appWebsockets.delete(this.packageName);
-    this.userSession.runningApps.delete(this.packageName);
 
-    // TODO: Implement grace period and resurrection logic
+    // Check if this is an intentional stop
+    if (this.state === AppConnectionState.STOPPING) {
+      this.logger.info("App stopped as expected, no resurrection needed");
+      this.state = AppConnectionState.DISCONNECTED;
+      this.userSession.runningApps.delete(this.packageName);
+      return;
+    }
+
+    // Check for normal close codes (but still handle grace period)
+    // NOTE: Even normal closes should go through grace period unless explicitly stopped
+    if (code === 1000 || code === 1001) {
+      this.logger.info(
+        { code, reason },
+        "Normal closure detected, but handling grace period for potential reconnection",
+      );
+    }
+
+    // Start grace period for reconnection
+    this.startGracePeriod();
+  }
+
+  /**
+   * Start grace period - wait 5 seconds for SDK to reconnect naturally
+   */
+  private startGracePeriod(): void {
+    this.logger.warn("Starting 5-second grace period for reconnection");
+    this.state = AppConnectionState.GRACE_PERIOD;
+
+    // Don't remove from runningApps yet - give SDK time to reconnect
+    // This allows the app to reconnect seamlessly without triggering a full restart
+
+    // Set 5-second timer for grace period
+    this.graceTimer = setTimeout(() => {
+      this.handleGracePeriodExpired();
+    }, 5000); // 5 seconds grace period
+  }
+
+  /**
+   * Grace period expired - check if reconnected, otherwise trigger resurrection
+   */
+  private handleGracePeriodExpired(): void {
+    this.logger.warn("Grace period expired, checking connection state");
+
+    // Check if app reconnected during grace period
+    if (
+      this.ws &&
+      this.ws.readyState === 1 &&
+      this.state === AppConnectionState.RUNNING
+    ) {
+      this.logger.info("App successfully reconnected during grace period");
+      return;
+    }
+
+    // App didn't reconnect - trigger resurrection
+    this.logger.error(
+      "App did not reconnect within grace period, triggering resurrection",
+    );
+    this.triggerResurrection();
+  }
+
+  /**
+   * Trigger resurrection - restart the app via AppsManager
+   */
+  private async triggerResurrection(): Promise<void> {
+    this.state = AppConnectionState.RESURRECTING;
+    this.logger.info(
+      { feature: "app-start" },
+      "🔄 Triggering app resurrection",
+    );
+
+    try {
+      // Clean up current state
+      this.userSession.runningApps.delete(this.packageName);
+      this.userSession.loadingApps.delete(this.packageName);
+
+      // Call AppsManager to handle resurrection
+      if (this.appsManager && this.appsManager.handleResurrection) {
+        this.logger.info(
+          { feature: "app-start" },
+          "Delegating resurrection to AppsManager",
+        );
+        await this.appsManager.handleResurrection(this.packageName);
+      } else {
+        this.logger.error(
+          "AppsManager not available for resurrection - app will stay disconnected",
+        );
+        this.state = AppConnectionState.DISCONNECTED;
+      }
+    } catch (error) {
+      this.logger.error(error, "Error during resurrection");
+      this.state = AppConnectionState.DISCONNECTED;
+      this.userSession.runningApps.delete(this.packageName);
+    }
   }
 }
 
