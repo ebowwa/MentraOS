@@ -37,6 +37,8 @@
 
 // Include protobuf handler for battery functions
 #include "protobuf_handler.h"
+// A6N driver API for register read/write
+#include "../custom_driver_module/drivers/display/lcd/a6n.h"
 
 // External declaration for LVGL display message queue
 extern struct k_msgq lvgl_display_msgq;
@@ -103,6 +105,46 @@ static int cmd_display_help(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "  display text \"MentraOS\" 10 20 14  - Write 'MentraOS' at (10,20) with size 14");
     shell_print(shell, "  display clear                    - Clear the screen");
     shell_print(shell, "  display fill                     - Fill screen with white");
+    shell_print(shell, "");
+    shell_print(shell, "🧩 A6N Register Access:");
+    shell_print(shell, "  display read <addr> [mode]       - Read A6N register");
+    shell_print(shell, "  display write <addr> <value>     - Write A6N register");
+    shell_print(shell, "");
+    shell_print(shell, "🌡️  Temperature Control:");
+    shell_print(shell, "  display get_temp                  - Read A6N panel temperature (°C)");
+    shell_print(shell, "  display min_temp_limit set <°C>   - Set low temperature recovery threshold");
+    shell_print(shell, "  display min_temp_limit get        - Get low temperature recovery threshold");
+    shell_print(shell, "  display max_temp_limit set <°C>   - Set high temperature protection threshold");
+    shell_print(shell, "  display max_temp_limit get        - Get high temperature protection threshold");
+    shell_print(shell, "");
+    shell_print(shell, "📋 Parameters:");
+    shell_print(shell, "  addr: 8-bit hex register address (0x00-0xFF)");
+    shell_print(shell, "        Common:0xE2(brightness)");
+    shell_print(shell, "  value: 8-bit hex value (0x00-0xFF)");
+    shell_print(shell, "  mode: engine selection for read command only");
+    shell_print(shell, "        0 = left optical engine (default)");
+    shell_print(shell, "        1 = right optical engine");
+    shell_print(shell, "  °C: temperature value in Celsius (not register value)");
+    shell_print(shell, "      Valid range: -30°C to +70°C (per A6N spec)");
+    shell_print(shell, "      Hardware registers: 0xF7 (high), 0xF8 (low)");
+    shell_print(shell, "");
+    shell_print(shell, "🏦 Bank Selection:");
+    shell_print(shell, "  Bank0: default (most registers)");
+    shell_print(shell, "  Bank1: use 'bank1:' prefix (e.g. bank1:0x55 for Demura control)");
+    shell_print(shell, "");
+    shell_print(shell, "💡 Register Examples:");
+    shell_print(shell, "  display read 0xBE                - Read display mode");
+    shell_print(shell, "  display read 0xBE 1              - Read from right engine");
+    shell_print(shell, "  display write 0xBE 0x84          - Set GRAY16 mode");
+    shell_print(shell, "  display read bank1:0x55          - Read Bank1 register");
+    shell_print(shell, "  display write bank1:0x55 0x00    - Write Bank1 register");
+    shell_print(shell, "");
+    shell_print(shell, "🌡️  Temperature Examples:");
+    shell_print(shell, "  display get_temp                 - Read current temperature & thresholds");
+    shell_print(shell, "  display min_temp_limit set 0     - Set low recovery to 0°C");
+    shell_print(shell, "  display min_temp_limit set -10   - Set low recovery to -10°C");
+    shell_print(shell, "  display max_temp_limit set 65    - Set high protection to 65°C");
+    shell_print(shell, "  display max_temp_limit get       - Read current high protection threshold");
     shell_print(shell, "");
     
     return 0;
@@ -505,6 +547,457 @@ static int cmd_display_test(const struct shell *shell, size_t argc, char **argv)
     return 0;
 }
 
+/**
+ * Display read command - Read A6N register (Bank0 default, supports bank1: prefix)
+ */
+static int cmd_display_read(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc < 2 || argc > 3)//如果参数数量不正确；if the number of arguments is incorrect
+    {
+        shell_error(shell, "❌ Usage: display read <addr>|bank1:<addr> [mode]");
+        shell_print(shell, "  addr: 8-bit hex register (e.g. 0xBE, 0xEF, 0xF0, 0xE2)");
+        shell_print(shell, "  bank1:<addr> to read Bank1 register (e.g. bank1:0x55)");
+        shell_print(shell, "  mode: engine selection for read command only");
+        shell_print(shell, "        0 = left optical engine (default)");
+        shell_print(shell, "        1 = right optical engine");
+        shell_print(shell, "");
+        shell_print(shell, "Examples:");
+        shell_print(shell, "  display read 0xBE              - Read Bank0 reg 0xBE from left engine");
+        shell_print(shell, "  display read 0xBE 1            - Read Bank0 reg 0xBE from right engine");
+        shell_print(shell, "  display read bank1:0x55        - Read Bank1 reg 0x55 from left engine");
+        shell_print(shell, "  display read bank1:0x55 1      - Read Bank1 reg 0x55 from right engine");
+        return -EINVAL;
+    }
+
+    // Parse bank selector
+    uint8_t bank_id = 0; // default Bank0
+    const char *arg = argv[1];
+    if (strncmp(arg, "bank1:", 6) == 0)
+    {
+        bank_id = 1;
+        arg += 6;
+    }
+
+    // Parse hex register address with strict validation
+    // Must start with 0x prefix
+    if (strncmp(arg, "0x", 2) != 0)
+    {
+        shell_error(shell, "❌ Invalid register address: '%s' (must use 0x prefix)", arg);
+        shell_print(shell, "Valid examples: 0xBE, 0xEF, 0xF0, 0xE2");
+        shell_print(shell, "❌ Do not use: BE, EF, 78, etc. (missing 0x prefix)");
+        return -EINVAL;
+    }
+    
+    char *endptr;
+    unsigned long reg_val = strtoul(arg, &endptr, 16);
+    
+    // Check for parsing errors
+    if (endptr == arg || *endptr != '\0')
+    {
+        shell_error(shell, "❌ Invalid register address: '%s' (use hex format like 0xBE)", arg);
+        shell_print(shell, "Valid examples: 0xBE, 0xEF, 0xF0, 0xE2");
+        return -EINVAL;
+    }
+    
+    // Check range
+    if (reg_val > 0xFF)
+    {
+        shell_error(shell, "❌ Register address out of range: 0x%lX (max: 0xFF)", reg_val);
+        return -EINVAL;
+    }
+    
+    uint8_t reg = (uint8_t)reg_val;
+
+    // Parse mode: 0=left, 1=right (default=0)
+    int mode = 0;
+    if (argc == 3)
+    {
+        mode = atoi(argv[2]);
+        if (mode < 0 || mode > 1)
+        {
+            shell_error(shell, "❌ Invalid mode: %d (must be 0=left or 1=right)", mode);
+            return -EINVAL;
+        }
+    }
+
+    int val = a6n_read_reg(bank_id, mode, reg);
+    if (val < 0)
+    {
+        shell_error(shell, "❌ Read failed [bank%d reg=0x%02X mode=%d]: %d", bank_id, reg, mode, val);
+        return val;
+    }
+
+    const char *engine = (mode == 0) ? "left" : "right";
+    shell_print(shell, "✅ A6N[bank%d] reg 0x%02X = 0x%02X (%s engine)", bank_id, reg, (uint8_t)val, engine);
+    return 0;
+}
+
+/**
+ * Display write command - Write A6N register (Bank0 default, supports bank1: prefix)
+ */
+static int cmd_display_write(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc != 3)
+    {
+        shell_error(shell, "❌ Usage: display write <addr>|bank1:<addr> <value>");
+        shell_print(shell, "  addr: 8-bit hex register (e.g. 0xBE, 0xEF, 0xF0, 0xE2)");
+        shell_print(shell, "  bank1:<addr> to write Bank1 register (e.g. bank1:0x55)");
+        shell_print(shell, "  value: 8-bit hex (e.g. 0x84)");
+        return -EINVAL;
+    }
+
+    // Parse bank selector and register
+    uint8_t bank_id = 0;
+    const char *arg = argv[1];
+    if (strncmp(arg, "bank1:", 6) == 0)
+    {
+        bank_id = 1;
+        arg += 6;
+    }
+    // Parse hex register address with strict validation
+    // Must start with 0x prefix
+    if (strncmp(arg, "0x", 2) != 0)
+    {
+        shell_error(shell, "❌ Invalid register address: '%s' (must use 0x prefix)", arg);
+        shell_print(shell, "Valid examples: 0xBE, 0xEF, 0xF0, 0xE2");
+        shell_print(shell, "❌ Do not use: BE, EF, 78, etc. (missing 0x prefix)");
+        return -EINVAL;
+    }
+    
+    char *endptr;
+    unsigned long reg_val = strtoul(arg, &endptr, 16);
+    
+    // Check for parsing errors
+    if (endptr == arg || *endptr != '\0')
+    {
+        shell_error(shell, "❌ Invalid register address: '%s' (use hex format like 0xBE)", arg);
+        shell_print(shell, "Valid examples: 0xBE, 0xEF, 0xF0, 0xE2");
+        return -EINVAL;
+    }
+    
+    // Check range
+    if (reg_val > 0xFF)
+    {
+        shell_error(shell, "❌ Register address out of range: 0x%lX (max: 0xFF)", reg_val);
+        return -EINVAL;
+    }
+    
+    uint8_t reg = (uint8_t)reg_val;
+
+    // Parse value with strict validation
+    // Must start with 0x prefix
+    if (strncmp(argv[2], "0x", 2) != 0)
+    {
+        shell_error(shell, "❌ Invalid value: '%s' (must use 0x prefix)", argv[2]);
+        shell_print(shell, "Valid examples: 0x84, 0x00, 0xFF");
+        shell_print(shell, "❌ Do not use: 84, 0, 255, etc. (missing 0x prefix)");
+        return -EINVAL;
+    }
+    
+    char *val_endptr;
+    unsigned long val_val = strtoul(argv[2], &val_endptr, 16);
+    
+    // Check for parsing errors
+    if (val_endptr == argv[2] || *val_endptr != '\0')
+    {
+        shell_error(shell, "❌ Invalid value: '%s' (use hex format like 0x84)", argv[2]);
+        shell_print(shell, "Valid examples: 0x84, 0x00, 0xFF");
+        return -EINVAL;
+    }
+    
+    // Check range
+    if (val_val > 0xFF)
+    {
+        shell_error(shell, "❌ Value out of range: 0x%lX (max: 0xFF)", val_val);
+        return -EINVAL;
+    }
+    
+    uint8_t val = (uint8_t)val_val;
+
+    int ret = a6n_write_reg(bank_id, reg, val);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ Write failed [bank%d reg=0x%02X val=0x%02X]: %d", bank_id, reg, val, ret);
+        return ret;
+    }
+
+    shell_print(shell, "✅ A6N[bank%d] reg 0x%02X ← 0x%02X", bank_id, reg, val);
+    return 0;
+}
+
+/**
+ * A6N temperature reading sequence
+ * Returns temperature in Celsius on success, or negative error code on failure
+ * 
+ * @param temp_out Pointer to store temperature value (in Celsius)
+ * @return 0 on success, negative error code on failure
+ */
+static int a6n_read_temperature(int16_t *temp_out)
+{
+    if (temp_out == NULL)
+    {
+        return -EINVAL;
+    }
+    
+    // Step 1: Send temperature reading sequence
+    int ret;
+    
+    // Initialize temperature reading sequence
+    ret = a6n_write_reg(0, 0x0B, 0xFF);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0x7E, 0x88);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0x7E, 0x08);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0xD2, 0x01);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0xD4, 0x00);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0x7D, 0x04);
+    if (ret != 0) return ret;
+    k_busy_wait(100);
+    
+    ret = a6n_write_reg(0, 0x7D, 0x00);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0xD4, 0x00);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    ret = a6n_write_reg(0, 0x0B, 0x0A);
+    if (ret != 0) return ret;
+    k_busy_wait(1);
+    
+    // Step 2: Read temperature registers (mode=1 for right engine)
+    // First read 0xD0 (required for temperature measurement sequence)
+    ret = a6n_read_reg(0, 1, 0xD0);
+    if (ret < 0) return ret;
+    
+    // Then read 0xD8 (actual temperature value)
+    int temp_raw = a6n_read_reg(0, 1, 0xD8);
+    if (temp_raw < 0) return temp_raw;
+    
+    // Step 3: Convert to Celsius: T = (val*5/7) - 50
+    *temp_out = (temp_raw * 5 / 7) - 50;
+    
+    return 0;
+}
+
+/**
+ * Display get temperature command
+ */
+static int cmd_display_get_temp(const struct shell *shell, size_t argc, char **argv)
+{
+    shell_print(shell, "🌡️  Reading A6N panel temperature...");
+    
+    int16_t temp;
+    int ret = a6n_read_temperature(&temp);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ Temperature reading failed: error %d", ret);
+        return ret;
+    }
+ 
+    shell_print(shell, "✅ Panel temperature: %d°C", temp);
+    
+    // Read temperature protection thresholds from hardware registers
+    int high_protect_raw = a6n_read_reg(0, 1, A6N_LCD_TEMP_HIGH_REG);
+    int low_recover_raw = a6n_read_reg(0, 1, A6N_LCD_TEMP_LOW_REG);
+    
+    if (high_protect_raw >= 0 && low_recover_raw >= 0)
+    {
+        // Convert raw values to Celsius: T = (val*5/7) - 50
+        int16_t high_protect = (high_protect_raw * 5 / 7) - 50;
+        int16_t low_recover = (low_recover_raw * 5 / 7) - 50;
+        
+        shell_print(shell, "📊 Protection thresholds:");
+        shell_print(shell, "   High temperature: %d°C (reg 0x%02X = 0x%02X)", 
+                    high_protect, A6N_LCD_TEMP_HIGH_REG, high_protect_raw);
+        shell_print(shell, "   Low recovery: %d°C (reg 0x%02X = 0x%02X)", 
+                    low_recover, A6N_LCD_TEMP_LOW_REG, low_recover_raw);
+        
+        // Check against limits
+        if (temp >= high_protect)
+        {
+            shell_warn(shell, "⚠️  Temperature at or above high protection threshold: %d°C ≥ %d°C", 
+                      temp, high_protect);
+        }
+        else if (temp <= low_recover)
+        {
+            shell_warn(shell, "⚠️  Temperature at or below low recovery threshold: %d°C ≤ %d°C", 
+                      temp, low_recover);
+        }
+        else
+        {
+            shell_print(shell, "✅ Temperature within normal range: %d°C < %d°C < %d°C", 
+                       low_recover, temp, high_protect);
+        }
+    }
+    else
+    {
+        shell_warn(shell, "⚠️  Could not read protection thresholds from hardware");
+    }
+    
+    return 0;
+}
+
+/**
+ * Display set low temperature recovery threshold command
+ * Writes to A6N register 0xF8
+ */
+static int cmd_display_min_temp_limit_set(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc != 2)
+    {
+        shell_error(shell, "❌ Usage: display min_temp_limit set <value_in_C>");
+        shell_print(shell, "  value_in_C: Low temperature recovery threshold in Celsius");
+        shell_print(shell, "  Formula: reg_value = (temp + 50) * 7 / 5");
+        shell_print(shell, "Examples:");
+        shell_print(shell, "  display min_temp_limit set 0    - Set low recovery to 0°C");
+        shell_print(shell, "  display min_temp_limit set -10  - Set low recovery to -10°C");
+        return -EINVAL;
+    }
+    
+    int temp_celsius = atoi(argv[1]);
+    
+    // Check temperature range per A6N specification
+    if (temp_celsius < -30 || temp_celsius > 70)
+    {
+        shell_error(shell, "❌ Temperature %d°C out of valid range", temp_celsius);
+        shell_print(shell, "📋 Valid range: -30°C to +70°C (per A6N spec)");
+        return -EINVAL;
+    }
+    
+    // Convert Celsius to register value: val = (T + 50) * 7 / 5
+    int reg_value = (temp_celsius + 50) * 7 / 5;
+    
+    // Write to hardware register
+    int ret = a6n_write_reg(0, A6N_LCD_TEMP_LOW_REG, (uint8_t)reg_value);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ Failed to write register 0x%02X: error %d", 
+                   A6N_LCD_TEMP_LOW_REG, ret);
+        return ret;
+    }
+    
+    shell_print(shell, "✅ Low temperature recovery threshold set to: %d°C (reg 0x%02X = 0x%02X)", 
+               temp_celsius, A6N_LCD_TEMP_LOW_REG, reg_value);
+    return 0;
+}
+
+/**
+ * Display get low temperature recovery threshold command
+ * Reads from A6N register 0xF8
+ */
+static int cmd_display_min_temp_limit_get(const struct shell *shell, size_t argc, char **argv)
+{
+    int reg_value = a6n_read_reg(0, 1, A6N_LCD_TEMP_LOW_REG);
+    if (reg_value < 0)
+    {
+        shell_error(shell, "❌ Failed to read register 0x%02X: error %d", 
+                   A6N_LCD_TEMP_LOW_REG, reg_value);
+        return reg_value;
+    }
+    
+    // Convert to Celsius: T = (val*5/7) - 50
+    int16_t temp_celsius = (reg_value * 5 / 7) - 50;
+    
+    shell_print(shell, "✅ Low temperature recovery threshold: %d°C (reg 0x%02X = 0x%02X)", 
+               temp_celsius, A6N_LCD_TEMP_LOW_REG, reg_value);
+    return 0;
+}
+
+/**
+ * Display set high temperature protection threshold command
+ * Writes to A6N register 0xF7
+ */
+static int cmd_display_max_temp_limit_set(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc != 2)
+    {
+        shell_error(shell, "❌ Usage: display max_temp_limit set <value_in_C>");
+        shell_print(shell, "  value_in_C: High temperature protection threshold in Celsius");
+        shell_print(shell, "  Formula: reg_value = (temp + 50) * 7 / 5");
+        shell_print(shell, "Examples:");
+        shell_print(shell, "  display max_temp_limit set 50   - Set high protection to 50°C");
+        shell_print(shell, "  display max_temp_limit set 65   - Set high protection to 65°C");
+        return -EINVAL;
+    }
+    
+    int temp_celsius = atoi(argv[1]);
+    
+    // Check temperature range per A6N specification
+    if (temp_celsius < -30 || temp_celsius > 70)
+    {
+        shell_error(shell, "❌ Temperature %d°C out of valid range", temp_celsius);
+        shell_print(shell, "📋 Valid range: -30°C to +70°C (per A6N spec)");
+        return -EINVAL;
+    }
+    
+    // Convert Celsius to register value: val = (T + 50) * 7 / 5
+    int reg_value = (temp_celsius + 50) * 7 / 5;
+    
+    // Write to hardware register
+    int ret = a6n_write_reg(0, A6N_LCD_TEMP_HIGH_REG, (uint8_t)reg_value);
+    if (ret != 0)
+    {
+        shell_error(shell, "❌ Failed to write register 0x%02X: error %d", 
+                   A6N_LCD_TEMP_HIGH_REG, ret);
+        return ret;
+    }
+    
+    shell_print(shell, "✅ High temperature protection threshold set to: %d°C (reg 0x%02X = 0x%02X)", 
+               temp_celsius, A6N_LCD_TEMP_HIGH_REG, reg_value);
+    return 0;
+}
+
+/**
+ * Display get high temperature protection threshold command
+ * Reads from A6N register 0xF7
+ */
+static int cmd_display_max_temp_limit_get(const struct shell *shell, size_t argc, char **argv)
+{
+    int reg_value = a6n_read_reg(0, 1, A6N_LCD_TEMP_HIGH_REG);
+    if (reg_value < 0)
+    {
+        shell_error(shell, "❌ Failed to read register 0x%02X: error %d", 
+                   A6N_LCD_TEMP_HIGH_REG, reg_value);
+        return reg_value;
+    }
+    
+    // Convert to Celsius: T = (val*5/7) - 50
+    int16_t temp_celsius = (reg_value * 5 / 7) - 50;
+    
+    shell_print(shell, "✅ High temperature protection threshold: %d°C (reg 0x%02X = 0x%02X)", 
+               temp_celsius, A6N_LCD_TEMP_HIGH_REG, reg_value);
+    return 0;
+}
+
+/* Shell subcommand definitions for min_temp_limit */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_min_temp_limit,
+    SHELL_CMD_ARG(set, NULL, "Set low temperature recovery threshold <value_in_C>", cmd_display_min_temp_limit_set, 2, 0),
+    SHELL_CMD(get, NULL, "Get low temperature recovery threshold", cmd_display_min_temp_limit_get),
+    SHELL_SUBCMD_SET_END
+);
+
+/* Shell subcommand definitions for max_temp_limit */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_max_temp_limit,
+    SHELL_CMD_ARG(set, NULL, "Set high temperature protection threshold <value_in_C>", cmd_display_max_temp_limit_set, 2, 0),
+    SHELL_CMD(get, NULL, "Get high temperature protection threshold", cmd_display_max_temp_limit_get),
+    SHELL_SUBCMD_SET_END
+);
+
 /* Shell command definitions */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_display,
     SHELL_CMD(help, NULL, "Show display commands help", cmd_display_help),
@@ -515,6 +1008,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_display,
     SHELL_CMD_ARG(text, NULL, "Write text: \"string\" [x y size] (overlay or positioned)", cmd_display_text, 2, 3),
     SHELL_CMD_ARG(pattern, NULL, "Select pattern (0-5): 0=chess, 1=h-zebra, 2=v-zebra, 3=scroll, 4=container, 5=xy", cmd_display_pattern, 2, 0),
     SHELL_CMD_ARG(battery, NULL, "Set battery level & charging: <level> [true/false]", cmd_display_battery, 2, 1),
+    SHELL_CMD_ARG(read, NULL, "Read A6N register: <addr> [mode] (hex, e.g. EF, F0, BE)", cmd_display_read, 2, 1),
+    SHELL_CMD_ARG(write, NULL, "Write A6N register: <addr> <value> (hex)", cmd_display_write, 3, 0),
+    SHELL_CMD(get_temp, NULL, "Read A6N panel temperature", cmd_display_get_temp),
+    SHELL_CMD(min_temp_limit, &sub_min_temp_limit, "Low temperature recovery threshold control", NULL),
+    SHELL_CMD(max_temp_limit, &sub_max_temp_limit, "High temperature protection threshold control", NULL),
     SHELL_CMD(test, NULL, "Run display test patterns", cmd_display_test),
     SHELL_SUBCMD_SET_END /* Array terminated. */
 );

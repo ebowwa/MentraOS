@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-10-14 16:27:25
+ * @LastEditTime : 2025-10-21 17:41:50
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -945,12 +945,20 @@ void lvgl_dispaly_init(void *p1, void *p2, void *p3)
                     LOG_INF("🔧 Configuring Bank1 registers...");
                     a6n_write_reg(1, 0x55, 0x00);  // Bank1 0x55 = 0x00 (Demura disabled)
                     mos_delay_us(6);
+                    a6n_write_reg(0, 0xD0, 0x0a);  // 鸿石fae 推荐配置 - Configure as recommended by Hongshi FAE
+                    mos_delay_us(6);
 
                     a6n_read_reg(0, 0, 0x62);   
                     mos_delay_us(6);
                     a6n_read_reg(0, 1, 0x62);
                     mos_delay_us(6);
-
+                    a6n_read_reg(0, 1, 0xf7); 
+                    mos_delay_us(6);
+                    a6n_read_reg(0, 1, 0xf8);
+                    mos_delay_us(6);
+                    a6n_read_reg(0, 1, 0xe2);  
+                    mos_delay_us(6);
+                    
                     // 配置 Bank0 寄存器 | Configure Bank0 registers
                     a6n_set_brightness(0xff);
                     mos_delay_us(6);
