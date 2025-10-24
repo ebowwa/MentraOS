@@ -4,6 +4,107 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🌡️ A6N Temperature Control & Register Access Commands - 2025-10-24
+
+#### 1. A6N Register Access Commands
+
+##### 1.1 Direct Register Read/Write
+- **Commands**: `display read <addr> [mode]` and `display write <addr> <value>`
+- **Features**:
+  - Support Bank0/Bank1 selection (use `bank1:` prefix, e.g., `bank1:0x55`)
+  - Strict hexadecimal validation (requires `0x` prefix)
+  - Engine selection for read operations (0=left, 1=right, default=left)
+  - Comprehensive error handling with detailed feedback
+- **Examples**:
+  - `display read 0xBE` - Read display mode from left engine
+  - `display read 0xBE 1` - Read from right engine
+  - `display write 0xBE 0x84` - Set GRAY16 mode
+  - `display read bank1:0x55` - Read Bank1 Demura control
+- **File**: `src/shell_display_control.c`
+
+#### 2. A6N Temperature Monitoring & Protection
+
+##### 2.1 Temperature Reading
+- **Command**: `display get_temp`
+- **Features**:
+  - 9-step hardware sequence to read panel temperature
+  - Automatic conversion to Celsius: `T = (val × 5 / 7) - 50`
+  - Display current temperature and protection thresholds
+  - Compare against high/low limits with warnings
+- **Registers**: 0xD0, 0xD8 (temperature data)
+
+##### 2.2 Temperature Protection Control
+- **Commands**:
+  - `display min_temp_limit set <°C>` - Set low temperature recovery threshold
+  - `display min_temp_limit get` - Read low temperature threshold
+  - `display max_temp_limit set <°C>` - Set high temperature protection threshold
+  - `display max_temp_limit get` - Read high temperature threshold
+- **Temperature Range**: -30°C to +70°C (per A6N specification)
+- **Hardware Registers**:
+  - 0xF7: High temperature protection threshold (default: 0xB6 = 80°C)
+  - 0xF8: Low temperature recovery threshold (default: 0x8C = 50°C)
+- **Conversion Formula**: `reg_value = (temp + 50) × 7 / 5`
+- **Examples**:
+  - `display min_temp_limit set 0` - Set low recovery to 0°C
+  - `display max_temp_limit set 65` - Set high protection to 65°C
+
+##### 2.3 Helper Functions
+- `a6n_read_temperature()`: Complete 9-step temperature reading sequence
+  - Returns temperature in Celsius
+  - Standard error code handling (-EINVAL, -EIO)
+- Temperature range validation: -30°C to +70°C (A6N operating range)
+
+#### 3. A6N Initialization Sequence Updates
+
+##### 3.1 Recommended Configuration
+- Added Hongshi FAE recommended register setting:
+  - Bank0 0xD0 = 0x0A (optimization configuration)
+
+##### 3.2 Register Status Reads During Init
+- Added temperature protection register reads:
+  - 0xF7: High temperature protection threshold
+  - 0xF8: Low temperature recovery threshold
+  - 0xE2: Brightness setting
+- **Purpose**: Verify hardware configuration at startup
+- **File**: `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c`
+
+#### 4. Code Optimization
+
+##### 4.1 Use Existing Definitions from a6n.h
+- Removed duplicate macro definitions from `shell_display_control.c`
+- Unified register definitions:
+  - `A6N_LCD_TEMP_HIGH_REG` (0xF7) for high temperature protection
+  - `A6N_LCD_TEMP_LOW_REG` (0xF8) for low temperature recovery
+
+##### 4.2 Enhanced Help System
+- Detailed parameter descriptions:
+  - Register address range and format (0x00-0xFF)
+  - Temperature range with A6N specification reference
+  - Engine mode selection (left/right)
+  - Bank selection usage
+- Comprehensive examples for all new commands
+- Temperature examples within valid operating range
+
+#### 5. Technical Details
+
+##### 5.1 Temperature Conversion
+- **Read Formula**: `T(°C) = (register_value × 5 / 7) - 50`
+- **Write Formula**: `register_value = (T(°C) + 50) × 7 / 5`
+- **Valid Range**: -30°C to +70°C (A6N operating temperature range)
+- **Register Range**: 0-255 (8-bit)
+
+##### 5.2 Files Modified
+- `src/shell_display_control.c`: +508 lines
+  - Register access commands
+  - Temperature control functions
+  - Shell command definitions
+  - Enhanced help system
+- `src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c`: +10 lines
+  - FAE recommended configuration
+  - Temperature register reads during init
+
+---
+
 ### 🌞 A6N Display Driver Optimization + OPT3006 Ambient Light Sensor Driver - 2025-10-16
 
 #### 1. A6N Display Driver Improvements
