@@ -21,13 +21,6 @@ export const getModelSpecificTips = (model: string) => {
         "Make sure your phone is within 3 feet of your glasses & case",
         "If your glasses were previously paired to a different phone, you must unpair/forget the glasses in your phone's Bluetooth settings before retrying the pairing process",
       ]
-    case "Mentra Mach1":
-    case "Vuzix Z100":
-      return [
-        "Make sure your glasses are turned on",
-        "Check that your glasses are paired in the 'Vuzix Connect' app",
-        "Try resetting your Bluetooth connection",
-      ]
     case "Mentra Live":
       return [
         "Make sure your Mentra Live is fully charged",

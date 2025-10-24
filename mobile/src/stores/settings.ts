@@ -70,7 +70,7 @@ export const SETTINGS_KEYS = {
 } as const
 const DEFAULT_SETTINGS: Record<string, any> = {
   // feature flags / dev:
-  [SETTINGS_KEYS.dev_mode]: false,
+  [SETTINGS_KEYS.dev_mode]: true,
   [SETTINGS_KEYS.new_ui]: true,
   [SETTINGS_KEYS.enable_squircles]: false,
   [SETTINGS_KEYS.debug_console]: false,

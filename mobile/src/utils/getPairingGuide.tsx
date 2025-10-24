@@ -1,4 +1,3 @@
-import React from "react"
 import {View} from "react-native"
 import {
   AudioWearablePairingGuide,
@@ -6,11 +5,8 @@ import {
   EvenRealitiesG1PairingGuide,
   MentraNextGlassesPairingGuide,
   MentraLivePairingGuide,
-  MentraMach1PairingGuide,
   VirtualWearablePairingGuide,
-  VuzixZ100PairingGuide,
 } from "@/components/misc/GlassesPairingGuides"
-import {useAppTheme} from "./useAppTheme"
 
 /**
  * Returns the appropriate pairing guide component based on the glasses model name
@@ -23,12 +19,8 @@ export const getPairingGuide = (glassesModelName: string) => {
       return <EvenRealitiesG1PairingGuide />
     case "Mentra Nex":
       return <MentraNextGlassesPairingGuide />
-    case "Vuzix Z100":
-      return <VuzixZ100PairingGuide />
     case "Mentra Live":
       return <MentraLivePairingGuide />
-    case "Mentra Mach1":
-      return <MentraMach1PairingGuide />
     case "Audio Wearable":
       return <AudioWearablePairingGuide />
     case "Simulated Glasses":

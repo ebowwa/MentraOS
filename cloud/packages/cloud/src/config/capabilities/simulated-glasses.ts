@@ -3,7 +3,7 @@
  *
  * Capability profile for the Simulated Glasses model.
  * Defines the hardware and software features available on this device.
- * This profile matches the Vuzix Z100 capabilities for testing purposes.
+ * This profile matches the Even Realities G1 capabilities for testing purposes.
  */
 
 import type { Capabilities } from "@mentra/sdk";

@@ -401,29 +401,6 @@ const $arrowContainer: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
 })
 
-export function MentraMach1PairingGuide() {
-  const {theme} = useAppTheme()
-  const textColor = theme.isDark ? "white" : "black"
-
-  return (
-    <View style={styles.guideContainer}>
-      <Text text="Mentra Mach1" style={[styles.guideTitle, {color: textColor}]} />
-      <Text
-        text="1. Make sure your Mach1 is fully charged and turned on."
-        style={[styles.guideStep, {color: textColor}]}
-      />
-      <Text
-        text="2. Make sure your device is running the latest firmware by using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]}
-      />
-      <Text
-        text="3. Put your Mentra Mach1 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
-        style={[styles.guideStep, {color: textColor}]}
-      />
-    </View>
-  )
-}
-
 export function MentraLivePairingGuide() {
   const {theme} = useAppTheme()
 
@@ -512,29 +489,6 @@ export function AudioWearablePairingGuide() {
       <Text
         text="Audio Wearables are smart glasses without displays. They use text-to-speech to provide information that would normally be shown visually. This makes them ideal for audio-only applications or for users who prefer auditory feedback."
         style={[styles.guideDescription, {color: textColor}]}
-      />
-    </View>
-  )
-}
-
-export function VuzixZ100PairingGuide() {
-  const {theme} = useAppTheme()
-  const textColor = theme.isDark ? "white" : "black"
-
-  return (
-    <View style={styles.guideContainer}>
-      <Text text="Vuzix Z100" style={[styles.guideTitle, {color: textColor}]} />
-      <Text
-        text="1. Make sure your Vuzix Z100 is fully charged and turned on."
-        style={[styles.guideStep, {color: textColor}]}
-      />
-      <Text
-        text="2. Make sure your device is running the latest firmware by using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]}
-      />
-      <Text
-        text="3. Put your Vuzix Z100 in pairing mode: hold the power button until you see the Bluetooth icon, then release."
-        style={[styles.guideStep, {color: textColor}]}
       />
     </View>
   )

@@ -1336,6 +1336,8 @@ public class MediaCaptureService {
         Log.d(TAG, "📤 Starting direct upload operation");
         Log.d(TAG, "📸 Upload file: " + photoFilePath);
         Log.d(TAG, "🆔 Request ID: " + requestId);
+        Log.d(TAG, "🔐 Auth token: " + authToken);
+        Log.d(TAG, "🌐 Webhook URL: " + webhookUrl);
         
         // Create a new thread for the upload
         new Thread(() -> {

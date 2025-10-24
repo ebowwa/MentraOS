@@ -3,10 +3,10 @@
  *
  * Capability profile for the Simulated Glasses model.
  * Defines the hardware and software features available on this device.
- * This profile matches the Vuzix Z100 capabilities for testing purposes.
+ * This profile matches the Even Realities G1 capabilities for testing purposes.
  */
 
-import type { Capabilities } from "@mentra/sdk";
+import type {Capabilities} from "@mentra/sdk"
 
 /**
  * Simulated Glasses capability profile
@@ -25,8 +25,8 @@ export const simulatedGlasses: Capabilities = {
     isColor: false,
     color: "green",
     canDisplayBitmap: false,
-    resolution: { width: 640, height: 480 },
-    fieldOfView: { horizontal: 30 },
+    resolution: {width: 640, height: 480},
+    fieldOfView: {horizontal: 30},
     maxTextLines: 7,
     adjustBrightness: true,
   },
@@ -73,4 +73,4 @@ export const simulatedGlasses: Capabilities = {
 
   // WiFi capabilities - does not support WiFi
   hasWifi: false,
-};
+}

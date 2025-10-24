@@ -10,7 +10,6 @@
 import { evenRealitiesG1 } from "./capabilities/even-realities-g1";
 import { mentraLive } from "./capabilities/mentra-live";
 import { simulatedGlasses } from "./capabilities/simulated-glasses";
-import { vuzixZ100 } from "./capabilities/vuzix-z100";
 import { Capabilities } from "@mentra/sdk";
 
 /**
@@ -22,7 +21,6 @@ export const HARDWARE_CAPABILITIES: Record<string, Capabilities> = {
   [evenRealitiesG1.modelName]: evenRealitiesG1,
   [mentraLive.modelName]: mentraLive,
   [simulatedGlasses.modelName]: simulatedGlasses,
-  [vuzixZ100.modelName]: vuzixZ100,
 };
 
 /**

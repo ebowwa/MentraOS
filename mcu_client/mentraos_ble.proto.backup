@@ -464,7 +464,7 @@ message ConfigureDashboardTrigger {
   enum TriggerType {
     HEAD_UP = 0;      // Even Realities style - look up
     HEAD_DOWN = 1;    
-    BUTTON_TAP = 2;   // Vuzix Z100 style - tap button
+    BUTTON_TAP = 2;   // Tap button style
     MANUAL_ONLY = 3;  // Only show when explicitly commanded
   }
   TriggerType trigger = 2;

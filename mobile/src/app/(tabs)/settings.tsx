@@ -7,7 +7,6 @@ import showAlert from "@/utils/AlertUtils"
 import RouteButton from "@/components/ui/RouteButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {isAppStoreProductionBuild} from "@/utils/buildDetection"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import Toast from "react-native-toast-message"
 import Constants from "expo-constants"
@@ -27,9 +26,9 @@ export default function SettingsPage() {
     push("/settings")
 
     // Don't allow secret menu on iOS App Store builds
-    if (Platform.OS === "ios" && isAppStoreProductionBuild()) {
-      return
-    }
+    // if (Platform.OS === "ios" && isAppStoreProductionBuild()) {
+    //   return
+    // }
 
     const currentTime = Date.now()
     const timeDiff = currentTime - lastPressTime.current

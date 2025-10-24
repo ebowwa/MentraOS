@@ -81,8 +81,7 @@ dependencies {
     exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime4j-jni'
   }
 
-  // Vuzix Z100
-  implementation 'com.vuzix:ultralite-sdk-android:1.8'
+  // Vuzix Z100 - UltraliteSDK removed
   implementation 'com.squareup.picasso:picasso:2.8'
 }
 

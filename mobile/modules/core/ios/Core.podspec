@@ -24,7 +24,6 @@ Pod::Spec.new do |s|
   s.dependency 'SWCompression', '~> 4.8.0'
   s.dependency 'SwiftProtobuf', '~> 1.0'
   s.dependency 'onnxruntime-objc', '1.18.0'
-  s.dependency 'UltraliteSDK'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {

@@ -592,8 +592,6 @@ struct ViewState {
             sgc = G1()
         } else if wearable.contains(DeviceTypes.LIVE) {
             sgc = MentraLive()
-        } else if wearable.contains(DeviceTypes.MACH1) {
-            // sgc = Mach1()
         } else if wearable.contains(DeviceTypes.FRAME) {
             // sgc = FrameManager()
         }
@@ -771,8 +769,6 @@ struct ViewState {
 
         if defaultWearable.contains(DeviceTypes.G1) {
             handleG1Ready()
-        } else if defaultWearable.contains(DeviceTypes.MACH1) {
-            handleMach1Ready()
         }
 
         // send to the server our battery status:
@@ -813,17 +809,6 @@ struct ViewState {
             }
 
             shouldSendBootingMessage = false
-
-            self.handle_request_status()
-        }
-    }
-
-    private func handleMach1Ready() {
-        Task {
-            // Send startup message
-            sgc?.sendTextWall("MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sgc?.clearDisplay()
 
             self.handle_request_status()
         }

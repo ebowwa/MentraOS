@@ -15,7 +15,6 @@ import com.mentra.core.sgcs.G1
 import com.mentra.core.sgcs.MentraLive
 import com.mentra.core.sgcs.SGCManager
 import com.mentra.core.sgcs.Simulated
-import com.mentra.core.sgcs.Mach1
 import com.mentra.core.utils.DeviceTypes
 import java.text.SimpleDateFormat
 import java.util.*
@@ -715,8 +714,6 @@ class CoreManager {
             sgc = G1()
         } else if (wearable.contains(DeviceTypes.LIVE)) {
             sgc = MentraLive()
-        } else if (wearable.contains(DeviceTypes.MACH1)) {
-            sgc = Mach1()
         } else if (wearable.contains(DeviceTypes.FRAME)) {
             // sgc = FrameManager()
         }
@@ -757,8 +754,6 @@ class CoreManager {
 
         if (defaultWearable.contains(DeviceTypes.G1)) {
             handleG1Ready()
-        } else if (defaultWearable.contains(DeviceTypes.MACH1)) {
-            handleMach1Ready()
         }
 
         // save the default_wearable now that we're connected:
@@ -795,15 +790,6 @@ class CoreManager {
         // shouldSendBootingMessage = false
 
         // handle_request_status()
-    }
-
-    private fun handleMach1Ready() {
-        // Send startup message
-        sgc?.sendTextWall("MENTRAOS CONNECTED")
-        Thread.sleep(1000)
-        sgc?.clearDisplay()
-
-        handle_request_status()
     }
 
     private fun handleDeviceDisconnected() {

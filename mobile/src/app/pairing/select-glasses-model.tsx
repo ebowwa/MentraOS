@@ -25,7 +25,6 @@ export default function SelectGlassesModelScreen() {
           {modelName: DeviceTypes.LIVE, key: "mentra_live"},
           {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           // {modelName: DeviceTypes.NEX, key: "mentra_nex"},
-          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
@@ -35,7 +34,6 @@ export default function SelectGlassesModelScreen() {
           {modelName: DeviceTypes.LIVE, key: "mentra_live"},
           {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           // {modelName: "Mentra Nex", key: "mentra_nex"},
-          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
 

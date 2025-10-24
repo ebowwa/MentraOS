@@ -10,8 +10,6 @@ MentraOS supports a wide range of smart glasses with varying features and capabi
 | ----------------- | -------------- | ---------------- | ---------- | ------- | ------ |
 | Even Realities G1 | ✅             | ✅               | ✅         | ❌      | ❌     |
 | Mentra Live       | ❌             | ❌               | ✅         | ✅      | ✅     |
-| Mentra Mach 1     | ✅             | ❌               | ⚠️\*       | ❌      | ❌     |
-| Vuzix Z100        | ✅             | ❌               | ⚠️\*       | ❌      | ❌     |
 
 ### Legend
 
