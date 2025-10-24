@@ -4,6 +4,51 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🔌 USB CDC Virtual Serial Port for Shell Access - 2024-10-24
+
+#### Features Added
+
+- **USB CDC ACM Virtual Serial Port**: Enable Shell and console access via USB connection
+  - Eliminates need for separate UART connection
+  - Single USB cable for both power and communication
+  - Operating system recognizes as standard serial device (`/dev/tty.usbmodem*` or `/dev/ttyACM*`)
+
+#### Configuration Files
+
+**New Files:**
+- **usb_cdc.conf**: USB CDC driver configuration file
+  - USB Device Stack enablement
+  - Nordic official VID/PID (0x1915/0x530A)
+  - CDC ACM class driver configuration
+  - Auto-initialization at boot
+
+**Modified Files:**
+- **boards/nrf5340dk_nrf5340_cpuapp_ns.overlay**: USB device tree configuration
+  - Console and shell redirection to USB CDC via `chosen` node
+  - USB CDC ACM device definition (`cdc_acm_uart0`)
+  - USB controller configuration (`&usbd`)
+
+#### Technical Implementation
+
+- **Device Tree Redirection**: Console/shell redirected through `chosen` nodes
+- **UART Compatibility**: Maintains `CONFIG_UART_CONSOLE=y`, actual redirection via device tree
+- **Transparent Interface**: USB CDC implements UART-compatible interface
+- **Build Requirement**: ⚠️ **Must include usb_cdc.conf when building**
+
+#### Hardware Connection
+
+1. Connect nRF USB port on development board (not J-Link USB)
+2. System will enumerate as "Nordic Semiconductor nRF5340 BLE Simulator"
+
+#### Testing Status
+
+✅ Verified Working
+- macOS: Normal device recognition and connection
+- Shell commands respond correctly
+- Console output functioning properly
+
+---
+
 ### 🌡️ A6N Temperature Control & Register Access Commands - 2025-10-24
 
 #### 1. A6N Register Access Commands
