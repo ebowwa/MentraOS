@@ -11,6 +11,7 @@ export default [
   // Base config for all JS/TS files
   {
     files: ["**/*.{js,mjs,cjs,ts,jsx,tsx}"],
+    ignores: ["eslint.config.mjs"],
     plugins: {
       "@typescript-eslint": tseslint.plugin,
       "react": pluginReact,
@@ -23,6 +24,11 @@ export default [
         ...globals.node,
         ...globals.browser,
         __DEV__: "readonly", // React Native global
+      },
+      parser: tseslint.parser,
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     settings: {
@@ -103,6 +109,16 @@ export default [
           ],
         },
       ],
+    },
+  },
+
+  // Jest setup files configuration
+  {
+    files: ["**/jest.setup.js", "**/jest.config.js", "**/*.test.{js,ts,jsx,tsx}", "**/*.spec.{js,ts,jsx,tsx}"],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
     },
   },
 

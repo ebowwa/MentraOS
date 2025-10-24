@@ -16,8 +16,7 @@ import {$styles} from "@/theme"
 import {ExtendedEdge, useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {KeyboardAwareScrollView} from "react-native-keyboard-controller"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {LinearGradient} from "expo-linear-gradient"
-import BackgroundGradient from "../misc/BackgroundGradient"
+import BackgroundGradient from "@/components/ui/BackgroundGradient"
 
 export const DEFAULT_BOTTOM_OFFSET = 50
 
@@ -180,7 +179,7 @@ function useAutoPreset(props: AutoScreenProps): {
  * @returns {JSX.Element} - The rendered `ScreenWithoutScrolling` component.
  */
 function ScreenWithoutScrolling(props: ScreenProps) {
-  const {style, contentContainerStyle, children, preset} = props
+  const {style, contentContainerStyle, children} = props
   return (
     <View style={[$outerStyle, style]}>
       <View style={[$innerStyle, /*preset === "fixed" && $justifyFlexEnd,*/ contentContainerStyle]}>{children}</View>
@@ -253,7 +252,6 @@ export function Screen(props: ScreenProps) {
   } = props
 
   const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
-  const {theme} = useAppTheme()
 
   return (
     <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background} /*, $containerInsets*/]}>
@@ -283,10 +281,6 @@ const $outerStyle: ViewStyle = {
   flex: 1,
   height: "100%",
   width: "100%",
-}
-
-const $justifyFlexEnd: ViewStyle = {
-  justifyContent: "flex-end",
 }
 
 const $innerStyle: ViewStyle = {

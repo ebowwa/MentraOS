@@ -46,8 +46,58 @@ interface PhotoRequestOptions {
   authToken?: string;
   /** Desired photo size: "small" | "medium" | "large" */
   size?: "small" | "medium" | "large";
+  /** Image compression level for upload optimization */
+  compress?: "none" | "medium" | "heavy";
 }
 ```
+
+##### Compression Options
+
+The `compress` option controls image compression during webhook upload to optimize network transfer speed. **Defaults to `"none"`** (no compression).
+
+| Level | Dimensions | JPEG Quality | Typical Size Reduction | Use Case |
+|-------|-----------|--------------|----------------------|----------|
+| `"none"` | Original | Original | 0% (no compression) | High-quality photos, fast WiFi |
+| `"medium"` | 75% scale | 80% quality | ~50-60% smaller | Balanced quality/speed |
+| `"heavy"` | 50% scale | 60% quality | ~75-85% smaller | Slow connections, large photos |
+
+**Example:** A 1440×1080 pixel photo captured at medium size (typical: ~280KB):
+- `"none"`: 1440×1080, full quality → **~280KB**
+- `"medium"`: 1080×810, 80% quality → **~140KB** (50% smaller)
+- `"heavy"`: 720×540, 60% quality → **~70KB** (75% smaller)
+
+For large size photos (3200×2400, typical: ~800KB):
+- `"none"`: 3200×2400, full quality → **~800KB**
+- `"medium"`: 2400×1800, 80% quality → **~400KB**
+- `"heavy"`: 1600×1200, 60% quality → **~200KB**
+
+**Important Notes:**
+- Compression only applies to **webhook uploads** (WiFi/cellular)
+- **BLE transfers** use a different ultra-aggressive compression (AVIF format, 10-15KB) regardless of this setting, controlled by the `size` parameter
+- Aspect ratio is always preserved
+- Uses JPEG format with bilinear scaling for high-quality results
+
+##### Understanding Webhook vs BLE Compression
+
+MentraOS uses two different compression algorithms depending on the transfer method:
+
+**Webhook Compression** (controlled by `compress` option):
+- **Format**: JPEG
+- **Algorithm**: Percentage-based dimension scaling + JPEG quality control
+- **Use case**: WiFi/cellular uploads where bandwidth is measured in Mbps
+- **Result**: 75-300KB files with good visual quality
+
+**BLE Transfer Compression** (controlled by `size` option):
+- **Format**: AVIF (with JPEG fallback)
+- **Algorithm**: Fit-within-box dimension constraint + ultra-low quality AVIF encoding
+- **Use case**: Bluetooth fallback where bandwidth is ~50-100 KB/s
+- **Result**: 10-15KB files with acceptable quality for thumbnails
+
+The system automatically selects the appropriate compression:
+1. First attempts webhook upload (uses `compress` setting)
+2. Falls back to BLE if webhook fails (uses aggressive AVIF compression based on `size`)
+
+This dual approach ensures photos are delivered either with high quality over WiFi or as compressed thumbnails over BLE, depending on available connectivity.
 
 #### Returns
 
@@ -75,7 +125,7 @@ interface PhotoData {
 #### Example
 
 ```typescript
-// Basic photo request
+// Basic photo request (no compression)
 const photo = await session.camera.requestPhoto();
 console.log(`Photo taken at timestamp: ${photo.timestamp}`);
 console.log(`MIME type: ${photo.mimeType}, size: ${photo.size} bytes`);
@@ -89,11 +139,24 @@ const photoWithSave = await session.camera.requestPhoto({
   saveToGallery: true
 });
 
-// Custom webhook with authentication
+// With medium compression (recommended for most use cases)
+const compressedPhoto = await session.camera.requestPhoto({
+  size: 'large',
+  compress: 'medium'  // 75% scale, 80% quality - good balance
+});
+
+// With heavy compression (slow connections or very large photos)
+const heavilyCompressed = await session.camera.requestPhoto({
+  size: 'large',
+  compress: 'heavy'  // 50% scale, 60% quality - maximum size reduction
+});
+
+// Custom webhook with authentication and compression
 const photoWithWebhook = await session.camera.requestPhoto({
   customWebhookUrl: 'https://my-api.example.com/photo-upload',
   authToken: 'bearer-token-or-api-key',
-  size: 'large'
+  size: 'large',
+  compress: 'medium'  // Compress before uploading to custom endpoint
 });
 ```
 

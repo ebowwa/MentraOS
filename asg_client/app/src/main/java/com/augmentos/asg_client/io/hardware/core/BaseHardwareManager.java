@@ -105,6 +105,66 @@ public class BaseHardwareManager implements IHardwareManager {
     }
 
     @Override
+    public void setBluetoothManager(Object bluetoothManager) {
+        Log.d(TAG, "setBluetoothManager() called - no-op on base hardware");
+    }
+
+    // ============================================
+    // MTK LED Brightness Control (Not Supported)
+    // ============================================
+
+    @Override
+    public boolean supportsLedBrightness() {
+        return false;
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent) {
+        Log.d(TAG, "setRecordingLedBrightness(" + percent + ") called - no-op on base hardware");
+    }
+
+    @Override
+    public void setRecordingLedBrightness(int percent, int durationMs) {
+        Log.d(TAG, String.format("setRecordingLedBrightness(%d, %d) called - no-op on base hardware",
+                                 percent, durationMs));
+    }
+
+    @Override
+    public int getRecordingLedBrightness() {
+        return 0;
+    }
+
+    // ============================================
+    // RGB LED Control (Not Supported)
+    // ============================================
+
+    @Override
+    public boolean supportsRgbLed() {
+        return false;
+    }
+
+    @Override
+    public void setRgbLedOn(int ledIndex, int ontime, int offtime, int count) {
+        Log.d(TAG, String.format("setRgbLedOn(%d, %d, %d, %d) called - no-op on base hardware",
+                                 ledIndex, ontime, offtime, count));
+    }
+
+    @Override
+    public void setRgbLedOff() {
+        Log.d(TAG, "setRgbLedOff() called - no-op on base hardware");
+    }
+
+    @Override
+    public void flashRgbLedWhite(int durationMs) {
+        Log.d(TAG, "flashRgbLedWhite(" + durationMs + ") called - no-op on base hardware");
+    }
+
+    @Override
+    public void setRgbLedSolidWhite(int durationMs) {
+        Log.d(TAG, "setRgbLedSolidWhite(" + durationMs + ") called - no-op on base hardware");
+    }
+
+    @Override
     public void shutdown() {
         Log.d(TAG, "Shutting down BaseHardwareManager");
         isInitialized = false;

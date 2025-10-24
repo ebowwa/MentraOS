@@ -6,16 +6,17 @@ import {
   GlassesToCloudMessageType,
 } from "../message-types";
 import { ExtendedStreamType, StreamType } from "../streams";
-import { AppSettings, AppConfig } from "../models";
-import { DashboardMode } from "../dashboard";
-import { Capabilities } from "../capabilities";
-import {
+import type { AppSettings, AppConfig } from "../models";
+import type { DashboardMode } from "../dashboard";
+import type { Capabilities } from "../capabilities";
+import type {
   LocationUpdate,
   CalendarEvent,
   RtmpStreamStatus,
   PhotoResponse,
+  RgbLedControlResponse,
 } from "./glasses-to-cloud";
-import { AppSession } from "../../app/session";
+import type { AppSession } from "../../app/session";
 
 //===========================================================
 // Responses
@@ -354,6 +355,7 @@ export type CloudToAppMessage =
   | AppDirectMessageResponse
   | RtmpStreamStatus
   | PhotoResponse
+  | RgbLedControlResponse
   | PermissionError
   | AudioPlayResponse;
 
@@ -434,6 +436,12 @@ export function isPhotoResponse(
   message: CloudToAppMessage,
 ): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isRgbLedControlResponse(
+  message: CloudToAppMessage,
+): message is RgbLedControlResponse {
+  return message.type === GlassesToCloudMessageType.RGB_LED_CONTROL_RESPONSE;
 }
 
 export function isStreamStatusCheckResponse(
@@ -530,4 +538,25 @@ export interface AppDirectMessageResponse extends BaseMessage {
   success: boolean;
   error?: string;
   targetUserId: string;
+}
+
+//===========================================================
+// Cloud-to-Sdk Communication Response Messages
+//===========================================================
+
+/**
+ * Permission data structures for permission fetch responses
+ */
+export interface Permission {
+  type: string; // or a union/enum if you want stricter typing
+  description: string;
+  _id: string;
+}
+
+/**
+ * Package permissions response structure
+ */
+export interface PackagePermissions {
+  packageName: string;
+  permissions: Permission[];
 }

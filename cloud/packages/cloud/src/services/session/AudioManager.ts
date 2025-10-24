@@ -139,6 +139,8 @@ export class AudioManager {
           );
         }
 
+        // Capture audio if enabled
+
         // Relay to Apps if there are subscribers
         this.relayAudioToApps(buf);
 
@@ -232,8 +234,8 @@ export class AudioManager {
           } catch (sendError) {
             if (this.logAudioChunkCount % 500 === 0) {
               this.logger.error(
-                `Error sending audio to ${packageName}:`,
                 sendError,
+                `Error sending audio to ${packageName}:`,
               );
             }
           }
@@ -241,7 +243,7 @@ export class AudioManager {
       }
       this.logAudioChunkCount++;
     } catch (error) {
-      this.logger.error(`Error relaying audio:`, error);
+      this.logger.error(error, `Error relaying audio:`);
     }
   }
 
@@ -277,7 +279,7 @@ export class AudioManager {
         this.audioWriter = undefined;
       }
     } catch (error) {
-      this.logger.error(`Error disposing AudioManager:`, error);
+      this.logger.error(error, `Error disposing AudioManager:`);
     }
   }
 }

@@ -169,7 +169,7 @@ export class AudioManager {
         // Set timeout to avoid hanging promises
         const timeoutMs = 60000; // 60 seconds
         if (this.session && this.session.resources) {
-          // Use session's resource tracker for automatic cleanup
+          // Use session's resource tracker for automatic cleeanup
           this.session.resources.setTimeout(() => {
             if (this.pendingAudioRequests.has(requestId)) {
               this.pendingAudioRequests

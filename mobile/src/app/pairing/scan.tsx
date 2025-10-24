@@ -1,34 +1,31 @@
-// SelectGlassesBluetoothScreen.tsx
-
-import {useEffect, useMemo, useRef, useState, useCallback} from "react"
-import {View, TouchableOpacity, ScrollView, Platform, ViewStyle, BackHandler} from "react-native"
-import {useFocusEffect} from "@react-navigation/native"
-import Icon from "react-native-vector-icons/FontAwesome"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/MantleBridge"
-import {MOCK_CONNECTION} from "@/consts"
-import {getGlassesImage} from "@/utils/getGlassesImage"
-import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
-import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {useSearchResults, SearchResultDevice} from "@/contexts/SearchResultsContext"
-import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
-import showAlert from "@/utils/AlertUtils"
-import {router, useLocalSearchParams} from "expo-router"
-import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, Text} from "@/components/ignite"
 import {PillButton} from "@/components/ignite/PillButton"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
-import {ThemedStyle} from "@/theme"
+import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
+import {MOCK_CONNECTION} from "@/utils/Constants"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
+import {SearchResultDevice, useSearchResults} from "@/contexts/SearchResultsContext"
 import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
+import showAlert from "@/utils/AlertUtils"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useFocusEffect} from "@react-navigation/native"
+import {router, useLocalSearchParams} from "expo-router"
+import {useCallback, useEffect, useRef, useState} from "react"
+import {BackHandler, Platform, ScrollView, TouchableOpacity, View, ViewStyle} from "react-native"
+import Animated, {useAnimatedStyle, useSharedValue, withDelay, withTiming} from "react-native-reanimated"
+import Icon from "react-native-vector-icons/FontAwesome"
+import CoreModule from "core"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useCoreStatus()
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push, clearHistory, replace} = useNavigationHistory()
+  const {goBack, push, clearHistory, clearHistoryAndGoHome} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<SearchResultDevice[]>(searchResults)
@@ -55,8 +52,8 @@ export default function SelectGlassesBluetoothScreen() {
 
   // Shared function to handle the forget glasses logic
   const handleForgetGlasses = useCallback(async () => {
-    await bridge.sendDisconnectWearable()
-    await bridge.sendForgetSmartGlasses()
+    await CoreModule.disconnect()
+    await CoreModule.forget()
     // Clear NavigationHistoryContext history to prevent issues with back navigation
     clearHistory()
     // Use dismissTo to properly go back to select-glasses-model and clear the stack
@@ -117,7 +114,7 @@ export default function SelectGlassesBluetoothScreen() {
         // Quick hack // bugfix => we get NOTREQUIREDSKIP twice in some cases, so just stop after the initial one
         GlobalEventEmitter.removeListener("COMPATIBLE_GLASSES_SEARCH_RESULT", handleSearchResult)
 
-        triggerGlassesPairingGuide(glassesModelName as string, deviceName, deviceAddress as string)
+        triggerGlassesPairingGuide(glassesModelName as string, deviceName)
         return
       }
 
@@ -149,7 +146,7 @@ export default function SelectGlassesBluetoothScreen() {
             },
             {
               text: "Yes",
-              onPress: () => bridge.sendSearchForCompatibleDeviceNames(glassesModelName), // Retry search
+              onPress: () => CoreModule.findCompatibleDevices(glassesModelName), // Retry search
             },
           ],
           {cancelable: false}, // Prevent closing the alert by tapping outside
@@ -174,7 +171,7 @@ export default function SelectGlassesBluetoothScreen() {
     const initializeAndSearchForDevices = async () => {
       console.log("Searching for compatible devices for: ", glassesModelName)
       setSearchResults([])
-      bridge.sendSearchForCompatibleDeviceNames(glassesModelName)
+      CoreModule.findCompatibleDevices(glassesModelName)
     }
 
     if (Platform.OS === "ios") {
@@ -189,20 +186,13 @@ export default function SelectGlassesBluetoothScreen() {
   }, [])
 
   useEffect(() => {
-    // If puck gets d/c'd here, return to home
-    //     if (!status.core_info.puck_connected) {
-    //       router.dismissAll()
-    //       replace("/(tabs)/home")
-    //     }
-
     // If pairing successful, return to home
-    if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      router.dismissAll()
-      replace("/(tabs)/home")
+    if (status.glasses_info?.model_name) {
+      clearHistoryAndGoHome()
     }
   }, [status])
 
-  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string, deviceAddress: string) => {
+  const triggerGlassesPairingGuide = async (glassesModelName: string, deviceName: string) => {
     // On Android, we need to check both microphone and location permissions
     if (Platform.OS === "android") {
       // First check location permission, which is required for Bluetooth scanning on Android
@@ -235,17 +225,13 @@ export default function SelectGlassesBluetoothScreen() {
 
     // update the preferredmic to be the phone mic:
     await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, "phone")
-    bridge.sendSetPreferredMic("phone") // TODO: config: remove
 
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {
-      // give some time to show the loader (otherwise it's a bit jarring)
-      bridge.sendConnectWearable(glassesModelName, deviceName, deviceAddress)
+      CoreModule.connectByName(deviceName)
     }, 2000)
     push("/pairing/loading", {glassesModelName: glassesModelName})
   }
-
-  const _glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
@@ -275,7 +261,7 @@ export default function SelectGlassesBluetoothScreen() {
                   key={index}
                   style={themed($settingItem)}
                   onPress={() => {
-                    triggerGlassesPairingGuide(device.deviceMode, device.deviceName, device.deviceAddress)
+                    triggerGlassesPairingGuide(device.deviceMode, device.deviceName)
                   }}>
                   {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
                   <View style={styles.settingTextContainer}>

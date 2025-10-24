@@ -1,12 +1,12 @@
 import {useState, useEffect, useCallback, useMemo} from "react"
-import {View, Platform, TextInput, NativeModules, FlatList, ActivityIndicator, Image} from "react-native"
+import {View, Platform, TextInput, FlatList, ActivityIndicator, Image} from "react-native"
 import Toast from "react-native-toast-message"
 
 import {Screen, Text, Header, Switch} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-const {SimpleBlacklist} = NativeModules
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import CoreModule from "core"
 
 interface InstalledApp {
   packageName: string
@@ -23,6 +23,7 @@ export default function NotificationSettingsScreen() {
   const {goBack} = useNavigationHistory()
 
   const [apps, setApps] = useState<InstalledApp[]>([])
+  const [blocklist, setBlocklist] = useSetting(SETTINGS_KEYS.notifications_blocklist)
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -33,14 +34,22 @@ export default function NotificationSettingsScreen() {
 
   const loadInstalledApps = async () => {
     try {
-      console.log("Loading installed apps...")
-      const installedApps = await SimpleBlacklist.getAllInstalledApps()
+      // console.log("Loading installed apps...")
+      const installedApps = await CoreModule.getInstalledApps()
+      // console.log(installedApps)
 
       // Sort alphabetically by app name
-      const sortedApps = installedApps.sort((a: InstalledApp, b: InstalledApp) => a.appName.localeCompare(b.appName))
+      let sortedApps = installedApps.sort((a: InstalledApp, b: InstalledApp) => a.appName.localeCompare(b.appName))
+
+      // set any apps in the blocklist to be disabled
+      // TODO: fix this
+      sortedApps.forEach(app => {
+        if (blocklist.includes(app.packageName)) {
+          app.isBlocked = true
+        }
+      })
 
       setApps(sortedApps)
-      console.log(`Loaded ${sortedApps.length} apps`)
     } catch (error) {
       console.error("Error loading apps:", error)
       Toast.show({
@@ -54,14 +63,28 @@ export default function NotificationSettingsScreen() {
     }
   }
 
+  useEffect(() => {
+    loadInstalledApps()
+    console.log(blocklist)
+  }, [blocklist])
+
   const toggleApp = useCallback(
     async (packageName: string, currentlyBlocked: boolean) => {
       try {
         const newBlockedState = !currentlyBlocked
-        await SimpleBlacklist.toggleAppNotification(packageName, newBlockedState)
+        const currentBlocklist = Array.isArray(blocklist) ? blocklist : []
+
+        // if the app is in the blacklist, remove it
+        if (!newBlockedState) {
+          // Remove from blocklist (filter out all instances to handle duplicates)
+          setBlocklist(currentBlocklist.filter((appName: string) => appName !== packageName))
+        } else {
+          // Add to blocklist, using Set to remove any duplicates
+          setBlocklist([...new Set([...currentBlocklist, packageName])])
+        }
 
         // Update local state
-        setApps(prev => prev.map(app => (app.packageName === packageName ? {...app, isBlocked: newBlockedState} : app)))
+        // setApps(prev => prev.map(app => (app.packageName === packageName ? {...app, isBlocked: newBlockedState} : app)))
 
         Toast.show({
           type: newBlockedState ? "info" : "success",
@@ -104,7 +127,7 @@ export default function NotificationSettingsScreen() {
             height: 36,
             marginRight: theme.spacing.md,
             borderRadius: 8,
-            backgroundColor: theme.colors.cardBackground,
+            backgroundColor: theme.colors.backgroundAlt,
             alignItems: "center",
             justifyContent: "center",
             overflow: "hidden",

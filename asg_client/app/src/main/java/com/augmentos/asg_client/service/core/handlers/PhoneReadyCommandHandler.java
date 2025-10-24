@@ -88,10 +88,14 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
                     Log.d(TAG, "📱 ❌ WiFi not connected, skipping status send");
                 }
                 
-                // Auto-send hotspot status after glasses_ready
-                Log.d(TAG, "📱 🔥 Sending hotspot status...");
-                sendHotspotStatusToPhone();
-            }, 500);
+            // Auto-send hotspot status after glasses_ready
+            Log.d(TAG, "📱 🔥 Sending hotspot status...");
+            sendHotspotStatusToPhone();
+            
+            // Claim RGB LED control authority from BES - tactical timing!
+            Log.d(TAG, "📱 🚨 🎖️ CLAIMING RGB LED CONTROL AUTHORITY FROM BES!");
+            sendRgbLedControlAuthority(true);
+        }, 500);
             
             return sent;
         } catch (Exception e) {
@@ -134,6 +138,50 @@ public class PhoneReadyCommandHandler implements ICommandHandler {
             
         } catch (Exception e) {
             Log.e(TAG, "📱 🔥 Error sending hotspot status to phone", e);
+        }
+    }
+    
+    /**
+     * Send RGB LED control authority command to BES chipset.
+     * This tells BES whether MTK (our app) or BES should control the RGB LEDs.
+     * 
+     * @param claimControl true = MTK claims control, false = BES resumes control
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        Log.d(TAG, "🚨 sendRgbLedControlAuthority() called - Claim: " + claimControl);
+        
+        try {
+            // Build full K900 format (C, V, B) to avoid double-wrapping
+            JSONObject authorityCommand = new JSONObject();
+            authorityCommand.put("C", "android_control_led");
+            authorityCommand.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            
+            // Create proper JSON object for B field
+            JSONObject bField = new JSONObject();
+            bField.put("on", claimControl);
+            authorityCommand.put("B", bField.toString());
+            
+            String commandStr = authorityCommand.toString();
+            Log.i(TAG, "🚨 Sending RGB LED authority command: " + commandStr);
+            
+            if (serviceManager == null || serviceManager.getBluetoothManager() == null) {
+                Log.w(TAG, "⚠️ ServiceManager or Bluetooth manager unavailable");
+                return;
+            }
+
+            if (!serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; RGB LED authority will be sent when connected");
+                return;
+            }
+
+            boolean sent = serviceManager.getBluetoothManager().sendData(commandStr.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (sent) {
+                Log.i(TAG, "✅ RGB LED control authority " + (claimControl ? "CLAIMED" : "RELEASED") + " successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send RGB LED authority command");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending RGB LED authority command", e);
         }
     }
 } 

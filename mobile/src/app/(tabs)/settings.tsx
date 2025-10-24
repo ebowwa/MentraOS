@@ -1,48 +1,28 @@
-import {useEffect, useRef} from "react"
-import {View, Platform, ViewStyle} from "react-native"
-import {Screen, Header, Text} from "@/components/ignite"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {translate} from "@/i18n"
-import showAlert from "@/utils/AlertUtils"
+import {Header, Screen, Text} from "@/components/ignite"
 import RouteButton from "@/components/ui/RouteButton"
-import {Spacer} from "@/components/misc/Spacer"
+import {Spacer} from "@/components/ui/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {isMentraUser} from "@/utils/isMentraUser"
-import {isAppStoreProductionBuild, isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {translate} from "@/i18n"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
-import Toast from "react-native-toast-message"
-import Constants from "expo-constants"
 import {ThemedStyle} from "@/theme"
+import showAlert from "@/utils/AlertUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import Constants from "expo-constants"
+import {useRef} from "react"
+import {Platform, View, ViewStyle} from "react-native"
 import {ScrollView} from "react-native-gesture-handler"
-import {useAuth} from "@/contexts/AuthContext"
+import Toast from "react-native-toast-message"
 
 export default function SettingsPage() {
-  const {user} = useAuth()
   const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
-
   const [devMode, setDevMode] = useSetting(SETTINGS_KEYS.dev_mode)
-
-  useEffect(() => {
-    const checkDevMode = async () => {
-      const devModeSetting = devMode
-      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
-    }
-    checkDevMode()
-  }, [])
 
   const pressCount = useRef(0)
   const lastPressTime = useRef(0)
-  const pressTimeout = useRef<NodeJS.Timeout | null>(null)
+  const pressTimeout = useRef<number | null>(null)
 
   const handleQuickPress = () => {
-    push("/settings")
-
-    // Don't allow secret menu on iOS App Store builds
-    if (Platform.OS === "ios" && isAppStoreProductionBuild()) {
-      return
-    }
-
     const currentTime = Date.now()
     const timeDiff = currentTime - lastPressTime.current
     const maxTimeDiff = 2000
@@ -87,7 +67,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header leftTx="settings:title" onLeftPress={handleQuickPress} />
 
       <ScrollView
@@ -117,20 +97,19 @@ export default function SettingsPage() {
             <>
               <RouteButton
                 label={translate("settings:developerSettings")}
-                // subtitle={translate("settings:developerSettingsSubtitle")}
                 onPress={() => push("/settings/developer")}
               />
             </>
           )}
         </View>
-      </ScrollView>
 
-      <View style={themed($versionContainer)}>
-        <Text
-          text={translate("common:version", {number: Constants.expoConfig?.extra?.MENTRAOS_VERSION})}
-          style={{color: theme.colors.textDim}}
-        />
-      </View>
+        <View style={themed($versionContainer)}>
+          <Text
+            text={translate("common:version", {number: Constants.expoConfig?.extra?.MENTRAOS_VERSION})}
+            style={{color: theme.colors.textDim}}
+          />
+        </View>
+      </ScrollView>
     </Screen>
   )
 }
@@ -141,9 +120,5 @@ const $versionContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   width: "100%",
   paddingVertical: spacing.xs,
   borderRadius: spacing.md,
-  // position: "absolute",
-  // flex: 1,
-  // borderWidth: 1,
-  // borderColor: colors.border,
-  // backgroundColor: colors.background,
+  marginTop: spacing.xxxl,
 })

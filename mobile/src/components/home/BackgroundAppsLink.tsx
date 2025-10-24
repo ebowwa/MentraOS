@@ -1,14 +1,10 @@
-import {TouchableOpacity, View, Text, ViewStyle, TextStyle} from "react-native"
-
-import {useAppTheme} from "@/utils/useAppTheme"
-import ChevronRight from "assets/icons/component/ChevronRight"
+import RouteButton from "@/components/ui/RouteButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n"
-import {useActiveBackgroundAppsCount} from "@/contexts/AppletStatusProvider"
+import {useActiveBackgroundAppsCount} from "@/stores/applets"
 
 export const BackgroundAppsLink: React.FC = () => {
-  const {themed, theme} = useAppTheme()
+  // const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
   const activeCount = useActiveBackgroundAppsCount()
 
@@ -16,42 +12,6 @@ export const BackgroundAppsLink: React.FC = () => {
     push("/home/background-apps")
   }
 
-  return (
-    <TouchableOpacity style={themed($container)} onPress={handlePress} activeOpacity={0.7}>
-      <View style={themed($content)}>
-        <Text style={themed($label)}>
-          {translate("home:backgroundApps")}{" "}
-          <Text style={themed($count)}>
-            ({activeCount} {translate("home:backgroundAppsActive")})
-          </Text>
-        </Text>
-        <ChevronRight color={theme.colors.text} />
-      </View>
-    </TouchableOpacity>
-  )
+  const label = translate("home:backgroundApps") + ` (${activeCount} ${translate("home:backgroundAppsActive")})`
+  return <RouteButton label={label} onPress={handlePress} />
 }
-
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  borderRadius: spacing.sm,
-  marginVertical: spacing.xs,
-})
-
-const $content: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  paddingHorizontal: spacing.xs,
-  paddingVertical: spacing.md,
-})
-
-const $label: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 15,
-  color: colors.text,
-  fontWeight: "500",
-})
-
-const $count: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
-  color: colors.textDim,
-  fontWeight: "400",
-})

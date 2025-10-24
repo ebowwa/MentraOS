@@ -1,17 +1,18 @@
-import {useState, useEffect} from "react"
-import {View, ScrollView, ActivityIndicator, Share, Platform, ViewStyle, TextStyle, Clipboard} from "react-native"
-import {Screen, Header, Text} from "@/components/ignite"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {Header, Screen, Text} from "@/components/ignite"
+import ActionButton from "@/components/ui/ActionButton"
+import {Spacer} from "@/components/ui/Spacer"
 import {useAuth} from "@/contexts/AuthContext"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import {DataExportService, UserDataExport} from "@/utils/DataExportService"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n"
-import ActionButton from "@/components/ui/ActionButton"
-import {Spacer} from "@/components/misc/Spacer"
+import {useApplets} from "@/stores/applets"
+import {ThemedStyle} from "@/theme"
 import {showAlert} from "@/utils/AlertUtils"
+import {DataExportService, UserDataExport} from "@/utils/DataExportService"
+import {useAppTheme} from "@/utils/useAppTheme"
+import * as Clipboard from "expo-clipboard"
+import {useEffect, useState} from "react"
+import {ActivityIndicator, Platform, ScrollView, Share, TextStyle, View, ViewStyle} from "react-native"
 
 export default function DataExportPage() {
   const [exportData, setExportData] = useState<UserDataExport | null>(null)
@@ -22,7 +23,7 @@ export default function DataExportPage() {
 
   const {user, session} = useAuth()
   const {status} = useCoreStatus()
-  const {appStatus} = useAppStatus()
+  const appStatus = useApplets()
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
 

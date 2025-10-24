@@ -44,7 +44,7 @@ import androidx.preference.PreferenceManager;
 
 // import com.firebase.ui.auth.AuthUI;
 import com.augmentos.asg_client.service.core.AsgClientService;
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
+import com.augmentos.asg_client.utils.PermissionsUtils;
 
 import com.augmentos.asg_client.reporting.domains.GeneralReporting;
 import com.augmentos.asg_client.reporting.core.ReportManager;

@@ -47,7 +47,9 @@ mongoConnection
     if (adminEmails) {
       const emails = adminEmails.split(",").map((e) => e.trim());
       logger.info(
-        `Admin access configured for ${emails.length} email(s): [${emails.join(", ")}]`,
+        `Admin access configured for ${emails.length} email(s): [${emails.join(
+          ", ",
+        )}]`,
       );
     } else {
       logger.warn(
@@ -121,12 +123,12 @@ app.use(
       "https://consoledev.augmentos.org",
       "https://account.augmentos.org",
       "https://accountdev.augmentos.org",
-      "https://docs.mentra.glass",
       "https://docsdev.augmentos.org",
 
       "https://augmentos.pages.dev",
       "https://augmentos-appstore-2.pages.dev",
 
+      // mentra.glass API
       "https://mentra.glass",
       "https://api.mentra.glass",
       "https://dev.api.mentra.glass",
@@ -152,6 +154,33 @@ app.use(
       "https://dev.account.mentra.glass",
       "https://dev.docs.mentra.glass",
       "https://dev.store.mentra.glass",
+
+      // mentraglass.com API
+      "https://www.mentraglass.com",
+      "https://api.mentraglass.com",
+      "https://devapi.mentraglass.com",
+      "https://uscentralapi.mentraglass.com",
+      "https://franceapi.mentraglass.com",
+      "https://asiaeastapi.mentraglass.com",
+
+      "https://apps.mentraglass.com",
+      "https://console.mentraglass.com",
+      "https://account.mentraglass.com",
+      "https://docs.mentraglass.com",
+      "https://store.mentraglass.com",
+      "https://dev.mentraglass.com",
+
+      "https://appsdev.mentraglass.com",
+      "https://consoledev.mentraglass.com",
+      "https://accountdev.mentraglass.com",
+      "https://docsdev.mentraglass.com",
+      "https://storedev.mentraglass.com",
+
+      "https://dev.apps.mentraglass.com",
+      "https://dev.console.mentraglass.com",
+      "https://dev.account.mentraglass.com",
+      "https://dev.docs.mentraglass.com",
+      "https://dev.store.mentraglass.com",
     ],
   }),
 );
@@ -166,7 +195,9 @@ app.use(
     logger: rootLogger,
     genReqId: (req) => {
       // Generate correlation ID for each request
-      return `${req.method}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      return `${req.method}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 11)}`;
     },
     customLogLevel: (req, res, err) => {
       if (res.statusCode >= 400 && res.statusCode < 500) return "warn";
@@ -257,7 +288,7 @@ try {
     logger.info(`\n
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
-        ☁️☁️☁️      😎 MentraOS Cloud Server 🚀     
+        ☁️☁️☁️      😎 MentraOS Cloud Server 🚀
         ☁️☁️☁️      🌐 Listening on port ${PORT} 🌐
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
         ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️\n`);

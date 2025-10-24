@@ -96,7 +96,7 @@ dist
 docs/_build/
 eggs
 htmlcov
-include/
+#include/
 lib/
 man/
 nosetests.xml

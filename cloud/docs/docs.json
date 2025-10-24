@@ -57,7 +57,7 @@
                   "cloud-architecture/managers/translation-manager",
                   "cloud-architecture/managers/microphone-manager",
                   "cloud-architecture/managers/photo-manager",
-                  "cloud-architecture/managers/video-manager",
+                  "cloud-architecture/managers/unmanaged-streaming-extension",
                   "cloud-architecture/managers/dashboard-manager",
                   "cloud-architecture/managers/managed-streaming-extension"
                 ]

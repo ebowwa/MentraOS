@@ -18,7 +18,7 @@ import AudioManager from "./AudioManager";
 import MicrophoneManager from "./MicrophoneManager";
 import DisplayManager from "../layout/DisplayManager6.1";
 import { DashboardManager } from "./dashboard";
-import VideoManager from "./VideoManager";
+import UnmanagedStreamingExtension from "./UnmanagedStreamingExtension";
 import PhotoManager from "./PhotoManager";
 import { GlassesErrorCode } from "../websocket/websocket-glasses.service";
 // Session map will be maintained statically on UserSession to avoid an external SessionStorage singleton
@@ -27,12 +27,16 @@ import { PosthogService } from "../logging/posthog.service";
 import { TranscriptionManager } from "./transcription/TranscriptionManager";
 import { TranslationManager } from "./translation/TranslationManager";
 import { ManagedStreamingExtension } from "../streaming/ManagedStreamingExtension";
-import { getCapabilitiesForModel } from "../../config/hardware-capabilities";
-import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
+import { StreamRegistry } from "../streaming/StreamRegistry";
+
 import appService from "../core/app.service";
 import SubscriptionManager from "./SubscriptionManager";
-import LiveKitManager from "./LiveKitManager";
-import SpeakerManager from "./SpeakerManager";
+import LiveKitManager from "./livekit/LiveKitManager";
+import SpeakerManager from "./livekit/SpeakerManager";
+import DeviceManager from "./DeviceManager";
+import CalendarManager from "./CalendarManager";
+import LocationManager from "./LocationManager";
+import UserSettingsManager from "./UserSettingsManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -84,8 +88,13 @@ export class UserSession {
   public subscriptionManager: SubscriptionManager;
   public liveKitManager: LiveKitManager;
   public speakerManager: SpeakerManager;
+  public calendarManager: CalendarManager;
+  public locationManager: LocationManager;
+  public userSettingsManager: UserSettingsManager;
+  public deviceManager: DeviceManager;
 
-  public videoManager: VideoManager;
+  public streamRegistry: StreamRegistry;
+  public unmanagedStreamingExtension: UnmanagedStreamingExtension;
   public photoManager: PhotoManager;
   public managedStreamingExtension: ManagedStreamingExtension;
 
@@ -99,7 +108,7 @@ export class UserSession {
   private readonly PONG_TIMEOUT_MS = 30000; // 30 seconds - 3x heartbeat interval
 
   // SAFETY FLAG: Set to false to disable pong timeout behavior entirely
-  private static readonly PONG_TIMEOUT_ENABLED = false; // TODO: Set to true when ready to enable connection tracking
+  private static readonly PONG_TIMEOUT_ENABLED = true; // Enabled to track phone connection reliability in production
 
   // Connection state tracking
   public phoneConnected: boolean = false;
@@ -110,6 +119,9 @@ export class UserSession {
   // Audio play request tracking - maps requestId to packageName
   public audioPlayRequestMapping: Map<string, string> = new Map();
 
+  // App health status cache (for client apps API)
+  public appHealthCache: Map<string, boolean> = new Map();
+
   // Other state
   public userDatetime?: string;
 
@@ -117,10 +129,9 @@ export class UserSession {
   public livekitRequested?: boolean;
 
   // Capability Discovery
-  public capabilities: Capabilities | null = null;
 
   // Current connected glasses model
-  public currentGlassesModel: string | null = null;
+  // public currentGlassesModel: string | null = null;
 
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
@@ -138,11 +149,19 @@ export class UserSession {
     this.microphoneManager = new MicrophoneManager(this);
     this.transcriptionManager = new TranscriptionManager(this);
     this.translationManager = new TranslationManager(this);
+    this.calendarManager = new CalendarManager(this);
+    this.locationManager = new LocationManager(this);
     this.photoManager = new PhotoManager(this);
-    this.videoManager = new VideoManager(this);
-    this.managedStreamingExtension = new ManagedStreamingExtension(this.logger);
+    this.streamRegistry = new StreamRegistry(this.logger);
+    this.unmanagedStreamingExtension = new UnmanagedStreamingExtension(this);
+    this.managedStreamingExtension = new ManagedStreamingExtension(
+      this.logger,
+      this.streamRegistry,
+    );
     this.liveKitManager = new LiveKitManager(this);
+    this.userSettingsManager = new UserSettingsManager(this);
     this.speakerManager = new SpeakerManager(this);
+    this.deviceManager = new DeviceManager(this);
 
     this._reconnectionTimers = new Map();
 
@@ -157,6 +176,58 @@ export class UserSession {
 
     // Register for leak detection
     memoryLeakDetector.register(this, `UserSession:${userId}`);
+  }
+
+  /**
+   * Update tracked glasses connection state and optionally log source of the update.
+   */
+  public setGlassesConnectionState(
+    isConnected: boolean,
+    modelName?: string | null,
+    options: { source?: string } = {},
+  ): void {
+    const normalizedModel =
+      isConnected && modelName
+        ? String(modelName).trim() || undefined
+        : undefined;
+    const previousState = this.glassesConnected;
+    const previousModel = this.glassesModel;
+
+    this.glassesConnected = isConnected;
+    this.glassesModel = normalizedModel;
+    this.lastGlassesStatusUpdate = new Date();
+
+    if (previousState !== isConnected || previousModel !== normalizedModel) {
+      this.logger.info(
+        {
+          source: options.source || "unknown",
+          previousState,
+          newState: isConnected,
+          previousModel,
+          newModel: normalizedModel,
+        },
+        "[UserSession:setGlassesConnectionState] Updated glasses connection state",
+      );
+    }
+  }
+
+  /**
+   * Handle phone WebSocket closure by resetting connection state trackers.
+   */
+  public handlePhoneConnectionClosed(reason?: string): void {
+    const logContext = { reason };
+    const logMessage =
+      "[UserSession] Phone WebSocket closed, marking connections as disconnected";
+    if (reason && reason.includes("ping_timeout")) {
+      this.logger.warn(logContext, logMessage);
+    } else {
+      this.logger.info(logContext, logMessage);
+    }
+    this.phoneConnected = false;
+    this.setGlassesConnectionState(false, null, {
+      source: reason ? `websocket_close:${reason}` : "websocket_close",
+    });
+    this.clearGlassesHeartbeat();
   }
 
   /**
@@ -263,8 +334,7 @@ export class UserSession {
       );
 
       // Mark connections as dead
-      this.phoneConnected = false;
-      this.glassesConnected = false; // If phone is dead, glasses are unreachable
+      this.handlePhoneConnectionClosed("ping_timeout");
 
       // Close the zombie WebSocket connection
       if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
@@ -273,19 +343,6 @@ export class UserSession {
         );
         this.websocket.close(1001, "Ping timeout - no pong received");
       }
-
-      // Clear the heartbeat since connection is dead
-      this.clearGlassesHeartbeat();
-
-      // Log the disconnection for debugging
-      this.logger.warn(
-        {
-          userId: this.userId,
-          phoneConnected: this.phoneConnected,
-          glassesConnected: this.glassesConnected,
-        },
-        `[UserSession:pongTimeout] Connection state updated after timeout`,
-      );
     }, this.PONG_TIMEOUT_MS);
   }
 
@@ -314,241 +371,17 @@ export class UserSession {
 
   /**
    * Update the current glasses model and refresh capabilities
-   * Called when model information is received from the manager
+   * Delegate to DeviceManager to centralize model/capability handling.
    */
   async updateGlassesModel(modelName: string): Promise<void> {
-    if (this.currentGlassesModel === modelName) {
-      this.logger.debug(
-        `[UserSession:updateGlassesModel] Model unchanged: ${modelName}`,
-      );
-      return;
-    }
-
-    this.logger.info(
-      `[UserSession:updateGlassesModel] Updating glasses model from "${this.currentGlassesModel}" to "${modelName}"`,
-    );
-
-    this.currentGlassesModel = modelName;
-
-    // Update capabilities based on the new model
-    const capabilities = getCapabilitiesForModel(modelName);
-    if (capabilities) {
-      this.capabilities = capabilities;
-      this.logger.info(
-        `[UserSession:updateGlassesModel] Updated capabilities for ${modelName}`,
-      );
-    } else {
-      this.logger.warn(
-        `[UserSession:updateGlassesModel] No capabilities found for model: ${modelName}`,
-      );
-
-      // Fallback to Even Realities G1 capabilities if no capabilities found and we don't have any yet
-      if (!this.capabilities) {
-        const fallbackCapabilities =
-          getCapabilitiesForModel("Even Realities G1");
-        if (fallbackCapabilities) {
-          this.capabilities = fallbackCapabilities;
-          this.logger.info(
-            `[UserSession:updateGlassesModel] Applied fallback capabilities (Even Realities G1) for unknown model: ${modelName}`,
-          );
-        }
-      }
-    }
-
-    // Send capabilities update to all connected apps
-    this.sendCapabilitiesUpdateToApps();
-
-    // Stop any running apps that are now incompatible with the new capabilities
-    await this.stopIncompatibleApps();
-  }
-
-  /**
-   * Send capabilities update message to all connected apps
-   * @private
-   */
-  private sendCapabilitiesUpdateToApps(): void {
-    try {
-      const capabilitiesUpdateMessage = {
-        type: CloudToAppMessageType.CAPABILITIES_UPDATE,
-        capabilities: this.capabilities,
-        modelName: this.currentGlassesModel,
-        timestamp: new Date(),
-        sessionId: this.userId,
-      };
-
-      // Send to all connected apps
-      this.appWebsockets.forEach((ws, packageName) => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.send(JSON.stringify(capabilitiesUpdateMessage));
-            this.logger.debug(
-              `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to app ${packageName}`,
-            );
-          } catch (error) {
-            this.logger.error(
-              { error, packageName },
-              `[UserSession:sendCapabilitiesUpdateToApps] Failed to send capabilities update to app ${packageName}`,
-            );
-          }
-        }
-      });
-
-      this.logger.info(
-        `[UserSession:sendCapabilitiesUpdateToApps] Sent capabilities update to ${this.appWebsockets.size} connected apps`,
-      );
-    } catch (error) {
-      this.logger.error(
-        { error },
-        `[UserSession:sendCapabilitiesUpdateToApps] Error sending capabilities update to apps`,
-      );
-    }
-  }
-
-  /**
-   * Stop any running apps that are incompatible with the current capabilities
-   * Called after capabilities are updated due to device model changes
-   * @private
-   */
-  private async stopIncompatibleApps(): Promise<void> {
-    try {
-      if (!this.capabilities) {
-        this.logger.debug(
-          "[UserSession:stopIncompatibleApps] No capabilities available, skipping compatibility check",
-        );
-        return;
-      }
-
-      const runningAppPackages = Array.from(this.runningApps);
-
-      if (runningAppPackages.length === 0) {
-        this.logger.debug(
-          "[UserSession:stopIncompatibleApps] No running apps to check for compatibility",
-        );
-        return;
-      }
-
-      this.logger.info(
-        `[UserSession:stopIncompatibleApps] Checking compatibility for ${runningAppPackages.length} running apps with new capabilities`,
-      );
-
-      const incompatibleApps: string[] = [];
-
-      // Check each running app for compatibility
-      for (const packageName of runningAppPackages) {
-        try {
-          // Get app details to check hardware requirements
-          const app = await appService.getApp(packageName);
-          if (!app) {
-            this.logger.warn(
-              `[UserSession:stopIncompatibleApps] Could not find app details for ${packageName}, keeping it running`,
-            );
-            continue;
-          }
-
-          // Check compatibility with new capabilities
-          const compatibilityResult =
-            HardwareCompatibilityService.checkCompatibility(
-              app,
-              this.capabilities,
-            );
-
-          if (!compatibilityResult.isCompatible) {
-            incompatibleApps.push(packageName);
-
-            this.logger.warn(
-              {
-                packageName,
-                missingHardware: compatibilityResult.missingRequired,
-                capabilities: this.capabilities,
-                modelName: this.currentGlassesModel,
-              },
-              `[UserSession:stopIncompatibleApps] App ${packageName} is now incompatible with ${
-                this.currentGlassesModel
-              } - missing required hardware: ${compatibilityResult.missingRequired
-                .map((req) => req.type)
-                .join(", ")}`,
-            );
-          }
-        } catch (error) {
-          this.logger.error(
-            { error, packageName },
-            `[UserSession:stopIncompatibleApps] Error checking compatibility for app ${packageName}`,
-          );
-        }
-      }
-
-      // Stop all incompatible apps
-      if (incompatibleApps.length > 0) {
-        this.logger.info(
-          {
-            incompatibleApps,
-            modelName: this.currentGlassesModel,
-          },
-          `[UserSession:stopIncompatibleApps] Stopping ${incompatibleApps.length} incompatible apps due to device change to ${this.currentGlassesModel}`,
-        );
-
-        const stopPromises = incompatibleApps.map(async (packageName) => {
-          try {
-            await this.appManager.stopApp(packageName);
-            this.logger.info(
-              `[UserSession:stopIncompatibleApps] Successfully stopped incompatible app ${packageName}`,
-            );
-          } catch (error) {
-            this.logger.error(
-              { error, packageName },
-              `[UserSession:stopIncompatibleApps] Failed to stop incompatible app ${packageName}`,
-            );
-          }
-        });
-
-        // Wait for all apps to be stopped
-        await Promise.allSettled(stopPromises);
-
-        this.logger.info(
-          `[UserSession:stopIncompatibleApps] Completed stopping incompatible apps. Device change to ${this.currentGlassesModel} processed.`,
-        );
-      } else {
-        this.logger.info(
-          `[UserSession:stopIncompatibleApps] All running apps are compatible with ${this.currentGlassesModel}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        { error },
-        "[UserSession:stopIncompatibleApps] Error during incompatible app cleanup",
-      );
-    }
+    await this.deviceManager.setCurrentModel(modelName);
   }
 
   /**
    * Get capabilities with fallback to default model if none available
    */
   getCapabilities(): Capabilities | null {
-    if (this.capabilities) {
-      return this.capabilities;
-    }
-
-    // If no capabilities set yet, try to use Even Realities G1 as fallback
-    const fallbackCapabilities = getCapabilitiesForModel("Even Realities G1");
-    if (fallbackCapabilities) {
-      this.logger.debug(
-        `[UserSession:getCapabilities] Using fallback capabilities (Even Realities G1)`,
-      );
-      return fallbackCapabilities;
-    }
-
-    this.logger.warn(
-      `[UserSession:getCapabilities] No capabilities available, including fallback`,
-    );
-    return null;
-  }
-
-  /**
-   * Check if a specific capability is available
-   */
-  hasCapability(capability: keyof Capabilities): boolean {
-    const caps = this.getCapabilities();
-    return caps ? Boolean(caps[capability]) : false;
+    return this.deviceManager.getCapabilities();
   }
 
   /**
@@ -760,8 +593,8 @@ export class UserSession {
         );
       } catch (sendError) {
         this.logger.error(
-          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
           sendError,
+          `🔊 [UserSession] Error sending audio response ${requestId} to app ${packageName}:`,
         );
       }
       this.audioPlayRequestMapping.delete(requestId);
@@ -774,21 +607,6 @@ export class UserSession {
         `Error relaying audio play response`,
       );
     }
-  }
-
-  /**
-   * Transform session data for client consumption
-   */
-  async toClientFormat(): Promise<any> {
-    // Return only what the client needs
-    return {
-      userId: this.userId,
-      startTime: this.startTime,
-      activeAppSessions: Array.from(this.runningApps),
-      loadingApps: Array.from(this.loadingApps),
-      isTranscribing: this.isTranscribing,
-      // Other client-relevant data
-    };
   }
 
   /**
@@ -857,10 +675,14 @@ export class UserSession {
     if (this.translationManager) this.translationManager.dispose();
     if (this.subscriptionManager) this.subscriptionManager.dispose();
     // if (this.heartbeatManager) this.heartbeatManager.dispose();
-    if (this.videoManager) this.videoManager.dispose();
+    if (this.unmanagedStreamingExtension)
+      this.unmanagedStreamingExtension.dispose();
     if (this.photoManager) this.photoManager.dispose();
     if (this.managedStreamingExtension)
       this.managedStreamingExtension.dispose();
+
+    // Persist location to DB cold cache and clean up
+    if (this.locationManager) await this.locationManager.dispose();
 
     // Clear glasses heartbeat
     this.clearGlassesHeartbeat();

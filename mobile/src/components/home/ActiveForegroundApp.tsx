@@ -1,57 +1,57 @@
-import {View, TouchableOpacity, ViewStyle, ImageStyle, TextStyle} from "react-native"
+import {ImageStyle, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 
-import AppIcon from "@/components/misc/AppIcon"
 import {Text} from "@/components/ignite"
-import {useActiveForegroundApp, useAppStatus} from "@/contexts/AppletStatusProvider"
+import AppIcon from "@/components/misc/AppIcon"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {useActiveForegroundApp, useStopApplet} from "@/stores/applets"
+import {ThemedStyle} from "@/theme"
+import {showAlert} from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {CloseXIcon} from "assets/icons/component/CloseXIcon"
-import restComms from "@/managers/RestComms"
-import {showAlert} from "@/utils/AlertUtils"
-import {ThemedStyle} from "@/theme"
 
 export const ActiveForegroundApp: React.FC = () => {
   const {themed, theme} = useAppTheme()
   const {push} = useNavigationHistory()
-  const activeForegroundApp = useActiveForegroundApp()
-  const {optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const applet = useActiveForegroundApp()
+  const stopApplet = useStopApplet()
 
   const handlePress = () => {
-    if (activeForegroundApp) {
+    if (applet) {
+      // Handle offline apps - navigate directly to React Native route
+      if (applet.offline) {
+        const offlineRoute = applet.offlineRoute
+        if (offlineRoute) {
+          push(offlineRoute)
+          return
+        }
+      }
+
       // Check if app has webviewURL and navigate directly to it
-      if (activeForegroundApp.webviewURL && activeForegroundApp.isOnline !== false) {
+      if (applet.webviewUrl && applet.healthy) {
         push("/applet/webview", {
-          webviewURL: activeForegroundApp.webviewURL,
-          appName: activeForegroundApp.name,
-          packageName: activeForegroundApp.packageName,
+          webviewURL: applet.webviewUrl,
+          appName: applet.name,
+          packageName: applet.packageName,
         })
       } else {
         push("/applet/settings", {
-          packageName: activeForegroundApp.packageName,
-          appName: activeForegroundApp.name,
+          packageName: applet.packageName,
+          appName: applet.name,
         })
       }
     }
   }
 
   const handleLongPress = () => {
-    if (activeForegroundApp) {
-      showAlert("Stop App", `Do you want to stop ${activeForegroundApp.name}?`, [
+    if (applet) {
+      showAlert("Stop App", `Do you want to stop ${applet.name}?`, [
         {text: "Cancel", style: "cancel"},
         {
           text: "Stop",
           style: "destructive",
           onPress: async () => {
-            optimisticallyStopApp(activeForegroundApp.packageName)
-
-            try {
-              await restComms.stopApp(activeForegroundApp.packageName)
-              clearPendingOperation(activeForegroundApp.packageName)
-            } catch (error) {
-              refreshAppStatus()
-              console.error("Stop app error:", error)
-            }
+            stopApplet(applet.packageName)
           },
         },
       ])
@@ -59,28 +59,25 @@ export const ActiveForegroundApp: React.FC = () => {
   }
 
   const handleStopApp = async (event: any) => {
+    if (applet?.loading) {
+      // don't do anything if still loading
+      return
+    }
+
     // Prevent the parent TouchableOpacity from triggering
     event.stopPropagation()
 
-    if (activeForegroundApp) {
-      optimisticallyStopApp(activeForegroundApp.packageName)
-
-      try {
-        await restComms.stopApp(activeForegroundApp.packageName)
-        clearPendingOperation(activeForegroundApp.packageName)
-      } catch (error) {
-        refreshAppStatus()
-        console.error("Stop app error:", error)
-      }
+    if (applet) {
+      stopApplet(applet.packageName)
     }
   }
 
-  if (!activeForegroundApp) {
+  if (!applet) {
     // Show placeholder when no active app
     return (
       <View style={themed($container)}>
         <View style={themed($placeholderContent)}>
-          <Text style={themed($placeholderText)}>Tap an app below to activate it</Text>
+          <Text style={themed($placeholderText)} tx="home:appletPlaceholder" />
         </View>
       </View>
     )
@@ -93,10 +90,10 @@ export const ActiveForegroundApp: React.FC = () => {
       onLongPress={handleLongPress}
       activeOpacity={0.7}>
       <View style={themed($rowContent)}>
-        <AppIcon app={activeForegroundApp as any} style={themed($appIcon)} hideLoadingIndicator />
+        <AppIcon app={applet} style={themed($appIcon)} />
         <View style={themed($appInfo)}>
           <Text style={themed($appName)} numberOfLines={1} ellipsizeMode="tail">
-            {activeForegroundApp.name}
+            {applet.name}
           </Text>
           <View style={themed($tagContainer)}>
             <View style={themed($activeTag)}>
@@ -104,19 +101,25 @@ export const ActiveForegroundApp: React.FC = () => {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={handleStopApp} style={themed($closeButton)} activeOpacity={0.7}>
-          <CloseXIcon size={24} color={theme.colors.textDim} />
-        </TouchableOpacity>
+        {!applet.loading && (
+          <TouchableOpacity onPress={handleStopApp} style={themed($closeButton)} activeOpacity={0.7}>
+            <CloseXIcon size={24} color={theme.colors.textDim} />
+          </TouchableOpacity>
+        )}
         <ChevronRight color={theme.colors.text} />
       </View>
     </TouchableOpacity>
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  borderRadius: spacing.sm,
+const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginVertical: spacing.xs,
   minHeight: 72,
+  borderWidth: 2,
+  borderColor: colors.border,
+  borderRadius: spacing.md,
+  backgroundColor: colors.backgroundAlt,
+  paddingHorizontal: spacing.sm,
 })
 
 const $rowContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -172,6 +175,7 @@ const $placeholderContent: ThemedStyle<ViewStyle> = ({spacing}) => ({
   padding: spacing.lg,
   alignItems: "center",
   justifyContent: "center",
+  paddingVertical: spacing.xl,
 })
 
 const $placeholderText: ThemedStyle<TextStyle> = ({colors}) => ({

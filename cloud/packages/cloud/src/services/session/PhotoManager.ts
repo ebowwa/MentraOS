@@ -66,6 +66,7 @@ export class PhotoManager {
       customWebhookUrl,
       authToken,
       size = "medium",
+      compress = "none",
     } = appRequest;
 
     this.logger.info(
@@ -137,6 +138,7 @@ export class PhotoManager {
       webhookUrl, // Use custom webhookUrl if provided, otherwise default
       authToken, // Include authToken for webhook authentication
       size, // Propagate desired size
+      compress, // Propagate compression setting
       timestamp: new Date(),
     };
 

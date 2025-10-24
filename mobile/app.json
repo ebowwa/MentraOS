@@ -1,6 +1,4 @@
 {
-  "name": "MentraOS",
-  "displayName": "MentraOS",
   "expo": {
     "name": "MentraOS",
     "slug": "MentraOS",
@@ -17,7 +15,7 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 51,
+      "versionCode": 49,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
@@ -97,11 +95,10 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash/splash.png",
-          "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#f3f6f4",
+          "backgroundColor": "#fffaf0",
           "dark": {
-            "backgroundColor": "#051523"
+            "backgroundColor": "#2D2C2F"
           }
         }
       ],
@@ -159,7 +156,17 @@
         {
           "url": "https://sentry.io/",
           "project": "mentra-os",
-          "organization": "mentra-labs"
+          "organization": "mentra-labs",
+          "experimental_android": {
+            "enableAndroidGradlePlugin": false,
+            "autoUploadProguardMapping": true,
+            "includeProguardMapping": true,
+            "dexguardEnabled": true,
+            "uploadNativeSymbols": true,
+            "autoUploadNativeSymbols": true,
+            "includeNativeSources": true,
+            "includeSourceContext": true
+          }
         }
       ],
       "@livekit/react-native-expo-plugin",
@@ -169,14 +176,13 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow MentraOS to use your location."
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-av"
     ],
     "experiments": {
       "tsconfigPaths": true,
       "typedRoutes": true
     }
-  },
-  "ignite": {
-    "version": "10.4.0"
   }
 }

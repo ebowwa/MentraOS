@@ -1,29 +1,46 @@
-import React from "react"
-import {View, Text, StyleSheet} from "react-native"
+import {View, StyleSheet} from "react-native"
+import {Text} from "@/components/ignite"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {glassesFeatures, featureLabels, GlassesFeature, hasMicrophone} from "@/config/glassesFeatures"
+import {DeviceTypes, getModelCapabilities} from "@/../../cloud/packages/types/src"
 
 interface GlassesFeatureListProps {
   glassesModel: string
 }
 
+export type GlassesFeature = "camera" | "microphone" | "speakers" | "display"
+
+export const featureLabels: Record<GlassesFeature, string> = {
+  camera: "Camera",
+  microphone: "Microphone",
+  speakers: "Speakers",
+  display: "Display",
+}
+
 export function GlassesFeatureList({glassesModel}: GlassesFeatureListProps) {
   const {theme} = useAppTheme()
-  const features = glassesFeatures[glassesModel]
+  const capabilities = getModelCapabilities(glassesModel as DeviceTypes)
 
-  if (!features) {
-    console.warn(`No features defined for glasses model: ${glassesModel}`)
+  if (!capabilities) {
+    console.warn(`No capabilities defined for glasses model: ${glassesModel}`)
     return null
   }
 
   const featureOrder: GlassesFeature[] = ["camera", "microphone", "speakers", "display"]
 
   const getFeatureValue = (feature: GlassesFeature): boolean => {
-    if (feature === "microphone") {
-      return hasMicrophone(features)
+    switch (feature) {
+      case "camera":
+        return capabilities.hasCamera
+      case "microphone":
+        return capabilities.hasMicrophone
+      case "speakers":
+        return capabilities.hasSpeaker
+      case "display":
+        return capabilities.hasDisplay
+      default:
+        return false
     }
-    return features[feature as keyof typeof features] as boolean
   }
 
   return (

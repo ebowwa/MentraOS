@@ -1,10 +1,8 @@
-import React, {createContext, useContext, useEffect, useRef, useState} from "react"
+import {createContext, useContext, useEffect} from "react"
 // import {Linking} from "react-native"
-import {useRouter} from "expo-router"
-import {useAuth} from "@/contexts/AuthContext"
-import {deepLinkRoutes} from "@/utils/deepLinkRoutes"
 import {NavObject, useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {supabase} from "@/supabase/supabaseClient"
+import {deepLinkRoutes} from "@/utils/deepLinkRoutes"
 
 import * as Linking from "expo-linking"
 
@@ -27,13 +25,11 @@ export interface DeepLinkConfig {
   navObject: NavObject
 }
 
-const DeeplinkContext = createContext<DeeplinkContextType>({})
+const DeeplinkContext = createContext<DeeplinkContextType>({} as DeeplinkContextType)
 
 export const useDeeplink = () => useContext(DeeplinkContext)
 
 export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
-  const router = useRouter()
-  const {user} = useAuth()
   const {push, replace, goBack, setPendingRoute, getPendingRoute, navigate} = useNavigationHistory()
   const config = {
     scheme: "com.mentra",
@@ -61,7 +57,7 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
   }
 
   useEffect(() => {
-    const subscription = Linking.addEventListener("url", handleUrlRaw)
+    const _subscription = Linking.addEventListener("url", handleUrlRaw)
     Linking.getInitialURL().then(url => {
       console.log("@@@@@@@@@@@@@ INITIAL URL @@@@@@@@@@@@@@@", url)
       if (url) {

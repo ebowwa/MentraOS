@@ -1,5 +1,4 @@
 import {ComponentType} from "react"
-import {LinearGradient} from "expo-linear-gradient"
 import {
   Pressable,
   PressableProps,
@@ -13,11 +12,6 @@ import type {ThemedStyle, ThemedStyleArray} from "@/theme"
 import {$styles, spacing} from "@/theme"
 import {Text, TextProps} from "./Text"
 import {useAppTheme} from "@/utils/useAppTheme"
-
-const gradientBorderStyle: ViewStyle = {
-  borderRadius: 30,
-  padding: 2,
-}
 
 type Presets = "default" | "primary" | "secondary" | "accent" | "warning" | "destructive" | "outlined"
 
@@ -127,11 +121,10 @@ export function Button(props: ButtonProps) {
     LeftAccessory,
     disabled,
     disabledStyle: $disabledViewStyleOverride,
-    accessoryAlignment = "start",
     ...rest
   } = props
 
-  const {themed, theme} = useAppTheme()
+  const {themed} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
   /**
@@ -208,7 +201,7 @@ const $baseViewStyle: ThemedStyle<ViewStyle> = ({spacing, colors, isDark}) => ({
   borderColor: isDark ? undefined : colors.border,
 })
 
-const $baseTextStyle: ThemedStyle<TextStyle> = ({typography, colors}) => ({
+const $baseTextStyle: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   lineHeight: 20,
   textAlign: "center",
@@ -262,7 +255,7 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
     $styles.row,
     $baseViewStyle,
     ({colors}) => ({
-      backgroundColor: colors.accent,
+      backgroundColor: colors.warning,
     }),
   ],
   destructive: [
@@ -288,7 +281,7 @@ const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   primary: [$baseTextStyle],
   secondary: [$baseTextStyle],
   accent: [$baseTextStyle],
-  warning: [$baseTextStyle, ({colors}) => ({color: colors.palette.accent100})],
+  warning: [$baseTextStyle, ({colors}) => ({color: colors.textAlt})],
   destructive: [$baseTextStyle, ({colors}) => ({color: colors.palette.angry600})],
   outlined: [$baseTextStyle, ({colors}) => ({color: colors.text})],
 }
@@ -303,7 +296,7 @@ const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
   outlined: ({colors}) => ({backgroundColor: colors.palette.transparent, borderColor: colors.border}),
 }
 
-const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
+const $pressedTextPresets: Record<Presets, ThemedStyle<TextStyle>> = {
   default: () => ({opacity: 0.9}),
   primary: () => ({opacity: 0.9}),
   secondary: () => ({opacity: 0.9}),

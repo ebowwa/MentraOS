@@ -10,6 +10,7 @@ import { LayoutManager } from "./layouts";
 import { SettingsManager } from "./settings";
 import { LocationManager } from "./modules/location";
 import { CameraModule } from "./modules/camera";
+import { LedModule } from "./modules/led";
 import { AudioManager } from "./modules/audio";
 import { ResourceTracker } from "../../utils/resource-tracker";
 import {
@@ -27,10 +28,12 @@ import {
   ExtendedStreamType,
   ButtonPress,
   HeadPosition,
+  TouchEvent,
   PhoneNotification,
   PhoneNotificationDismissed,
   TranscriptionData,
   TranslationData,
+  createTouchEventStream,
 
   // Type guards
   isAppConnectionAck,
@@ -61,16 +64,17 @@ import { Logger } from "pino";
 import { AppServer } from "../server";
 import axios from "axios";
 import EventEmitter from "events";
-import fetch from "node-fetch";
 
 // Import the cloud-to-app specific type guards
 import {
   isPhotoResponse,
+  isRgbLedControlResponse,
   isRtmpStreamStatus,
   isManagedStreamStatus,
   isStreamStatusCheckResponse,
 } from "../../types/messages/cloud-to-app";
 import { SimpleStorage } from "./modules/simple-storage";
+import { readNotificationWarnLog } from "../../utils/permissions-utils";
 
 /**
  * ⚙️ Configuration options for App Session
@@ -192,6 +196,8 @@ export class AppSession {
   public readonly location: LocationManager;
   /** 📷 Camera interface for photos and streaming */
   public readonly camera: CameraModule;
+  /** 💡 LED interface for RGB LED control */
+  public readonly led: LedModule;
   /** 🔊 Audio interface for audio playback */
   public readonly audio: AudioManager;
   /** 🔐 Simple key-value storage interface */
@@ -277,6 +283,8 @@ export class AppSession {
     this.events = new EventManager(
       this.subscribe.bind(this),
       this.unsubscribe.bind(this),
+      this.config.packageName,
+      this.getHttpsServerUrl() || "",
     );
     this.layouts = new LayoutManager(config.packageName, this.send.bind(this));
 
@@ -332,6 +340,14 @@ export class AppSession {
       this.send.bind(this),
       this, // Pass session reference
       this.logger.child({ module: "camera" }),
+    );
+
+    // Initialize LED control module
+    this.led = new LedModule(
+      this.config.packageName,
+      this.sessionId || "unknown-session-id",
+      this.send.bind(this),
+      this.logger.child({ module: "led" }),
     );
 
     // Initialize audio module with session reference
@@ -437,12 +453,59 @@ export class AppSession {
   }
 
   /**
+   * 👆 Listen for touch gesture events
+   * @param gestureOrHandler - Gesture name or handler function
+   * @param handler - Handler function (if first param is gesture name)
+   * @returns Cleanup function
+   *
+   * @example
+   * // Subscribe to all touch events
+   * session.onTouchEvent((event) => console.log(event.gesture_name));
+   *
+   * // Subscribe to specific gesture
+   * session.onTouchEvent("forward_swipe", (event) => console.log("Forward swipe!"));
+   */
+  onTouchEvent(
+    gestureOrHandler: string | ((data: TouchEvent) => void),
+    handler?: (data: TouchEvent) => void,
+  ): () => void {
+    return this.events.onTouchEvent(gestureOrHandler as any, handler as any);
+  }
+
+  /**
+   * 👆 Subscribe to multiple touch gestures
+   * @param gestures - Array of gesture names
+   * @returns Cleanup function that unsubscribes from all
+   *
+   * @example
+   * session.subscribeToGestures(["forward_swipe", "backward_swipe"]);
+   */
+  subscribeToGestures(gestures: string[]): () => void {
+    gestures.forEach((gesture) => {
+      const stream = createTouchEventStream(gesture);
+      this.subscribe(stream);
+    });
+
+    return () => {
+      gestures.forEach((gesture) => {
+        const stream = createTouchEventStream(gesture);
+        this.unsubscribe(stream);
+      });
+    };
+  }
+
+  /**
    * 📱 Listen for phone notification events
    * @param handler - Function to handle notifications
    * @returns Cleanup function to remove the handler
    * @deprecated Use session.events.onPhoneNotifications() instead
    */
   onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void {
+    readNotificationWarnLog(
+      this.getHttpsServerUrl() || "",
+      this.getPackageName(),
+      "onPhoneNotifications",
+    );
     return this.events.onPhoneNotifications(handler);
   }
 
@@ -1436,6 +1499,12 @@ export class AppSession {
             { message },
             "Received legacy photo response - photos should now come via /photo-upload webhook",
           );
+        } else if (isRgbLedControlResponse(message)) {
+          // LED control responses are no longer handled - fire-and-forget mode
+          this.logger.debug(
+            { message },
+            "Received LED control response (ignored - fire-and-forget mode)",
+          );
         }
         // Handle unrecognized message types gracefully
         else {
@@ -1648,7 +1717,9 @@ export class AppSession {
     // Check if reconnection is allowed
     if (!this.config.autoReconnect || !this.sessionId) {
       this.logger.debug(
-        `🔄 Reconnection skipped: autoReconnect=${this.config.autoReconnect}, sessionId=${this.sessionId ? "valid" : "invalid"}`,
+        `🔄 Reconnection skipped: autoReconnect=${
+          this.config.autoReconnect
+        }, sessionId=${this.sessionId ? "valid" : "invalid"}`,
       );
       return;
     }
@@ -2105,6 +2176,7 @@ export {
   PhotoRequestOptions,
   RtmpStreamOptions,
 } from "./modules/camera";
+export { LedModule, LedControlOptions } from "./modules/led";
 export {
   AudioManager,
   AudioPlayOptions,

@@ -33,8 +33,8 @@ bun expo prebuild
 # Step 4: Fix React Native symlinks
 echo ""
 echo "🔗 Step 4: Fixing React Native symlinks..."
-if [ -f "./fix-react-native-symlinks.sh" ]; then
-    ./fix-react-native-symlinks.sh
+if [ -f "./scripts/fix-react-native-symlinks.sh" ]; then
+    ./scripts/fix-react-native-symlinks.sh
 else
     echo "⚠️  Warning: fix-react-native-symlinks.sh not found"
     echo "Creating symlinks manually..."

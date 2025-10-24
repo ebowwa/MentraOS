@@ -14,9 +14,6 @@ import {
   AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
-  DataStream,
-  LocationUpdate,
-  GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
   AudioPlayRequest,
@@ -28,13 +25,12 @@ import {
   StreamStatusCheckRequest,
   StreamStatusCheckResponse,
   PermissionType,
+  RgbLedControlRequest,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
-import { locationService } from "../core/location.service";
 import { SimplePermissionChecker } from "../permissions/simple-permission-checker";
 import App from "../../models/app.model";
-import { User } from "../../models/user.model";
 
 const SERVICE_NAME = "websocket-app.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -261,6 +257,70 @@ export class AppWebSocketService {
           break;
         }
 
+        // RGB LED control message handling
+        case AppToCloudMessageType.RGB_LED_CONTROL:
+          // Forward RGB LED control request to glasses
+          try {
+            const ledRequestMsg = message as RgbLedControlRequest;
+
+            this.logger.info(
+              {
+                requestId: ledRequestMsg.requestId,
+                packageName: ledRequestMsg.packageName,
+                action: ledRequestMsg.action,
+                color: ledRequestMsg.color,
+              },
+              "💡 RGB LED control request received from app",
+            );
+
+            // Convert from app-to-cloud format to cloud-to-glasses format
+            const glassesLedRequest = {
+              type: CloudToGlassesMessageType.RGB_LED_CONTROL,
+              sessionId: userSession.sessionId,
+              requestId: ledRequestMsg.requestId,
+              packageName: ledRequestMsg.packageName,
+              action: ledRequestMsg.action,
+              color: ledRequestMsg.color,
+              ontime: ledRequestMsg.ontime,
+              offtime: ledRequestMsg.offtime,
+              count: ledRequestMsg.count,
+              timestamp: new Date(),
+            };
+
+            // Send to glasses via WebSocket
+            if (
+              userSession.websocket &&
+              userSession.websocket.readyState === 1
+            ) {
+              userSession.websocket.send(JSON.stringify(glassesLedRequest));
+              this.logger.info(
+                {
+                  requestId: ledRequestMsg.requestId,
+                  action: ledRequestMsg.action,
+                },
+                "💡 RGB LED control request forwarded to glasses",
+              );
+            } else {
+              this.sendError(
+                appWebsocket,
+                AppErrorCode.INTERNAL_ERROR,
+                "Glasses not connected",
+              );
+            }
+          } catch (e) {
+            this.logger.error(
+              { e, packageName: message.packageName },
+              "Error forwarding RGB LED control request",
+            );
+            this.sendError(
+              appWebsocket,
+              AppErrorCode.INTERNAL_ERROR,
+              (e as Error).message ||
+                "Failed to forward RGB LED control request.",
+            );
+          }
+          break;
+
         // Mentra Live Photo / Video Stream Request message handling.
         case AppToCloudMessageType.RTMP_STREAM_REQUEST:
           // Check camera permission before processing RTMP stream request
@@ -288,18 +348,22 @@ export class AppWebSocketService {
               break;
             }
 
-            // Delegate to VideoManager
+            // Delegate to the unmanaged streaming extension
             const streamId =
-              await userSession.videoManager.startRtmpStream(rtmpRequestMsg);
+              await userSession.unmanagedStreamingExtension.startRtmpStream(
+                rtmpRequestMsg,
+              );
             this.logger.info(
               { streamId, packageName: rtmpRequestMsg.packageName },
-              "RTMP Stream request processed by VideoManager.",
+              "RTMP Stream request processed by UnmanagedStreamingExtension.",
             );
           } catch (e) {
-            this.logger.error(
-              { e, packageName: message.packageName },
-              "Error starting RTMP stream via VideoManager",
-            );
+            this.logger
+              .child({ packageName: message.packageName })
+              .error(
+                e,
+                "Error starting RTMP stream via UnmanagedStreamingExtension",
+              );
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -309,9 +373,9 @@ export class AppWebSocketService {
           break;
 
         case AppToCloudMessageType.RTMP_STREAM_STOP:
-          // Delegate to VideoManager
+          // Delegate to the unmanaged streaming extension
           try {
-            await userSession.videoManager.stopRtmpStream(
+            await userSession.unmanagedStreamingExtension.stopRtmpStream(
               message as RtmpStreamStopRequest,
             );
             this.logger.info(
@@ -319,13 +383,18 @@ export class AppWebSocketService {
                 packageName: message.packageName,
                 streamId: (message as RtmpStreamStopRequest).streamId,
               },
-              "RTMP Stream stop request processed by VideoManager.",
+              "RTMP Stream stop request processed by UnmanagedStreamingExtension.",
             );
           } catch (e) {
-            this.logger.error(
-              { e, packageName: message.packageName },
-              "Error stopping RTMP stream via VideoManager",
-            );
+            this.logger
+              .child({
+                packageName: message.packageName,
+                userId: userSession.userId,
+              })
+              .error(
+                e,
+                "Error stopping RTMP stream via UnmanagedStreamingExtension",
+              );
             this.sendError(
               appWebsocket,
               AppErrorCode.INTERNAL_ERROR,
@@ -336,8 +405,7 @@ export class AppWebSocketService {
 
         case AppToCloudMessageType.LOCATION_POLL_REQUEST:
           try {
-            await locationService.handlePollRequest(
-              userSession,
+            await userSession.locationManager.handlePollRequestFromApp(
               message.accuracy,
               message.correlationId,
               message.packageName,
@@ -602,9 +670,9 @@ export class AppWebSocketService {
                 userSession.userId,
               );
 
-            // Then check for unmanaged streams via VideoManager
+            // Then check for unmanaged streams via UnmanagedStreamingExtension
             const unmanagedStreamInfo =
-              userSession.videoManager.getActiveStreamInfo();
+              userSession.unmanagedStreamingExtension.getActiveStreamInfo();
 
             // Build response based on what we found
             const response: StreamStatusCheckResponse = {
@@ -643,7 +711,7 @@ export class AppWebSocketService {
                 };
               }
             } else if (unmanagedStreamInfo) {
-              // Unmanaged stream found (handled by VideoManager)
+              // Unmanaged stream found (handled by the unmanaged streaming extension)
               response.streamInfo = {
                 type: "unmanaged",
                 streamId: unmanagedStreamInfo.streamId,
@@ -665,7 +733,7 @@ export class AppWebSocketService {
                 streamSource: managedStreamState
                   ? "ManagedStreamingExtension"
                   : unmanagedStreamInfo
-                    ? "VideoManager"
+                    ? "UnmanagedStreamingExtension"
                     : "none",
               },
               "Stream status check processed",
@@ -714,40 +782,13 @@ export class AppWebSocketService {
     const previousLanguageSubscriptions =
       userSession.subscriptionManager.getMinimalLanguageSubscriptions();
 
-    // Check if the app is newly subscribing to calendar events
-    const isNewCalendarSubscription =
-      !userSession.subscriptionManager.hasSubscription(
-        message.packageName,
-        StreamType.CALENDAR_EVENT,
-      ) &&
-      message.subscriptions.some(
-        (sub) => typeof sub === "string" && sub === StreamType.CALENDAR_EVENT,
-      );
-
-    // Check if the app is newly subscribing to location updates
-    const isNewLocationSubscription =
-      !userSession.subscriptionManager.hasSubscription(
-        message.packageName,
-        StreamType.LOCATION_UPDATE,
-      ) &&
-      message.subscriptions.some((sub) => {
-        if (typeof sub === "string") return sub === StreamType.LOCATION_UPDATE;
-        return (
-          sub.stream === StreamType.LOCATION_STREAM ||
-          sub.stream === StreamType.LOCATION_UPDATE
-        );
-      });
-
     try {
       // Update session-scoped subscriptions and await completion to prevent races
-      const updatedUser =
-        await userSession.subscriptionManager.updateSubscriptions(
-          message.packageName,
-          message.subscriptions,
-        );
-      if (updatedUser) {
-        locationService.handleSubscriptionChange(updatedUser, userSession);
-      }
+      await userSession.subscriptionManager.updateSubscriptions(
+        message.packageName,
+        message.subscriptions,
+      );
+      // Location tier and relay now handled by managers via SubscriptionManager.syncManagers()
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -839,74 +880,6 @@ export class AppWebSocketService {
       );
     }
 
-    // Send cached calendar event if app just subscribed to calendar events
-    if (isNewCalendarSubscription) {
-      userSession.logger.info(
-        { service: SERVICE_NAME, isNewCalendarSubscription, packageName },
-        `isNewCalendarSubscription: ${isNewCalendarSubscription} for app ${packageName}`,
-      );
-      const allCalendarEvents =
-        userSession.subscriptionManager.getAllCalendarEvents();
-      if (allCalendarEvents.length > 0) {
-        userSession.logger.debug(
-          { service: SERVICE_NAME, allCalendarEvents },
-          `Sending ${allCalendarEvents.length} cached calendar events to newly subscribed app ${message.packageName}`,
-        );
-
-        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
-          for (const event of allCalendarEvents) {
-            const dataStream: DataStream = {
-              type: CloudToAppMessageType.DATA_STREAM,
-              streamType: StreamType.CALENDAR_EVENT,
-              sessionId: `${userSession.userId}-${message.packageName}`,
-              data: event,
-              timestamp: new Date(),
-            };
-            appWebsocket.send(JSON.stringify(dataStream));
-          }
-        }
-      }
-    }
-
-    // Send cached location if app just subscribed to location updates
-    if (isNewLocationSubscription) {
-      userSession.logger.info(
-        { service: SERVICE_NAME, isNewLocationSubscription, packageName },
-        `isNewLocationSubscription: ${isNewLocationSubscription} for app ${packageName}`,
-      );
-      const user = await User.findOne({ email: userSession.userId });
-      const lastLocation = user?.location;
-      if (
-        lastLocation &&
-        lastLocation.lat != null &&
-        lastLocation.lng != null
-      ) {
-        userSession.logger.info(
-          `Sending cached location to newly subscribed app ${message.packageName}`,
-        );
-        const appSessionId = `${userSession.userId}-${message.packageName}`;
-
-        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
-          const locationUpdate: LocationUpdate = {
-            type: GlassesToCloudMessageType.LOCATION_UPDATE,
-            sessionId: appSessionId,
-            lat: lastLocation.lat,
-            lng: lastLocation.lng,
-            timestamp: new Date(),
-          };
-
-          const dataStream: DataStream = {
-            type: CloudToAppMessageType.DATA_STREAM,
-            sessionId: appSessionId,
-            streamType: StreamType.LOCATION_UPDATE,
-            data: locationUpdate,
-            timestamp: new Date(),
-          };
-          appWebsocket.send(JSON.stringify(dataStream));
-        }
-      }
-    }
-
     // Send cached userDatetime if app just subscribed to custom_message
     const isNewCustomMessageSubscription = message.subscriptions.includes(
       StreamType.CUSTOM_MESSAGE as any,
@@ -966,10 +939,9 @@ export class AppWebSocketService {
       // Check if app has camera permission
       return SimplePermissionChecker.hasPermission(app, PermissionType.CAMERA);
     } catch (error) {
-      logger.error(
-        { error, packageName, userId: userSession.userId },
-        "Error checking camera permission",
-      );
+      logger
+        .child({ packageName, userId: userSession.userId })
+        .error(error, "Error checking camera permission");
       return false;
     }
   }
@@ -993,12 +965,12 @@ export class AppWebSocketService {
       // Close the connection with an appropriate code
       ws.close(1008, message);
     } catch (error) {
-      logger.error("Failed to send error response", error);
+      logger.error(error, "Failed to send error response");
       // Try to close the connection anyway
       try {
         ws.close(1011, "Internal server error");
       } catch (closeError) {
-        logger.error("Failed to close WebSocket connection", closeError);
+        logger.error(closeError, "Failed to close WebSocket connection");
       }
     }
   }

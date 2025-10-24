@@ -30,8 +30,6 @@ fi
 
 echo "🔧 Creating React Native symlinks to avoid node command execution..."
 
-cd "$(dirname "$0")"
-
 # Counter for created symlinks
 count=0
 

@@ -22,7 +22,7 @@ import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
-import com.augmentos.augmentos_core.utils.ServerConfigUtil;
+import com.augmentos.asg_client.utils.ServerConfigUtil;
 
 import okhttp3.Call;
 import okhttp3.Callback;

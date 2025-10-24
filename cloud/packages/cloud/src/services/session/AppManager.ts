@@ -28,7 +28,6 @@ import { logger as rootLogger } from "../logging/pino-logger";
 // session.service APIs are being consolidated into UserSession
 import axios, { AxiosError } from "axios";
 import App from "../../models/app.model";
-import { locationService } from "../core/location.service";
 import { HardwareCompatibilityService } from "./HardwareCompatibilityService";
 
 const logger = rootLogger.child({ service: "AppManager" });
@@ -270,7 +269,7 @@ export class AppManager {
     // Check hardware compatibility
     const compatibilityResult = HardwareCompatibilityService.checkCompatibility(
       app,
-      this.userSession.capabilities,
+      this.userSession.deviceManager.getCapabilities(),
     );
 
     if (!compatibilityResult.isCompatible) {
@@ -278,7 +277,7 @@ export class AppManager {
         {
           packageName,
           missingHardware: compatibilityResult.missingRequired,
-          capabilities: this.userSession.capabilities,
+          capabilities: this.userSession.deviceManager.getCapabilities(),
         },
         `App ${packageName} is incompatible with connected glasses hardware`,
       );
@@ -726,28 +725,21 @@ export class AppManager {
         );
       } catch (webhookError) {
         this.logger.error(
-          `Error triggering stop webhook for ${packageName}:`,
           webhookError,
+          `Error triggering stop webhook for ${packageName}:`,
         );
       }
 
       // Remove subscriptions.
       try {
-        const updatedUser =
-          await this.userSession.subscriptionManager.removeSubscriptions(
-            packageName,
-          );
-        if (updatedUser) {
-          // After removing subscriptions, re-arbitrate the location tier.
-          await locationService.handleSubscriptionChange(
-            updatedUser,
-            this.userSession,
-          );
-        }
+        await this.userSession.subscriptionManager.removeSubscriptions(
+          packageName,
+        );
+        // Location tier is now computed in-memory by SubscriptionManager.syncManagers()
       } catch (error) {
         this.logger.error(
-          `Error removing subscriptions for ${packageName}:`,
           error,
+          `Error removing subscriptions for ${packageName}`,
         );
       }
 
@@ -769,7 +761,7 @@ export class AppManager {
           appWebsocket.close(1000, "App stopped");
         } catch (error) {
           this.logger.error(
-            { error },
+            error,
             `Error closing connection for ${packageName}`,
           );
         }
@@ -783,7 +775,7 @@ export class AppManager {
         }
       } catch (error) {
         this.userSession.logger.error(
-          { error },
+          error,
           `Error updating user's running apps`,
         );
       }
@@ -829,7 +821,7 @@ export class AppManager {
 
       this.updateAppLastActive(packageName);
     } catch (error) {
-      this.logger.error(`Error stopping app ${packageName}:`, error);
+      this.logger.error(error, `Error stopping app ${packageName}:`);
     }
   }
 
@@ -893,8 +885,8 @@ export class AppManager {
           ws.close(1008, "Invalid API key");
         } catch (sendError) {
           this.logger.error(
-            `Error sending auth error to App ${packageName}:`,
             sendError,
+            `Error sending auth error to App ${packageName}:`,
           );
         }
 
@@ -933,8 +925,8 @@ export class AppManager {
           );
         } catch (sendError) {
           this.logger.error(
-            `Error sending app not started error to App ${packageName}:`,
             sendError,
+            `Error sending app not started error to App ${packageName}:`,
           );
         }
         ws.close(1008, "App not started for this session");
@@ -1097,7 +1089,7 @@ export class AppManager {
 
         ws.close(1011, "Internal server error");
       } catch (sendError) {
-        this.logger.error(`Error sending internal error to App:`, sendError);
+        this.logger.error(sendError, `Error sending internal error to App:`);
       }
     }
   }
@@ -1175,7 +1167,7 @@ export class AppManager {
 
       this.logger.info(`Updated installed apps for ${this.userSession.userId}`);
     } catch (error) {
-      this.logger.error(`Error refreshing installed apps:`, error);
+      this.logger.error(error, `Error refreshing installed apps:`);
     }
   }
 
@@ -1224,8 +1216,8 @@ export class AppManager {
             startedApps.push(packageName);
           } catch (error) {
             logger.error(
-              `Error starting previously running app ${packageName}:`,
               error,
+              `Error starting previously running app ${packageName}:`,
             );
             // Continue with other apps
           }
@@ -1236,7 +1228,7 @@ export class AppManager {
         `Started ${startedApps.length}/${previouslyRunningApps.length} previously running apps for ${this.userSession.userId}`,
       );
     } catch (error) {
-      logger.error(`Error starting previously running apps:`, error);
+      logger.error(error, `Error starting previously running apps:`);
     }
   }
 
@@ -1601,7 +1593,7 @@ export class AppManager {
       this.userSession.loadingApps.clear();
     } catch (error) {
       this.logger.error(
-        { error },
+        error,
         `Error disposing AppManager for ${this.userSession.userId}`,
       );
     }

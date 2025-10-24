@@ -12,9 +12,7 @@ import {
   StreamStatusCheckRequest,
   StreamStatusCheckResponse,
   AppToCloudMessageType,
-  CloudToAppMessageType,
   StreamType,
-  isManagedStreamStatus,
   RestreamDestination,
 } from "../../../types";
 import {
@@ -435,10 +433,19 @@ export class CameraManagedExtension {
       );
       this.pendingManagedStreamRequest = undefined;
       this.isManagedStreaming = false;
+      this.currentManagedStreamId = undefined;
+      this.currentManagedStreamUrls = undefined;
     }
 
     // Clean up on stopped status
     if (status.status === "stopped") {
+      this.isManagedStreaming = false;
+      this.currentManagedStreamId = undefined;
+      this.currentManagedStreamUrls = undefined;
+    }
+
+    // Clean up local state on error regardless of pending request state
+    if (status.status === "error") {
       this.isManagedStreaming = false;
       this.currentManagedStreamId = undefined;
       this.currentManagedStreamUrls = undefined;

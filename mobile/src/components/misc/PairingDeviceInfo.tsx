@@ -1,21 +1,12 @@
-import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, ActivityIndicator, Image, ViewStyle, TextStyle, ImageStyle} from "react-native"
-import {useFocusEffect} from "@react-navigation/native"
-import {Button} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {getGlassesImage, getGlassesOpenImage, getEvenRealitiesG1Image} from "@/utils/getGlassesImage"
+import {Spacer} from "@/components/ui/Spacer"
 import {translate} from "@/i18n"
-import {Spacer} from "@/components/misc/Spacer"
-import Animated, {
-  Easing,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from "react-native-reanimated"
+import {ThemedStyle} from "@/theme"
+import {getGlassesOpenImage} from "@/utils/getGlassesImage"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useEffect} from "react"
+import {ActivityIndicator, Image, ImageStyle, TextStyle, View, ViewStyle} from "react-native"
+import {Text} from "@/components/ignite"
+import Animated, {useAnimatedStyle, useSharedValue, withTiming} from "react-native-reanimated"
 
 interface PairingDeviceInfoProps {
   glassesModelName: string
@@ -67,7 +58,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({glassesModelName})
 }
 
 // Define themed styles using ThemedStyle type
-const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $deviceInfoContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
   flexDirection: "column",
   justifyContent: "center",

@@ -1,5 +1,6 @@
-import React, {useState, useEffect} from "react"
-import {View, Text, FlatList, TouchableOpacity, Alert} from "react-native"
+import {useState, useEffect} from "react"
+import {View, FlatList, TouchableOpacity, Alert} from "react-native"
+import {Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {ViewStyle, TextStyle} from "react-native"
@@ -12,7 +13,7 @@ interface WifiCredentialsManagerProps {
 }
 
 export default function WifiCredentialsManager({onNetworkSelect}: WifiCredentialsManagerProps) {
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
   const [savedNetworks, setSavedNetworks] = useState<Array<{ssid: string; lastConnected?: number}>>([])
 
   useEffect(() => {

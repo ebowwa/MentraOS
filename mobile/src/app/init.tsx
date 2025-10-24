@@ -3,20 +3,18 @@ import {View, ActivityIndicator, Platform, Linking} from "react-native"
 import Constants from "expo-constants"
 import semver from "semver"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {router} from "expo-router"
 import {Button, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
 import {useAuth} from "@/contexts/AuthContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useSettingsStore, SETTINGS_KEYS, useSetting} from "@/stores/settings"
-import bridge from "@/bridge/MantleBridge"
 import {translate} from "@/i18n"
 import {TextStyle, ViewStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
-import restComms from "@/managers/RestComms"
-import socketComms from "@/managers/SocketComms"
-import mantle from "@/managers/MantleManager"
+import restComms from "@/services/RestComms"
+import socketComms from "@/services/SocketComms"
+import mantle from "@/services/MantleManager"
 import {Text} from "@/components/ignite"
 
 // Types
@@ -34,7 +32,6 @@ const APP_STORE_URL = "https://mentra.glass/os"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
 const NAVIGATION_DELAY = 100
 const DEEPLINK_DELAY = 1000
-const useNewWsManager = Platform.OS === "ios"
 
 export default function InitScreen() {
   // Hooks
@@ -94,7 +91,7 @@ export default function InitScreen() {
     }
 
     setTimeout(() => {
-      router.dismissAll()
+      // clearHistoryAndGoHome()
       replace("/(tabs)/home")
     }, NAVIGATION_DELAY)
   }
@@ -111,32 +108,27 @@ export default function InitScreen() {
     setState("loading")
     setLoadingStatus(translate("versionCheck:connectingToServer"))
 
-    // try {
-    const supabaseToken = session?.access_token
-    if (!supabaseToken) {
-      setErrorType("auth")
-      setState("error")
-      return
-    }
+    try {
+      const supabaseToken = session?.access_token
+      if (!supabaseToken) {
+        setErrorType("auth")
+        setState("error")
+        return
+      }
 
-    const coreToken = await restComms.exchangeToken(supabaseToken)
-    const uid = user?.email || user?.id
+      const coreToken = await restComms.exchangeToken(supabaseToken)
+      const uid = user?.email || user?.id
 
-    if (useNewWsManager) {
-      bridge.setup()
       socketComms.setAuthCreds(coreToken, uid)
       await mantle.init()
-    } else {
-      bridge.setAuthCreds(coreToken, uid)
-    }
 
-    await navigateToDestination()
-    // } catch (error) {
-    //   console.error("Token exchange failed:", error)
-    //   await checkCustomUrl()
-    //   setErrorType("connection")
-    //   setState("error")
-    // }
+      await navigateToDestination()
+    } catch (error) {
+      console.error("Token exchange failed:", error)
+      await checkCustomUrl()
+      setErrorType("connection")
+      setState("error")
+    }
   }
 
   const checkCloudVersion = async (isRetry = false): Promise<void> => {
@@ -204,7 +196,6 @@ export default function InitScreen() {
     try {
       const defaultUrl = (await useSettingsStore.getState().getDefaultValue(SETTINGS_KEYS.custom_backend_url)) as string
       await setCustomBackendUrl(defaultUrl)
-      await bridge.setServerUrl(defaultUrl) // TODO: config: remove
       setIsUsingCustomUrl(false)
       await checkCloudVersion(true) // Pass true for retry to avoid flash
     } catch (error) {
@@ -323,7 +314,7 @@ export default function InitScreen() {
 
             {(state === "error" || (state === "outdated" && canSkipUpdate)) && (
               <Button
-                preset="accent"
+                preset="warning"
                 style={themed($secondaryButton)}
                 RightAccessory={() => <Icon name="arrow-right" size={24} color={theme.colors.text} />}
                 onPress={navigateToDestination}

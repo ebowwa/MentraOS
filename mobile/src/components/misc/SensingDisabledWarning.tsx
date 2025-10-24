@@ -1,71 +1,71 @@
 // SensingDisabledWarning.tsx
-import React from "react"
-import {View, Text, StyleSheet, TouchableOpacity} from "react-native"
+import {View, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {Text} from "@/components/ignite"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
-import {router} from "expo-router"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {ThemedStyle} from "@/theme"
 
 const SensingDisabledWarning: React.FC = () => {
-  const {status} = useCoreStatus()
   const {push} = useNavigationHistory()
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
+  const [sensingEnabled, _setSensingEnabled] = useSetting(SETTINGS_KEYS.sensing_enabled)
 
-  if (status.core_info.sensing_enabled) {
+  if (sensingEnabled) {
     return null
   }
 
   return (
-    <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: theme.colors.warning}]}>
-      <View style={styles.warningContent}>
+    <View
+      style={[themed($container), {backgroundColor: theme.colors.backgroundAlt, borderColor: theme.colors.warning}]}>
+      <View style={themed($warningContent)}>
         <Icon name="microphone-off" size={22} color="#FF9800" />
-        <Text style={styles.warningText}>{translate("warning:sensingDisabled")}</Text>
+        <Text style={themed($warningText)}>{translate("warning:sensingDisabled")}</Text>
       </View>
       <TouchableOpacity
-        style={styles.settingsButton}
+        style={themed($settingsButton)}
         onPress={() => {
           push("/settings/privacy")
         }}>
-        <Text style={styles.settingsButtonTextBlue}>Settings</Text>
+        <Text style={themed($settingsButtonTextBlue)} tx="common:settings" />
       </TouchableOpacity>
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  sensingWarningContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 12, // Match ConnectedDeviceInfo
-    borderWidth: 1, // Restore border for the warning
-    marginVertical: 16,
-    // marginHorizontal: 8,
-    alignSelf: "center",
-  },
-  settingsButton: {
-    padding: 5,
-  },
-  settingsButtonTextBlue: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  warningContent: {
-    alignItems: "center",
-    flexDirection: "row",
-    flex: 1,
-  },
-  warningText: {
-    color: "#E65100",
-    flex: 1,
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 10,
-  },
+const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: spacing.md,
+  borderRadius: spacing.md,
+  borderWidth: spacing.xxxs,
+  alignSelf: "center",
+})
+
+const $settingsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  padding: spacing.xs,
+})
+
+const $settingsButtonTextBlue: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
+  color: colors.primary,
+  fontSize: spacing.md,
+  fontWeight: "bold",
+})
+
+const $warningContent: ThemedStyle<ViewStyle> = () => ({
+  alignItems: "center",
+  flexDirection: "row",
+  flex: 1,
+})
+
+const $warningText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.warning,
+  flex: 1,
+  fontSize: spacing.md,
+  marginLeft: spacing.sm,
 })
 
 export default SensingDisabledWarning

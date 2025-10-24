@@ -30,9 +30,6 @@ export class SubscriptionManager {
     }[]
   > = new Map();
 
-  // Calendar cache (session-scoped)
-  private calendarEventsCache: Array<any> = [];
-
   // Track app reconnect timestamps for empty-subscription grace handling
   private lastAppReconnectAt: Map<string, number> = new Map();
   private readonly CONNECT_GRACE_MS = 8000; // 8 seconds for slower reconnects
@@ -40,9 +37,9 @@ export class SubscriptionManager {
   // Per-app update serialization (mutex/queue)
   private updateChainsByApp: Map<string, Promise<unknown>> = new Map();
 
-  // Cached aggregates for O(1) reads
-  private pcmSubscriptionCount = 0;
-  private transcriptionLikeSubscriptionCount = 0; // transcription/translation incl. language streams
+  // Cached aggregates for O(1) reads - track which apps need what
+  private appsWithPCM = new Set<string>(); // packageNames that need PCM
+  private appsWithTranscription = new Set<string>(); // packageNames that need transcription/translation
   private languageStreamCounts: Map<ExtendedStreamType, number> = new Map();
 
   constructor(userSession: UserSession) {
@@ -141,25 +138,22 @@ export class SubscriptionManager {
     hasPCM: boolean;
     hasTranscription: boolean;
   } {
-    const hasPCM = this.pcmSubscriptionCount > 0;
-    const hasTranscription = this.transcriptionLikeSubscriptionCount > 0;
+    const hasPCM = this.appsWithPCM.size > 0;
+    const hasTranscription = this.appsWithTranscription.size > 0;
     const hasMedia = hasPCM || hasTranscription;
-    return { hasMedia, hasPCM, hasTranscription };
-  }
 
-  cacheCalendarEvent(event: any): void {
-    this.calendarEventsCache.push(event);
-    this.logger.info(
+    this.logger.debug(
       {
-        userId: this.userSession.userId,
-        count: this.calendarEventsCache.length,
+        appsWithPCM: Array.from(this.appsWithPCM),
+        appsWithTranscription: Array.from(this.appsWithTranscription),
+        hasPCM,
+        hasTranscription,
+        hasMedia,
       },
-      "Cached calendar event",
+      "hasPCMTranscriptionSubscriptions called",
     );
-  }
 
-  getAllCalendarEvents(): any[] {
-    return [...this.calendarEventsCache];
+    return { hasMedia, hasPCM, hasTranscription };
   }
 
   async updateSubscriptions(
@@ -293,6 +287,10 @@ export class SubscriptionManager {
       );
     }
 
+    // Notify managers about unsubscribe
+    this.userSession.locationManager.handleUnsubscribe(packageName);
+    this.userSession.calendarManager.handleUnsubscribe(packageName);
+
     await this.syncManagers();
     this.userSession.microphoneManager?.handleSubscriptionChange();
 
@@ -322,7 +320,7 @@ export class SubscriptionManager {
   dispose(): void {
     this.subscriptions.clear();
     this.history.clear();
-    this.calendarEventsCache = [];
+
     this.lastAppReconnectAt.clear();
   }
 
@@ -341,35 +339,63 @@ export class SubscriptionManager {
     this.history.set(packageName, list);
   }
 
+  /**
+   * Deprecated: No longer persist location subscriptions to DB
+   * Location subscriptions are now tracked in-memory only
+   */
   private async persistLocationRate(
-    packageName: string,
-    locationRate: string | null,
+    _packageName: string,
+    _locationRate: string | null,
   ): Promise<UserI | null> {
-    try {
-      const user = await User.findOne({ email: this.userSession.userId });
-      if (!user) return null;
+    // No-op: location subscriptions are now in-memory only
+    // This method is kept for backward compatibility during migration
+    return null;
+  }
 
-      const sanitizedPackageName = MongoSanitizer.sanitizeKey(packageName);
-      if (!user.locationSubscriptions) {
-        user.locationSubscriptions = new Map();
-      }
-      if (locationRate) {
-        user.locationSubscriptions.set(sanitizedPackageName, {
-          rate: locationRate,
-        });
-      } else {
-        if (user.locationSubscriptions.has(sanitizedPackageName)) {
-          user.locationSubscriptions.delete(sanitizedPackageName);
+  /**
+   * Extract location subscriptions from all app subscriptions.
+   * Returns lightweight data for LocationManager to process.
+   */
+  private getLocationSubscriptions(): Array<{
+    packageName: string;
+    rate: string;
+  }> {
+    const result: Array<{ packageName: string; rate: string }> = [];
+
+    for (const [packageName, subs] of this.subscriptions.entries()) {
+      for (const sub of subs) {
+        // Check for location_stream subscription objects
+        if (
+          typeof sub === "object" &&
+          sub !== null &&
+          "stream" in sub &&
+          (sub as any).stream === StreamType.LOCATION_STREAM
+        ) {
+          const rate = (sub as any).rate;
+          if (rate) {
+            result.push({ packageName, rate });
+          }
         }
       }
-      user.markModified("locationSubscriptions");
-      await user.save();
-      return user;
-    } catch (error) {
-      const logger = this.logger.child({ packageName });
-      logger.error(error, "Error persisting location rate");
-      return null;
     }
+
+    return result;
+  }
+
+  /**
+   * Extract calendar subscriptions from all app subscriptions.
+   * Returns list of package names subscribed to calendar events.
+   */
+  private getCalendarSubscriptions(): string[] {
+    const result: string[] = [];
+
+    for (const [packageName, subs] of this.subscriptions.entries()) {
+      if (subs.has(StreamType.CALENDAR_EVENT)) {
+        result.push(packageName);
+      }
+    }
+
+    return result;
   }
 
   private getTranscriptionSubscriptions(): ExtendedStreamType[] {
@@ -415,6 +441,14 @@ export class SubscriptionManager {
         this.userSession.transcriptionManager.ensureStreamsExist(),
         this.userSession.translationManager.ensureStreamsExist(),
       ]);
+
+      // Pass location subscriptions to LocationManager for tier computation + relay
+      const locationSubs = this.getLocationSubscriptions();
+      this.userSession.locationManager.handleSubscriptionUpdate(locationSubs);
+
+      // Pass calendar subscriptions to CalendarManager for relay
+      const calendarSubs = this.getCalendarSubscriptions();
+      this.userSession.calendarManager.handleSubscriptionUpdate(calendarSubs);
     } catch (error) {
       const logger = this.logger.child({ userId: this.userSession.userId });
       logger.error(error, "Error syncing managers with subscriptions");
@@ -429,57 +463,98 @@ export class SubscriptionManager {
     oldSet: Set<ExtendedStreamType>,
     newSet: Set<ExtendedStreamType>,
   ): void {
-    // Removals
+    this.logger.debug(
+      {
+        packageName,
+        oldCount: oldSet.size,
+        newCount: newSet.size,
+        oldSubs: Array.from(oldSet),
+        newSubs: Array.from(newSet),
+      },
+      "applyDelta called",
+    );
+
+    // Determine if this app needs transcription/PCM before and after
+    const oldHasTranscription = this.hasTranscriptionLike(oldSet);
+    const newHasTranscription = this.hasTranscriptionLike(newSet);
+    const oldHasPCM = oldSet.has(StreamType.AUDIO_CHUNK);
+    const newHasPCM = newSet.has(StreamType.AUDIO_CHUNK);
+
+    // Update app tracking sets
+    if (oldHasTranscription && !newHasTranscription) {
+      this.appsWithTranscription.delete(packageName);
+      this.logger.debug(
+        { packageName, appsRemaining: this.appsWithTranscription.size },
+        "App removed from transcription set",
+      );
+    } else if (!oldHasTranscription && newHasTranscription) {
+      this.appsWithTranscription.add(packageName);
+      this.logger.debug(
+        { packageName, appsTotal: this.appsWithTranscription.size },
+        "App added to transcription set",
+      );
+    }
+
+    if (oldHasPCM && !newHasPCM) {
+      this.appsWithPCM.delete(packageName);
+      this.logger.debug(
+        { packageName, appsRemaining: this.appsWithPCM.size },
+        "App removed from PCM set",
+      );
+    } else if (!oldHasPCM && newHasPCM) {
+      this.appsWithPCM.add(packageName);
+      this.logger.debug(
+        { packageName, appsTotal: this.appsWithPCM.size },
+        "App added to PCM set",
+      );
+    }
+
+    // Still update language stream counts for detailed tracking
     for (const sub of oldSet) {
-      if (!newSet.has(sub)) {
-        this.applySingle(sub, /*isAdd*/ false);
+      if (!newSet.has(sub) && isLanguageStream(sub)) {
+        const prev = this.languageStreamCounts.get(sub) || 0;
+        const next = prev - 1;
+        if (next <= 0) this.languageStreamCounts.delete(sub);
+        else this.languageStreamCounts.set(sub, next);
       }
     }
-    // Additions
     for (const sub of newSet) {
-      if (!oldSet.has(sub)) {
-        this.applySingle(sub, /*isAdd*/ true);
+      if (!oldSet.has(sub) && isLanguageStream(sub)) {
+        const prev = this.languageStreamCounts.get(sub) || 0;
+        this.languageStreamCounts.set(sub, prev + 1);
       }
     }
+
+    this.logger.debug(
+      {
+        packageName,
+        appsWithTranscription: Array.from(this.appsWithTranscription),
+        appsWithPCM: Array.from(this.appsWithPCM),
+      },
+      "applyDelta completed - current state",
+    );
   }
 
   /**
-   * Apply a single subscription add/remove to cached aggregates
+   * Check if a set of subscriptions contains transcription-like streams
    */
-  private applySingle(sub: ExtendedStreamType, isAdd: boolean): void {
-    // PCM stream
-    if (sub === StreamType.AUDIO_CHUNK) {
-      this.pcmSubscriptionCount += isAdd ? 1 : -1;
-      if (this.pcmSubscriptionCount < 0) this.pcmSubscriptionCount = 0;
-      return;
-    }
-
-    // Direct transcription/translation
-    if (sub === StreamType.TRANSCRIPTION || sub === StreamType.TRANSLATION) {
-      this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-      if (this.transcriptionLikeSubscriptionCount < 0)
-        this.transcriptionLikeSubscriptionCount = 0;
-      return;
-    }
-
-    // Language-specific streams
-    if (isLanguageStream(sub)) {
-      const langInfo = parseLanguageStream(sub as string);
-      if (
-        langInfo &&
-        (langInfo.type === StreamType.TRANSCRIPTION ||
-          langInfo.type === StreamType.TRANSLATION)
-      ) {
-        this.transcriptionLikeSubscriptionCount += isAdd ? 1 : -1;
-        if (this.transcriptionLikeSubscriptionCount < 0)
-          this.transcriptionLikeSubscriptionCount = 0;
+  private hasTranscriptionLike(subs: Set<ExtendedStreamType>): boolean {
+    for (const sub of subs) {
+      if (sub === StreamType.TRANSCRIPTION || sub === StreamType.TRANSLATION) {
+        return true;
       }
-      const prev = this.languageStreamCounts.get(sub) || 0;
-      const next = prev + (isAdd ? 1 : -1);
-      if (next <= 0) this.languageStreamCounts.delete(sub);
-      else this.languageStreamCounts.set(sub, next);
-      return;
+      if (isLanguageStream(sub)) {
+        const info = parseLanguageStream(sub as string);
+        if (
+          info &&
+          (info.type === StreamType.TRANSCRIPTION ||
+            info.type === StreamType.TRANSLATION)
+        ) {
+          return true;
+        }
+      }
     }
+    return false;
   }
 }
 

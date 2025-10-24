@@ -1,11 +1,14 @@
 package com.augmentos.asg_client.service.core.handlers;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.augmentos.asg_client.io.bluetooth.managers.K900BluetoothManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.settings.AsgSettings;
 import com.augmentos.asg_client.settings.VideoSettings;
+import com.augmentos.asg_client.service.core.AsgClientService;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.communication.interfaces.ICommunicationManager;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
@@ -24,10 +27,12 @@ public class K900CommandHandler {
     private final AsgClientServiceManager serviceManager;
     private final IStateManager stateManager;
     private final ICommunicationManager communicationManager;
+    private final Handler mainHandler;
 
     public K900CommandHandler(AsgClientServiceManager serviceManager,
                               IStateManager stateManager,
                               ICommunicationManager communicationManager) {
+        this.mainHandler = new Handler(Looper.getMainLooper());
         this.serviceManager = serviceManager;
         this.stateManager = stateManager;
         this.communicationManager = communicationManager;
@@ -67,6 +72,25 @@ public class K900CommandHandler {
                     handleFileTransferAck(bData);
                     break;
 
+                // ---------------------------------------------
+                // BES → MTK Response Handlers (Touch/Swipe Only)
+                // ---------------------------------------------
+                
+                case "sr_swst":
+                    // Switch status report (touch events)
+                    handleSwitchStatusReport(bData);
+                    break;
+
+                case "sr_tpevt":
+                    // Touch event report
+                    handleTouchEventReport(bData);
+                    break;
+
+                case "sr_fbvol":
+                    // Swipe volume status report
+                    handleSwipeVolumeStatusReport(bData);
+                    break;
+
                 default:
                     Log.d(TAG, "📦 Unknown K900 command: " + command);
                     break;
@@ -78,9 +102,12 @@ public class K900CommandHandler {
 
     /**
      * Handle camera button short press
+     * 1. Immediately send RGB LED authority claim
+     * 2. After 5 seconds, activate blue LED
      */
     private void handleCameraButtonShortPress() {
         Log.d(TAG, "📸 Camera button short pressed - handling with configurable mode");
+
         handleConfigurableButtonPress(false); // false = short press
     }
 
@@ -150,34 +177,53 @@ public class K900CommandHandler {
     }
 
     /**
-     * Handle button press based on configured mode
+     * Handle button press with universal forwarding and gallery mode check
+     * Button presses are ALWAYS forwarded to phone/apps
+     * Local capture only happens when camera/gallery app is active
+     * Also enables BES touch/swipe event listening
      */
     private void handleConfigurableButtonPress(boolean isLongPress) {
         if (serviceManager != null && serviceManager.getAsgSettings() != null) {
-            AsgSettings.ButtonPressMode mode = serviceManager.getAsgSettings().getButtonPressMode();
             String pressType = isLongPress ? "long" : "short";
-            Log.d(TAG, "Handling " + pressType + " button press with mode: " + mode.getValue());
+            Log.d(TAG, "Handling " + pressType + " button press");
 
-            switch (mode) {
-                case PHOTO:
-                    handlePhotoMode(isLongPress);
-                    break;
+            // ALWAYS send button press to phone/apps
+            Log.d(TAG, "📱 Forwarding button press to phone/apps (universal forwarding)");
+            sendButtonPressToPhone(isLongPress);
 
-                case APPS:
-                    handleAppsMode(isLongPress);
-                    break;
-
-                case BOTH:
-                    handleBothMode(isLongPress);
-                    break;
-            }
+            // Check if camera/gallery app is active for local capture
+            handlePhotoCapture(isLongPress);
         }
     }
 
     /**
-     * Handle PHOTO mode button press
+     * Handle photo/video capture based on gallery mode state
+     * Only captures if camera/gallery app is currently active OR if glasses are disconnected
      */
-    private void handlePhotoMode(boolean isLongPress) {
+    private void handlePhotoCapture(boolean isLongPress) {
+        // Check if gallery/camera app is active before capturing
+        boolean isSaveInGalleryMode = serviceManager
+            .getAsgSettings()
+            .isSaveInGalleryMode();
+
+        // Check if glasses are connected to phone
+        boolean isConnected = serviceManager.isConnected();
+
+        // LOG CONNECTION STATE FOR DEBUGGING
+        Log.i(TAG, "📸 Photo capture decision - Gallery Mode: " + (isSaveInGalleryMode ? "ACTIVE" : "INACTIVE") +
+                   ", Connection State: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+
+        // Skip capture only if: camera app NOT running AND phone IS connected
+        if (!isSaveInGalleryMode && isConnected) {
+            Log.d(TAG, "📸 Camera app not active and connected to phone - skipping local capture (button press already forwarded to apps)");
+            return;
+        }
+
+        if (!isConnected) {
+            Log.d(TAG, "📸 Disconnected from phone - proceeding with local capture regardless of gallery mode");
+        } else {
+            Log.d(TAG, "📸 Camera app active - proceeding with local capture");
+        }
 
         MediaCaptureService captureService = serviceManager.getMediaCaptureService();
         if (captureService == null) {
@@ -187,67 +233,42 @@ public class K900CommandHandler {
 
         // Get LED setting
         boolean ledEnabled = serviceManager.getAsgSettings().getButtonCameraLedEnabled();
-        
+
+        // Get current battery level
+        int batteryLevel = stateManager.getBatteryLevel();
+
         if (isLongPress) {
-            Log.d(TAG, "📹 Starting video recording (PHOTO mode, long press) with LED: " + ledEnabled);
-            // Get saved video settings for button press
-            VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
-            captureService.startVideoRecording(videoSettings, ledEnabled);
-        } else {
-            // Short press in PHOTO mode
-            // If video is recording, stop it. Otherwise take a photo.
+            // Long press behavior:
+            // - If video is recording, stop it (pause/stop with video stop feedback)
+            // - If video is not recording, start it
             if (captureService.isRecordingVideo()) {
-                Log.d(TAG, "⏹️ Stopping video recording (PHOTO mode, short press during recording)");
+                Log.d(TAG, "⏹️ Stopping video recording (long press during recording)");
                 captureService.stopVideoRecording();
             } else {
-                Log.d(TAG, "📸 Taking photo locally (PHOTO mode, short press) with LED: " + ledEnabled);
+                Log.d(TAG, "📹 Starting video recording (long press) with LED: " + ledEnabled + ", battery: " + batteryLevel + "%");
+
+                // Check if battery is too low to start recording
+                if (batteryLevel >= 0 && batteryLevel < 10) {
+                    Log.w(TAG, "⚠️ Battery too low to start recording: " + batteryLevel + "% (minimum 10% required)");
+                    return;
+                }
+
+                // Get saved video settings for button press
+                VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
+                int maxRecordingTimeMinutes = serviceManager.getAsgSettings().getButtonMaxRecordingTimeMinutes();
+                captureService.startVideoRecording(videoSettings, ledEnabled, maxRecordingTimeMinutes, batteryLevel);
+            }
+        } else {
+            // Short press behavior
+            // If video is recording, stop it. Otherwise take a photo.
+            if (captureService.isRecordingVideo()) {
+                Log.d(TAG, "⏹️ Stopping video recording (short press during recording)");
+                captureService.stopVideoRecording();
+            } else {
+                Log.d(TAG, "📸 Taking photo locally (short press) with LED: " + ledEnabled);
                 // Get saved photo size for button press
                 String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
                 captureService.takePhotoLocally(photoSize, ledEnabled);
-            }
-        }
-    }
-
-    /**
-     * Handle APPS mode button press
-     */
-    private void handleAppsMode(boolean isLongPress) {
-        Log.d(TAG, "📱 Sending button press to apps (APPS mode)");
-        sendButtonPressToPhone(isLongPress);
-    }
-
-    /**
-     * Handle BOTH mode button press
-     */
-    private void handleBothMode(boolean isLongPress) {
-        Log.d(TAG, "🔄 Sending button press to apps AND taking photo/video (BOTH mode)");
-        sendButtonPressToPhone(isLongPress);
-
-        // Get LED setting
-        boolean ledEnabled = serviceManager.getAsgSettings().getButtonCameraLedEnabled();
-        
-        if (isLongPress) {
-            MediaCaptureService captureService = serviceManager.getMediaCaptureService();
-            if (captureService != null) {
-                Log.d(TAG, "📹 Starting video recording (BOTH mode, long press) with LED: " + ledEnabled);
-                // Get saved video settings for button press
-                VideoSettings videoSettings = serviceManager.getAsgSettings().getButtonVideoSettings();
-                captureService.startVideoRecording(videoSettings, ledEnabled);
-            }
-        } else {
-            MediaCaptureService captureService = serviceManager.getMediaCaptureService();
-            if (captureService != null) {
-                // Short press in BOTH mode
-                // If video is recording, stop it. Otherwise take a photo.
-                if (captureService.isRecordingVideo()) {
-                    Log.d(TAG, "⏹️ Stopping video recording (BOTH mode, short press during recording)");
-                    captureService.stopVideoRecording();
-                } else {
-                    Log.d(TAG, "📸 Taking photo locally (BOTH mode, short press) with LED: " + ledEnabled);
-                    // Get saved photo size for button press
-                    String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();
-                    captureService.takePhotoLocally(photoSize, ledEnabled);
-                }
             }
         }
     }
@@ -301,6 +322,248 @@ public class K900CommandHandler {
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating battery status JSON", e);
             }
+        }
+    }
+
+    /**
+     * Activate blue RGB LED
+     * Uses full K900 format (C, V, B) to avoid double-wrapping by K900ProtocolUtils
+     */
+    private void activateBlueRgbLedViaService() {
+        Log.d(TAG, "🚨 💙 activateBlueRgbLedViaService() called");
+        
+        try {
+            // Build LED parameters JSON string
+            JSONObject ledParams = new JSONObject();
+            ledParams.put("led", 2);  // Blue LED
+            ledParams.put("ontime", 5000);  // 5 seconds on
+            ledParams.put("offime", 1000);  // 1 second off
+            ledParams.put("count", 1);  // Single cycle
+            
+            // Build full K900 format: C, V, B (all three required to avoid double-wrapping!)
+            JSONObject k900Command = new JSONObject();
+            k900Command.put("C", "cs_ledon");
+            k900Command.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            k900Command.put("B", ledParams.toString());
+            
+            String commandStr = k900Command.toString();
+            Log.i(TAG, "🚨 💙 Sending blue RGB LED command: " + commandStr);
+            
+            if (serviceManager == null || serviceManager.getBluetoothManager() == null) {
+                Log.w(TAG, "⚠️ ServiceManager or Bluetooth manager unavailable");
+                return;
+            }
+
+            if (!serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; cannot activate blue RGB LED");
+                return;
+            }
+
+            boolean sent = serviceManager.getBluetoothManager().sendData(
+                commandStr.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            
+            if (sent) {
+                Log.i(TAG, "✅ 💙 Blue RGB LED activated successfully via camera button");
+            } else {
+                Log.e(TAG, "❌ 💙 Failed to activate blue RGB LED");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating blue RGB LED command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error activating blue RGB LED", e);
+        }
+    }
+
+    // ---------------------------------------------
+    // BES → MTK Response Handlers (Touch/Swipe Only)
+    // ---------------------------------------------
+
+    /**
+     * Handle switch status report (touch events)
+     */
+    private void handleSwitchStatusReport(JSONObject bData) {
+        Log.d(TAG, "📦 Processing switch status report");
+        
+        if (bData != null) {
+            int type = bData.optInt("type", -1);
+            int switchValue = bData.optInt("switch", -1);
+            
+            Log.i(TAG, "📦 Switch status - Type: " + type + ", Switch: " + switchValue);
+            
+            // Send switch status over BLE
+            sendSwitchStatusOverBle(type, switchValue);
+        } else {
+            Log.w(TAG, "📦 Switch status report received but no B field data");
+        }
+    }
+
+    /**
+     * Send RGB LED control authority command to BES chipset.
+     * This tells BES whether MTK (our app) or BES should control the RGB LEDs.
+     * 
+     * @param claimControl true = MTK claims control, false = BES resumes control
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        Log.d(TAG, "🚨 sendRgbLedControlAuthority() called - Claim: " + claimControl);
+        
+        try {
+            // Build full K900 format (C, V, B) to avoid double-wrapping
+            JSONObject authorityCommand = new JSONObject();
+            authorityCommand.put("C", "android_control_led");
+            authorityCommand.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            
+            // Create proper JSON object for B field
+            JSONObject bField = new JSONObject();
+            bField.put("on", claimControl);
+            authorityCommand.put("B", bField.toString());
+            
+            String commandStr = authorityCommand.toString();
+            Log.i(TAG, "🚨 Sending RGB LED authority command: " + commandStr);
+            
+            if (serviceManager == null || serviceManager.getBluetoothManager() == null) {
+                Log.w(TAG, "⚠️ ServiceManager or Bluetooth manager unavailable");
+                return;
+            }
+
+            if (!serviceManager.getBluetoothManager().isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; RGB LED authority will be sent when connected");
+                return;
+            }
+
+            boolean sent = serviceManager.getBluetoothManager().sendData(commandStr.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (sent) {
+                Log.i(TAG, "✅ RGB LED control authority " + (claimControl ? "CLAIMED" : "RELEASED") + " successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send RGB LED authority command");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating RGB LED authority command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending RGB LED authority command", e);
+        }
+    }
+
+    /**
+     * Handle touch event report
+     */
+    private void handleTouchEventReport(JSONObject bData) {
+        Log.d(TAG, "#@$@@$Processing touch event report");
+        
+        if (bData != null) {
+            int type = bData.optInt("type", -1);
+            
+            String gestureType = getTouchGestureType(type);
+            Log.i(TAG, "📦 Touch event - Type: " + gestureType + " (" + type + ")");
+            
+            // Send touch event over BLE
+            sendTouchEventOverBle(type);
+        } else {
+            Log.w(TAG, "📦 Touch event report received but no B field data");
+        }
+    }
+
+    /**
+     * Handle swipe volume status report
+     */
+    private void handleSwipeVolumeStatusReport(JSONObject bData) {
+        Log.d(TAG, "📦 Processing swipe volume status report");
+        
+        if (bData != null) {
+            int switchValue = bData.optInt("switch", -1);
+            boolean isEnabled = (switchValue == 1);
+            
+            Log.i(TAG, "📦 Swipe volume status - Enabled: " + isEnabled);
+            
+            // Send swipe volume status over BLE
+            sendSwipeVolumeStatusOverBle(isEnabled);
+        } else {
+            Log.w(TAG, "📦 Swipe volume status report received but no B field data");
+        }
+    }
+
+    // ---------------------------------------------
+    // BLE Response Senders (Touch/Swipe Only)
+    // ---------------------------------------------
+
+    /**
+     * Send switch status over BLE
+     */
+    private void sendSwitchStatusOverBle(int type, int switchValue) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "switch_status");
+                obj.put("switch_type", type);
+                obj.put("switch_value", switchValue);
+                obj.put("timestamp", System.currentTimeMillis());
+                
+                String jsonString = obj.toString();
+                Log.d(TAG, "📤 Sending switch status: " + jsonString);
+                serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating switch status JSON", e);
+            }
+        }
+    }
+
+    /**
+     * Send touch event over BLE
+     */
+    private void sendTouchEventOverBle(int type) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "touch_event");
+                obj.put("gesture_type", type);
+                obj.put("gesture_name", getTouchGestureType(type));
+                obj.put("timestamp", System.currentTimeMillis());
+                
+                String jsonString = obj.toString();
+                Log.d(TAG, "📤 Sending touch event: " + jsonString);
+                serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating touch event JSON", e);
+            }
+        }
+    }
+
+    /**
+     * Send swipe volume status over BLE
+     */
+    private void sendSwipeVolumeStatusOverBle(boolean isEnabled) {
+        if (serviceManager != null && serviceManager.getBluetoothManager() != null &&
+                serviceManager.getBluetoothManager().isConnected()) {
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put("type", "swipe_volume_status");
+                obj.put("enabled", isEnabled);
+                obj.put("timestamp", System.currentTimeMillis());
+                
+                String jsonString = obj.toString();
+                Log.d(TAG, "📤 Sending swipe volume status: " + jsonString);
+                serviceManager.getBluetoothManager().sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating swipe volume status JSON", e);
+            }
+        }
+    }
+
+    /**
+     * Get touch gesture type name
+     */
+    private String getTouchGestureType(int type) {
+        switch (type) {
+            case 0: return "single_tap";
+            case 1: return "double_tap";
+            case 2: return "triple_tap";
+            case 3: return "long_press";
+            case 4: return "forward_swipe";
+            case 5: return "backward_swipe";
+            case 6: return "up_swipe";
+            case 7: return "down_swipe";
+            default: return "unknown";
         }
     }
 } 

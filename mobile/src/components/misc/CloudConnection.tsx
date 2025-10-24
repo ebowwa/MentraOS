@@ -1,20 +1,22 @@
-import React, {useEffect, useRef, useState} from "react"
+import {useEffect, useRef, useState} from "react"
 import {View, ViewStyle, TextStyle} from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import Icon from "react-native-vector-icons/FontAwesome"
 import Animated, {useSharedValue, withTiming} from "react-native-reanimated"
 import {useConnectionStore} from "@/stores/connection"
-import {WebSocketStatus} from "@/managers/WebSocketManager"
+import {WebSocketStatus} from "@/services/WebSocketManager"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Text} from "@/components/ignite"
 import {translate} from "@/i18n"
+import {useRefreshApplets} from "@/stores/applets"
 
 export default function CloudConnection() {
   const connectionStatus = useConnectionStore(state => state.status)
-  const {theme, themed} = useAppTheme()
+  const {themed} = useAppTheme()
   const cloudConnectionStatusAnim = useSharedValue(1)
   const [hideCloudConnection, setHideCloudConnection] = useState(true)
+  const refreshApplets = useRefreshApplets()
 
   // Add delay logic for disconnection alerts
   const [delayedStatus, setDelayedStatus] = useState<WebSocketStatus>(connectionStatus)
@@ -103,6 +105,10 @@ export default function CloudConnection() {
         connectionStatus === WebSocketStatus.CONNECTED ? withTiming(0, {duration: 500}) : withTiming(1, {duration: 500})
     }
 
+    if (connectionStatus === WebSocketStatus.CONNECTED || connectionStatus === WebSocketStatus.DISCONNECTED) {
+      refreshApplets()
+    }
+
     // Cleanup function
     return () => {
       if (disconnectionTimerRef.current) {
@@ -134,9 +140,9 @@ export default function CloudConnection() {
   )
 }
 
-const $animatedContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $animatedContainer: ThemedStyle<ViewStyle> = () => ({
   zIndex: 999,
-  marginTop: -56,
+  // marginTop: -56,
   marginBottom: 8,
 })
 

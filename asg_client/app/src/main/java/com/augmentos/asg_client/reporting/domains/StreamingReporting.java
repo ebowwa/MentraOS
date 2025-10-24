@@ -203,6 +203,53 @@ public class StreamingReporting {
     }
     
     /**
+     * Report loss of validated upstream connectivity while streaming
+     */
+    public static void reportNetworkValidationLost(Context context, String streamId, long graceWindowMs) {
+        ReportManager.getInstance(context).report(
+            new ReportData.Builder()
+                .message("Upstream validation lost during streaming")
+                .level(ReportLevel.WARNING)
+                .category("streaming.network")
+                .operation("validation_lost")
+                .tag("stream_id", streamId != null ? streamId : "unknown")
+                .tag("grace_window_ms", graceWindowMs)
+        );
+    }
+    
+    /**
+     * Report reachability probe failure
+     */
+    public static void reportReachabilityProbeFailure(Context context, String rtmpUrl, int consecutiveFailures, long intervalMs) {
+        ReportManager.getInstance(context).report(
+            new ReportData.Builder()
+                .message("RTMP reachability probe failed")
+                .level(ReportLevel.WARNING)
+                .category("streaming.network")
+                .operation("reachability_probe")
+                .tag("rtmp_url", rtmpUrl != null ? rtmpUrl : "unknown")
+                .tag("consecutive_failures", consecutiveFailures)
+                .tag("probe_interval_ms", intervalMs)
+        );
+    }
+    
+    /**
+     * Report packet stall (no packets sent for a period)
+     */
+    public static void reportPacketStall(Context context, String rtmpUrl, long elapsedMs, long thresholdMs) {
+        ReportManager.getInstance(context).report(
+            new ReportData.Builder()
+                .message("RTMP packet stall detected")
+                .level(ReportLevel.WARNING)
+                .category("streaming.network")
+                .operation("packet_stall")
+                .tag("rtmp_url", rtmpUrl != null ? rtmpUrl : "unknown")
+                .tag("elapsed_ms", elapsedMs)
+                .tag("threshold_ms", thresholdMs)
+        );
+    }
+    
+    /**
      * Report stream timeout error
      */
     public static void reportTimeoutError(Context context, String streamId, long timeoutMs) {

@@ -6,7 +6,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import type {ThemedStyle} from "@/theme"
 import {translate} from "@/i18n/translate"
 
-const sadFace = require("../../../assets/sad-face.png")
+const sadFace = require("../../../assets/glasses/unknown_wearable.png")
 
 interface EmptyStateProps {
   /**

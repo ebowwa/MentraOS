@@ -14,6 +14,13 @@ public interface IHardwareManager {
      * Initialize the hardware manager and check device capabilities
      */
     void initialize();
+
+    /**
+     * Set the Bluetooth manager for RGB LED control
+     * This should be called after initialize() to enable RGB LED functionality
+     * @param bluetoothManager The Bluetooth manager instance
+     */
+    void setBluetoothManager(Object bluetoothManager);
     
     /**
      * Check if the device supports recording LED control
@@ -99,4 +106,69 @@ public interface IHardwareManager {
      * Release any resources held by the hardware manager
      */
     void shutdown();
+
+    // ============================================
+    // MTK LED Brightness Control
+    // ============================================
+
+    /**
+     * Check if the device supports LED brightness control
+     * @return true if brightness control is supported, false otherwise
+     */
+    boolean supportsLedBrightness();
+
+    /**
+     * Set the recording LED brightness level
+     * @param percent Brightness level from 0-100%
+     */
+    void setRecordingLedBrightness(int percent);
+
+    /**
+     * Set the recording LED brightness level with duration
+     * @param percent Brightness level from 0-100%
+     * @param durationMs Duration in milliseconds to show at this brightness
+     */
+    void setRecordingLedBrightness(int percent, int durationMs);
+
+    /**
+     * Get the current recording LED brightness level
+     * @return Current brightness level 0-100%
+     */
+    int getRecordingLedBrightness();
+
+    // ============================================
+    // RGB LED Control (BES Chipset)
+    // ============================================
+
+    /**
+     * Check if the device supports RGB LED control
+     * @return true if RGB LED control is supported, false otherwise
+     */
+    boolean supportsRgbLed();
+
+    /**
+     * Turn on a specific RGB LED with custom timing pattern
+     * @param ledIndex LED color index (0=red, 1=green, 2=blue, 3=orange, 4=white)
+     * @param ontime Duration in milliseconds for LED on state
+     * @param offtime Duration in milliseconds for LED off state
+     * @param count Number of on/off cycles (0 = infinite)
+     */
+    void setRgbLedOn(int ledIndex, int ontime, int offtime, int count);
+
+    /**
+     * Turn off all RGB LEDs
+     */
+    void setRgbLedOff();
+
+    /**
+     * Flash the white RGB LED for photo capture
+     * @param durationMs Duration in milliseconds for the flash
+     */
+    void flashRgbLedWhite(int durationMs);
+
+    /**
+     * Set the white RGB LED to solid on for video recording
+     * @param durationMs Duration in milliseconds to keep LED on
+     */
+    void setRgbLedSolidWhite(int durationMs);
 }

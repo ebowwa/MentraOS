@@ -58,8 +58,11 @@ export interface ButtonCapabilities {
 export interface LightCapabilities {
   count?: number;
   lights?: {
+    id: string; // Unique identifier for the LED (e.g., "privacy", "user_feedback")
+    purpose: "privacy" | "user_feedback" | "general"; // LED purpose/function
     isFullColor: boolean;
     color?: string; // e.g., "white", "rgb"
+    position?: "front_facing" | "user_facing" | "side" | "unknown"; // LED physical position
   }[];
 }
 

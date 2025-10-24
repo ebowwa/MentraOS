@@ -1,6 +1,6 @@
-import restComms from "@/managers/RestComms"
+import restComms from "@/services/RestComms"
+import {AppletInterface} from "@/types/AppletTypes"
 import {showAlert} from "@/utils/AlertUtils"
-import {AppletInterface} from "@/types/AppletInterface"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
 interface HealthCheckFlowOptions {

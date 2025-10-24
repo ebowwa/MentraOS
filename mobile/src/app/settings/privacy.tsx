@@ -1,35 +1,18 @@
-import React, {useEffect, useState} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  Switch,
-  Platform,
-  ScrollView,
-  AppState,
-  NativeModules,
-  Linking,
-  ViewStyle,
-  TextStyle,
-} from "react-native"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import bridge from "@/bridge/MantleBridge"
-import {requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions} from "@/utils/PermissionsUtils"
-import {
-  checkNotificationAccessSpecialPermission,
-  checkAndRequestNotificationAccessSpecialPermission,
-} from "@/utils/NotificationServiceUtils"
-// import {NotificationService} from '@/utils/NotificationServiceUtils';
-import showAlert from "@/utils/AlertUtils"
 import {Header, Screen} from "@/components/ignite"
-import {spacing, ThemedStyle} from "@/theme"
-import {useAppTheme} from "@/utils/useAppTheme"
-import ToggleSetting from "@/components/settings/ToggleSetting"
-import {translate} from "@/i18n"
-import {Spacer} from "@/components/misc/Spacer"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import PermissionButton from "@/components/settings/PermButton"
-import {SETTINGS_KEYS, useSetting, useSettingsStore} from "@/stores/settings"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import {Spacer} from "@/components/ui/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
+import {
+  checkAndRequestNotificationAccessSpecialPermission,
+  checkNotificationAccessSpecialPermission,
+} from "@/utils/NotificationServiceUtils"
+import {checkFeaturePermissions, PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useEffect, useState} from "react"
+import {AppState, Platform, ScrollView} from "react-native"
 
 export default function PrivacySettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -39,9 +22,8 @@ export default function PrivacySettingsScreen() {
   const [locationPermissionPending, setLocationPermissionPending] = useState(false)
   const [appState, setAppState] = useState(AppState.currentState)
   const {theme} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const {goBack} = useNavigationHistory()
   const [sensingEnabled, setSensingEnabled] = useSetting(SETTINGS_KEYS.sensing_enabled)
-  const setSetting = useSettingsStore(state => state.setSetting)
 
   // Check permissions when screen loads
   useEffect(() => {
@@ -143,7 +125,6 @@ export default function PrivacySettingsScreen() {
   const toggleSensing = async () => {
     const newSensing = !sensingEnabled
     await setSensingEnabled(newSensing)
-    await bridge.sendToggleSensing(newSensing) // TODO: config: remove
   }
 
   const handleToggleNotifications = async () => {
@@ -159,8 +140,6 @@ export default function PrivacySettingsScreen() {
       // Re-check permissions after the request
       const hasAccess = await checkNotificationAccessSpecialPermission()
       if (hasAccess) {
-        // Start notification listener service if permission granted
-        //   await NotificationService.startNotificationListenerService();
         setNotificationsEnabled(true)
       }
     }

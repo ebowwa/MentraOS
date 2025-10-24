@@ -11,7 +11,7 @@ export const getGlassesImage = (glasses: string | null) => {
       return require("../../assets/glasses/mentra-mach1-glasses.png")
     case "Mentra Live":
     case "mentra_live":
-      return require("../../assets/glasses/mentra_live.png")
+      return require("../../assets/glasses/mentra_live/mentra_live.png")
     case "inmo_air":
       return require("../../assets/glasses/inmo_air.png")
     case "tcl_rayneo_x_two":
@@ -86,9 +86,9 @@ export const getEvenRealitiesG1Image = (
   if (state === "case_open" || state === "case_close") {
     if (typeof batteryLevel === "number") {
       if (state === "case_open") {
-        effectiveState = batteryLevel > 50 ? "case_open_full" : "case_open_charging"
+        effectiveState = batteryLevel > 50 ? "case_open_full" : "case_open"
       } else if (state === "case_close") {
-        effectiveState = batteryLevel > 50 ? "case_close_full" : "case_close_charging"
+        effectiveState = batteryLevel > 50 ? "case_close_full" : "case_close"
       }
     } else {
       // Default to full if batteryLevel is not provided
@@ -122,6 +122,7 @@ export const getEvenRealitiesG1Image = (
     a_grey1_l_folded: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_folded.png"),
     a_grey1_l_prescription: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_prescription.png"),
     a_grey1_l_case_open: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_case_open_full.png"),
+    // a_grey1_l_case_open_full: require("../../assets/glasses/even_realities/g1/image_g1_l_case_open_full.png"),
     a_grey1_l_case_close: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_full.png"),
     a_grey1_l_case_charging: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_charging.png"),
 
@@ -130,6 +131,7 @@ export const getEvenRealitiesG1Image = (
     a_grey1_l_folded_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_folded_dark.png"),
     a_grey1_l_prescription_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_prescription_dark.png"),
     a_grey1_l_case_open_full_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_case_open_full_dark.png"),
+    a_grey1_l_case_open_dark: require("../../assets/glasses/even_realities/g1/image_g1_a_grey1_l_case_open_full_dark.png"),
     a_grey1_l_case_close_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_full_dark.png"),
     a_grey1_l_case_charging_dark: require("../../assets/glasses/even_realities/g1/image_g1_l_case_close_charging_dark.png"),
 

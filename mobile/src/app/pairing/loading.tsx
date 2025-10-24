@@ -1,12 +1,13 @@
-import React, {useState, useEffect, useRef, useCallback} from "react"
-import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle, BackHandler, Platform} from "react-native"
+import {useState, useEffect, useRef, useCallback} from "react"
+import {View, TouchableOpacity, ScrollView, ViewStyle, TextStyle, BackHandler, Platform} from "react-native"
+import {Text} from "@/components/ignite"
 import {useRoute} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import GlassesPairingLoader from "@/components/misc/GlassesPairingLoader"
-import {getPairingGuide} from "@/utils/getPairingGuide"
+import {getPairingGuide} from "@/components/pairing/GlassesPairingGuides"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
@@ -15,7 +16,7 @@ import {Header} from "@/components/ignite/Header"
 import {PillButton} from "@/components/ignite/PillButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import bridge from "@/bridge/MantleBridge"
+import CoreModule from "core"
 
 export default function GlassesPairingGuideScreen() {
   const {replace, clearHistory} = useNavigationHistory()
@@ -32,8 +33,8 @@ export default function GlassesPairingGuideScreen() {
 
   const handleForgetGlasses = useCallback(async () => {
     setPairingInProgress(false)
-    await bridge.sendDisconnectWearable()
-    await bridge.sendForgetSmartGlasses()
+    await CoreModule.disconnect()
+    await CoreModule.forget()
     clearHistory()
     router.dismissTo("/pairing/select-glasses-model")
   }, [clearHistory])
@@ -61,7 +62,7 @@ export default function GlassesPairingGuideScreen() {
   }, [handleForgetGlasses])
 
   const handlePairFailure = (error: string) => {
-    bridge.sendForgetSmartGlasses()
+    CoreModule.forget()
     replace("/pairing/failure", {error: error, glassesModelName: glassesModelName})
   }
 

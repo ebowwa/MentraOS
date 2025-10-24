@@ -8,6 +8,7 @@ import { IncomingMessage } from "http";
 import {
   MentraosSettingsUpdateRequest,
   CalendarEvent,
+  CloudToAppMessageType,
   CloudToGlassesMessage,
   CloudToGlassesMessageType,
   ConnectionAck,
@@ -24,7 +25,9 @@ import {
   RequestSettings,
   RtmpStreamStatus,
   LocalTranscription,
+  TouchEvent,
   Vad,
+  StreamType,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
@@ -32,7 +35,6 @@ import { PosthogService } from "../logging/posthog.service";
 // sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
-import { locationService } from "../core/location.service";
 
 const SERVICE_NAME = "websocket-glasses.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -41,7 +43,7 @@ const logger = rootLogger.child({ service: SERVICE_NAME });
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
 
 // SAFETY FLAG: Set to false to disable grace period cleanup entirely
-const GRACE_PERIOD_CLEANUP_ENABLED = false; // TODO: Set to true when ready to enable auto-cleanup
+const GRACE_PERIOD_CLEANUP_ENABLED = true; // Enable auto-cleanup when WebSocket disconnects
 
 const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
@@ -167,8 +169,8 @@ export class GlassesWebSocketService {
               })
               .catch((error) => {
                 userSession.logger.error(
-                  `❌ Failed to reinitialize connection for user: ${userSession.userId}`,
                   error,
+                  `❌ Failed to reinitialize connection for user: ${userSession.userId}`,
                 );
               });
             return;
@@ -205,8 +207,8 @@ export class GlassesWebSocketService {
             })
             .catch((error) => {
               userSession.logger.error(
-                `❌ Error processing message of type: ${message.type} for user: ${userId}`,
                 error,
+                `❌ Error processing message of type: ${message.type} for user: ${userId}`,
               );
             });
         } catch (error) {
@@ -310,8 +312,7 @@ export class GlassesWebSocketService {
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
-          await locationService.handleDeviceLocationUpdate(
-            userSession,
+          userSession.locationManager.updateFromWebsocket(
             message as LocationUpdate,
           );
           break;
@@ -322,10 +323,9 @@ export class GlassesWebSocketService {
             { service: SERVICE_NAME, message },
             "Calendar event received from glasses",
           );
-          userSession.subscriptionManager.cacheCalendarEvent(
+          userSession.calendarManager.updateEventFromWebsocket(
             message as CalendarEvent,
           );
-          userSession.relayMessageToApps(message);
           break;
 
         // TODO(isaiah): verify logic
@@ -508,9 +508,11 @@ export class GlassesWebSocketService {
               userSession,
               status,
             );
-          // If not handled by managed streaming, delegate to VideoManager
+          // If not handled by managed streaming, delegate to the unmanaged extension
           if (!managedHandled) {
-            userSession.videoManager.handleRtmpStreamStatus(status);
+            userSession.unmanagedStreamingExtension.handleRtmpStreamStatus(
+              status,
+            );
           }
           break;
         }
@@ -522,7 +524,7 @@ export class GlassesWebSocketService {
             userSession.userId,
             ack,
           );
-          userSession.videoManager.handleKeepAliveAck(ack);
+          userSession.unmanagedStreamingExtension.handleKeepAliveAck(ack);
           break;
         }
 
@@ -542,11 +544,120 @@ export class GlassesWebSocketService {
           userSession.relayAudioPlayResponseToApp(message);
           break;
 
+        case GlassesToCloudMessageType.RGB_LED_CONTROL_RESPONSE:
+          userSession.logger.debug(
+            { service: SERVICE_NAME, message },
+            `💡 RGB LED control response received from glasses/core`,
+          );
+          // Forward LED control response to Apps
+          userSession.relayMessageToApps(message);
+          break;
+
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
           // Also relay to Apps in case they want to handle head position events
           userSession.relayMessageToApps(message);
           break;
+
+        case GlassesToCloudMessageType.TOUCH_EVENT: {
+          const touchEvent = message as TouchEvent;
+          userSession.logger.debug(
+            { gesture: touchEvent.gesture_name },
+            "Touch event received from glasses",
+          );
+
+          // Relay to apps with gesture-specific routing
+          // Check subscriptions for both gesture-specific (touch_event:triple_tap) and base (touch_event)
+          const gestureSubscription =
+            `${StreamType.TOUCH_EVENT}:${touchEvent.gesture_name}` as any;
+          const baseSubscription = StreamType.TOUCH_EVENT;
+
+          // Get all subscribed apps (gesture-specific + base)
+          const gestureSubscribers =
+            userSession.subscriptionManager.getSubscribedApps(
+              gestureSubscription,
+            );
+          const baseSubscribers =
+            userSession.subscriptionManager.getSubscribedApps(baseSubscription);
+          const allSubscribers = [
+            ...new Set([...gestureSubscribers, ...baseSubscribers]),
+          ];
+
+          if (allSubscribers.length === 0) {
+            userSession.logger.debug(
+              { gesture: touchEvent.gesture_name },
+              "No apps subscribed to touch event",
+            );
+            break;
+          }
+
+          userSession.logger.debug(
+            {
+              gesture: touchEvent.gesture_name,
+              gestureSubscribers,
+              baseSubscribers,
+              allSubscribers,
+            },
+            `Relaying touch event to ${allSubscribers.length} apps`,
+          );
+
+          // Send to each subscribed app and log which app is receiving what
+          for (const packageName of allSubscribers) {
+            const connection = userSession.appWebsockets.get(packageName);
+            if (connection && connection.readyState === WebSocket.OPEN) {
+              const appSessionId = `${userSession.sessionId}-${packageName}`;
+
+              // Determine which subscription this app is using
+              const appSubscription = gestureSubscribers.includes(packageName)
+                ? gestureSubscription
+                : baseSubscription;
+
+              const dataStream = {
+                type: CloudToAppMessageType.DATA_STREAM,
+                sessionId: appSessionId,
+                streamType: appSubscription,
+                data: touchEvent,
+                timestamp: new Date(),
+              };
+
+              userSession.logger.info(
+                {
+                  packageName,
+                  appSubscription,
+                  gesture: touchEvent.gesture_name,
+                  data: touchEvent,
+                  sessionId: appSessionId,
+                },
+                `Sending touch event '${touchEvent.gesture_name}' to app '${packageName}' on subscription '${appSubscription}'`,
+              );
+
+              try {
+                connection.send(JSON.stringify(dataStream));
+                userSession.logger.debug(
+                  { packageName, subscription: appSubscription },
+                  "Sent touch event to app",
+                );
+              } catch (sendError) {
+                userSession.logger.error(
+                  { error: sendError, packageName },
+                  "Error sending touch event to app",
+                );
+              }
+            } else {
+              userSession.logger.warn(
+                {
+                  packageName,
+                  gesture: touchEvent.gesture_name,
+                  reason: !connection
+                    ? "No websocket connection found"
+                    : "Websocket not open",
+                },
+                `Skipping sending touch event to app '${packageName}' due to inactive connection`,
+              );
+            }
+          }
+          break;
+        }
 
         // TODO(isaiah): Add other message type handlers as needed
         default:
@@ -560,7 +671,7 @@ export class GlassesWebSocketService {
           break;
       }
     } catch (error) {
-      userSession.logger.error("Error handling glasses message:", error);
+      userSession.logger.error(error, "Error handling glasses message:");
     }
   }
 
@@ -601,6 +712,43 @@ export class GlassesWebSocketService {
         sessionId: userSession.sessionId,
         timestamp: new Date().toISOString(),
       });
+    }
+
+    // Reconnect path: ensure LiveKit bridge has rejoined if it was kicked
+    if (reconnection) {
+      try {
+        // If we previously had a bridge (or client explicitly requested LiveKit), check status
+        const hadBridge =
+          typeof userSession.liveKitManager.getBridgeClient === "function" &&
+          !!userSession.liveKitManager.getBridgeClient();
+
+        if (hadBridge || livekitRequested) {
+          const status = await userSession.liveKitManager.getBridgeStatus?.();
+          userSession.logger.info(
+            { feature: "livekit", status, reconnection },
+            "Reconnect: bridge status",
+          );
+
+          // If the bridge is not connected to the room, attempt a rejoin with a fresh token
+          if (!status || status.connected === false) {
+            await userSession.liveKitManager.rejoinBridge?.();
+            userSession.logger.info(
+              { feature: "livekit" },
+              "Reconnect: bridge rejoin attempted",
+            );
+          } else {
+            userSession.logger.info(
+              { feature: "livekit" },
+              "Reconnect: bridge healthy, keeping session",
+            );
+          }
+        }
+      } catch (err) {
+        userSession.logger.warn(
+          { feature: "livekit", err },
+          "Reconnect: bridge status check failed",
+        );
+      }
     }
 
     // Prepare the base ACK message
@@ -742,35 +890,6 @@ export class GlassesWebSocketService {
   }
 
   /**
-   * Handle location update message
-   *
-   */
-  private async handleLocationUpdate(
-    userSession: UserSession,
-    message: LocationUpdate,
-  ): Promise<void> {
-    userSession.logger.debug(
-      { message, service: SERVICE_NAME },
-      "Location update received from glasses",
-    );
-    try {
-      // The core logic is now handled by the central LocationService to manage caching and polling.
-      await locationService.handleDeviceLocationUpdate(userSession, message);
-
-      // We still relay the message to any apps subscribed to the raw location stream.
-      // The locationService's handleDeviceLocationUpdate will decide if it needs to send a specific
-      // response for a poll request.
-      userSession.relayMessageToApps(message);
-    } catch (error) {
-      userSession.logger.error(
-        { error, service: SERVICE_NAME },
-        `Error handling location update:`,
-        error,
-      );
-    }
-  }
-
-  /**
    * Handle head position event message
    *
    * @param userSession User session
@@ -841,97 +960,24 @@ export class GlassesWebSocketService {
       { service: SERVICE_NAME, message },
       `handleGlassesConnectionState for user ${userSession.userId}`,
     );
-    userSession.microphoneManager.handleConnectionStateChange(
+
+    await userSession.deviceManager.handleGlassesConnectionState(
+      glassesConnectionStateMessage.modelName || null,
       glassesConnectionStateMessage.status,
     );
 
-    // Extract glasses model information
-    const modelName = glassesConnectionStateMessage.modelName;
-    const isConnected = glassesConnectionStateMessage.status === "CONNECTED";
+    const isConnected =
+      glassesConnectionStateMessage.status === "CONNECTED" ||
+      glassesConnectionStateMessage.status === "RECONNECTED";
+    const reportedModel = glassesConnectionStateMessage.modelName || undefined;
 
-    // Update connection state tracking in UserSession
-    const wasConnected = userSession.glassesConnected;
-    userSession.glassesConnected = isConnected;
-    userSession.glassesModel = modelName;
-    userSession.lastGlassesStatusUpdate = new Date();
-
-    // Update glasses model in session when connected and model name is available
-    if (isConnected && modelName) {
-      await userSession.updateGlassesModel(modelName);
-    }
-
-    // Log connection state change if state changed
-    if (wasConnected !== isConnected) {
-      userSession.logger.info(
-        {
-          previousState: wasConnected,
-          newState: isConnected,
-          model: modelName,
-          userId: userSession.userId,
-        },
-        `Glasses connection state changed from ${wasConnected} to ${isConnected} for user ${userSession.userId}`,
-      );
-
-      // The existing relayMessageToApps call below will notify subscribed apps
-      // No need for additional broadcasting
-    }
-
-    try {
-      // Get or create user to track glasses model
-      const user = await User.findOrCreateUser(userSession.userId);
-
-      // Track new glasses model if connected and model name exists
-      if (isConnected && modelName) {
-        const isNewModel = !user.getGlassesModels().includes(modelName);
-
-        // Add glasses model to user's history
-        await user.addGlassesModel(modelName);
-
-        // Update PostHog person properties
-        await PosthogService.setPersonProperties(userSession.userId, {
-          current_glasses_model: modelName,
-          glasses_models_used: user.getGlassesModels(),
-          glasses_models_count: user.getGlassesModels().length,
-          glasses_last_connected: new Date().toISOString(),
-          glasses_current_connected: true,
-        });
-
-        // Track first-time connection for new glasses model
-        if (isNewModel) {
-          PosthogService.trackEvent(
-            "glasses_model_first_connect",
-            userSession.userId,
-            {
-              sessionId: userSession.sessionId,
-              modelName,
-              totalModelsUsed: user.getGlassesModels().length,
-              timestamp: new Date().toISOString(),
-            },
-          );
-        }
-      } else if (!isConnected) {
-        // Update PostHog person properties for disconnection
-        await PosthogService.setPersonProperties(userSession.userId, {
-          glasses_current_connected: false,
-        });
-      }
-    } catch (error) {
-      userSession.logger.error(error, "Error tracking glasses model:");
-    }
-
-    // Track the connection state event (enhanced with model info)
-    PosthogService.trackEvent(
-      GlassesToCloudMessageType.GLASSES_CONNECTION_STATE,
-      userSession.userId,
-      {
-        sessionId: userSession.sessionId,
-        eventType: message.type,
-        timestamp: new Date().toISOString(),
-        connectionState: glassesConnectionStateMessage,
-        modelName,
-        isConnected,
-      },
-    );
+    // Update session-level flags for legacy consumers (e.g., validators)
+    const effectiveModel = isConnected
+      ? userSession.deviceManager.getCurrentModel() || reportedModel
+      : undefined;
+    userSession.setGlassesConnectionState(isConnected, effectiveModel, {
+      source: "glasses_connection_state",
+    });
   }
 
   // NOTE(isaiah): This really should be a rest request instead of a websocket message.
@@ -980,7 +1026,7 @@ export class GlassesWebSocketService {
         "Sent settings update",
       );
     } catch (error) {
-      userSession.logger.error("Error sending settings:", error);
+      userSession.logger.error(error, "Error sending settings:");
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         message: "Error retrieving settings",
@@ -1030,7 +1076,7 @@ export class GlassesWebSocketService {
 
       userSession.websocket.send(JSON.stringify(responseMessage));
     } catch (error) {
-      userSession.logger.error("Error retrieving AugmentOS settings:", error);
+      userSession.logger.error(error, "Error retrieving AugmentOS settings:");
 
       // Send error back to client
       const errorMessage = {
@@ -1062,6 +1108,10 @@ export class GlassesWebSocketService {
       `[WebsocketGlassesService:handleGlassesConnectionClose]: (${userSession.userId}, ${code}, ${reason}) - Glasses connection closed`,
     );
 
+    userSession.handlePhoneConnectionClosed(
+      reason ? `${code}:${reason}` : `${code}`,
+    );
+
     // Mark session as disconnected
     // Clear any existing cleanup timer
     if (userSession.cleanupTimerId) {
@@ -1072,15 +1122,6 @@ export class GlassesWebSocketService {
     // Disconnecting is probably a network issue and the user will likely reconnect.
     // So we don't want to end the session immediately, but rather wait for a grace period
     // to see if the user reconnects.
-    // Stop transcription
-    // if (userSession.isTranscribing) {
-    //   userSession.isTranscribing = false;
-    //   try {
-    //     await userSession.transcriptionManager.stopAndFinalizeAll();
-    //   } catch (error) {
-    //     userSession.logger.error({ error }, 'Error stopping transcription on disconnect');
-    //   }
-    // }
 
     // Mark as disconnected
     userSession.disconnectedAt = new Date();
@@ -1200,12 +1241,12 @@ export class GlassesWebSocketService {
       ws.send(JSON.stringify(errorMessage));
       ws.close(1008, message);
     } catch (error) {
-      logger.error("Error sending error message to glasses:", error);
+      logger.error(error, "Error sending error message to glasses:");
 
       try {
         ws.close(1011, "Internal server error");
       } catch (closeError) {
-        logger.error("Error closing WebSocket connection:", closeError);
+        logger.error(closeError, "Error closing WebSocket connection:");
       }
     }
   }

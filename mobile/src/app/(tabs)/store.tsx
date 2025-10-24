@@ -3,13 +3,13 @@ import {View, ViewStyle, ActivityIndicator, BackHandler, TextStyle} from "react-
 import {WebView} from "react-native-webview"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
 import {useFocusEffect} from "@react-navigation/native"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useLocalSearchParams} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {ThemedStyle} from "@/theme"
+import {useRefreshApplets} from "@/stores/applets"
 
 export default function AppStoreWeb() {
   const [_webviewLoading, setWebviewLoading] = useState(true)
@@ -19,7 +19,7 @@ export default function AppStoreWeb() {
   const [canGoBack, setCanGoBack] = useState(false)
   const {push} = useNavigationHistory()
   const {appStoreUrl, webViewRef: prefetchedWebviewRef} = useAppStoreWebviewPrefetch()
-  const {refreshAppStatus} = useAppStatus()
+  const refreshApplets = useRefreshApplets()
   const {theme, themed} = useAppTheme()
 
   // Construct the final URL with packageName if provided
@@ -112,7 +112,7 @@ export default function AppStoreWeb() {
   useFocusEffect(
     useCallback(() => {
       return async () => {
-        await refreshAppStatus()
+        await refreshApplets()
       }
     }, []),
   )
@@ -120,9 +120,9 @@ export default function AppStoreWeb() {
   // Show loading state while getting the URL
   if (!finalUrl) {
     return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header leftTx="store:title" />
-        <View style={[themed($loadingContainer), {marginHorizontal: -theme.spacing.lg}]}>
+        <View style={[themed($loadingContainer), {marginHorizontal: -theme.spacing.md}]}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text text="Preparing App Store..." style={themed($loadingText)} />
         </View>
@@ -132,7 +132,7 @@ export default function AppStoreWeb() {
 
   if (hasError) {
     return (
-      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
         <Header leftTx="store:title" />
         <InternetConnectionFallbackComponent
           retry={handleRetry}
@@ -144,9 +144,9 @@ export default function AppStoreWeb() {
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header leftTx="store:title" />
-      <View style={[themed($webViewContainer), {marginHorizontal: -theme.spacing.lg}]}>
+      <View style={[themed($webViewContainer), {marginHorizontal: -theme.spacing.md}]}>
         {/* Show the prefetched WebView, but now visible and full size */}
         <WebView
           ref={prefetchedWebviewRef}

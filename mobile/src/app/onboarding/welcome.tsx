@@ -1,59 +1,34 @@
-import {View} from "react-native"
 import {Screen, Text} from "@/components/ignite"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Button} from "@/components/ignite/Button"
-import {MaterialCommunityIcons, FontAwesome} from "@expo/vector-icons"
-import {Spacer} from "@/components/misc/Spacer"
-import restComms from "@/managers/RestComms"
-import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {Spacer} from "@/components/ui/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {ThemedStyle} from "@/theme"
-import {ViewStyle, TextStyle} from "react-native"
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
+import {TextStyle, View, ViewStyle} from "react-native"
 
 export default function OnboardingWelcome() {
-  const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
   const {push} = useNavigationHistory()
-
-  const stopAllApps = async () => {
-    const runningApps = appStatus.filter(app => app.is_running)
-    for (const runningApp of runningApps) {
-      optimisticallyStopApp(runningApp.packageName)
-      try {
-        await restComms.stopApp(runningApp.packageName)
-        clearPendingOperation(runningApp.packageName)
-      } catch (error) {
-        console.error("stop app error:", error)
-        refreshAppStatus()
-      }
-    }
-  }
+  const [_onboarding, setOnboardingCompleted] = useSetting(SETTINGS_KEYS.onboarding_completed)
 
   // User has smart glasses - go to glasses selection screen
   const handleHasGlasses = async () => {
     // TODO: Track analytics event - user has glasses
     // analytics.track('onboarding_has_glasses_selected')
-
-    // Mark that onboarding should be shown on Home screen
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
-
-    // deactivate all running apps:
-    await stopAllApps()
-
-    push("/pairing/select-glasses-model")
+    setOnboardingCompleted(true)
+    push("/pairing/select-glasses-model", {onboarding: true})
   }
 
   // User doesn't have glasses yet - go directly to simulated glasses
   const handleNoGlasses = () => {
     // TODO: Track analytics event - user doesn't have glasses
     // analytics.track('onboarding_no_glasses_selected')
-
-    // Mark that onboarding should be shown on Home screen
-    useSettingsStore.getState().setSetting(SETTINGS_KEYS.onboarding_completed, false)
-
+    setOnboardingCompleted(true)
     // Go directly to simulated glasses pairing screen
-    push("/pairing/prep", {glassesModelName: "Simulated Glasses"})
+    push("/pairing/prep", {glassesModelName: DeviceTypes.SIMULATED})
   }
 
   return (

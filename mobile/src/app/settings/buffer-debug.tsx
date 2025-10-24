@@ -1,10 +1,10 @@
-import React, {useState} from "react"
+import {useState} from "react"
 import {View} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import bridge from "@/bridge/MantleBridge"
 import ActionButton from "@/components/ui/ActionButton"
-import {Spacer} from "@/components/misc/Spacer"
+import {Spacer} from "@/components/ui/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Toast from "react-native-toast-message"
 

@@ -3,7 +3,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {Text} from "@/components/ignite"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {router as _router} from "expo-router"
-import {View, TouchableOpacity} from "react-native"
+import {View, TouchableOpacity, TextStyle} from "react-native"
 
 interface RouteButtonProps {
   label: string

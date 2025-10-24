@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokenReady(false); // Mark token as not ready during exchange
 
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8002'}/api/auth/exchange-token`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8002/api'}/auth/exchange-token`,
         { supabaseToken },
         { headers: { 'Content-Type': 'application/json' } }
       );

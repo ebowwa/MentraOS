@@ -10,6 +10,7 @@ import {
   clientAuthWithEmail,
   RequestWithEmail,
 } from "../middleware/client.middleware";
+import UserSession from "../../services/session/UserSession";
 
 const router = Router();
 
@@ -37,7 +38,8 @@ async function getUserSettings(req: Request, res: Response) {
       timestamp: new Date(),
     });
   } catch (error) {
-    logger.error(`Error fetching settings for user ${email}:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logger.error(err, `Error fetching settings for user ${email}:`);
     res.status(500).json({
       success: false,
       message: "Failed to fetch user settings",
@@ -65,13 +67,20 @@ async function updateUserSettings(req: Request, res: Response) {
       settings,
     );
 
+    // If an active session exists, apply session bridges (metric_system_enabled, default_wearable)
+    const session = UserSession.getById(email);
+    if (session) {
+      await session.userSettingsManager.onSettingsUpdatedViaRest(settings);
+    }
+
     res.json({
       success: true,
       data: { settings: updatedSettings },
       timestamp: new Date(),
     });
   } catch (error) {
-    logger.error(`Error updating settings for user ${email}:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logger.error(err, `Error updating settings for user ${email}:`);
 
     if (error instanceof Error && error.message === "User not found") {
       return res.status(404).json({
@@ -146,7 +155,8 @@ async function setUserSetting(req: Request, res: Response) {
       timestamp: new Date(),
     });
   } catch (error) {
-    logger.error(`Error setting ${key} for user ${email}:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logger.error(err, `Error setting ${key} for user ${email}:`);
     res.status(500).json({
       success: false,
       message: "Failed to set user setting",
@@ -170,7 +180,8 @@ async function deleteUserSetting(req: Request, res: Response) {
       timestamp: new Date(),
     });
   } catch (error) {
-    logger.error(`Error deleting setting ${key} for user ${email}:`, error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logger.error(err, `Error deleting setting ${key} for user ${email}:`);
     res.status(500).json({
       success: false,
       message: "Failed to delete user setting",

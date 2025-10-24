@@ -236,7 +236,7 @@ public class ResponseBuilder implements IResponseBuilder {
     public JSONObject buildSwipeReportResponse(boolean report) {
         try {
             JSONObject swipeJson = new JSONObject();
-            swipeJson.put("C", "cs_swst");
+            swipeJson.put("C", "cs_swit");
             JSONObject bJson = new JSONObject();
             bJson.put("type", 27);
             bJson.put("switch", report);

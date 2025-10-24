@@ -1,58 +1,43 @@
-import {useState, useCallback} from "react"
-import {View, TouchableOpacity, Platform, ScrollView, Image, ViewStyle, ImageStyle} from "react-native"
+import {View, TouchableOpacity, Platform, ScrollView, Image, ViewStyle, ImageStyle, TextStyle} from "react-native"
 import {Text} from "@/components/ignite"
-import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
 import {Screen} from "@/components/ignite/Screen"
 import {Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import Svg, {Defs, RadialGradient, Rect, Stop} from "react-native-svg"
-import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
+import {useLocalSearchParams} from "expo-router"
 
 export default function SelectGlassesModelScreen() {
-  const [isOnboarding, setIsOnboarding] = useState(false)
   const {theme, themed} = useAppTheme()
-  const {push} = useNavigationHistory()
+  const {push, replace, goBack} = useNavigationHistory()
+  const {onboarding} = useLocalSearchParams()
 
   // Platform-specific glasses options
   const glassesOptions =
     Platform.OS === "ios"
       ? [
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
-          {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
-          // {modelName: "Mentra Nex", key: "mentra_nex"},
-          {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          {modelName: DeviceTypes.SIMULATED, key: DeviceTypes.SIMULATED},
+          {modelName: DeviceTypes.G1, key: "evenrealities_g1"},
+          {modelName: DeviceTypes.LIVE, key: "mentra_live"},
+          {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
+          // {modelName: DeviceTypes.NEX, key: "mentra_nex"},
+          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
       : [
           // Android:
-          {modelName: "Simulated Glasses", key: "Simulated Glasses"},
-          {modelName: "Even Realities G1", key: "evenrealities_g1"},
-          {modelName: "Mentra Live", key: "mentra_live"},
+          {modelName: DeviceTypes.SIMULATED, key: DeviceTypes.SIMULATED},
+          {modelName: DeviceTypes.G1, key: "evenrealities_g1"},
+          {modelName: DeviceTypes.LIVE, key: "mentra_live"},
+          {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           // {modelName: "Mentra Nex", key: "mentra_nex"},
-          {modelName: "Mentra Mach1", key: "mentra_mach1"},
-          {modelName: "Vuzix Z100", key: "vuzix-z100"},
+          // {modelName: "Vuzix Z100", key: "vuzix-z100"},
           // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
-
-  // Check onboarding status when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      const checkOnboardingStatus = async () => {
-        const onboardingCompleted = await useSettingsStore.getState().loadSetting(SETTINGS_KEYS.onboarding_completed)
-        console.log("ONBOARDING COMPLETED IN SELECTGLASSESMODELSCREEN???: " + onboardingCompleted)
-        setIsOnboarding(!onboardingCompleted)
-      }
-
-      checkOnboardingStatus()
-    }, []),
-  )
 
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {
     // No need for Bluetooth permissions anymore as we're using direct communication
@@ -75,7 +60,7 @@ export default function SelectGlassesModelScreen() {
             gradientUnits="objectBoundingBox"
             gradientTransform={`rotate(${rotation} 10 10)`}>
             <Stop offset="0" stopColor={theme.colors.tint} />
-            <Stop offset="1" stopColor={theme.colors.accent} />
+            <Stop offset="1" stopColor={theme.colors.backgroundAlt} />
           </RadialGradient>
         </Defs>
         <Rect
@@ -99,10 +84,10 @@ export default function SelectGlassesModelScreen() {
         titleTx="pairing:selectModel"
         leftIcon="caretLeft"
         onLeftPress={() => {
-          if (isOnboarding) {
-            router.back()
+          if (onboarding) {
+            goBack()
           } else {
-            router.replace({pathname: "/(tabs)/home"})
+            replace("/(tabs)/home")
           }
         }}
       />
@@ -111,7 +96,7 @@ export default function SelectGlassesModelScreen() {
         {glassesOptions
           .filter(glasses => {
             // Hide simulated glasses during onboarding (users get there via "I don't have glasses yet")
-            if (isOnboarding && glasses.modelName === "Simulated Glasses") {
+            if (onboarding && glasses.modelName === DeviceTypes.SIMULATED) {
               return false
             }
             return true
@@ -133,10 +118,10 @@ export default function SelectGlassesModelScreen() {
                 {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
                 <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
               </View>
-              <View style={styles.settingTextContainer}>
+              <View style={themed($settingTextContainer)}>
                 <Text
                   style={[
-                    styles.label,
+                    themed($label),
                     {
                       color: theme.colors.text,
                       fontWeight: "600",
@@ -191,15 +176,15 @@ const $glassesImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
   left: 10,
 })
 
-const styles = {
-  settingTextContainer: {
-    flex: 1,
-    paddingLeft: 20,
-    paddingRight: 10,
-  },
-  label: {
-    fontSize: 18, // bigger text size
-    fontWeight: "600",
-    flexWrap: "wrap",
-  },
-}
+const $label: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: spacing.md,
+  fontWeight: "600",
+  flexWrap: "wrap",
+  color: colors.text,
+})
+
+const $settingTextContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  paddingLeft: 20,
+  paddingRight: 10,
+})

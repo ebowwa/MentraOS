@@ -28,6 +28,7 @@ rm -rf node_modules ios/build ios/Pods ios/Podfile.lock
 
 echo "📦 Reinstalling dependencies..."
 rm -rf node_modules
+#pnpm install
 bun install
 
 echo "🔧 Running Expo prebuild for iOS..."

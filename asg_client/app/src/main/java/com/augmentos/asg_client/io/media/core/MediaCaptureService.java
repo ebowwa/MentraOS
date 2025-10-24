@@ -10,7 +10,7 @@ import androidx.preference.PreferenceManager;
 
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.file.core.FileManagerFactory;
-import com.augmentos.augmentos_core.utils.ServerConfigUtil;
+import com.augmentos.asg_client.utils.ServerConfigUtil;
 import com.augmentos.asg_client.io.media.upload.MediaUploadService;
 import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.augmentos.asg_client.io.media.interfaces.ServiceCallbackInterface;
@@ -206,6 +206,10 @@ public class MediaCaptureService {
     private long recordingStartTime = 0;
     private boolean currentVideoLedEnabled = false; // Track if LED was enabled for current recording
 
+    // Max recording time check
+    private final Handler recordingTimeHandler = new Handler(Looper.getMainLooper());
+    private Runnable recordingTimeCheckRunnable;
+
     // Default BLE params (used if size unspecified)
     public static final int bleImageTargetWidth = 480;
     public static final int bleImageTargetHeight = 480;
@@ -359,6 +363,48 @@ public class MediaCaptureService {
             hardwareManager.playAudioAsset(AudioAssets.CAMERA_SOUND);
         }
     }
+    
+    /**
+     * Trigger white LED flash for photo capture (synchronized with shutter sound)
+     */
+    private void triggerPhotoFlashLed() {
+        Log.i(TAG, "📸 triggerPhotoFlashLed() called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.flashRgbLedWhite(5000); // 5 second flash
+            Log.i(TAG, "📸 Photo flash LED (white) triggered via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
+    
+    /**
+     * Trigger solid white LED for video recording duration
+     */
+    private void triggerVideoRecordingLed() {
+        Log.i(TAG, "🎥 triggerVideoRecordingLed() called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.setRgbLedSolidWhite(1800000); // 30 minute solid white LED
+            Log.i(TAG, "🎥 Video recording LED (solid white) triggered via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
+    
+    /**
+     * Stop video recording LED (turn off LED)
+     */
+    private void stopVideoRecordingLed() {
+        Log.d(TAG, "stopVideoRecordingLed called");
+
+        if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
+            hardwareManager.setRgbLedOff();
+            Log.d(TAG, "🎥 Video recording LED stopped via hardware manager");
+        } else {
+            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+        }
+    }
 
     private void playVideoStartSound() {
         if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
@@ -376,19 +422,29 @@ public class MediaCaptureService {
      * Start video recording with specific settings
      * @param settings Video settings (resolution, fps)
      * @param enableLed Whether to enable recording LED
+     * @param maxRecordingTimeMinutes Maximum recording time in minutes (0 = no limit)
+     * @param initialBatteryLevel Initial battery level (for monitoring during recording, -1 = unknown)
      */
-    public void startVideoRecording(VideoSettings settings, boolean enableLed) {
+    public void startVideoRecording(VideoSettings settings, boolean enableLed, int maxRecordingTimeMinutes, int initialBatteryLevel) {
+        Log.d(TAG, "startVideoRecording called with settings: " + settings + ", enableLed: " + enableLed + ", maxRecordingTimeMinutes: " + maxRecordingTimeMinutes + ", initialBatteryLevel: " + initialBatteryLevel);
+        
+        // Check if battery is too low to start recording
+        if (initialBatteryLevel >= 0 && initialBatteryLevel < 10) {
+            Log.w(TAG, "⚠️ Battery too low to start recording: " + initialBatteryLevel + "% (minimum 10% required)");
+            return;
+        }
+
         if (isRecordingVideo) {
             Log.d(TAG, "Stopping video recording");
             stopVideoRecording();
         } else {
-            Log.d(TAG, "Starting video recording with settings: " + settings);
+            Log.d(TAG, "Starting video recording with settings: " + settings + ", max time: " + maxRecordingTimeMinutes + " minutes, battery: " + initialBatteryLevel + "%");
             // Generate IDs for local recording
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
             int randomSuffix = (int)(Math.random() * 1000);
             String requestId = "local_video_" + timeStamp + "_" + randomSuffix;
             String videoFilePath = fileManager.getDefaultMediaDirectory() + File.separator + "VID_" + timeStamp + "_" + randomSuffix + ".mp4";
-            startVideoRecording(videoFilePath, requestId, settings, enableLed);
+            startVideoRecording(videoFilePath, requestId, settings, enableLed, maxRecordingTimeMinutes);
         }
     }
 
@@ -409,6 +465,8 @@ public class MediaCaptureService {
      * @param settings Video settings (resolution, fps) or null for defaults
      */
     public void handleStartVideoCommand(String requestId, boolean save, VideoSettings settings, boolean enableLed) {
+        Log.d(TAG, "handleStartVideoCommand called with requestId: " + requestId + ", save: " + save + ", settings: " + settings + ", enableLed: " + enableLed);
+        
         // Check if already recording
         if (isRecordingVideo) {
             Log.w(TAG, "Already recording video, ignoring start command");
@@ -432,6 +490,8 @@ public class MediaCaptureService {
      * @param requestId Request ID of the video to stop (must match current recording)
      */
     public void handleStopVideoCommand(String requestId) {
+        Log.d(TAG, "handleStopVideoCommand called with requestId: " + requestId);
+
         if (!isRecordingVideo) {
             Log.w(TAG, "No video recording to stop");
             if (mMediaCaptureListener != null) {
@@ -469,13 +529,20 @@ public class MediaCaptureService {
      * Start video recording with specific parameters
      */
     private void startVideoRecording(String videoFilePath, String requestId, boolean enableLed) {
-        startVideoRecording(videoFilePath, requestId, null, enableLed);
+        startVideoRecording(videoFilePath, requestId, null, enableLed, 0);
     }
-    
+
     /**
      * Start video recording with specific parameters and settings
      */
     private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed) {
+        startVideoRecording(videoFilePath, requestId, settings, enableLed, 0);
+    }
+
+    /**
+     * Start video recording with specific parameters, settings, and max time
+     */
+    private void startVideoRecording(String videoFilePath, String requestId, VideoSettings settings, boolean enableLed, int maxRecordingTimeMinutes) {
         // Check if RTMP streaming is active - videos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot start video - RTMP streaming active");
@@ -513,6 +580,9 @@ public class MediaCaptureService {
         try {
             // Play video start sound
             playVideoStartSound();
+            if (enableLed) {
+                triggerVideoRecordingLed(); // Trigger solid white LED for video recording duration
+            }
 
             // Start video recording using CameraNeo
             CameraNeo.startVideoRecording(mContext, requestId, videoFilePath, settings, new CameraNeo.VideoRecordingCallback() {
@@ -521,7 +591,7 @@ public class MediaCaptureService {
                     Log.d(TAG, "Video recording started with ID: " + videoId);
                     isRecordingVideo = true;
                     recordingStartTime = System.currentTimeMillis();
-                    
+
                     // Turn on recording LED if enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOn();
@@ -532,13 +602,47 @@ public class MediaCaptureService {
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onVideoRecordingStarted(requestId, videoFilePath);
                     }
+
+                    // Set up max recording time check if specified
+                    if (maxRecordingTimeMinutes > 0) {
+                        long maxRecordingTimeMs = maxRecordingTimeMinutes * 60 * 1000L;
+                        Log.d(TAG, "Setting max recording time: " + maxRecordingTimeMinutes + " minutes (" + maxRecordingTimeMs + " ms)");
+
+                        // Create a runnable that checks if max time has been reached
+                        recordingTimeCheckRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isRecordingVideo) {
+                                    long elapsedTime = System.currentTimeMillis() - recordingStartTime;
+                                    if (elapsedTime >= maxRecordingTimeMs) {
+                                        Log.d(TAG, "⏱️ Max recording time reached (" + maxRecordingTimeMinutes + " minutes), stopping recording");
+                                        stopVideoRecording();
+                                    } else {
+                                        // Check again in 1 second
+                                        recordingTimeHandler.postDelayed(this, 1000);
+                                    }
+                                }
+                            }
+                        };
+
+                        // Start checking after 1 second
+                        recordingTimeHandler.postDelayed(recordingTimeCheckRunnable, 1000);
+                    }
                 }
 
                 @Override
                 public void onRecordingStopped(String videoId, String filePath) {
                     Log.d(TAG, "Video recording stopped: " + videoId + ", file: " + filePath);
                     isRecordingVideo = false;
-                    
+
+                    // Cancel max recording time check
+                    if (recordingTimeCheckRunnable != null) {
+                        recordingTimeHandler.removeCallbacks(recordingTimeCheckRunnable);
+                        recordingTimeCheckRunnable = null;
+                    }
+
+                    // Note: RGB white LED already turned off in stopVideoRecording() synchronized with sound
+
                     // Turn off recording LED if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOff();
@@ -566,6 +670,9 @@ public class MediaCaptureService {
                     Log.e(TAG, "Video recording error: " + videoId + ", error: " + errorMessage);
                     isRecordingVideo = false;
                     
+                    // Turn off RGB white LED on error (error path may not go through stopVideoRecording)
+                    stopVideoRecordingLed();
+                    
                     // Turn off recording LED on error if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
                         hardwareManager.setRecordingLedOff();
@@ -592,6 +699,9 @@ public class MediaCaptureService {
         } catch (Exception e) {
             Log.e(TAG, "Error starting video recording", e);
 
+            // Turn off RGB white LED if error occurred during start
+            stopVideoRecordingLed();
+
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(requestId, "Error starting video: " + e.getMessage(),
                         MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
@@ -615,11 +725,14 @@ public class MediaCaptureService {
         try {
             // Play video stop sound
             playVideoStopSound();
+            stopVideoRecordingLed(); // Stop white LED when video recording stops
 
             // Stop the recording via CameraNeo
             CameraNeo.stopVideoRecording(mContext, currentVideoId);
         } catch (Exception e) {
             Log.e(TAG, "Error stopping video recording", e);
+
+            // Note: RGB white LED already turned off above (line 768), no need to call again
 
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(currentVideoId, "Error stopping video: " + e.getMessage(),
@@ -826,6 +939,10 @@ public class MediaCaptureService {
         PhotoCaptureTestFramework.addFakeDelay("CAMERA_INIT");
 
         playShutterSound();
+        if (enableLed) {
+            triggerPhotoFlashLed(); // Trigger white LED flash synchronized with shutter sound
+        }
+
 
         // LED control is now handled by CameraNeo tied to camera lifecycle
         // This prevents LED flickering during rapid photo capture
@@ -885,8 +1002,13 @@ public class MediaCaptureService {
      * @param webhookUrl Optional webhook URL for direct upload to app
      * @param authToken Auth token for webhook authentication
      * @param save Whether to keep the photo on device after upload
+     * @param size Photo size
+     * @param enableLed Whether to enable camera LED flash
+     * @param compress Compression level (none, medium, heavy)
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed, String compress) {
+        Log.d(TAG, "Taking photo and uploading to " + webhookUrl + " with compression: " + compress);
+
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
@@ -942,6 +1064,8 @@ public class MediaCaptureService {
 
         try {
             playShutterSound();
+            // Disable LED for webhook uploads to avoid distracting white flash
+            // LED control is handled by CameraNeo for camera lifecycle management
 
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
@@ -965,7 +1089,7 @@ public class MediaCaptureService {
                             // Choose upload destination based on webhookUrl
                             if (webhookUrl != null && !webhookUrl.isEmpty()) {
                                 // Upload directly to app webhook
-                                uploadPhotoToWebhook(filePath, requestId, webhookUrl, authToken);
+                                uploadPhotoToWebhook(filePath, requestId, webhookUrl, authToken, compress);
                             }
                         }
 
@@ -1007,7 +1131,7 @@ public class MediaCaptureService {
     /**
      * Upload photo directly to app webhook
      */
-    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken) {
+    private void uploadPhotoToWebhook(String photoFilePath, String requestId, String webhookUrl, String authToken, String compress) {
         // TESTING: Check for fake upload failure
         if (PhotoCaptureTestFramework.shouldFail("UPLOAD")) {
             Log.e(TAG, "TESTING: Simulating upload failure");
@@ -1025,19 +1149,208 @@ public class MediaCaptureService {
             Log.d(TAG, "📤 Starting upload - system marked as busy: " + requestId);
         }
 
+        // Process upload based on SDK compression setting
+        processUploadWithCompression(photoFilePath, requestId, webhookUrl, authToken, compress);
+    }
+
+    /**
+     * Process upload with compression based on SDK setting
+     */
+    private void processUploadWithCompression(String photoFilePath, String requestId, String webhookUrl, String authToken, String compress) {
+        Log.d(TAG, "📸 Processing photo upload with SDK compression setting: " + compress);
+        
+        // Check SDK compression setting
+        if ("none".equals(compress) || compress == null || compress.isEmpty()) {
+            Log.d(TAG, "📸 No compression requested - uploading original image");
+            performDirectUpload(photoFilePath, requestId, webhookUrl, authToken);
+        } else {
+            Log.d(TAG, "🗜️ Compression requested - applying SDK compression setting: " + compress);
+            
+            compressImageForUpload(photoFilePath, requestId, webhookUrl, authToken, compress);
+        }
+    }
+
+    /**
+     * Compress image based on SDK compression level
+     */
+    private void compressImageForUpload(String originalPath, String requestId, String webhookUrl, String authToken, String compress) {
+        new Thread(() -> {
+            try {
+                Log.d(TAG, "🗜️ Starting image compression for " + compress + " level");
+                long compressionStartTime = System.currentTimeMillis();
+                
+                // Load original image
+                android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
+                if (original == null) {
+                    Log.e(TAG, "❌ Failed to load original image for compression");
+                    performDirectUpload(originalPath, requestId, webhookUrl, authToken);
+                    return;
+                }
+                
+                // Calculate compression parameters based on SDK compression level
+                int originalWidth = original.getWidth();
+                int originalHeight = original.getHeight();
+                Log.d(TAG, "📐 Original image dimensions: " + originalWidth + "x" + originalHeight);
+                
+                // Compression parameters based on SDK compression level
+                float compressionRatio;
+                int jpegQuality;
+                String compressionStrategy;
+                
+                if ("heavy".equals(compress)) {
+                    compressionRatio = 0.50f; // 50% of original size
+                    jpegQuality = 60;
+                    compressionStrategy = "50% size + 60% quality (HEAVY)";
+                } else { // "medium"
+                    compressionRatio = 0.75f; // 75% of original size
+                    jpegQuality = 80;
+                    compressionStrategy = "75% size + 80% quality (MEDIUM)";
+                }
+                
+                Log.d(TAG, "🎯 Compression strategy: " + compressionStrategy);
+                
+                // Calculate compressed dimensions
+                int compressedWidth = (int)(originalWidth * compressionRatio);
+                int compressedHeight = (int)(originalHeight * compressionRatio);
+                
+                // Maintain aspect ratio
+                float aspectRatio = (float) originalWidth / originalHeight;
+                if (aspectRatio > 1) {
+                    compressedHeight = (int) (compressedWidth / aspectRatio);
+                } else {
+                    compressedWidth = (int) (compressedHeight * aspectRatio);
+                }
+                
+                Log.d(TAG, "📐 Compressed image dimensions: " + compressedWidth + "x" + compressedHeight);
+                
+                // Create compressed bitmap
+                android.graphics.Bitmap compressed = android.graphics.Bitmap.createScaledBitmap(
+                    original, compressedWidth, compressedHeight, true);
+                original.recycle();
+                
+                // Save compressed image to temporary file
+                String compressedPath = originalPath.replace(".jpg", "_compressed_" + compress + ".jpg");
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(compressedPath);
+                compressed.compress(android.graphics.Bitmap.CompressFormat.JPEG, jpegQuality, fos);
+                fos.close();
+                compressed.recycle();
+                
+                long compressionDuration = System.currentTimeMillis() - compressionStartTime;
+                Log.d(TAG, "⏱️ Image compression completed in: " + compressionDuration + "ms");
+                Log.d(TAG, "✅ Compressed image saved: " + compressedPath);
+                
+                // Calculate compression ratio achieved
+                File originalFile = new File(originalPath);
+                File compressedFile = new File(compressedPath);
+                long originalSize = originalFile.length();
+                long compressedSize = compressedFile.length();
+                float sizeReduction = ((float)(originalSize - compressedSize) / originalSize) * 100;
+                
+                Log.d(TAG, "📊 Compression stats:");
+                Log.d(TAG, "📊 Original size: " + originalSize + " bytes");
+                Log.d(TAG, "📊 Compressed size: " + compressedSize + " bytes");
+                Log.d(TAG, "📊 Size reduction: " + String.format("%.1f", sizeReduction) + "%");
+                
+                // Upload compressed version
+                performDirectUpload(compressedPath, requestId, webhookUrl, authToken);
+                
+                // Clean up compressed file after upload
+                new File(compressedPath).deleteOnExit();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error compressing image, falling back to original: " + e.getMessage());
+                performDirectUpload(originalPath, requestId, webhookUrl, authToken);
+            }
+        }).start();
+    }
+
+    /**
+     * Compress image for poor connection scenarios (legacy method - kept for compatibility)
+     */
+    private void compressImageForPoorConnection(String originalPath, String requestId, String webhookUrl, String authToken) {
+        new Thread(() -> {
+            try {
+                Log.d(TAG, "🗜️ Compressing image for poor connection: " + originalPath);
+                long compressionStartTime = System.currentTimeMillis();
+                
+                // Load original image
+                android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
+                if (original == null) {
+                    Log.e(TAG, "❌ Failed to load original image for compression");
+                    performDirectUpload(originalPath, requestId, webhookUrl, authToken);
+                    return;
+                }
+                
+                // Calculate compression parameters for poor connection
+                int originalWidth = original.getWidth();
+                int originalHeight = original.getHeight();
+                Log.d(TAG, "📐 Original image dimensions: " + originalWidth + "x" + originalHeight);
+                
+                // Reduce to 50% of original size for poor connections
+                int compressedWidth = originalWidth / 2;
+                int compressedHeight = originalHeight / 2;
+                
+                // Maintain aspect ratio
+                float aspectRatio = (float) originalWidth / originalHeight;
+                if (aspectRatio > 1) {
+                    compressedHeight = (int) (compressedWidth / aspectRatio);
+                } else {
+                    compressedWidth = (int) (compressedHeight * aspectRatio);
+                }
+                
+                Log.d(TAG, "📐 Compressed image dimensions: " + compressedWidth + "x" + compressedHeight);
+                
+                // Create compressed bitmap
+                android.graphics.Bitmap compressed = android.graphics.Bitmap.createScaledBitmap(
+                    original, compressedWidth, compressedHeight, true);
+                original.recycle();
+                
+                // Save compressed image to temporary file
+                String compressedPath = originalPath.replace(".jpg", "_compressed.jpg");
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(compressedPath);
+                compressed.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, fos); // 60% quality
+                fos.close();
+                compressed.recycle();
+                
+                long compressionDuration = System.currentTimeMillis() - compressionStartTime;
+                Log.d(TAG, "⏱️ Image compression completed in: " + compressionDuration + "ms");
+                Log.d(TAG, "✅ Image compressed for poor connection: " + compressedPath);
+                
+                // Upload compressed version
+                performDirectUpload(compressedPath, requestId, webhookUrl, authToken);
+                
+                // Clean up compressed file after upload
+                new File(compressedPath).deleteOnExit();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "❌ Error compressing image, falling back to original: " + e.getMessage());
+                performDirectUpload(originalPath, requestId, webhookUrl, authToken);
+            }
+        }).start();
+    }
+
+    /**
+     * Perform the actual upload operation
+     */
+    private void performDirectUpload(String photoFilePath, String requestId, String webhookUrl, String authToken) {
+        Log.d(TAG, "📤 Starting direct upload operation");
+        Log.d(TAG, "📸 Upload file: " + photoFilePath);
+        Log.d(TAG, "🆔 Request ID: " + requestId);
+        
         // Create a new thread for the upload
         new Thread(() -> {
             try {
                 File photoFile = new File(photoFilePath);
                 if (!photoFile.exists()) {
-                    Log.e(TAG, "Photo file does not exist: " + photoFilePath);
+                    Log.e(TAG, "❌ Photo file does not exist: " + photoFilePath);
                     if (mMediaCaptureListener != null) {
                         mMediaCaptureListener.onMediaError(requestId, "Photo file not found", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                     }
                     return;
                 }
 
-                Log.d(TAG, "### Sending photo request");
+                Log.d(TAG, "📊 Photo file size: " + photoFile.length() + " bytes");
+                Log.d(TAG, "🌐 Sending photo request to: " + webhookUrl);
 
                 // Create multipart form request with smarter timeouts:
                 // - 1 second to connect (fails fast if no internet)
@@ -1066,19 +1379,25 @@ public class MediaCaptureService {
                 // Add Authorization header if auth token is available
                 if (authToken != null && !authToken.isEmpty()) {
                     requestBuilder.header("Authorization", "Bearer " + authToken);
-                    Log.d(TAG, "📡 Adding Authorization header to webhook request for: " + requestId);
+                    Log.d(TAG, "🔐 Adding Authorization header to webhook request");
                 } else {
-                    Log.d(TAG, "📡 No auth token available for webhook request: " + requestId);
+                    Log.d(TAG, "⚠️ No auth token available for webhook request");
                 }
 
                 Request request = requestBuilder.build();
-
+                Log.d(TAG, "🚀 Executing HTTP request...");
+                
+                long uploadStartTime = System.currentTimeMillis();
                 Response response = client.newCall(request).execute();
+                long uploadTime = System.currentTimeMillis() - uploadStartTime;
+                
+                Log.d(TAG, "⏱️ Upload completed in: " + uploadTime + "ms");
+                Log.d(TAG, "📈 Response code: " + response.code());
 
                 if (response.isSuccessful()) {
                     String responseBody = response.body() != null ? response.body().string() : "";
-                    Log.d(TAG, "Photo uploaded successfully to webhook: " + webhookUrl);
-                    Log.d(TAG, "Response: " + responseBody);
+                    Log.d(TAG, "✅ Photo uploaded successfully to webhook");
+                    Log.d(TAG, "📄 Response body: " + responseBody);
 
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
@@ -1086,15 +1405,15 @@ public class MediaCaptureService {
                         // Delete the photo file to save storage
                         try {
                             if (photoFile.delete()) {
-                                Log.d(TAG, "🗑️ Deleted photo file after successful webhook upload: " + photoFilePath);
+                                Log.d(TAG, "🗑️ Deleted photo file after successful upload");
                             } else {
-                                Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                                Log.w(TAG, "⚠️ Failed to delete photo file");
                             }
                         } catch (Exception e) {
-                            Log.e(TAG, "Error deleting photo file after webhook upload", e);
+                            Log.e(TAG, "❌ Error deleting photo file after upload", e);
                         }
                     } else {
-                        Log.d(TAG, "💾 Keeping photo file as requested: " + photoFilePath);
+                        Log.d(TAG, "💾 Keeping photo file as requested");
                     }
 
                     // Clean up the flag
@@ -1109,16 +1428,17 @@ public class MediaCaptureService {
                     // Reset upload state
                     synchronized (uploadLock) {
                         isUploadingPhoto = false;
-                        Log.d(TAG, "✅ Upload completed - system marked as available: " + requestId);
+                        Log.d(TAG, "✅ Upload completed - system marked as available");
                     }
                 } else {
                     String errorMessage = "Upload failed with status: " + response.code();
-                    Log.e(TAG, errorMessage + " to webhook: " + webhookUrl);
+                    Log.e(TAG, "❌ " + errorMessage + " to webhook: " + webhookUrl);
 
                     // Check if we can fallback to BLE
                     String bleImgId = photoBleIds.get(requestId);
                     if (bleImgId != null) {
-                        Log.d(TAG, "📱 Webhook upload failed, attempting BLE fallback for " + requestId);
+                        Log.d(TAG, "📱 Webhook upload failed, attempting BLE fallback");
+                        Log.d(TAG, "🔄 BLE Image ID: " + bleImgId);
 
                         // Clean up tracking (will be re-added by BLE transfer)
                         photoBleIds.remove(requestId);
@@ -1129,12 +1449,12 @@ public class MediaCaptureService {
                         String requestedSize = photoRequestedSizes.get(requestId);
                         if (requestedSize == null || requestedSize.isEmpty()) requestedSize = "medium";
                         // Reuse the existing photo file that was already captured
-                        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                        Log.d(TAG, "♻️ Reusing existing photo for BLE transfer");
                         
                         // Reset upload state before BLE fallback
                         synchronized (uploadLock) {
                             isUploadingPhoto = false;
-                            Log.d(TAG, "🔄 Upload failed, switching to BLE - system marked as available: " + requestId);
+                            Log.d(TAG, "🔄 Upload failed, switching to BLE - system marked as available");
                         }
                         
                         reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
@@ -1142,21 +1462,23 @@ public class MediaCaptureService {
                     }
 
                     // No BLE fallback available
+                    Log.d(TAG, "❌ No BLE fallback available, handling as normal failure");
+                    
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
                     if (save == null || !save) {
                         // Delete the photo file on failure
                         try {
                             if (photoFile.delete()) {
-                                Log.d(TAG, "🗑️ Deleted photo file after failed webhook upload: " + photoFilePath);
+                                Log.d(TAG, "🗑️ Deleted photo file after failed upload");
                             } else {
-                                Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                                Log.w(TAG, "⚠️ Failed to delete photo file");
                             }
                         } catch (Exception e) {
-                            Log.e(TAG, "Error deleting photo file after failed webhook upload", e);
+                            Log.e(TAG, "❌ Error deleting photo file after failed upload", e);
                         }
                     } else {
-                        Log.d(TAG, "💾 Keeping photo file despite failed upload as requested: " + photoFilePath);
+                        Log.d(TAG, "💾 Keeping photo file despite failed upload as requested");
                     }
 
                     // Clean up tracking
@@ -1172,19 +1494,21 @@ public class MediaCaptureService {
                     // Reset upload state
                     synchronized (uploadLock) {
                         isUploadingPhoto = false;
-                        Log.d(TAG, "❌ Upload failed - system marked as available: " + requestId);
+                        Log.d(TAG, "❌ Upload failed - system marked as available");
                     }
                 }
 
                 response.close();
 
             } catch (Exception e) {
-                Log.e(TAG, "Error uploading photo to webhook: " + webhookUrl, e);
+                Log.e(TAG, "❌ Error uploading photo to webhook: " + e.getMessage());
+                Log.e(TAG, "❌ Exception type: " + e.getClass().getSimpleName());
 
                 // Check if we can fallback to BLE on exception
                 String bleImgId = photoBleIds.get(requestId);
                 if (bleImgId != null) {
-                    Log.d(TAG, "📱 Webhook upload exception, attempting BLE fallback for " + requestId);
+                    Log.d(TAG, "📱 Webhook upload exception, attempting BLE fallback");
+                    Log.d(TAG, "🔄 BLE Image ID: " + bleImgId);
 
                     // Clean up tracking (will be re-added by BLE transfer)
                     photoBleIds.remove(requestId);
@@ -1195,12 +1519,12 @@ public class MediaCaptureService {
                     String requestedSizeFallback1 = photoRequestedSizes.get(requestId);
                     if (requestedSizeFallback1 == null || requestedSizeFallback1.isEmpty()) requestedSizeFallback1 = "medium";
                     // Reuse the existing photo file that was already captured
-                    Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + photoFilePath);
+                    Log.d(TAG, "♻️ Reusing existing photo for BLE transfer");
                     
                     // Reset upload state before BLE fallback
                     synchronized (uploadLock) {
                         isUploadingPhoto = false;
-                        Log.d(TAG, "🔄 Upload exception, switching to BLE - system marked as available: " + requestId);
+                        Log.d(TAG, "🔄 Upload exception, switching to BLE - system marked as available");
                     }
                     
                     reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
@@ -1208,6 +1532,8 @@ public class MediaCaptureService {
                 }
 
                 // No BLE fallback available
+                Log.d(TAG, "❌ No BLE fallback available, handling exception");
+                
                 // Check if we should save the photo on exception
                 Boolean save = photoSaveFlags.get(requestId);
                 if (save == null || !save) {
@@ -1215,15 +1541,15 @@ public class MediaCaptureService {
                     try {
                         File photoFile = new File(photoFilePath);
                         if (photoFile.exists() && photoFile.delete()) {
-                            Log.d(TAG, "🗑️ Deleted photo file after webhook upload exception: " + photoFilePath);
+                            Log.d(TAG, "🗑️ Deleted photo file after webhook upload exception");
                         } else {
-                            Log.w(TAG, "Failed to delete photo file: " + photoFilePath);
+                            Log.w(TAG, "⚠️ Failed to delete photo file");
                         }
                     } catch (Exception deleteEx) {
-                        Log.e(TAG, "Error deleting photo file after webhook upload exception", deleteEx);
+                            Log.e(TAG, "❌ Error deleting photo file after webhook upload exception", deleteEx);
                     }
                 } else {
-                    Log.d(TAG, "💾 Keeping photo file despite upload exception as requested: " + photoFilePath);
+                    Log.d(TAG, "💾 Keeping photo file despite upload exception as requested");
                 }
 
                 // Clean up tracking
@@ -1240,7 +1566,7 @@ public class MediaCaptureService {
                 // Reset upload state
                 synchronized (uploadLock) {
                     isUploadingPhoto = false;
-                    Log.d(TAG, "💥 Upload exception - system marked as available: " + requestId);
+                    Log.d(TAG, "💥 Upload exception - system marked as available");
                 }
             }
         }).start();
@@ -1464,8 +1790,9 @@ public class MediaCaptureService {
      * @param webhookUrl Webhook URL for upload
      * @param bleImgId BLE image ID for fallback
      * @param save Whether to keep the photo on device
+     * @param compress Compression level (none, medium, heavy)
      */
-    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String authToken, String bleImgId, boolean save, String size, boolean enableLed) {
+    public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String authToken, String bleImgId, boolean save, String size, boolean enableLed, String compress) {
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
@@ -1474,7 +1801,7 @@ public class MediaCaptureService {
 
         // Attempt direct upload (internet test removed due to unreliability)
         Log.d(TAG, "Attempting direct upload for " + requestId);
-            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed);
+            takePhotoAndUpload(photoFilePath, requestId, webhookUrl, authToken, save, size, enableLed, compress);
         
         // Note: BLE fallback will be handled automatically by upload failure detection
         Log.d(TAG, "BLE fallback will be used if upload fails");
@@ -1488,6 +1815,13 @@ public class MediaCaptureService {
      * @param save Whether to keep the original photo on device
      */
     public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
+        // Check if RTMP streaming is active - photos cannot interrupt streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot take photo - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
@@ -1512,6 +1846,8 @@ public class MediaCaptureService {
         PhotoCaptureTestFramework.addFakeDelay("CAMERA_CAPTURE");
 
         playShutterSound();
+        // Disable LED for BLE transfers to avoid distracting white flash
+        // LED control is handled by CameraNeo for camera lifecycle management
 
         try {
             // Use CameraNeo for photo capture
@@ -1565,11 +1901,18 @@ public class MediaCaptureService {
      * This avoids taking a duplicate photo
      */
     private void reusePhotoForBleTransfer(String existingPhotoPath, String requestId, String bleImgId, boolean save, String size) {
+        // Check if RTMP streaming is active - avoid BLE transfers during streams
+        if (RtmpStreamingService.isStreaming()) {
+            Log.e(TAG, "Cannot transfer photo via BLE - RTMP streaming active");
+            sendPhotoErrorResponse(requestId, "CAMERA_BUSY", "Camera busy with RTMP streaming");
+            return;
+        }
+
         // Store the save flag for this request
         photoSaveFlags.put(requestId, save);
         // Track requested size for BLE compression
         photoRequestedSizes.put(requestId, size);
-        
+
         Log.d(TAG, "♻️ Reusing existing photo for BLE transfer: " + existingPhotoPath);
         
         // Notify that we're using an existing photo

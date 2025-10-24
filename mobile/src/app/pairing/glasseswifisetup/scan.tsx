@@ -1,8 +1,8 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
-import {useLocalSearchParams, router, useFocusEffect} from "expo-router"
+import {useState, useEffect, useRef} from "react"
+import {View, FlatList, TouchableOpacity, ActivityIndicator, BackHandler} from "react-native"
+import {Text} from "@/components/ignite"
+import {useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Screen, Header, Button, Icon} from "@/components/ignite"
-import bridge from "@/bridge/MantleBridge"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
@@ -11,6 +11,8 @@ import {useCoreStatus} from "@/contexts/CoreStatusProvider"
 import {useCallback} from "react"
 import WifiCredentialsService from "@/utils/wifi/WifiCredentialsService"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import Toast from "react-native-toast-message"
+import CoreModule from "core"
 
 // Enhanced network info type
 interface NetworkInfo {
@@ -67,22 +69,14 @@ export default function WifiScanScreen() {
 
       // Process enhanced format if available, otherwise use legacy format
       let processedNetworks: NetworkInfo[]
-      if (data.networksEnhanced && data.networksEnhanced.length > 0) {
-        console.log("🎯 Processing enhanced networks:", data.networksEnhanced)
-        processedNetworks = data.networksEnhanced.map((network: any) => ({
+      if (data.networks && data.networks.length > 0) {
+        console.log("🎯 Processing enhanced networks:", data.networks)
+        processedNetworks = data.networks.map((network: any) => ({
           ssid: network.ssid || "",
           requiresPassword: network.requiresPassword !== false, // Default to secure
           signalStrength: network.signalStrength || -100,
         }))
         console.log("🎯 Enhanced networks count:", processedNetworks.length)
-      } else {
-        console.log("🎯 Processing legacy networks:", data.networks)
-        processedNetworks = (data.networks || []).map((ssid: string) => ({
-          ssid,
-          requiresPassword: true, // Default to secure for legacy format
-          signalStrength: -100, // Default weak signal
-        }))
-        console.log("🎯 Legacy networks count:", processedNetworks.length)
       }
 
       // Clear the timeout since we got results
@@ -167,7 +161,7 @@ export default function WifiScanScreen() {
       console.log("⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️⏱️")
 
       // Don't stop scanning, just retry silently
-      bridge.requestWifiScan().catch(error => {
+      CoreModule.requestWifiScan().catch(error => {
         console.error("⏱️ RETRY FAILED:", error)
       })
 
@@ -175,7 +169,7 @@ export default function WifiScanScreen() {
     }, 15000) // 15 second timeout
 
     try {
-      await bridge.requestWifiScan()
+      await CoreModule.requestWifiScan()
     } catch (error) {
       console.error("Error scanning for WiFi networks:", error)
       if (scanTimeoutRef.current) {
@@ -183,9 +177,9 @@ export default function WifiScanScreen() {
         scanTimeoutRef.current = null
       }
       setIsScanning(false)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Failed to scan for WiFi networks",
+      Toast.show({
         type: "error",
+        text1: "Failed to scan for WiFi networks",
       })
     }
   }
@@ -193,9 +187,9 @@ export default function WifiScanScreen() {
   const handleNetworkSelect = (selectedNetwork: NetworkInfo) => {
     // Check if this is the currently connected network
     if (isWifiConnected && currentWifi === selectedNetwork.ssid) {
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: `Already connected to ${selectedNetwork.ssid}`,
+      Toast.show({
         type: "info",
+        text1: `Already connected to ${selectedNetwork.ssid}`,
       })
       return
     }
@@ -343,7 +337,7 @@ const $connectedNetworkItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
   justifyContent: "space-between",
   alignItems: "center",
-  backgroundColor: colors.backgroundDim,
+  backgroundColor: colors.backgroundAlt,
   padding: spacing.md,
   marginBottom: spacing.xs,
   borderRadius: spacing.xs,
@@ -432,14 +426,6 @@ const $chevron: ThemedStyle<TextStyle> = ({colors}) => ({
   textAlignVertical: "center",
 })
 
-const $connectedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 20,
-  color: colors.tint,
-  marginLeft: 8,
-  fontWeight: "bold",
-  textAlignVertical: "center",
-})
-
 const $savedChevron: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 18,
   color: colors.tint,
@@ -490,5 +476,5 @@ const $openBadge: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 const $openBadgeText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 10,
   fontWeight: "500",
-  color: colors.palette.success600,
+  color: colors.success,
 })

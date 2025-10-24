@@ -1,15 +1,14 @@
 import {useRef, useState, useEffect, useCallback} from "react"
-import {View, Text, BackHandler} from "react-native"
+import {View, BackHandler} from "react-native"
 import {WebView} from "react-native-webview"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useLocalSearchParams, useFocusEffect} from "expo-router"
-import {Header, Screen} from "@/components/ignite"
+import {Header, Screen, Text} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import restComms from "@/managers/RestComms"
-
+import restComms from "@/services/RestComms"
 
 export default function AppWebView() {
   const {theme} = useAppTheme()
@@ -36,9 +35,9 @@ export default function AppWebView() {
         return true
       }
 
-      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
-      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+      return () => subscription.remove()
     }, [goBack]),
   )
 

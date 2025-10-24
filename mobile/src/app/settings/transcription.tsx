@@ -1,18 +1,19 @@
-import {useState, useEffect, useCallback} from "react"
-import {ScrollView, View, ActivityIndicator, Platform, BackHandler} from "react-native"
 import bridge from "@/bridge/MantleBridge"
 import {Header, Screen, Text} from "@/components/ignite"
-import {useAppTheme} from "@/utils/useAppTheme"
-import ToggleSetting from "@/components/settings/ToggleSetting"
 import ModelSelector from "@/components/settings/ModelSelector"
-import {translate} from "@/i18n"
-import {Spacer} from "@/components/misc/Spacer"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import {Spacer} from "@/components/ui/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n"
 import STTModelManager from "@/services/STTModelManager"
-import showAlert from "@/utils/AlertUtils"
-import {useFocusEffect} from "@react-navigation/native"
+import {useStopAllApplets} from "@/stores/applets"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
-import {useAppStatus} from "@/contexts/AppletStatusProvider"
+import showAlert from "@/utils/AlertUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useFocusEffect} from "@react-navigation/native"
+import CoreModule from "core"
+import {useCallback, useEffect, useState} from "react"
+import {ActivityIndicator, BackHandler, Platform, ScrollView, View} from "react-native"
 
 export default function TranscriptionSettingsScreen() {
   const {theme} = useAppTheme()
@@ -27,16 +28,14 @@ export default function TranscriptionSettingsScreen() {
   const [isCheckingModel, setIsCheckingModel] = useState(true)
   const [bypassVadForDebugging, setBypassVadForDebugging] = useSetting(SETTINGS_KEYS.bypass_vad_for_debugging)
   const [offlineMode, setOfflineMode] = useSetting(SETTINGS_KEYS.offline_mode)
-  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(
-    SETTINGS_KEYS.offline_captions_app_running,
-  )
+  const [_offlineCaptionsAppRunning, setOfflineCaptionsAppRunning] = useSetting(SETTINGS_KEYS.offline_captions_running)
   const [enforceLocalTranscription, setEnforceLocalTranscription] = useSetting(
     SETTINGS_KEYS.enforce_local_transcription,
   )
   const RESTART_TRANSCRIPTION_DEBOUNCE_MS = 8000 // 8 seconds
   const [lastRestartTime, setLastRestartTime] = useState(0)
 
-  const {stopAllApps} = useAppStatus()
+  const stopAllApps = useStopAllApplets()
 
   const handleToggleOfflineMode = () => {
     const title = offlineMode ? "Disable Offline Mode?" : "Enable Offline Mode?"
@@ -59,7 +58,6 @@ export default function TranscriptionSettingsScreen() {
             } else {
               // If disabling offline mode, turn off offline captions
               setOfflineCaptionsAppRunning(false)
-              bridge.toggleOfflineApps(false)
             }
             setOfflineMode(!offlineMode)
           },
@@ -145,7 +143,7 @@ export default function TranscriptionSettingsScreen() {
     const now = Date.now()
     setLastRestartTime(now)
     await STTModelManager.activateModel(modelId)
-    await bridge.restartTranscription()
+    await CoreModule.restartTranscriber()
   }
 
   const handleModelChange = async (modelId: string) => {
@@ -277,7 +275,6 @@ export default function TranscriptionSettingsScreen() {
   const toggleBypassVadForDebugging = async () => {
     const newSetting = !bypassVadForDebugging
     await setBypassVadForDebugging(newSetting)
-    await bridge.sendToggleBypassVadForDebugging(newSetting) // TODO: config: remove
   }
 
   useEffect(() => {

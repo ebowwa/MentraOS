@@ -7,7 +7,6 @@ import {isRTL} from "@/i18n"
 import {$inputOuterBase, BaseToggleInputProps, Toggle, ToggleProps} from "./Toggle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import type {ThemedStyle} from "@/theme"
-import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 
 export interface SwitchToggleProps extends Omit<ToggleProps<SwitchInputProps>, "ToggleInput"> {
   /**
@@ -32,21 +31,17 @@ interface SwitchInputProps extends BaseToggleInputProps<SwitchToggleProps> {
  */
 export function Switch(props: SwitchToggleProps) {
   const {accessibilityMode, ...rest} = props
-  const [showNewUi] = useSetting(SETTINGS_KEYS.new_ui)
 
   const switchInput = useCallback(
     (toggleProps: SwitchInputProps) => {
-      if (showNewUi) {
-        return <ModernSwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />
-      }
-      return <SwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />
+      return <ModernSwitchInput {...toggleProps} accessibilityMode={accessibilityMode} />
     },
-    [accessibilityMode, showNewUi],
+    [accessibilityMode],
   )
   return <Toggle accessibilityRole="switch" {...rest} ToggleInput={switchInput} hitSlop={rest.hitSlop || 16} />
 }
 
-function SwitchInput(props: SwitchInputProps) {
+function _SwitchInput(props: SwitchInputProps) {
   const {
     on,
     status,

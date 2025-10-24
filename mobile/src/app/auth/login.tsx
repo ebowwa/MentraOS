@@ -1,39 +1,33 @@
-import React, {useState, useRef, useEffect} from "react"
+import {Button, Screen, Text} from "@/components/ignite"
+import {Spacer} from "@/components/ui/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n"
+import {supabase} from "@/supabase/supabaseClient"
+import {spacing, ThemedStyle} from "@/theme"
+import showAlert from "@/utils/AlertUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
+import {FontAwesome} from "@expo/vector-icons"
+import AppleIcon from "assets/icons/component/AppleIcon"
+import GoogleIcon from "assets/icons/component/GoogleIcon"
+import * as WebBrowser from "expo-web-browser"
+import {useEffect, useRef, useState} from "react"
 import {
-  View,
-  TouchableOpacity,
-  TextInput,
-  Animated,
-  SafeAreaView,
-  BackHandler,
-  Platform,
-  KeyboardAvoidingView,
   ActivityIndicator,
-  ScrollView,
+  Animated,
   AppState,
-  ViewStyle,
-  TextStyle,
+  BackHandler,
   Keyboard,
   Modal,
+  Platform,
+  ScrollView,
+  TextInput,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from "react-native"
-import LinearGradient from "react-native-linear-gradient"
-import {supabase} from "@/supabase/supabaseClient"
-import {Linking} from "react-native"
-import {Screen, Text, Button, Icon} from "@/components/ignite"
-import {translate, TxKeyPath} from "@/i18n"
-import {spacing, ThemedStyle} from "@/theme"
-import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {FontAwesome} from "@expo/vector-icons"
-import GoogleIcon from "assets/icons/component/GoogleIcon"
-import AppleIcon from "assets/icons/component/AppleIcon"
-import {router} from "expo-router"
-import showAlert from "@/utils/AlertUtils"
 import {Pressable} from "react-native-gesture-handler"
-import {Spacer} from "@/components/misc/Spacer"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import * as WebBrowser from "expo-web-browser"
-import Toast from "react-native-toast-message"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -43,7 +37,7 @@ export default function LoginScreen() {
   const [isAuthLoading, setIsAuthLoading] = useState(false)
   const [formAction, setFormAction] = useState<"signin" | "signup" | null>(null)
   const [backPressCount, setBackPressCount] = useState(0)
-  const {goBack, push, replace} = useNavigationHistory()
+  const {push, replace} = useNavigationHistory()
 
   // Get theme and safe area insets
   const {theme, themed} = useAppTheme()
@@ -175,13 +169,6 @@ export default function LoginScreen() {
     console.log("signInWithOAuth call finished")
   }
 
-  const showToastMessage = (txPath: TxKeyPath) => {
-    Toast.show({
-      type: "error",
-      text1: translate(txPath),
-      position: "bottom",
-    })
-  }
   const handleAppleSignIn = async () => {
     try {
       setIsAuthLoading(true)
@@ -242,8 +229,6 @@ export default function LoginScreen() {
     setFormAction("signup")
 
     try {
-      const redirectUrl = "https://augmentos.org/verify-email" // No encoding needed
-
       const {data, error} = await supabase.auth.signUp({
         email,
         password,
@@ -531,14 +516,6 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
 })
 
-const $gradientContainer: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-})
-
-const $keyboardAvoidingView: ThemedStyle<ViewStyle> = () => ({
-  flex: 1,
-})
-
 const $scrollContent: ThemedStyle<ViewStyle> = () => ({
   flexGrow: 1,
   justifyContent: "center",
@@ -625,7 +602,7 @@ const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing, isDar
   borderColor: colors.border,
   borderRadius: 8,
   paddingHorizontal: spacing.sm,
-  backgroundColor: isDark ? colors.transparent : colors.background,
+  backgroundColor: isDark ? colors.palette.transparent : colors.background,
   // Remove shadows for light theme
   ...(isDark
     ? {
@@ -638,10 +615,6 @@ const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing, isDar
         elevation: 2,
       }
     : {}),
-})
-
-const $inputIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginRight: spacing.xs,
 })
 
 const $enhancedInput: ThemedStyle<TextStyle> = ({colors}) => ({
@@ -663,7 +636,7 @@ const $socialButton: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   borderRadius: 8,
   paddingHorizontal: spacing.sm,
   marginBottom: spacing.xs,
-  backgroundColor: isDark ? colors.transparent : colors.background,
+  backgroundColor: isDark ? colors.palette.transparent : colors.background,
   // Remove shadows for light theme to avoid thick border appearance
   ...(isDark
     ? {
@@ -679,11 +652,11 @@ const $socialButton: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
 })
 
 const $googleButton: ThemedStyle<ViewStyle> = ({colors, isDark}) => ({
-  backgroundColor: isDark ? colors.transparent : colors.background,
+  backgroundColor: isDark ? colors.palette.transparent : colors.background,
 })
 
 const $appleButton: ThemedStyle<ViewStyle> = ({colors, isDark}) => ({
-  backgroundColor: isDark ? colors.transparent : colors.background,
+  backgroundColor: isDark ? colors.palette.transparent : colors.background,
   borderColor: colors.border,
 })
 
@@ -705,12 +678,12 @@ const $appleButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text, // Same as Google button text
 })
 
-const $primaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({})
+const $primaryButton: ThemedStyle<ViewStyle> = () => ({})
 
-const $secondaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({})
+const $secondaryButton: ThemedStyle<ViewStyle> = () => ({})
 
 const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.buttonPressed,
+  backgroundColor: colors.background,
   opacity: 0.9,
 })
 
@@ -723,28 +696,6 @@ const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
 const $emailButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textAlt,
   fontSize: 16,
-})
-
-const $ghostButton: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
-  backgroundColor: colors.transparent,
-  height: 48,
-  borderRadius: 8,
-  justifyContent: "center",
-  alignItems: "center",
-  marginTop: spacing.sm,
-})
-
-const $backIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginRight: spacing.xs,
-})
-
-const $emailIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginRight: spacing.xs,
-})
-
-const $ghostButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.textDim,
-  fontSize: 15,
 })
 
 const $dividerContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

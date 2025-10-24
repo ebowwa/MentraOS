@@ -29,7 +29,8 @@ import com.augmentos.asg_client.service.system.interfaces.IServiceLifecycle;
 import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
 import com.augmentos.asg_client.service.system.managers.StateManager;
-import com.augmentos.augmentos_core.AugmentosService;
+// Note: AugmentosService removed - legacy dependency no longer needed
+// import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.service.utils.ServiceUtils;
 
 import org.greenrobot.eventbus.EventBus;
@@ -78,6 +79,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Service health monitoring
     private static final String ACTION_HEARTBEAT = "com.augmentos.asg_client.ACTION_HEARTBEAT";
     private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+    private static final long HEARTBEAT_TIMEOUT_MS = 35000; // 35 seconds timeout
 
     // ---------------------------------------------
     // Dependency Injection Container
@@ -96,10 +98,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // ---------------------------------------------
     // Service State
     // ---------------------------------------------
-    private AugmentosService augmentosService = null;
-    private boolean isAugmentosBound = false;
+    // Note: AugmentosService removed - legacy dependency no longer needed
+    // private AugmentosService augmentosService = null;
+    // private boolean isAugmentosBound = false;
     private static AsgClientService instance;
     private boolean lastI2sPlaying = false;
+    private boolean isConnected = false; // Track connection state based on heartbeat
 
     // ---------------------------------------------
     // WiFi State Management
@@ -116,10 +120,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private BroadcastReceiver heartbeatReceiver;
     private BroadcastReceiver restartReceiver;
     private BroadcastReceiver otaProgressReceiver;
+    
+    // ---------------------------------------------
+    // Heartbeat Timeout Management
+    // ---------------------------------------------
+    private Handler heartbeatTimeoutHandler;
+    private Runnable heartbeatTimeoutRunnable;
 
     // ---------------------------------------------
-    // ServiceConnection for AugmentosService
+    // ServiceConnection for AugmentosService - DISABLED (legacy code)
     // ---------------------------------------------
+    // Note: AugmentosService binding removed - no longer needed for standalone ASG client
+    /*
     private final ServiceConnection augmentosConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -165,6 +177,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     };
+    */
 
     // ---------------------------------------------
     // Lifecycle Methods
@@ -198,6 +211,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             // Send version info
             Log.d(TAG, "📋 Sending initial version information");
             sendVersionInfo();
+
+            // Start heartbeat monitoring
+            Log.d(TAG, "💓 Starting heartbeat monitoring");
+            startHeartbeatMonitoring();
 
             // Clean up orphaned BLE transfer files from previous sessions
             Log.d(TAG, "🗑️ Cleaning up orphaned BLE transfer files");
@@ -279,6 +296,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📻 Unregistering broadcast receivers");
             unregisterReceivers();
 
+            // Note: AugmentosService unbinding removed - no longer used
+            /*
             // Unbind from AugmentosService
             if (isAugmentosBound) {
                 Log.d(TAG, "🔌 Unbinding from AugmentosService");
@@ -288,6 +307,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } else {
                 Log.d(TAG, "⏭️ Not bound to AugmentosService - skipping unbind");
             }
+            */
 
             // Clean up WiFi debouncing
             if (wifiDebounceHandler != null && wifiDebounceRunnable != null) {
@@ -300,6 +320,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "📹 Stopping RTMP streaming");
             streamingManager.stopRtmpStreaming();
             Log.d(TAG, "✅ RTMP streaming stopped");
+
+            // Release RGB LED control authority back to BES
+            Log.d(TAG, "🚨 Releasing RGB LED control authority back to BES");
+            sendRgbLedControlAuthority(false);
+            
+            // Disable touch/swipe event reporting on service destroy
+            Log.d(TAG, "🎯 Disabling touch event reporting on service destroy");
+            handleTouchEventControl(true);
+            
+            Log.d(TAG, "🎯 Disabling swipe volume control on service destroy");
+            handleSwipeVolumeControl(true);
 
             Log.i(TAG, "✅ AsgClientServiceV2 onDestroy() completed successfully");
         } catch (Exception e) {
@@ -333,6 +364,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             JSONObject payload = new JSONObject();
             payload.put("C", command);
+            payload.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
             payload.put("B", new JSONObject());
 
             boolean sent = sendK900Command(command);
@@ -342,6 +374,59 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         } catch (JSONException e) {
             Log.e(TAG, "Failed to construct I2S command payload", e);
+        }
+    }
+
+    // ---------------------------------------------
+    // Touch/Swipe Event Commands
+    // ---------------------------------------------
+    
+    /**
+     * Enable or disable touch event reporting
+     * @param enable true to enable touch events, false to disable
+     */
+    public void handleTouchEventControl(boolean enable) {
+        Log.i(TAG, "Touch event control request: " + (enable ? "enable" : "disable"));
+
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("C", "cs_swit");
+            payload.put("V", 1);
+            JSONObject bData = new JSONObject();
+            bData.put("type", 26);
+            bData.put("switch", enable);
+            payload.put("B", bData.toString());
+
+            boolean sent = sendK900Command(payload.toString());
+            if (sent) {
+                Log.i(TAG, "Touch event control command sent successfully");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct touch event control payload", e);
+        }
+    }
+
+    /**
+     * Enable or disable swipe volume control
+     * @param enable true to enable swipe volume control, false to disable
+     */
+    public void handleSwipeVolumeControl(boolean enable) {
+        Log.i(TAG, "Swipe volume control request: " + (enable ? "enable" : "disable"));
+
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("C", "cs_fbvol");
+            payload.put("V", 1);
+            JSONObject bData = new JSONObject();
+            bData.put("switch", enable);
+            payload.put("B", bData.toString());
+
+            boolean sent = sendK900Command(payload.toString());
+            if (sent) {
+                Log.i(TAG, "Swipe volume control command sent successfully");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct swipe volume control payload", e);
         }
     }
 
@@ -365,6 +450,58 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         boolean sent = bluetoothManager.sendData(payload.getBytes(StandardCharsets.UTF_8));
         Log.i(TAG, "I2S command sent (" + payload + ") result=" + sent);
         return sent;
+    }
+
+    /**
+     * Send RGB LED control authority command to BES chipset.
+     * This tells BES whether MTK (our app) or BES should control the RGB LEDs.
+     * 
+     * @param claimControl true = MTK claims control, false = BES resumes control
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        Log.d(TAG, "🚨 sendRgbLedControlAuthority() called - Claim: " + claimControl);
+        
+        try {
+            // Build full K900 format (C, V, B) to avoid double-wrapping
+            JSONObject authorityCommand = new JSONObject();
+            authorityCommand.put("C", "android_control_led");
+            authorityCommand.put("V", 1);  // Version field - REQUIRED to prevent double-wrapping
+            
+            // Create proper JSON object for B field
+            JSONObject bField = new JSONObject();
+            bField.put("on", claimControl);
+            authorityCommand.put("B", bField.toString());
+            
+            String commandStr = authorityCommand.toString();
+            Log.i(TAG, "🚨 Sending RGB LED authority command: " + commandStr);
+            
+            if (serviceContainer == null || serviceContainer.getServiceManager() == null) {
+                Log.w(TAG, "⚠️ ServiceContainer not initialized; deferring RGB LED authority claim");
+                return;
+            }
+
+            var bluetoothManager = serviceContainer.getServiceManager().getBluetoothManager();
+            if (bluetoothManager == null) {
+                Log.w(TAG, "⚠️ Bluetooth manager unavailable; cannot send RGB LED authority command");
+                return;
+            }
+
+            if (!bluetoothManager.isConnected()) {
+                Log.w(TAG, "⚠️ Bluetooth not connected; RGB LED authority will be sent when connected");
+                return;
+            }
+
+            boolean sent = bluetoothManager.sendData(commandStr.getBytes(StandardCharsets.UTF_8));
+            if (sent) {
+                Log.i(TAG, "✅ RGB LED control authority " + (claimControl ? "CLAIMED" : "RELEASED") + " successfully");
+            } else {
+                Log.e(TAG, "❌ Failed to send RGB LED authority command");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "💥 Error creating RGB LED authority command", e);
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error sending RGB LED authority command", e);
+        }
     }
 
     // ---------------------------------------------
@@ -485,6 +622,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "⏭️ OTA progress receiver is null - skipping");
             }
             
+            // Stop heartbeat monitoring
+            stopHeartbeatMonitoring();
+            
             Log.d(TAG, "✅ All receivers unregistered successfully");
         } catch (IllegalArgumentException e) {
             Log.w(TAG, "⚠️ Receiver was not registered: " + e.getMessage());
@@ -588,6 +728,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             Log.d(TAG, "📋 Sending version information after Bluetooth connection");
             sendVersionInfo();
+            
+            // Claim RGB LED control authority when Bluetooth connects
+            Log.d(TAG, "🚨 Claiming RGB LED control authority on Bluetooth connection");
+            sendRgbLedControlAuthority(true);
+            
+            // Enable touch/swipe event reporting when Bluetooth connects
+            Log.d(TAG, "🎯 Enabling touch event reporting on Bluetooth connection");
+            handleTouchEventControl(true);
+            
+            Log.d(TAG, "🎯 Enabling swipe volume control on Bluetooth connection");
+            handleSwipeVolumeControl(false);
         } else {
             Log.d(TAG, "📶 Bluetooth disconnected - no additional actions needed");
         }
@@ -624,11 +775,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void onWifiConnected() {
         Log.i(TAG, "🌐 Connected to WiFi network");
         
+        // Note: AugmentosService check removed - no longer used
+        /*
         if (isAugmentosBound && augmentosService != null) {
             Log.i(TAG, "🔗 AugmentOS service is available, connecting to backend...");
         } else {
             Log.d(TAG, "⏭️ AugmentOS service not available - waiting for binding");
         }
+        */
     }
 
     private void processMediaQueue() {
@@ -856,6 +1010,95 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (Exception e) {
             Log.e(TAG, "💥 Error registering heartbeat receiver", e);
         }
+    }
+
+    /**
+     * Reset heartbeat timeout - called when heartbeat is received
+     */
+    private void resetHeartbeatTimeout() {
+        Log.d(TAG, "💓 Resetting heartbeat timeout");
+        
+        try {
+            // Cancel any existing timeout
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            
+            // Mark as connected
+            isConnected = true;
+            Log.d(TAG, "🔌 Connection state changed to CONNECTED");
+            
+            // Schedule new timeout
+            heartbeatTimeoutHandler.postDelayed(heartbeatTimeoutRunnable, HEARTBEAT_TIMEOUT_MS);
+            Log.d(TAG, "⏰ Heartbeat timeout scheduled for " + HEARTBEAT_TIMEOUT_MS + "ms");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error resetting heartbeat timeout", e);
+        }
+    }
+
+    /**
+     * Start heartbeat monitoring - call this when service becomes active
+     */
+    public void startHeartbeatMonitoring() {
+        Log.d(TAG, "💓 Starting heartbeat monitoring");
+        
+        try {
+            // Initialize heartbeat timeout handler if not already done
+            if (heartbeatTimeoutHandler == null) {
+                Log.d(TAG, "💓 Initializing heartbeat timeout handler");
+                heartbeatTimeoutHandler = new Handler(Looper.getMainLooper());
+                heartbeatTimeoutRunnable = () -> {
+                    Log.w(TAG, "⚠️ Heartbeat timeout - marking as disconnected");
+                    isConnected = false;
+                    Log.i(TAG, "🔌 Connection state changed to DISCONNECTED due to heartbeat timeout");
+                };
+            }
+            
+            // Cancel any existing timeout
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            
+            // Don't set connected state - wait for first heartbeat
+            isConnected = false;
+            Log.d(TAG, "🔌 Connection state initialized as DISCONNECTED - waiting for first heartbeat");
+            
+            // Schedule initial timeout to detect if no heartbeat comes
+            heartbeatTimeoutHandler.postDelayed(heartbeatTimeoutRunnable, HEARTBEAT_TIMEOUT_MS);
+            Log.d(TAG, "⏰ Initial heartbeat timeout scheduled for " + HEARTBEAT_TIMEOUT_MS + "ms");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error starting heartbeat monitoring", e);
+        }
+    }
+
+    /**
+     * Stop heartbeat monitoring - call this when service becomes inactive
+     */
+    public void stopHeartbeatMonitoring() {
+        Log.d(TAG, "💓 Stopping heartbeat monitoring");
+        
+        try {
+            heartbeatTimeoutHandler.removeCallbacks(heartbeatTimeoutRunnable);
+            isConnected = false;
+            Log.d(TAG, "🔌 Connection state changed to DISCONNECTED (monitoring stopped)");
+        } catch (Exception e) {
+            Log.e(TAG, "💥 Error stopping heartbeat monitoring", e);
+        }
+    }
+
+    /**
+     * Get current connection state
+     */
+    public boolean isConnected() {
+        return isConnected;
+    }
+
+    /**
+     * Handle service heartbeat received from MentraLiveSGC
+     */
+    public void onServiceHeartbeatReceived() {
+        Log.d(TAG, "💓 Service heartbeat received from MentraLiveSGC");
+        
+        // Reset heartbeat timeout and mark as connected
+        resetHeartbeatTimeout();
     }
 
     private void registerRestartReceiver() {

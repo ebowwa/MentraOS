@@ -245,6 +245,10 @@ bun expo prebuild --clean
 bun expo prebuild --clear
 ```
 
+### Code rules and guidelines to follow
+- Strings should never be null or undefined unless you have a really good reason, (make them default to an empty string)
+- Avoid using the `any` type, and always reference types defined in the cloud when possible
+
 This project contains custom native modules that must be preserved.
 
 ## Additional Resources

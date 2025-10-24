@@ -69,7 +69,7 @@ bun install
 bun expo prebuild  # NEVER use --clean or --clear flags!
 rm -rf android/build android/.gradle node_modules .expo .bundle android/app/build android/app/src/main/assets
 bun install
-./fix-react-native-symlinks.sh
+./scripts/fix-react-native-symlinks.sh
 bun android
 bun start
 ```
