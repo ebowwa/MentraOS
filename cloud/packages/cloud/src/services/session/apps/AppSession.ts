@@ -12,7 +12,7 @@ import type WebSocket from "ws";
 import type { Logger } from "pino";
 import UserSession from "../UserSession";
 import { logger as rootLogger } from "../../logging/pino-logger";
-import type { AppStartResult, AppSessionI, AppsManager } from "./AppsManager";
+import type { AppStartResult, AppSessionI } from "./AppsManager";
 import {
   CloudToAppMessageType,
   WebhookRequestType,
@@ -26,8 +26,8 @@ import { User } from "../../../models/user.model";
 import { PosthogService } from "../../logging/posthog.service";
 
 const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME;
-const WEBHOOK_TIMEOUT_MS = 3000; // 3s - fail fast per architecture
-const CONNECTION_TIMEOUT_MS = 5000; // 5s total timeout for app to connect
+const WEBHOOK_TIMEOUT_MS = 5000; // 5s - reasonable timeout for webhook HTTP response
+const CONNECTION_TIMEOUT_MS = 7000; // 7s total timeout (5s webhook + 2s buffer for WebSocket handshake)
 
 // Default AugmentOS system settings
 const DEFAULT_AUGMENTOS_SETTINGS = {
@@ -68,7 +68,7 @@ export class AppSession implements AppSessionI {
   private readonly packageName: string;
   private readonly userSession: UserSession;
   private readonly logger: Logger;
-  private readonly appsManager: AppsManager; // Reference to parent AppsManager for resurrection
+  // appsManager no longer needed - AppSession is self-healing
 
   // Connection state
   private ws: WebSocket | null = null;
@@ -89,11 +89,11 @@ export class AppSession implements AppSessionI {
     packageName: string,
     userSession: UserSession,
     logger?: Logger,
-    appsManager?: any,
+    _appsManager?: any, // Keep for backwards compat but no longer used
   ) {
     this.packageName = packageName;
     this.userSession = userSession;
-    this.appsManager = appsManager || userSession.appManager; // Fall back to userSession.appManager
+    // appsManager parameter ignored - self-healing now
     this.logger =
       logger ||
       userSession.logger?.child({
@@ -104,7 +104,7 @@ export class AppSession implements AppSessionI {
 
     this.logger.info(
       { userId: userSession.userId, feature: "app-start" },
-      "AppSession (scaffold) constructed",
+      "AppSession constructed with self-healing resurrection",
     );
   }
 
@@ -272,18 +272,44 @@ export class AppSession implements AppSessionI {
       "App connecting",
     );
 
-    // Check if this is a reconnection during grace period
-    const isReconnection = this.state === AppConnectionState.GRACE_PERIOD;
+    // Check if this is a reconnection during grace period OR resurrection
+    const isReconnection =
+      this.state === AppConnectionState.GRACE_PERIOD ||
+      this.state === AppConnectionState.RESURRECTING;
+
     if (isReconnection) {
       this.logger.info(
-        { feature: "app-start" },
-        "App reconnected during grace period!",
+        { feature: "app-start", previousState: this.state },
+        `App reconnected during ${this.state}!`,
       );
 
       // Cancel grace period timer
       if (this.graceTimer) {
         clearTimeout(this.graceTimer);
         this.graceTimer = null;
+      }
+
+      // Cancel connection timer (for resurrection)
+      if (this.connectionTimer) {
+        clearTimeout(this.connectionTimer);
+        this.connectionTimer = null;
+      }
+
+      // Track successful resurrection
+      if (this.state === AppConnectionState.RESURRECTING) {
+        const resurrectionDuration = Date.now() - this.startTime;
+        PosthogService.trackEvent(
+          "app_resurrection_success",
+          this.userSession.userId,
+          {
+            packageName: this.packageName,
+            userId: this.userSession.userId,
+            sessionId: this.userSession.sessionId,
+            resurrectionDuration,
+          },
+        ).catch((error) => {
+          this.logger.error(error, "Error tracking successful resurrection");
+        });
       }
     }
 
@@ -396,16 +422,11 @@ export class AppSession implements AppSessionI {
    *
    * @param restart - If true, this is a resurrection (keep state as RESURRECTING)
    */
-  async stop(restart?: boolean): Promise<void> {
-    this.logger.info(
-      { currentState: this.state, restart },
-      restart ? "Stopping app for resurrection" : "Stopping app session",
-    );
+  async stop(): Promise<void> {
+    this.logger.info({ currentState: this.state }, "Stopping app session");
 
-    // Set state based on restart flag
-    this.state = restart
-      ? AppConnectionState.RESURRECTING
-      : AppConnectionState.STOPPING;
+    // Set state to stopping
+    this.state = AppConnectionState.STOPPING;
 
     // 1. Clean up timers
     this.cleanup();
@@ -455,10 +476,8 @@ export class AppSession implements AppSessionI {
     this.userSession.displayManager.handleAppStop(this.packageName);
     this.userSession.dashboardManager.cleanupAppContent(this.packageName);
 
-    // 7. Set final state (keep RESURRECTING if this is for resurrection)
-    if (!restart) {
-      this.state = AppConnectionState.DISCONNECTED;
-    }
+    // 7. Set final state
+    this.state = AppConnectionState.DISCONNECTED;
 
     // AFTER FUNCTION RETURNS: Background tasks (fire-and-forget, off critical path)
 
@@ -473,16 +492,14 @@ export class AppSession implements AppSessionI {
       });
 
     // 9. Track in PostHog (fire-and-forget)
-    // Track different event based on restart flag
     const sessionDuration = Date.now() - this.startTime;
-    const eventName = restart ? "app_resurrection" : "app_stop";
-    PosthogService.trackEvent(eventName, this.userSession.userId, {
+    PosthogService.trackEvent("app_stop", this.userSession.userId, {
       packageName: this.packageName,
       userId: this.userSession.userId,
       sessionId: this.userSession.sessionId,
       sessionDuration,
     }).catch((error) => {
-      this.logger.error(error, `Error tracking ${eventName} in PostHog`);
+      this.logger.error(error, "Error tracking app_stop in PostHog");
     });
   }
 
@@ -767,37 +784,115 @@ export class AppSession implements AppSessionI {
   }
 
   /**
-   * Trigger resurrection - restart the app via AppsManager
+   * Self-healing resurrection - triggers new webhook and waits for reconnection.
+   * AppSession stays in registry throughout the process.
    */
   private async triggerResurrection(): Promise<void> {
     this.state = AppConnectionState.RESURRECTING;
     this.logger.info(
       { feature: "app-start" },
-      "🔄 Triggering app resurrection",
+      "🔄 Self-healing: triggering app resurrection",
     );
 
     try {
-      // Clean up current state
-      this.userSession.runningApps.delete(this.packageName);
-      this.userSession.loadingApps.delete(this.packageName);
-
-      // Call AppsManager to handle resurrection
-      if (this.appsManager && this.appsManager.handleResurrection) {
-        this.logger.info(
-          { feature: "app-start" },
-          "Delegating resurrection to AppsManager",
-        );
-        await this.appsManager.handleResurrection(this.packageName);
-      } else {
-        this.logger.error(
-          "AppsManager not available for resurrection - app will stay disconnected",
-        );
-        this.state = AppConnectionState.DISCONNECTED;
+      // 1. Clean up old connection and timers
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch (error) {
+          this.logger.warn(
+            error,
+            "Error closing old WebSocket during resurrection",
+          );
+        }
+        this.ws = null;
       }
+      this.clearHeartbeat();
+      this.cleanup();
+
+      // 2. Clean up subscriptions
+      try {
+        await this.userSession.subscriptionManager.removeSubscriptions(
+          this.packageName,
+        );
+        this.logger.info("Subscriptions removed for resurrection");
+      } catch (error) {
+        this.logger.error(
+          error,
+          "Error removing subscriptions during resurrection",
+        );
+      }
+
+      // 3. Update UI state (show reconnecting)
+      this.userSession.displayManager.handleAppStart(this.packageName);
+
+      // 4. Get app info
+      const app = this.userSession.installedApps.get(this.packageName);
+      if (!app) {
+        throw new Error("App not found in installed apps cache");
+      }
+
+      // 5. Mark as loading (for UI state)
+      this.userSession.loadingApps.add(this.packageName);
+      this.startTime = Date.now(); // Reset timer for resurrection duration tracking
+
+      // 6. Trigger new webhook (reuse existing method)
+      await this.triggerWebhook(app);
+
+      // 7. Set up connection timeout for resurrection
+      this.connectionTimer = setTimeout(() => {
+        this.logger.error(
+          { feature: "app-start", duration: Date.now() - this.startTime },
+          "Resurrection timeout - app did not reconnect",
+        );
+
+        // Failed to resurrect - clean up
+        this.state = AppConnectionState.DISCONNECTED;
+        this.userSession.runningApps.delete(this.packageName);
+        this.userSession.loadingApps.delete(this.packageName);
+        this.userSession.displayManager.handleAppStop(this.packageName);
+
+        // Track failed resurrection
+        PosthogService.trackEvent(
+          "app_resurrection_failed",
+          this.userSession.userId,
+          {
+            packageName: this.packageName,
+            userId: this.userSession.userId,
+            sessionId: this.userSession.sessionId,
+            reason: "timeout",
+          },
+        ).catch((error) => {
+          this.logger.error(error, "Error tracking resurrection failure");
+        });
+      }, CONNECTION_TIMEOUT_MS);
+
+      this.logger.info(
+        { feature: "app-start" },
+        "Resurrection webhook sent, waiting for app to reconnect...",
+      );
     } catch (error) {
       this.logger.error(error, "Error during resurrection");
+
+      // Failed to resurrect - mark as disconnected
       this.state = AppConnectionState.DISCONNECTED;
       this.userSession.runningApps.delete(this.packageName);
+      this.userSession.loadingApps.delete(this.packageName);
+      this.userSession.displayManager.handleAppStop(this.packageName);
+
+      // Track failed resurrection
+      PosthogService.trackEvent(
+        "app_resurrection_failed",
+        this.userSession.userId,
+        {
+          packageName: this.packageName,
+          userId: this.userSession.userId,
+          sessionId: this.userSession.sessionId,
+          reason: error instanceof Error ? error.message : String(error),
+        },
+      ).catch((err) => {
+        this.logger.error(err, "Error tracking resurrection failure");
+      });
     }
   }
 }

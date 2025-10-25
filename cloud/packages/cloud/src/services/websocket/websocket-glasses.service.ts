@@ -226,7 +226,8 @@ export class GlassesWebSocketService {
         userSession.logger.error(error, "Glasses WebSocket error:");
       });
 
-      // Handle connection initialization
+      // Handle connection initialization immediately for new header-based auth
+      // The CONNECTION_INIT message handler above is for backwards compatibility with older clients
       this.handleConnectionInit(userSession, reconnection, livekitRequested);
 
       // NOTE: Do not auto-send LIVEKIT_INFO here to avoid unnecessary room usage.
