@@ -4,6 +4,52 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🔌 USB Cable Insertion/Removal Detection (Interrupt Mode) - 2024-12-XX
+
+#### Features Added
+
+- **USB Cable Detection**: Implement interrupt-driven USB cable insertion/removal detection
+  - Use USBREGULATOR peripheral to detect USB connection status
+  - Real-time interrupt-based detection without polling overhead
+  - Immediate response to USB plug/unplug events
+
+#### Technical Implementation
+
+- **Interrupt Handler**: Use `usbreg_isr_handler()` to process USBREGULATOR interrupts
+  - Detect `USBDETECTED` and `USBREMOVED` events
+  - Clear event flags immediately in ISR to prevent retrigger
+  - Submit work queue for handling state changes in thread context
+- **State Management**: Check USBREGSTATUS.VBUSDETECT register to determine actual USB status
+- **Debug Support**: Add debug logging with register state information
+  - Enable `CONFIG_LOG_PRINTK=y` to allow shell control of printk output
+  - Use `printk()` in ISR for safe debugging
+- **Configuration**: Enable interrupts via INTENSET register
+  - Register USBREGULATOR_IRQn interrupt handler
+  - Clear pending events during initialization
+
+#### Modified Files
+
+- **src/main.c**: Add USB detection implementation
+  - USBREGULATOR interrupt handler
+  - Work queue handler for USB state changes
+  - Initialization function with interrupt configuration
+  - Move `hfclock_config_and_start` initialization to after LOG_MODULE_REGISTER
+- **prj.conf**: Enable CONFIG_LOG_PRINTK for shell control of printk output
+- **boards/nrf5340dk_nrf5340_cpuapp_ns.overlay**: Remove USB CDC configuration
+  - Comment out USB CDC console/shell configuration
+  - Remove zephyr_udc0 device tree node
+  - Note: USB CDC functionality is removed from project configuration, usb_cdc.conf is not included
+
+#### Testing Status
+
+✅ Verified Working
+- USB insertion detection functioning correctly
+- USB removal detection functioning correctly
+- No interrupt retrigger issues
+- Debug logs showing correct USB state changes
+
+---
+
 ### 🔌 USB CDC Virtual Serial Port for Shell Access - 2024-10-24
 
 #### Features Added

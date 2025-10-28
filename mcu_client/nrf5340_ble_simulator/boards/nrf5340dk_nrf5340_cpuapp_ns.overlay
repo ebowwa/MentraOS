@@ -2,9 +2,9 @@
     chosen {
         zephyr,display = &a6n;  // Switch to A6N projector for testing
         nordic-nus-uart = &uart0;
-        /* USB CDC ACM for console/shell */
-        zephyr,console = &cdc_acm_uart0;
-        zephyr,shell-uart = &cdc_acm_uart0;
+        // /* USB CDC ACM for console/shell */
+        // zephyr,console = &cdc_acm_uart0;
+        // zephyr,shell-uart = &cdc_acm_uart0;
     };
 
     aliases {
@@ -177,11 +177,13 @@
 	/delete-node/ uart;
 };
 
-zephyr_udc0: &usbd {
-    compatible = "nordic,nrf-usbd";
-    status = "okay";
 
-    cdc_acm_uart0: cdc_acm_uart0 {
-        compatible = "zephyr,cdc-acm-uart";
-    };
-};
+/* USB CDC disabled for USB cable detection testing */
+// zephyr_udc0: &usbd {
+    //     compatible = "nordic,nrf-usbd";
+    //     status = "okay";
+    //
+    //     cdc_acm_uart0: cdc_acm_uart0 {
+        //         compatible = "zephyr,cdc-acm-uart";
+    //     };
+// };
