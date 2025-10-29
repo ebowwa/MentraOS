@@ -211,8 +211,7 @@ static int usb_detect_init(void)
 
 /**
  * @brief Query USB cable connection status
- * 查询USB线缆连接状态
- * 
+
  * Returns the current USB connection status.
  * Status is updated every second by the polling task.
  * 
