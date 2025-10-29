@@ -28,6 +28,7 @@ import {
   TouchEvent,
   Vad,
   StreamType,
+  SdpOffer,
 } from "@mentra/sdk";
 import UserSession from "../session/UserSession";
 import { logger as rootLogger } from "../logging/pino-logger";
@@ -35,6 +36,7 @@ import { PosthogService } from "../logging/posthog.service";
 // sessionService functionality has been consolidated into UserSession
 import { User } from "../../models/user.model";
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from "../core/app.service";
+import { IceCandidate } from "werift";
 
 const SERVICE_NAME = "websocket-glasses.service";
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -314,6 +316,17 @@ export class GlassesWebSocketService {
         case GlassesToCloudMessageType.LOCATION_UPDATE:
           userSession.locationManager.updateFromWebsocket(
             message as LocationUpdate,
+          );
+          break;
+
+        case GlassesToCloudMessageType.SDP_OFFER:
+          await this.handleSdpOffer(userSession, message as SdpOffer);
+          break;
+
+        case GlassesToCloudMessageType.CLIENT_ICE_CANDIDATE:
+          await this.handleClientIceCandidate(
+            userSession,
+            message as IceCandidate,
           );
           break;
 
@@ -810,6 +823,48 @@ export class GlassesWebSocketService {
         before[key] !== after[key] ||
         (typeof before[key] !== typeof after[key] && before[key] != after[key]),
     );
+  }
+
+  private async handleSdpOffer(
+    userSession: UserSession,
+    message: SdpOffer,
+  ): Promise<void> {
+    userSession.logger.debug(
+      { message, service: SERVICE_NAME },
+      "SDP offer received from glasses",
+    );
+
+    const answer = await userSession.webRTCManager.acceptOffer(message);
+
+    userSession.logger.debug(
+      { answer, service: SERVICE_NAME },
+      "SDP answer sent to glasses",
+    );
+    userSession.websocket.send(
+      JSON.stringify({
+        type: CloudToGlassesMessageType.SDP_ANSWER,
+        sdp: answer,
+      }),
+    );
+  }
+
+  private async handleClientIceCandidate(
+    userSession: UserSession,
+    message: IceCandidate,
+  ): Promise<void> {
+    userSession.logger.debug(
+      { message, service: SERVICE_NAME },
+      "ICE candidate received from glasses",
+    );
+    try {
+      await userSession.webRTCManager.addClientIceCandidate(message);
+    } catch (error) {
+      userSession.logger.error(
+        { error, service: SERVICE_NAME },
+        `Error handling ICE candidate:`,
+        error,
+      );
+    }
   }
 
   private async handleLocalTranscription(

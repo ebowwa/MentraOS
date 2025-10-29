@@ -1,6 +1,6 @@
 import {INTENSE_LOGGING} from "@/utils/Constants"
 import {translate} from "@/i18n"
-import livekit from "@/services/Livekit"
+// import livekit from "@/services/Livekit"
 import mantle from "@/services/MantleManager"
 import socketComms from "@/services/SocketComms"
 import {useSettingsStore} from "@/stores/settings"
@@ -9,6 +9,7 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
 import CoreModule from "core"
 import Toast from "react-native-toast-message"
+import webrtcService from "@/services/WebRTCService"
 
 export class MantleBridge {
   private static instance: MantleBridge | null = null
@@ -241,10 +242,13 @@ export class MantleBridge {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          if (livekit.isRoomConnected()) {
-            livekit.addPcm(bytes)
+          // if (livekit.isRoomConnected()) {
+          if (!webrtcService) {
+            console.log("No webrtc service")
+            // livekit.addPcm(bytes)
           } else {
             socketComms.sendBinary(bytes)
+            webrtcService.sendData(bytes)
           }
           break
         case "rtmp_stream_status":

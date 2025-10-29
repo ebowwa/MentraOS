@@ -37,6 +37,7 @@ import DeviceManager from "./DeviceManager";
 import CalendarManager from "./CalendarManager";
 import LocationManager from "./LocationManager";
 import UserSettingsManager from "./UserSettingsManager";
+import { WebRTCManager } from "./webrtc/WebRTCManager";
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -87,6 +88,7 @@ export class UserSession {
   public translationManager: TranslationManager;
   public subscriptionManager: SubscriptionManager;
   public liveKitManager: LiveKitManager;
+  public webRTCManager: WebRTCManager;
   public speakerManager: SpeakerManager;
   public calendarManager: CalendarManager;
   public locationManager: LocationManager;
@@ -159,6 +161,7 @@ export class UserSession {
       this.streamRegistry,
     );
     this.liveKitManager = new LiveKitManager(this);
+    this.webRTCManager = new WebRTCManager(this);
     this.userSettingsManager = new UserSettingsManager(this);
     this.speakerManager = new SpeakerManager(this);
     this.deviceManager = new DeviceManager(this);
@@ -668,6 +671,7 @@ export class UserSession {
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();
     if (this.liveKitManager) this.liveKitManager.dispose();
+    if (this.webRTCManager) this.webRTCManager.dispose();
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();

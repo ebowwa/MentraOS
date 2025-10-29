@@ -1,11 +1,12 @@
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import wsManager from "@/services/WebSocketManager"
 import {useDisplayStore} from "@/stores/display"
-import livekit from "@/services/Livekit"
+// import livekit from "@/services/Livekit"
 import mantle from "@/services/MantleManager"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 import CoreModule from "core"
 import {useAppletStatusStore} from "@/stores/applets"
+import webrtcService from "./WebRTCService"
 
 class SocketComms {
   private static instance: SocketComms | null = null
@@ -366,7 +367,8 @@ class SocketComms {
   // message handlers, these should only ever be called from handle_message / the server:
   private handle_connection_ack(msg: any) {
     console.log("SOCKET: connection ack, connecting to livekit")
-    livekit.connect()
+    // livekit.connect()
+    webrtcService.connect()
     GlobalEventEmitter.emit("APP_STATE_CHANGE", msg)
   }
 

@@ -16,10 +16,8 @@
     "porter": "docker compose -f docker-compose.porter.local.yml up --build",
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:bun": "bun test",
-
     "console": "cd websites/console && bun run dev",
     "store": "cd websites/store && bun run dev",
-
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
     "ngrok:isaiah2": "ngrok http --url=isaiah.mentra.glass 8002",
     "ngrok:israelov": "ngrok http --url=israelovpuddle.ngrok.app 8002"
@@ -48,6 +46,7 @@
     "ts-node-dev": "^2.0.0",
     "tz-lookup": "^6.1.25",
     "uuid": "^11.1.0",
+    "werift": "^0.22.2",
     "winston": "^3.17.0"
   },
   "devDependencies": {
