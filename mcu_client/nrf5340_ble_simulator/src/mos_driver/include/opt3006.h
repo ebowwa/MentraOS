@@ -217,4 +217,9 @@ int opt3006_read_reg(uint8_t reg, uint16_t* value);
  */
 int opt3006_write_reg(uint8_t reg, uint16_t value);
 
+
+/*
+ * @brief Initialize OPT3006 | 初始化OPT3006
+*/
+int opt3006_initialize(void);
 #endif  // OPT3006_H_

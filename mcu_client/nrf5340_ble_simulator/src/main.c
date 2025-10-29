@@ -39,6 +39,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
@@ -46,7 +47,8 @@
 #include <hal/nrf_usbreg.h>
 #include <zephyr/irq.h>
 
-
+#include "mos_fuel_gauge.h"
+#include "opt3006.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -83,9 +85,10 @@ static struct bt_conn *current_conn;
 static struct bt_conn *auth_conn;
 static struct k_work adv_work;
 
-// USB cable detection
-static struct k_work usb_detect_work;
+/* USB cable detection using polling mode / USB线缆检测使用轮询模式 */
+static struct k_work_delayable usb_detect_work;
 static bool usb_connected = false;
+#define USB_DETECT_POLL_INTERVAL_MS 1000  /* Poll every 1 second / 每1秒轮询一次 */
 
 static const struct device *uart = DEVICE_DT_GET(DT_CHOSEN(nordic_nus_uart));
 static struct k_work_delayable uart_work;
@@ -117,6 +120,9 @@ static void usb_cable_connected(void)
 {
 	LOG_INF("🔌 USB cable connected / USB线缆已连接");
 	usb_connected = true;
+	
+	/* Display USB status on A6N screen / 在A6N屏幕上显示USB状态 */
+	display_update_xy_text(350, 20, "[USB: ON]", 48, 0xFFFFFF);
 }
 
 /**
@@ -127,8 +133,20 @@ static void usb_cable_disconnected(void)
 {
 	LOG_INF("🔌 USB cable disconnected / USB线缆已断开");
 	usb_connected = false;
+	
+	/* Display USB status on A6N screen / 在A6N屏幕上显示USB状态 */
+	display_update_xy_text(350, 20, "[USB: OFF]", 48, 0xFFFFFF);
 }
 
+/**
+ * @brief USB detection work handler (polling mode)
+ * USB检测工作处理函数（轮询模式）
+ * 
+ * Periodically polls the USBREGULATOR status register to detect
+ * USB cable insertion/removal.
+ * 
+ * 定期轮询USBREGULATOR状态寄存器以检测USB线缆插拔。
+ */
 static void usb_detect_work_handler(struct k_work *work)
 {
 	uint32_t status = nrf_usbreg_status_get(NRF_USBREGULATOR_NS);
@@ -142,75 +160,71 @@ static void usb_detect_work_handler(struct k_work *work)
 	{
 		usb_cable_disconnected();
 	}
-}
 
-static void usbreg_isr_handler(const void *arg)
-{
-	ARG_UNUSED(arg);
-	
-	uint32_t detected = NRF_USBREGULATOR_NS->EVENTS_USBDETECTED;
-	uint32_t removed = NRF_USBREGULATOR_NS->EVENTS_USBREMOVED;
-	printk("[ISR] USB interrupt! USBDETECTED=%u, USBREMOVED=%u\n", 
-		detected ? 1 : 0, removed ? 1 : 0);
-	
-	if (detected)
-	{
-		nrf_usbreg_event_clear(NRF_USBREGULATOR_NS, NRF_USBREG_EVENT_USBDETECTED);
-	}
-	if (removed)
-	{
-		nrf_usbreg_event_clear(NRF_USBREGULATOR_NS, NRF_USBREG_EVENT_USBREMOVED);
-	}
-	
-	k_work_submit(&usb_detect_work);
+	/* Schedule next poll / 安排下次轮询 */
+	k_work_schedule(&usb_detect_work, K_MSEC(USB_DETECT_POLL_INTERVAL_MS));
 }
 
 /**
- * @brief Initialize USB cable detection
- * 初始化USB线缆检测
- * @return 0 on success
+ * @brief Initialize USB cable detection (polling mode)
+ * 初始化USB线缆检测（轮询模式）
+ * 
+ * Initializes USB cable detection using polling mode.
+ * 初始化USB线缆检测，使用轮询模式。
+ * 
+ * @return 0 on success, negative error code on failure
  */
 static int usb_detect_init(void)
 {
-	LOG_INF("🔌 Initializing USB cable detection / 初始化USB线缆检测");
+	LOG_INF("🔌 Initializing USB cable detection (polling mode) / 初始化USB线缆检测（轮询模式）");
+	LOG_INF("Polling interval: %d ms / 轮询间隔: %d毫秒", 
+		USB_DETECT_POLL_INTERVAL_MS, USB_DETECT_POLL_INTERVAL_MS);
 	
-	k_work_init(&usb_detect_work, usb_detect_work_handler);
+	/* Initialize delayed work for polling / 初始化延迟工作用于轮询 */
+	k_work_init_delayable(&usb_detect_work, usb_detect_work_handler);
 	
+	/* Check initial USB cable state and display on screen / 检查初始USB线缆状态并显示在屏幕上 */
 	uint32_t status = nrf_usbreg_status_get(NRF_USBREGULATOR_NS);
-	uint32_t detected = NRF_USBREGULATOR_NS->EVENTS_USBDETECTED;
-	uint32_t removed = NRF_USBREGULATOR_NS->EVENTS_USBREMOVED;
-	uint32_t inten = NRF_USBREGULATOR_NS->INTEN;
-	
-	LOG_INF("📊 Initial registers: STATUS=0x%08X, USBDETECTED=0x%08X, USBREMOVED=0x%08X, INTEN=0x%08X",
-		status, detected, removed, inten);
-	
-	nrf_usbreg_event_clear(NRF_USBREGULATOR_NS, NRF_USBREG_EVENT_USBDETECTED);
-	nrf_usbreg_event_clear(NRF_USBREGULATOR_NS, NRF_USBREG_EVENT_USBREMOVED);
-	
-	nrf_usbreg_int_enable(NRF_USBREGULATOR_NS, NRF_USBREG_INT_USBDETECTED | NRF_USBREG_INT_USBREMOVED);
-	
-	uint32_t inten_after = NRF_USBREGULATOR_NS->INTEN;
-	LOG_INF("🔧 INTEN after enable: 0x%08X (bit0=%d, bit1=%d)", 
-		inten_after, 
-		(inten_after & NRF_USBREG_INT_USBDETECTED) ? 1 : 0,
-		(inten_after & NRF_USBREG_INT_USBREMOVED) ? 1 : 0);
-	
-	IRQ_CONNECT(USBREGULATOR_IRQn, IRQ_PRIO_LOWEST, usbreg_isr_handler, NULL, 0);
-	irq_enable(USBREGULATOR_IRQn);
 	
 	if (status & NRF_USBREG_STATUS_VBUSDETECT_MASK)
 	{
 		usb_connected = true;
 		LOG_INF("🔌 USB cable already connected / USB线缆已连接");
+		/* Display initial status on A6N screen / 在A6N屏幕上显示初始状态 */
+		display_update_xy_text(350, 20, "[USB: ON]", 48, 0xFFFFFF);
 	}
 	else
 	{
 		usb_connected = false;
 		LOG_INF("🔌 USB cable not connected / USB线缆未连接");
+		/* Display initial status on A6N screen / 在A6N屏幕上显示初始状态 */
+		display_update_xy_text(350, 20, "[USB: OFF]", 48, 0xFFFFFF);
 	}
 	
+	/* Start polling / 开始轮询 */
+	k_work_schedule(&usb_detect_work, K_MSEC(USB_DETECT_POLL_INTERVAL_MS));
+	
 	LOG_INF("✅ USB detection started / USB检测已启动");
+	
 	return 0;
+}
+
+/**
+ * @brief Query USB cable connection status
+ * 查询USB线缆连接状态
+ * 
+ * Returns the current USB connection status.
+ * Status is updated every second by the polling task.
+ * 
+ * 返回当前USB连接状态。
+ * 状态由轮询任务每秒更新一次。
+ * 
+ * @return true if USB cable is connected / USB线缆已连接返回true
+ * @return false if USB cable is disconnected / USB线缆已断开返回false
+ */
+bool usb_is_connected(void)
+{
+	return usb_connected;
 }
 
 static void setup_dynamic_advertising(void)
@@ -1107,12 +1121,13 @@ int main(void)
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
 	opt3006_initialize();
-	
+	pm1300_init();
 	usb_detect_init();
 	
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
+
 	}
 }
 

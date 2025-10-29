@@ -18,6 +18,7 @@ include(nanopb)
 # Custom driver module picked up via ZEPHYR_EXTRA_MODULES (module.yml)
 add_subdirectory(src/mos_components/mos_pdm)
 add_subdirectory(src/mos_driver)
+add_subdirectory(src/mos_components/mos_battery)
 
 target_sources(app PRIVATE
     src/main.c
@@ -31,6 +32,7 @@ target_sources(app PRIVATE
     src/shell_log_control.c
     src/shell_display_control.c
     src/shell_opt3006.c
+    src/shell_battery_control.c
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
     src/mos_components/mos_lvgl_display/src/display_config.c

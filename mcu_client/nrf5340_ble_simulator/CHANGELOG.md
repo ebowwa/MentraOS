@@ -4,6 +4,78 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🔌 USB Cable Detection + Battery Monitoring System - 2025-10-29
+
+#### Features Added
+
+- **USB Cable Detection (Polling Mode)**: Detect USB cable insertion/removal with A6N screen display
+  - Poll USBREGULATOR status every 1 second
+  - Display status on A6N screen: "[USB: ON]" / "[USB: OFF]" (48pt font)
+  - Provide usb_is_connected() API for status query
+  - Visual confirmation works even when USB CDC console disconnected
+
+- **Battery Monitoring Shell Commands**: Comprehensive battery status and monitoring
+  - `battery status` - Show voltage, current, temperature, SoC%, TTE, TTF
+  - `battery monitor start/stop` - Continuous monitoring (5 second interval)
+  - `battery charge-mode` - Query current charging mode (CC/CV/Trickle/Complete)
+  - Work queue based implementation for efficiency
+
+- **nPM1300 Fuel Gauge Integration**: Real-time battery tracking
+  - Nordic fuel gauge library integration
+  - Charging status monitoring
+  - Thread-safe battery data access
+
+#### Technical Implementation
+
+- **USB Detection**: 
+  - Polling mode to avoid IRQ conflict with USB CDC driver
+  - Uses k_work_delayable for periodic status checks
+  - Display updates via message queue for thread safety
+  - Position: (350, 20), Font size: 48
+
+- **Battery Monitoring**:
+  - k_work_delayable based periodic updates
+  - nPM1300 PMIC sensor integration
+  - Charge status parsing and display
+  - Device readiness checks
+
+- **Stack Configuration**:
+  - Main stack increased to 4096 bytes
+  - Shell stack set to 8192 bytes
+
+#### Build Requirements
+
+⚠️ IMPORTANT: Additional configuration files required for successful compilation:
+
+Required files:
+- `usb_cdc.conf` - USB CDC ACM device configuration
+- `npm1300_config.overlay` - nPM1300 PMIC device tree overlay
+- `prj.conf` - Main project configuration
+
+Without these files, compilation will fail with missing configuration or symbol errors.
+
+#### Modified Files
+
+Core:
+- `src/main.c` - USB detection (polling), usb_is_connected() API, A6N display integration
+- `boards/nrf5340dk_nrf5340_cpuapp_ns.overlay` - Enable USB CDC for console/shell
+- `prj.conf` - Add fuel gauge configs, stack sizes
+- `CMakeLists.txt` - Add battery module and shell control
+
+Battery Module:
+- `src/shell_battery_control.c` (NEW) - Battery shell commands
+- `src/mos_components/mos_battery/src/mos_fuel_gauge.c` - Fuel gauge implementation
+- `src/mos_components/mos_battery/include/mos_fuel_gauge.h` - API declarations
+- `npm1300_config.overlay` (NEW) - nPM1300 device tree configuration
+
+#### Testing Status
+
+✅ USB detection verified - Screen displays status correctly
+✅ Battery monitoring functional - Shell commands working
+✅ No IRQ conflicts - Polling mode stable
+
+---
+
 ### 🔌 USB Cable Insertion/Removal Detection (Interrupt Mode) - 2024-12-XX
 
 #### Features Added

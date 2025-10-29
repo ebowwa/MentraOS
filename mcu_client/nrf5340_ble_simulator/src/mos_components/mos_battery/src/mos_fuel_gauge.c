@@ -1,202 +1,190 @@
 /*
- * @Author       : Cole
- * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-07-31 16:37:26
- * @FilePath     : mos_fuel_gauge.c
- * @Description  : 
- *
- *  Copyright (c) MentraOS Contributors 2025
- *  SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) MentraOS Contributors 2025
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/device.h>
-#include <zephyr/drivers/sensor.h>
-#include <zephyr/drivers/mfd/npm1300.h>
-#include <zephyr/drivers/sensor/npm1300_charger.h>
-#include <zephyr/sys/util.h>
-#include <nrf_fuel_gauge.h>
-
-#include "bsp_log.h"
 #include "mos_fuel_gauge.h"
 
-#define TAG "MOS_BATTERY"
-/* nPM1300 CHARGER.BCHGCHARGESTATUS register bitmasks */
-#define NPM1300_CHG_STATUS_COMPLETE_MASK BIT(1)
-#define NPM1300_CHG_STATUS_TRICKLE_MASK BIT(2)
-#define NPM1300_CHG_STATUS_CC_MASK BIT(3)
-#define NPM1300_CHG_STATUS_CV_MASK BIT(4)
-static const struct device *pmic = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_pmic));
-static const struct device *charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_charger));
-static volatile bool vbus_connected;
+#include <nrf_fuel_gauge.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/mfd/npm1300.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/drivers/sensor/npm1300_charger.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/logging/log.h>
+#include <errno.h>
 
-static int64_t ref_time;
+LOG_MODULE_REGISTER(mos_fuel_gauge, LOG_LEVEL_DBG);
+
+/* nPM1300 CHARGER.BCHGCHARGESTATUS register bitmasks / nPM1300充电状态寄存器位掩码 */
+#define NPM1300_CHG_STATUS_COMPLETE_MASK BIT(1)  /* Charge complete / 充电完成 */
+#define NPM1300_CHG_STATUS_TRICKLE_MASK BIT(2)   /* Trickle charging / 涓流充电 */
+#define NPM1300_CHG_STATUS_CC_MASK BIT(3)        /* Constant current / 恒流充电 */
+#define NPM1300_CHG_STATUS_CV_MASK BIT(4)        /* Constant voltage / 恒压充电 */
+
+/* Device pointers from device tree / 从设备树获取的设备指针 */
+static const struct device *pmic = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_pmic));        /* PMIC device / PMIC设备 */
+static const struct device *charger = DEVICE_DT_GET(DT_NODELABEL(npm1300_ek_charger)); /* Charger device / 充电器设备 */
+
+static volatile bool vbus_connected;  /* VBUS connection status / VBUS连接状态 */
+static int64_t ref_time;              /* Reference time for delta calculation / 用于计算时间差的参考时间 */
+
+/* Battery model parameters / 电池模型参数 */
 static const struct battery_model battery_model = {
 #include "battery_model.inc"
 };
 
-// 静态函数，用于读取传感器数据
+/**
+ * @brief Read sensor data from charger device
+ * 从充电器设备读取传感器数据
+ * @param charger Pointer to charger device
+ * @param voltage Pointer to store voltage value
+ * @param current Pointer to store current value
+ * @param temp Pointer to store temperature value
+ * @param chg_status Pointer to store charge status
+ * @return 0 on success, negative error code on failure
+ */
 static int read_sensors(const struct device *charger, float *voltage, float *current, float *temp,
-						int32_t *chg_status)
+			int32_t *chg_status)
 {
-	// 定义传感器值结构体
 	struct sensor_value value;
-	// 定义返回值
 	int ret;
 
-	// 从传感器中获取数据
+	/* Fetch sensor data from device / 从设备获取传感器数据 */
 	ret = sensor_sample_fetch(charger);
-	// 如果获取失败，返回错误码
 	if (ret < 0)
 	{
 		return ret;
 	}
 
-	// 从传感器中获取电压值
+	/* Read voltage: val1 is integer part, val2 is fractional part (micro units) / 读取电压：val1是整数部分，val2是小数部分（微单位） */
 	sensor_channel_get(charger, SENSOR_CHAN_GAUGE_VOLTAGE, &value);
-	// 将传感器值转换为浮点数
 	*voltage = (float)value.val1 + ((float)value.val2 / 1000000);
 
-	// 从传感器中获取温度值
+	/* Read temperature / 读取温度 */
 	sensor_channel_get(charger, SENSOR_CHAN_GAUGE_TEMP, &value);
-	// 将传感器值转换为浮点数
 	*temp = (float)value.val1 + ((float)value.val2 / 1000000);
 
-	// 从传感器中获取电流值
+	/* Read average current / 读取平均电流 */
 	sensor_channel_get(charger, SENSOR_CHAN_GAUGE_AVG_CURRENT, &value);
-	// 将传感器值转换为浮点数
 	*current = (float)value.val1 + ((float)value.val2 / 1000000);
 
-	// 从传感器中获取充电状态值
+	/* Read charge status / 读取充电状态 */
 	sensor_channel_get(charger, SENSOR_CHAN_NPM1300_CHARGER_STATUS, &value);
-	// 将传感器值转换为整型
 	*chg_status = value.val1;
 
-	// 返回成功码
 	return 0;
 }
 
-// 静态函数，用于通知充电状态
+/**
+ * @brief Inform fuel gauge of charge status change
+ * 通知电量计充电状态变化
+ * @param chg_status Charge status from charger
+ * @return 0 on success, negative error code on failure
+ */
 static int charge_status_inform(int32_t chg_status)
 {
-	// 定义一个联合体，用于存储充电状态信息
 	union nrf_fuel_gauge_ext_state_info_data state_info;
 
-	// 如果充电状态包含完成标志
+	/* Check charge status and update fuel gauge accordingly / 检查充电状态并相应更新电量计 */
 	if (chg_status & NPM1300_CHG_STATUS_COMPLETE_MASK)
 	{
-		// 打印充电完成信息
-		BSP_LOGI(TAG, "Charge complete");
-		// 设置充电状态为完成
+		LOG_INF("Charge complete");
 		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_COMPLETE;
 	}
-	// 如果充电状态包含涓流充电标志
 	else if (chg_status & NPM1300_CHG_STATUS_TRICKLE_MASK)
 	{
-		// 打印涓流充电信息
-		BSP_LOGI(TAG, "Trickle charging");
-		// 设置充电状态为涓流充电
+		LOG_INF("Trickle charging");
 		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_TRICKLE;
 	}
-	// 如果充电状态包含恒流充电标志
 	else if (chg_status & NPM1300_CHG_STATUS_CC_MASK)
 	{
-		// 打印恒流充电信息
-		BSP_LOGI(TAG, "Constant current charging");
-		// 设置充电状态为恒流充电
+		LOG_INF("Constant current charging");
 		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CC;
 	}
-	// 如果充电状态包含恒压充电标志
 	else if (chg_status & NPM1300_CHG_STATUS_CV_MASK)
 	{
-		// 打印恒压充电信息
-		BSP_LOGI(TAG, "Constant voltage charging");
-		// 设置充电状态为恒压充电
+		LOG_INF("Constant voltage charging");
 		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_CV;
 	}
-	// 否则，充电状态为空闲
 	else
 	{
-		// 打印充电空闲信息
-		BSP_LOGI(TAG, "Charger idle");
-		// 设置充电状态为空闲
+		/* Charger is idle / 充电器空闲 */
+		LOG_INF("Charger idle");
 		state_info.charge_state = NRF_FUEL_GAUGE_CHARGE_STATE_IDLE;
 	}
 
-	// 更新充电状态信息
+	/* Update fuel gauge with charge state change / 更新电量计的充电状态变化 */
 	return nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_STATE_CHANGE,
-										   &state_info);
+					       &state_info);
 }
 
 int fuel_gauge_init(const struct device *charger)
 {
-	// 定义一个结构体变量value
 	struct sensor_value value;
-	// 定义一个结构体变量parameters，并初始化
+	/* Initialize fuel gauge parameters / 初始化电量计参数 */
 	struct nrf_fuel_gauge_init_parameters parameters = {
-		.model = &battery_model,
-		.opt_params = NULL,
-		.state = NULL,
+		.model = &battery_model,    /* Battery model data / 电池模型数据 */
+		.opt_params = NULL,          /* Optional parameters / 可选参数 */
+		.state = NULL,               /* Initial state / 初始状态 */
 	};
-	// 定义三个浮点型变量，用于存储充电电流
-	float max_charge_current;
-	float term_charge_current;
-	// 定义一个整型变量，用于存储充电状态
-	int32_t chg_status;
-	// 定义一个整型变量，用于存储返回值
+	float max_charge_current;      /* Maximum charge current / 最大充电电流 */
+	float term_charge_current;     /* Termination charge current (10% of max) / 终止充电电流（最大值的10%） */
+	int32_t chg_status;            /* Charge status / 充电状态 */
 	int ret;
 
-	// 打印nRF Fuel Gauge的版本号
-	BSP_LOGI(TAG, "nRF Fuel Gauge version: %s", nrf_fuel_gauge_version);
+	LOG_INF("nRF Fuel Gauge version: %s", nrf_fuel_gauge_version);
 
-	// 读取传感器数据，并存储到parameters中
+	/* Read initial sensor values: voltage, current, temperature, charge status / 读取初始传感器值：电压、电流、温度、充电状态 */
 	ret = read_sensors(charger, &parameters.v0, &parameters.i0, &parameters.t0, &chg_status);
 	if (ret < 0)
 	{
 		return ret;
 	}
 
-	/* Store charge nominal and termination current, needed for ttf calculation */
-	// 获取充电电流，并存储到max_charge_current中
+	/* Get charge current parameters / 获取充电电流参数 */
 	sensor_channel_get(charger, SENSOR_CHAN_GAUGE_DESIRED_CHARGING_CURRENT, &value);
 	max_charge_current = (float)value.val1 + ((float)value.val2 / 1000000);
-	// 计算终止充电电流，并存储到term_charge_current中
+	/* Termination current is 10% of max charge current / 终止电流为最大充电电流的10% */
 	term_charge_current = max_charge_current / 10.f;
 
-	// 初始化nRF Fuel Gauge
+	/* Initialize fuel gauge library with battery model and initial readings / 使用电池模型和初始读数初始化电量计库 */
 	ret = nrf_fuel_gauge_init(&parameters, NULL);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "Error: Could not initialise fuel gauge");
+		LOG_ERR("Error: Could not initialise fuel gauge");
 		return ret;
 	}
 
-	// 设置nRF Fuel Gauge的充电电流限制
+	/* Set maximum charge current limit / 设置最大充电电流限制 */
 	ret = nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_CHARGE_CURRENT_LIMIT,
-										  &(union nrf_fuel_gauge_ext_state_info_data){
-											  .charge_current_limit = max_charge_current});
+					      &(union nrf_fuel_gauge_ext_state_info_data){
+						      .charge_current_limit = max_charge_current});
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "Error: Could not set fuel gauge state");
+		LOG_ERR("Error: Could not set fuel gauge state");
 		return ret;
 	}
 
-	// 设置nRF Fuel Gauge的终止充电电流
+	/* Set termination current for full charge detection / 设置终止电流用于满充检测 */
 	ret = nrf_fuel_gauge_ext_state_update(NRF_FUEL_GAUGE_EXT_STATE_INFO_TERM_CURRENT,
-										  &(union nrf_fuel_gauge_ext_state_info_data){
-											  .charge_term_current = term_charge_current});
+					      &(union nrf_fuel_gauge_ext_state_info_data){
+						      .charge_term_current = term_charge_current});
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "Error: Could not set fuel gauge state");
+		LOG_ERR("Error: Could not set fuel gauge state");
 		return ret;
 	}
 
+	/* Inform fuel gauge of initial charge status / 通知电量计初始充电状态 */
 	ret = charge_status_inform(chg_status);
 	if (ret < 0)
 	{
-		BSP_LOGE(TAG, "Error: Could not set fuel gauge state");
+		LOG_ERR("Error: Could not set fuel gauge state");
 		return ret;
 	}
 
+	/* Store reference time for delta calculation in updates / 存储参考时间用于更新时计算时间差 */
 	ref_time = k_uptime_get();
 
 	return 0;
@@ -204,142 +192,179 @@ int fuel_gauge_init(const struct device *charger)
 
 int fuel_gauge_update(const struct device *charger, bool vbus_connected)
 {
-	// 声明一个静态变量，用于存储上一次的充电状态
 	static int32_t chg_status_prev;
-
-	// 声明变量，用于存储从充电器设备读取的电压、电流、温度、充电状态等信息
-	float voltage;
-	float current;
-	float temp;
-	float soc;
-	float tte;
-	float ttf;
-	float delta;
+	float voltage;    /* Battery voltage / 电池电压 */
+	float current;    /* Battery current / 电池电流 */
+	float temp;       /* Battery temperature / 电池温度 */
+	float soc;        /* State of charge / 电量百分比 */
+	float tte;        /* Time to empty / 耗尽时间 */
+	float ttf;       /* Time to full / 充满时间 */
+	float delta;      /* Time delta / 时间差 */
 	int32_t chg_status;
 	int ret;
 
-	// 从充电器设备读取电压、电流、温度、充电状态等信息
+	/* Read current sensor values / 读取当前传感器值 */
 	ret = read_sensors(charger, &voltage, &current, &temp, &chg_status);
 	if (ret < 0)
 	{
-		// 如果读取失败，打印错误信息并返回错误码
-		BSP_LOGE(TAG, "Error: Could not read from charger device");
+		LOG_ERR("Error: Could not read from charger device");
 		return ret;
 	}
 
-	// 通知充电器设备当前的状态
+	/* Update VBUS connection status in fuel gauge / 更新电量计中的VBUS连接状态 */
 	ret = nrf_fuel_gauge_ext_state_update(
 		vbus_connected ? NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_CONNECTED
-					   : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED,
+			       : NRF_FUEL_GAUGE_EXT_STATE_INFO_VBUS_DISCONNECTED,
 		NULL);
 	if (ret < 0)
 	{
-		// 如果通知失败，打印错误信息并返回错误码
-		BSP_LOGE(TAG, "Error: Could not inform of state");
+		LOG_ERR("Error: Could not inform of state");
 		return ret;
 	}
 
-	// 如果充电状态发生了变化
+	/* Only update charge status if it has changed / 仅在充电状态改变时更新 */
 	if (chg_status != chg_status_prev)
 	{
-		// 更新上一次的充电状态
 		chg_status_prev = chg_status;
-
-		// 通知充电状态
 		ret = charge_status_inform(chg_status);
 		if (ret < 0)
 		{
-			// 如果通知失败，打印错误信息并返回错误码
-			BSP_LOGE(TAG, "Error: Could not inform of charge status");
+			LOG_ERR("Error: Could not inform of charge status");
 			return ret;
 		}
 	}
 
-	// 计算时间差
+	/* Calculate time delta since last update (in seconds) / 计算自上次更新以来的时间差（秒） */
 	delta = (float)k_uptime_delta(&ref_time) / 1000.0f;
-	// 处理电池信息
-	soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL); // v -测量的电池电压[V]。 i -测量的电池电流[A]。 T -测量的电池温度[C]
-	tte = nrf_fuel_gauge_tte_get();									   // 获取电池在当前放电条件下预计还能使用的时间
-	ttf = nrf_fuel_gauge_ttf_get();									   // 获取电池在当前充电条件下预计还需多长时间才能充满
+	
+	/* Process fuel gauge algorithm with current measurements / 使用当前测量值处理电量计算法 */
+	/* Parameters: voltage(V), current(A), temp(C), delta(s) / 参数：电压(V)、电流(A)、温度(C)、时间差(s) */
+	soc = nrf_fuel_gauge_process(voltage, current, temp, delta, NULL);
+	
+	/* Get estimated times from fuel gauge / 从电量计获取估算时间 */
+	tte = nrf_fuel_gauge_tte_get();  /* Time to empty in seconds / 耗尽时间（秒） */
+	ttf = nrf_fuel_gauge_ttf_get();  /* Time to full in seconds / 充满时间（秒） */
 
-	// 打印电池信息
-	BSP_LOGI(TAG, "V: %.3f, I: %.3f, T: %.2f, ", (double)voltage, (double)current, (double)temp);
-	BSP_LOGI(TAG, "SoC: %.2f, TTE: %.0f, TTF: %.0f", (double)soc, (double)tte, (double)ttf);
+	LOG_INF("V: %.3f, I: %.3f, T: %.2f, ", (double)voltage, (double)current, (double)temp);
+	LOG_INF("SoC: %.2f%%, TTE(s): %.0f, TTF(s): %.0f,", (double)soc, (double)tte, (double)ttf);
 
-	// 返回成功码
 	return 0;
 }
+
+/**
+ * @brief PMIC event callback for VBUS detection
+ * PMIC VBUS检测事件回调
+ * @param dev Device pointer
+ * @param cb GPIO callback structure
+ * @param pins Pin mask of triggered events
+ */
 static void event_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	if (pins & BIT(NPM1300_EVENT_VBUS_DETECTED))
 	{
-		BSP_LOGE(TAG, "Vbus connected");
+		LOG_INF("Vbus connected");
 		vbus_connected = true;
 	}
 
 	if (pins & BIT(NPM1300_EVENT_VBUS_REMOVED))
 	{
-		BSP_LOGE(TAG, "Vbus removed");
+		LOG_INF("Vbus removed");
 		vbus_connected = false;
 	}
 }
+
 int pm1300_init(void)
 {
 	int err = 0;
-	// 检查pmic设备是否准备好
+
+	/* Check device readiness / 检查设备就绪状态 */
 	if (!device_is_ready(pmic))
 	{
-		BSP_LOGE(TAG, "Pmic device not ready.");
+		LOG_ERR("Pmic device not ready.");
 		return -1;
 	}
 
-	// 检查充电器设备是否准备好
 	if (!device_is_ready(charger))
 	{
-		BSP_LOGE(TAG, "Charger device not ready");
+		LOG_ERR("Charger device not ready");
 		return -1;
 	}
 
-	// 初始化电量计
+	/* Initialize fuel gauge / 初始化电量计 */
 	if (fuel_gauge_init(charger) < 0)
 	{
-		BSP_LOGE(TAG, "Could not initialise fuel gauge");
+		LOG_ERR("Could not initialise fuel gauge");
 		return -1;
 	}
 
-	// 初始化gpio回调函数
+	/* Setup GPIO callback for VBUS events / 设置VBUS事件GPIO回调 */
 	static struct gpio_callback event_cb;
 
 	gpio_init_callback(&event_cb, event_callback,
-					   BIT(NPM1300_EVENT_VBUS_DETECTED) |
-						   BIT(NPM1300_EVENT_VBUS_REMOVED));
+			   BIT(NPM1300_EVENT_VBUS_DETECTED) | BIT(NPM1300_EVENT_VBUS_REMOVED));
 
-	// 添加pmic回调函数
 	err = mfd_npm1300_add_callback(pmic, &event_cb);
 	if (err)
 	{
-		BSP_LOGE(TAG, "Failed to add pmic callback");
+		LOG_ERR("Failed to add pmic callback");
 		return -1;
 	}
 
+	/* Check initial VBUS status by reading current threshold / 通过读取电流阈值检查初始VBUS状态 */
 	struct sensor_value val;
 	int ret = sensor_attr_get(charger, SENSOR_CHAN_CURRENT, SENSOR_ATTR_UPPER_THRESH, &val);
 	if (ret < 0)
 	{
-		BSP_LOGI(TAG, "sensor_attr_get err[%d]!!!", ret);
+		LOG_INF("sensor_attr_get err[%d]", ret);
 		return -1;
 	}
+	/* If current threshold is non-zero, VBUS is connected / 如果电流阈值非零，则VBUS已连接 */
 	vbus_connected = (val.val1 != 0) || (val.val2 != 0);
+	
+	/* Perform initial fuel gauge update / 执行初始电量计更新 */
 	fuel_gauge_update(charger, vbus_connected);
 
-	BSP_LOGI(TAG, "PMIC device ok");
+	LOG_INF("PMIC device ok");
 	return 0;
 }
 
-// 函数：电池监控
-// 功能：更新充电器状态和Vbus连接状态
-void batter_monitor(void)
+void battery_monitor(void)
 {
-	// 更新充电器状态和Vbus连接状态
+	/* Check if charger device is ready / 检查充电器设备是否就绪 */
+	if (!device_is_ready(charger))
+	{
+		LOG_ERR("Charger device not ready for battery monitor / 充电器设备未就绪，无法进行电池监控");
+		return;
+	}
+
+	/* Update fuel gauge with current VBUS status / 使用当前VBUS状态更新电量计 */
 	fuel_gauge_update(charger, vbus_connected);
+}
+
+int battery_get_charge_status(int32_t *chg_status)
+{
+	struct sensor_value value;
+	int ret;
+
+	if (chg_status == NULL)
+	{
+		return -EINVAL;
+	}
+
+	if (!device_is_ready(charger))
+	{
+		return -ENODEV;
+	}
+
+	/* Read charge status from charger / 从充电器读取充电状态 */
+	ret = sensor_sample_fetch(charger);
+	if (ret < 0)
+	{
+		return ret;
+	}
+
+	sensor_channel_get(charger, SENSOR_CHAN_NPM1300_CHARGER_STATUS, &value);
+	*chg_status = value.val1;
+
+	return 0;
 }
