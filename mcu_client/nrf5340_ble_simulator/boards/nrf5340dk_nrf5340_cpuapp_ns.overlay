@@ -83,6 +83,16 @@
             low-power-enable;
         };
     };
+
+    i2s0_default: i2s0_default {
+		group1 {
+			psels = <NRF_PSEL(I2S_SDOUT, 1, 6)>,
+					<NRF_PSEL(I2S_SCK_M, 1, 7)>,
+					<NRF_PSEL(I2S_LRCK_M, 1, 8)>;
+			// <NRF_PSEL(I2S_SDIN, 0, 0)>;
+
+		};
+	};
 };
 
 /* Disable SPI3 (8MHz limited) */
@@ -184,4 +194,12 @@ zephyr_udc0: &usbd {
     cdc_acm_uart0: cdc_acm_uart0 {
             compatible = "zephyr,cdc-acm-uart";
     };
+};
+
+&i2s0 {
+	compatible = "nordic,nrf-i2s";
+	status = "okay";
+	pinctrl-0 = <&i2s0_default>;
+	pinctrl-names = "default";
+	// clock-source = "ACLK";
 };

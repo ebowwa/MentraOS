@@ -54,8 +54,19 @@ void audio_i2s_start(void);
 void audio_i2s_stop(void);
 
 /**
- * @brief Initialize I2S module
+ * @brief Check if I2S is initialized / 检查 I2S 是否已初始化
+ * @return true if initialized, false otherwise / 如果已初始化返回 true，否则返回 false
+ */
+bool audio_i2s_is_initialized(void);
+
+/**
+ * @brief Initialize I2S module / 初始化 I2S 模块
  */
 void audio_i2s_init(void);
+
+/**
+ * @brief Uninitialize I2S module and release hardware / 反初始化 I2S 模块并释放硬件
+ */
+void audio_i2s_uninit(void);
 
 #endif /* _BSPAL_AUDIO_I2S_H_ */

@@ -99,4 +99,20 @@ pdm_audio_state_t pdm_audio_stream_get_state(void);
 void pdm_audio_stream_get_stats(uint32_t *frames_captured, uint32_t *frames_encoded,
                                 uint32_t *frames_transmitted, uint32_t *errors);
 
+/**
+ * @brief Enable/disable I2S audio output (loopback playback)
+ * 启用/禁用I2S音频输出（环回播放）
+ * 
+ * @param enabled true to enable I2S playback, false to disable
+ */
+void pdm_audio_set_i2s_output(bool enabled);
+
+/**
+ * @brief Get I2S audio output status
+ * 获取I2S音频输出状态
+ * 
+ * @return true if I2S output is enabled
+ */
+bool pdm_audio_get_i2s_output(void);
+
 #endif /* PDM_AUDIO_STREAM_H */

@@ -779,7 +779,7 @@ int ble_send_data(const uint8_t *data, uint16_t len)
         // LOG_ERR("Invalid data or length || ble not connected");
         return -1;
     }
-    LOG_INF("<--Sending data to BLE-->: len=%d", len);
+    // LOG_INF("<--Sending data to BLE-->: len=%d", len);
     // LOG_INF("Data: %s", data);
     // LOG_HEXDUMP_INF(data, len, "Hexdump:");
     uint16_t offset = 0;

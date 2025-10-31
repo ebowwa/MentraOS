@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-08-05 18:00:04
- * @LastEditTime : 2025-09-30 09:40:26
+ * @LastEditTime : 2025-10-31 09:53:25
  * @FilePath     : bspal_audio_i2s.c
  * @Description  :
  *
@@ -14,6 +14,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
+#include <string.h>
 // #include "audio_sync_timer.h"
 #include <zephyr/logging/log.h>
 
@@ -77,7 +78,8 @@ static void i2s_buffer_req_evt_handle(nrfx_i2s_buffers_t const *p_released, uint
     uint32_t err_code;
     if (!(status & NRFX_I2S_STATUS_NEXT_BUFFERS_NEEDED))  // If no next buffers
     {
-        LOG_ERR("i2s_buffer_req_evt_handle: No next buffers needed, status = %lu", status);
+        /* This is normal during I2S stop, don't log as error / 这是 I2S 停止时的正常现象，不记录为错误 */
+        LOG_DBG("i2s_buffer_req_evt_handle: No next buffers needed (normal during stop), status = %lu", status);
         return;
     }
     // p_released->p_rx_buffer为已经播放完成的缓冲区，可以释放掉或用来填充下一帧播放数据;
@@ -100,12 +102,18 @@ static void i2s_buffer_req_evt_handle(nrfx_i2s_buffers_t const *p_released, uint
 void audio_i2s_start(void)
 {
     __ASSERT_NO_MSG(state == AUDIO_I2S_STATE_IDLE);
+    
+    /* Clear all I2S buffers before starting to avoid pop noise / 启动前清空缓冲区以避免电流声 */
+    memset(i2s_tx_req_buffer[0], 0, PDM_PCM_REQ_BUFFER_SIZE * sizeof(uint32_t));
+    memset(i2s_tx_req_buffer[1], 0, PDM_PCM_REQ_BUFFER_SIZE * sizeof(uint32_t));
+    
     nrfx_err_t ret;
     /* Buffer size in 32-bit words */
     ret = nrfx_i2s_start(&i2s_inst, &i2s_req_buffer[0], 0);
     __ASSERT_NO_MSG(ret == NRFX_SUCCESS);
 
     state = AUDIO_I2S_STATE_STARTED;
+    LOG_INF("I2S started with clean buffers");
 }
 
 void audio_i2s_stop(void)
@@ -115,6 +123,55 @@ void audio_i2s_stop(void)
     nrfx_i2s_stop(&i2s_inst);
 
     state = AUDIO_I2S_STATE_IDLE;
+}
+/**
+ * @brief I2S 音频播放初始化标识
+ * returns I2S audio playback initialization flag
+ * false: 未初始化；Not initialized
+ * true: 已初始化；Initialized
+ */
+bool audio_i2s_is_initialized(void)
+{
+    return (state != AUDIO_I2S_STATE_UNINIT);
+}
+
+void audio_i2s_uninit(void)
+{
+    /* Check state / 检查状态 */
+    if (state == AUDIO_I2S_STATE_UNINIT)
+    {
+        LOG_WRN("I2S already uninitialized");
+        return;
+    }
+    
+    /* Stop first if still running / 如果还在运行则先停止 */
+    if (state == AUDIO_I2S_STATE_STARTED)
+    {
+        LOG_WRN("I2S is still running, stopping first");
+        audio_i2s_stop();
+    }
+    
+    /* Uninitialize I2S driver / 反初始化 I2S 驱动 */
+    nrfx_i2s_uninit(&i2s_inst);
+    
+    /* Disable IRQ / 禁用中断 */
+    irq_disable(DT_IRQN(I2S_NL));
+    
+    /* Put pins to sleep state / 将引脚切换到休眠态 */
+    (void)pinctrl_apply_state(PINCTRL_DT_DEV_CONFIG_GET(I2S_NL), PINCTRL_STATE_SLEEP);
+    
+    /* Stop audio clock / 停止音频时钟 */
+    NRF_CLOCK->TASKS_HFCLKAUDIOSTOP = 1;
+    
+    /* Reset all state / 重置所有状态 */
+    state = AUDIO_I2S_STATE_UNINIT;
+    mp_block_to_fill = NULL;
+    
+    /* Reset I2S output flag to ensure clean state / 重置 I2S 输出标志以确保状态清洁 */
+    extern void pdm_audio_set_i2s_output(bool enabled);
+    pdm_audio_set_i2s_output(false);
+    
+    LOG_INF("I2S uninitialized and hardware released");
 }
 
 void audio_i2s_init(void)
