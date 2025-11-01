@@ -1,5 +1,6 @@
 import {RTCPeerConnection, RTCSessionDescription, RTCIceCandidate} from "react-native-webrtc"
 import wsManager from "./WebSocketManager"
+import Constants from "expo-constants"
 
 // Steps:
 // Connect to the server.
@@ -12,6 +13,9 @@ class MentraWebRTCService {
   private pc: RTCPeerConnection | null = null
   private dc: any | null = null
   private ws = wsManager
+  private offerCreated = false
+  private remoteIceCandidates: RTCIceCandidate[] = []
+  private turnCredential = Constants.expoConfig?.extra?.TURN_CREDENTIAL
 
   constructor() {
     this.ws.on("message", message => {
@@ -24,11 +28,29 @@ class MentraWebRTCService {
 
     const peerConnection = new RTCPeerConnection({
       iceServers: [
-        {urls: "stun:stun.l.google.com:19302"},
-        {urls: "stun:stun1.l.google.com:19302"},
-        {urls: "stun:stun2.l.google.com:19302"},
-        {urls: "stun:stun3.l.google.com:19302"},
-        {urls: "stun:stun4.l.google.com:19302"},
+        {
+          urls: "stun:stun.relay.metered.ca:80",
+        },
+        {
+          urls: "turn:global.relay.metered.ca:80",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turn:global.relay.metered.ca:80?transport=tcp",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turn:global.relay.metered.ca:443",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turns:global.relay.metered.ca:443?transport=tcp",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
       ],
       iceTransportPolicy: "all",
       bundlePolicy: "max-bundle",
@@ -52,8 +74,16 @@ class MentraWebRTCService {
       console.log("MentraWebRTCService: Ice gathering state change", event)
       console.log("MentraWebRTCService: Ice gathering state", peerConnection.iceGatheringState)
     })
-    peerConnection.addEventListener("negotiationneeded", event => {
+    peerConnection.addEventListener("negotiationneeded", async event => {
       console.log("MentraWebRTCService: Negotiation needed", event)
+      // create the offer here
+      if (!this.offerCreated) {
+        this.offerCreated = true
+        const offer = await peerConnection.createOffer()
+        console.log("MentraWebRTCService: Offer created", offer)
+        await peerConnection.setLocalDescription(offer)
+        this.sendOffer(offer)
+      }
     })
     peerConnection.addEventListener("signalingstatechange", event => {
       console.log("MentraWebRTCService: Signaling state change", event)
@@ -65,7 +95,7 @@ class MentraWebRTCService {
 
     this.pc = peerConnection
 
-    const dc = peerConnection.createDataChannel("test")
+    const dc = await peerConnection.createDataChannel("test")
     // dc.onopen = () => console.log("Data channel open");
     // dc.onmessage = e => console.log("Received message:", e.data);
     this.dc = dc
@@ -76,13 +106,6 @@ class MentraWebRTCService {
     dc.addEventListener("message", event => {
       console.log("Received message:", event.data)
     })
-
-    // create an offer and set the local description
-    const offer = await this.pc.createOffer()
-    await this.pc.setLocalDescription(offer)
-    console.log("MentraWebRTCService: Offer created", offer)
-
-    this.sendOffer(offer)
   }
 
   public sendData(data: any) {
@@ -99,15 +122,28 @@ class MentraWebRTCService {
   }
 
   private async handle_message(message: any) {
-    console.log("MentraWebRTCService: Received message", message)
     const type = message.type
     if (type === "sdp_answer") {
-      console.log("MentraWebRTCService: Setting remote description", message)
       await this.pc!.setRemoteDescription(new RTCSessionDescription(message.sdp))
+      this.processCandidates()
     } else if (type === "server_ice_candidate") {
-      console.log("MentraWebRTCService: Adding ice candidate", message)
-      await this.pc!.addIceCandidate(new RTCIceCandidate(message.candidate))
+      if (message.candidate) {
+        const remoteIceCandidate = new RTCIceCandidate(message.candidate)
+        if (!this.pc!.remoteDescription) {
+          this.remoteIceCandidates.push(remoteIceCandidate)
+        } else {
+          await this.pc!.addIceCandidate(remoteIceCandidate)
+        }
+      }
     }
+  }
+
+  private processCandidates() {
+    console.log("MentraWebRTCService: Processing remote ice candidates: ", this.remoteIceCandidates.length)
+    for (const candidate of this.remoteIceCandidates) {
+      this.pc!.addIceCandidate(candidate)
+    }
+    this.remoteIceCandidates = []
   }
 
   public async disconnect() {}

@@ -8,7 +8,7 @@ import {AllProviders} from "@/utils/structure/AllProviders"
 import {AllEffects} from "@/utils/structure/AllEffects"
 import * as Sentry from "@sentry/react-native"
 import Constants from "expo-constants"
-// import {registerGlobals} from "@livekit/react-native-webrtc"
+import {registerGlobals} from "react-native-webrtc"
 import {initializeSettings} from "@/stores/settings"
 import {ConsoleLogger} from "@/utils/debug/console"
 
@@ -53,7 +53,7 @@ function Root() {
       await initI18n()
       await loadDateFnsLocale()
       // initialize webrtc
-      // await registerGlobals()
+      await registerGlobals()
     } catch (error) {
       console.error("Error loading assets:", error)
     } finally {

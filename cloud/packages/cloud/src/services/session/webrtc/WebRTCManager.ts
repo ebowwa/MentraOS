@@ -12,6 +12,8 @@ export class WebRTCManager {
   private session: UserSession;
   private readonly logger: Logger;
   public pc: RTCPeerConnection;
+  private remoteIceCandidates: RTCIceCandidate[] = [];
+  private turnCredential = process.env.TURN_CREDENTIAL;
 
   constructor(session: UserSession) {
     this.session = session;
@@ -21,11 +23,29 @@ export class WebRTCManager {
     });
     this.pc = new RTCPeerConnection({
       iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun3.l.google.com:19302" },
-        { urls: "stun:stun4.l.google.com:19302" },
+        {
+          urls: "stun:stun.relay.metered.ca:80",
+        },
+        {
+          urls: "turn:global.relay.metered.ca:80",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turn:global.relay.metered.ca:80?transport=tcp",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turn:global.relay.metered.ca:443",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
+        {
+          urls: "turns:global.relay.metered.ca:443?transport=tcp",
+          username: "7e7947a3a273be9fb3d69365",
+          credential: this.turnCredential,
+        },
       ],
       iceTransportPolicy: "all",
       bundlePolicy: "max-bundle",
@@ -55,7 +75,19 @@ export class WebRTCManager {
       { message, service: "WebRTCManager" },
       "ICE candidate received from glasses",
     );
-    this.pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+    if (this.pc.remoteDescription) {
+      this.logger.debug(
+        { message, service: "WebRTCManager" },
+        "ICE candidate added to remote description",
+      );
+      this.pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+    } else {
+      this.logger.debug(
+        { message, service: "WebRTCManager" },
+        "ICE candidate will be processed later",
+      );
+      this.remoteIceCandidates.push(new RTCIceCandidate(message.candidate));
+    }
   }
 
   public async acceptOffer(message: SdpOffer) {
@@ -65,9 +97,22 @@ export class WebRTCManager {
     );
     const sdpType = message.sdp.type;
     const sdp = message.sdp.sdp;
-    this.pc.setRemoteDescription(new RTCSessionDescription(sdp, sdpType));
+    await this.pc.setRemoteDescription(new RTCSessionDescription(sdp, sdpType));
     const answer = await this.pc.createAnswer();
-    this.pc.setLocalDescription(answer);
+    await this.pc.setLocalDescription(answer);
+    await this.processCandidates();
     return answer;
+  }
+
+  private async processCandidates() {
+    this.logger.debug(
+      { service: "WebRTCManager" },
+      "Processing candidates: ",
+      this.remoteIceCandidates.length,
+    );
+    for (const candidate of this.remoteIceCandidates) {
+      await this.pc.addIceCandidate(candidate);
+    }
+    this.remoteIceCandidates = [];
   }
 }
