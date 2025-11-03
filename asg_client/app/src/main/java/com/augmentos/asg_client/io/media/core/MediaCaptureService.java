@@ -1107,7 +1107,8 @@ public class MediaCaptureService {
                             
                             // LED is now managed by CameraNeo and will turn off when camera closes
                             
-                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            // Send photo_response with error (not media_error) so phone app can handle it
+                            sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
 
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -1117,11 +1118,12 @@ public class MediaCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo", e);
-            sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            String errorMessage = "Error taking photo: " + e.getMessage();
+            // Send photo_response with error (not media_error) so phone app can handle it
+            sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
 
             if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
-                        MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
             }
         }
     }
@@ -1466,12 +1468,16 @@ public class MediaCaptureService {
                         }
                         
                         reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSave, requestedSize);
-                        return; // Exit early - BLE transfer will handle cleanup
+                        return; // Exit early - BLE transfer will handle cleanup (and error if BLE also fails)
                     }
 
                     // No BLE fallback available
                     Log.d(TAG, "❌ No BLE fallback available, handling as normal failure");
-                    
+
+                    // Send error response back to phone so it can forward to webhook
+                    sendPhotoErrorResponse(requestId, "UPLOAD_FAILED", errorMessage);
+                    Log.d(TAG, "📸 Sent photo error response: " + requestId + " - " + errorMessage);
+
                     // Check if we should save the photo
                     Boolean save = photoSaveFlags.get(requestId);
                     if (save == null || !save) {
@@ -1536,11 +1542,16 @@ public class MediaCaptureService {
                     }
                     
                     reusePhotoForBleTransfer(photoFilePath, requestId, bleImgId, shouldSaveFallback1, requestedSizeFallback1);
-                    return; // Exit early - BLE transfer will handle cleanup
+                    return; // Exit early - BLE transfer will handle cleanup (and error if BLE also fails)
                 }
 
                 // No BLE fallback available
                 Log.d(TAG, "❌ No BLE fallback available, handling exception");
+                
+                // Send error response back to phone so it can forward to webhook
+                String errorMessage = "Upload error: " + e.getMessage();
+                sendPhotoErrorResponse(requestId, "UPLOAD_FAILED", errorMessage);
+                Log.d(TAG, "📸 Sent photo error response: " + requestId + " - " + errorMessage);
                 
                 // Check if we should save the photo on exception
                 Boolean save = photoSaveFlags.get(requestId);
@@ -1568,7 +1579,7 @@ public class MediaCaptureService {
                 
 
                 if (mMediaCaptureListener != null) {
-                    mMediaCaptureListener.onMediaError(requestId, "Upload error: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                    mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                 }
                 
                 // Reset upload state
@@ -1895,11 +1906,12 @@ public class MediaCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo for BLE", e);
-            sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            String errorMessage = "Error taking photo: " + e.getMessage();
+            // Send photo_response with error (not media_error) so phone app can handle it
+            sendPhotoErrorResponse(requestId, "CAMERA_CAPTURE_FAILED", errorMessage);
 
             if (mMediaCaptureListener != null) {
-                mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
-                        MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
             }
         }
     }
@@ -1984,18 +1996,35 @@ public class MediaCaptureService {
                 // 4. Encode as AVIF with aggressive compression
                 byte[] compressedData;
                 try {
+                    // Create a mutable copy for AVIF encoding (encoder may recycle/modify the bitmap)
+                    // Keep the original resized bitmap for JPEG fallback
+                    android.graphics.Bitmap avifBitmap = resized.copy(resized.getConfig(), true);
+                    if (avifBitmap == null) {
+                        throw new Exception("Failed to create bitmap copy for AVIF encoding");
+                    }
+                    
                     // Use avif-coder library for AVIF encoding
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
-                        resized,
+                        avifBitmap,
                             bleParams.avifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
+                    
+                    // Clean up the AVIF copy
+                    avifBitmap.recycle();
+                    
                     Log.d(TAG, "Successfully encoded as AVIF");
                 } catch (Exception e) {
                     Log.w(TAG, "AVIF encoding failed, falling back to JPEG: " + e.getMessage());
-                    // Fallback to JPEG if AVIF fails
+                    // Fallback to JPEG if AVIF fails - use the original resized bitmap
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    
+                    // Check if bitmap is recycled before attempting compression
+                    if (resized.isRecycled()) {
+                        throw new Exception("Bitmap was recycled during AVIF encoding, cannot fallback to JPEG");
+                    }
+                    
                     resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, bleParams.jpegFallbackQuality, baos);
                     compressedData = baos.toByteArray();
                 }

@@ -3,6 +3,7 @@ import {translate} from "@/i18n"
 import livekit from "@/services/Livekit"
 import mantle from "@/services/MantleManager"
 import socketComms from "@/services/SocketComms"
+import restComms from "@/services/RestComms"
 import {useSettingsStore} from "@/stores/settings"
 import {CoreStatusParser} from "@/utils/CoreStatusParser"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -254,6 +255,22 @@ export class MantleBridge {
         case "keep_alive_ack":
           console.log("MantleBridge: Forwarding keep-alive ACK to server:", data)
           socketComms.sendKeepAliveAck(data)
+          break
+        case "photo_error":
+          // Forward photo error to webhook URL via RestComms
+          if (data.webhookUrl && data.requestId && data.errorCode && data.errorMessage) {
+            restComms
+              .sendPhotoErrorToWebhook(
+                data.webhookUrl,
+                data.requestId,
+                data.authToken || null,
+                data.errorCode,
+                data.errorMessage,
+              )
+              .catch((error: any) => {
+                console.error("BRIDGE: Failed to forward photo error to webhook:", error)
+              })
+          }
           break
         default:
           console.log("Unknown event type:", data.type)

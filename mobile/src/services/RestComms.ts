@@ -368,6 +368,58 @@ class RestComms {
   public async sendLocationData(data: any): Promise<any> {
     return this.authenticatedRequest("POST", "/api/client/location", data)
   }
+
+  // Photo Error Webhook
+  /**
+   * Send photo error response to app webhook URL
+   * This is for forwarding errors from glasses directly to the app's webhook endpoint
+   * @param webhookUrl Full URL to the app's webhook endpoint
+   * @param requestId Photo request ID
+   * @param authToken Optional auth token for webhook authentication
+   * @param errorCode Error code (e.g., "BLE_TRANSFER_FAILED")
+   * @param errorMessage Error message
+   */
+  public async sendPhotoErrorToWebhook(
+    webhookUrl: string,
+    requestId: string,
+    authToken: string | null,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void> {
+    try {
+      console.log(`[RestComms] Sending photo error to webhook: ${webhookUrl} for requestId: ${requestId}`)
+
+      // Build multipart form data
+      const formData = new FormData()
+      formData.append("requestId", requestId)
+      formData.append("type", "photo_error")
+      formData.append("success", "false")
+      formData.append("errorCode", errorCode)
+      formData.append("errorMessage", errorMessage)
+
+      // Build headers
+      const headers: Record<string, string> = {}
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`
+      }
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers,
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "No response body")
+        throw new Error(`Failed to send photo error: ${response.status} ${response.statusText} - ${errorText}`)
+      }
+
+      console.log(`[RestComms] Photo error sent successfully to webhook. Response code: ${response.status}`)
+    } catch (error: any) {
+      console.error(`[RestComms] Error sending photo error to webhook:`, error)
+      throw error
+    }
+  }
 }
 
 const restComms = RestComms.getInstance()

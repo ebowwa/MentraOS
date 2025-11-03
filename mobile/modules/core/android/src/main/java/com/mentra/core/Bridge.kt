@@ -310,6 +310,23 @@ public class Bridge private constructor() {
             }
         }
 
+        /** Send photo error to React Native for forwarding to webhook */
+        @JvmStatic
+        fun sendPhotoError(requestId: String, webhookUrl: String, authToken: String?, errorCode: String, errorMessage: String) {
+            Log.d(TAG, "Sending photo error to React Native for forwarding to webhook: $requestId, $webhookUrl, $authToken, $errorCode, $errorMessage")
+            try {
+                val body = HashMap<String, Any>()
+                body["requestId"] = requestId
+                body["webhookUrl"] = webhookUrl
+                authToken?.let { body["authToken"] = it }
+                body["errorCode"] = errorCode
+                body["errorMessage"] = errorMessage
+                sendTypedMessage("photo_error", body)
+            } catch (e: Exception) {
+                log("Bridge: Error sending photo_error: $e")
+            }
+        }
+
         /** Send video stream response */
         @JvmStatic
         fun sendVideoStreamResponse(appId: String, streamUrl: String) {
