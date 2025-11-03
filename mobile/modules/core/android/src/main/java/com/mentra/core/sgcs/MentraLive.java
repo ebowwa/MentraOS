@@ -346,7 +346,6 @@ public class MentraLive extends SGCManager {
     private Runnable heartbeatRunnable;
     private int heartbeatCounter = 0;
     private boolean glassesReady = false;
-    private boolean rgbLedAuthorityClaimed = false; // Track if we've claimed RGB LED control from BES
 
     // Micbeat tracking - periodically enable custom audio TX
     private Handler micBeatHandler = new Handler(Looper.getMainLooper());
@@ -1925,9 +1924,6 @@ public class MentraLive extends SGCManager {
                 // Send user settings to glasses
                 sendUserSettings();
 
-                // Claim RGB LED control authority
-                sendRgbLedControlAuthority(true);
-
                 // Initialize LC3 audio logging now that glasses are ready (only if supported)
                 if (supportsLC3Audio) {
                     initializeLc3Logging();
@@ -3250,11 +3246,6 @@ public class MentraLive extends SGCManager {
         pendingMessages.clear();
         Bridge.log("LIVE: Cleared pending message tracking");
 
-        // Release RGB LED control authority before disconnecting
-        if (rgbLedAuthorityClaimed) {
-            sendRgbLedControlAuthority(false);
-        }
-
         // Disconnect from GATT if connected
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
@@ -4001,28 +3992,6 @@ public class MentraLive extends SGCManager {
     }
 
     /**
-     * Claim or release RGB LED control authority from BES chipset
-     * @param claimControl true to claim control, false to release
-     */
-    private void sendRgbLedControlAuthority(boolean claimControl) {
-        try {
-            JSONObject bodyData = new JSONObject();
-            bodyData.put("on", claimControl);
-
-            JSONObject command = new JSONObject();
-            command.put("C", "android_control_led");
-            command.put("V", 1);
-            command.put("B", bodyData.toString());
-
-            Bridge.log("LIVE: " + (claimControl ? "📍 Claiming" : "📍 Releasing") + " RGB LED control authority");
-            sendJson(command, false);
-            rgbLedAuthorityClaimed = claimControl;
-        } catch (JSONException e) {
-            Log.e(TAG, "Error building RGB LED authority command", e);
-        }
-    }
-
-    /**
      * Send RGB LED control command to glasses
      * Matches iOS implementation for cross-platform consistency
      */
@@ -4037,10 +4006,6 @@ public class MentraLive extends SGCManager {
             Bridge.log("LIVE: Cannot handle RGB LED control - glasses not connected");
             Bridge.sendRgbLedControlResponse(requestId, false, "glasses_not_connected");
             return;
-        }
-
-        if (!rgbLedAuthorityClaimed) {
-            sendRgbLedControlAuthority(true);
         }
 
         try {
