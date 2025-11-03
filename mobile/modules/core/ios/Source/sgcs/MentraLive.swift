@@ -566,7 +566,6 @@ extension MentraLive: CBCentralManagerDelegate {
         connectedPeripheral = nil
         ready = false
         connectionState = ConnTypes.DISCONNECTED
-        rgbLedAuthorityClaimed = false
 
         stopAllTimers()
 
@@ -912,7 +911,6 @@ class MentraLive: NSObject, SGCManager {
     private var fileWriteCharacteristic: CBCharacteristic?
     private var activeFileTransfers = [String: FileTransferSession]()
     private var blePhotoTransfers = [String: BlePhotoTransfer]()
-    private var rgbLedAuthorityClaimed = false
 
     // LC3 Audio properties
     private var lc3ReadCharacteristic: CBCharacteristic?
@@ -1078,10 +1076,6 @@ class MentraLive: NSObject, SGCManager {
     @objc func disconnect() {
         Bridge.log("Disconnecting from Mentra Live glasses")
 
-        if rgbLedAuthorityClaimed {
-            sendRgbLedControlAuthority(false)
-        }
-
         // Clear any pending messages
         pending = nil
         pendingMessageTimer?.invalidate()
@@ -1093,7 +1087,6 @@ class MentraLive: NSObject, SGCManager {
 
         stopAllTimers()
         connectionState = ConnTypes.DISCONNECTED
-        rgbLedAuthorityClaimed = false
     }
 
     @objc func setMicrophoneEnabled(_ enabled: Bool) {
@@ -1841,8 +1834,7 @@ class MentraLive: NSObject, SGCManager {
         // Send user settings to glasses
         sendUserSettings()
 
-        // Claim LED control and enable gesture reporting
-        sendRgbLedControlAuthority(true)
+        // Enable gesture reporting
         setTouchEventReporting(true)
         setSwipeVolumeControl(false)
 
@@ -3228,34 +3220,6 @@ extension MentraLive {
         }
     }
 
-    private func sendRgbLedControlAuthority(_ claimControl: Bool) {
-        do {
-            let bodyData = try JSONSerialization.data(withJSONObject: ["on": claimControl])
-            guard let bodyString = String(data: bodyData, encoding: .utf8) else {
-                Bridge.log("MentraLive: Failed to encode RGB LED authority body")
-                return
-            }
-
-            let command: [String: Any] = [
-                "C": "android_control_led",
-                "V": 1,
-                "B": bodyString,
-            ]
-
-            if sendRawK900Command(command, wakeUp: true) {
-                rgbLedAuthorityClaimed = claimControl
-                Bridge.log("MentraLive: RGB LED authority \(claimControl ? "claimed" : "released")")
-            } else {
-                Bridge.log("MentraLive: Failed to send RGB LED authority command")
-                if !claimControl {
-                    rgbLedAuthorityClaimed = false
-                }
-            }
-        } catch {
-            Bridge.log("MentraLive: Error encoding RGB LED authority payload: \(error)")
-        }
-    }
-
     private func setTouchEventReporting(_ enable: Bool) {
         do {
             let bodyData = try JSONSerialization.data(withJSONObject: ["type": 26, "switch": enable])
@@ -3316,10 +3280,6 @@ extension MentraLive {
             Bridge.log("MentraLive: Cannot handle RGB LED control - glasses not connected")
             Bridge.sendRgbLedControlResponse(requestId: requestId, success: false, error: "glasses_not_connected")
             return
-        }
-
-        if !rgbLedAuthorityClaimed {
-            sendRgbLedControlAuthority(true)
         }
 
         var command: [String: Any] = [
