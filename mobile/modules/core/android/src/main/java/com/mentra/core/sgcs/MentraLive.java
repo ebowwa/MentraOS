@@ -217,6 +217,21 @@ public class MentraLive extends SGCManager {
 
     // BLE photo transfer tracking
     private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
+    
+    // Photo request tracking for error forwarding
+    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+    
+    private static class PhotoRequestInfo {
+        String requestId;
+        String webhookUrl;
+        String authToken;
+        
+        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
+            this.requestId = requestId;
+            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
+            this.authToken = authToken != null ? authToken : "";
+        }
+    }
 
     private static class BlePhotoTransfer {
         String bleImgId;
@@ -1711,12 +1726,41 @@ public class MentraLive extends SGCManager {
 
                 if (!photoSuccess) {
                     // Handle failed photo response
-                    String errorMsg = json.optString("error", "Unknown error");
+                    // Check for errorMessage first (from glasses), then error, then errorCode
+                    String errorMsg = json.optString("errorMessage", null);
+                    String errorCode = json.optString("errorCode", null);
+                    if (errorMsg == null) {
+                        errorMsg = json.optString("error", null);
+                    }
+                    if (errorMsg == null && errorCode != null) {
+                        errorMsg = errorCode;
+                    }
+                    if (errorMsg == null) {
+                        errorMsg = "Unknown error";
+                    }
+                    if (errorCode == null) {
+                        errorCode = "UNKNOWN_ERROR";
+                    }
+                    
                     Bridge.log("LIVE: Photo request failed - requestId: " + requestId +
-                          ", appId: " + appId + ", error: " + errorMsg);
+                          ", appId: " + appId + ", error: " + errorMsg + ", errorCode: " + errorCode);
+                    
+                    // Forward error to webhook URL if available via Bridge to React Native
+                    PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
+                    if (requestInfo != null && requestInfo.webhookUrl != null && !requestInfo.webhookUrl.isEmpty()) {
+                        Bridge.sendPhotoError(
+                            requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMsg);
+                        // Clean up tracking
+                        photoRequestInfo.remove(requestId);
+                    } else {
+                        Bridge.log("LIVE: No webhook URL found for requestId: " + requestId + " - error not forwarded");
+                    }
                 } else {
                     // Handle successful photo (in future implementation)
                     Bridge.log("LIVE: Photo request succeeded - requestId: " + requestId);
+                    
+                    // Clean up tracking on success
+                    photoRequestInfo.remove(requestId);
                 }
                 break;
 
@@ -2878,6 +2922,9 @@ public class MentraLive extends SGCManager {
                 BlePhotoTransfer transfer = new BlePhotoTransfer(bleImgId, requestId, webhookUrl);
                 transfer.setAuthToken(authToken); // Store authToken for BLE transfer
                 blePhotoTransfers.put(bleImgId, transfer);
+                
+                // Store request info for error forwarding
+                photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
             }
 
             Bridge.log("LIVE: Using auto transfer mode with BLE fallback ID: " + bleImgId);
