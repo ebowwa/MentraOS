@@ -127,7 +127,7 @@ void sendWifiScanResultsOverBle(List<String> networks);
 void sendAckResponse(long messageId);
 void sendTokenStatusResponse(boolean success);
 void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType);
-void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType);
+@Deprecated void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType); // DEPRECATED: Use sendPhotoErrorResponse() for photos. Client doesn't handle media_error.
 void sendKeepAliveAck(String streamId, String ackId);
 boolean sendBluetoothData(byte[] data);
 ```

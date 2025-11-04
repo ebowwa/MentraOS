@@ -307,6 +307,10 @@ Log.d("Media", "File size: " + sizeStr);
 - **Error Recovery**: Automatic error recovery
 - **User Feedback**: Clear user feedback for errors
 - **Logging**: Comprehensive error logging
+- **Photo Error Responses**: Photos use `photo_error` response type (not `media_error`)
+  - The client only handles `photo_error` messages
+  - `media_error` is deprecated and not handled by the client
+  - Use `sendPhotoErrorResponse()` for photo errors instead of `sendMediaErrorResponse()`
 
 ## 📈 Benefits
 
