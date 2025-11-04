@@ -49,7 +49,7 @@ public StreamingStatusCallback getStreamingStatusCallback()
 - **Updated constructor**: Now accepts `ICommunicationManager` parameter
 - **Updated method calls**:
   - `service.sendMediaSuccessResponse()` → `communicationManager.sendMediaSuccessResponse()`
-  - `service.sendMediaErrorResponse()` → `communicationManager.sendMediaErrorResponse()`
+  - `service.sendMediaErrorResponse()` → `communicationManager.sendMediaErrorResponse()` (DEPRECATED: Use sendPhotoErrorResponse() for photos)
 
 ### **2. Updated ServiceContainer**
 

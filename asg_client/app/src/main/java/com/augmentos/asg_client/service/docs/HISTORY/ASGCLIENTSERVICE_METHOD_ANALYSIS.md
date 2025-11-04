@@ -36,7 +36,11 @@ public void sendMediaSuccessResponse(String requestId, String mediaUrl, int medi
     communicationManager.sendMediaSuccessResponse(requestId, mediaUrl, mediaType);
 }
 
+@Deprecated
 public void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
+    // DEPRECATED: This method no longer sends messages over BLE
+    // Photos should use sendPhotoErrorResponse() instead
+    // Client doesn't handle media_error type - it's dead code
     communicationManager.sendMediaErrorResponse(requestId, errorMessage, mediaType);
 }
 
@@ -265,7 +269,7 @@ sendWifiScanResultsOverBle()
 sendAckResponse()
 sendTokenStatusResponse()
 sendMediaSuccessResponse()
-sendMediaErrorResponse()
+sendMediaErrorResponse() // DEPRECATED: Use sendPhotoErrorResponse() for photos
 sendKeepAliveAck()
 startRtmpStreaming()
 stopRtmpStreaming()
