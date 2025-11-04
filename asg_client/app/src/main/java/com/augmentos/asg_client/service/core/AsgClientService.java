@@ -875,6 +875,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             @Override
             public void onPhotoCaptured(String requestId, String filePath) {
+                // DIAGNOSTIC: Log listener invocation
+                Log.d(TAG, "🔍 LISTENER.onPhotoCaptured() | requestId: " + requestId + " | filePath: " + filePath);
                 Log.i(TAG, "✅ Photo captured successfully - ID: " + requestId + ", Path: " + filePath);
             }
 
