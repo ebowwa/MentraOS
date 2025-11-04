@@ -1015,6 +1015,8 @@ public class MediaCaptureService {
      * @param compress Compression level (none, medium, heavy)
      */
     public void takePhotoAndUpload(String photoFilePath, String requestId, String webhookUrl, String authToken, boolean save, String size, boolean enableLed, String compress) {
+        // DIAGNOSTIC: Log entry point
+        Log.d(TAG, "🔍 takePhotoAndUpload() ENTRY | requestId: " + requestId + " | filePath: " + photoFilePath);
         Log.d(TAG, "Taking photo and uploading to " + webhookUrl + " with compression: " + compress);
 
         // Check if RTMP streaming is active - photos cannot interrupt streams
@@ -1825,6 +1827,9 @@ public class MediaCaptureService {
      * @param compress Compression level (none, medium, heavy)
      */
     public void takePhotoAutoTransfer(String photoFilePath, String requestId, String webhookUrl, String authToken, String bleImgId, boolean save, String size, boolean enableLed, String compress) {
+        // DIAGNOSTIC: Log entry point
+        Log.d(TAG, "🔍 takePhotoAutoTransfer() ENTRY | requestId: " + requestId + " | filePath: " + photoFilePath + " | bleImgId: " + bleImgId);
+        
         // Store the save flag and BLE ID for this request
         photoSaveFlags.put(requestId, save);
         photoBleIds.put(requestId, bleImgId);
@@ -1847,6 +1852,9 @@ public class MediaCaptureService {
      * @param save Whether to keep the original photo on device
      */
     public void takePhotoForBleTransfer(String photoFilePath, String requestId, String bleImgId, boolean save, String size, boolean enableLed) {
+        // DIAGNOSTIC: Log entry point
+        Log.d(TAG, "🔍 takePhotoForBleTransfer() ENTRY | requestId: " + requestId + " | filePath: " + photoFilePath + " | bleImgId: " + bleImgId);
+        
         // Check if RTMP streaming is active - photos cannot interrupt streams
         if (RtmpStreamingService.isStreaming()) {
             Log.e(TAG, "Cannot take photo - RTMP streaming active");
@@ -2009,39 +2017,39 @@ public class MediaCaptureService {
                 // 4. Encode as AVIF with aggressive compression
                 byte[] compressedData;
                 try {
-                    // Create a mutable copy for AVIF encoding (encoder may recycle/modify the bitmap)
-                    // Keep the original resized bitmap for JPEG fallback
-                    android.graphics.Bitmap avifBitmap = resized.copy(resized.getConfig(), true);
-                    if (avifBitmap == null) {
-                        throw new Exception("Failed to create bitmap copy for AVIF encoding");
-                    }
-                    
                     // Use avif-coder library for AVIF encoding
+                    // Note: AVIF encoder may recycle the bitmap internally
                     HeifCoder heifCoder = new HeifCoder();
                     compressedData = heifCoder.encodeAvif(
-                        avifBitmap,
-                            bleParams.avifQuality,  // quality (0-100)
+                        resized,
+                        bleParams.avifQuality,  // quality (0-100)
                         PreciseMode.LOSSY   // Use FAST mode for reasonable compression speed
                     );
-                    
-                    // Clean up the AVIF copy
-                    avifBitmap.recycle();
-                    
                     Log.d(TAG, "Successfully encoded as AVIF");
+                    
+                    // Bitmap may have been recycled by encoder, don't try to recycle again
                 } catch (Exception e) {
                     Log.w(TAG, "AVIF encoding failed, falling back to JPEG: " + e.getMessage());
-                    // Fallback to JPEG if AVIF fails - use the original resized bitmap
-                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
                     
-                    // Check if bitmap is recycled before attempting compression
-                    if (resized.isRecycled()) {
-                        throw new Exception("Bitmap was recycled during AVIF encoding, cannot fallback to JPEG");
+                    // AVIF encoding may have recycled the bitmap - reload from original file
+                    Log.d(TAG, "Reloading image from file for JPEG fallback");
+                    android.graphics.Bitmap jpegBitmap = android.graphics.BitmapFactory.decodeFile(originalPath);
+                    if (jpegBitmap == null) {
+                        throw new Exception("Failed to reload image for JPEG fallback");
                     }
                     
-                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, bleParams.jpegFallbackQuality, baos);
+                    // Resize again for JPEG
+                    android.graphics.Bitmap jpegResized = android.graphics.Bitmap.createScaledBitmap(jpegBitmap, targetWidth, targetHeight, true);
+                    jpegBitmap.recycle();
+                    
+                    // Compress as JPEG
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    jpegResized.compress(android.graphics.Bitmap.CompressFormat.JPEG, bleParams.jpegFallbackQuality, baos);
                     compressedData = baos.toByteArray();
+                    jpegResized.recycle();
                 }
-                resized.recycle();
+                
+                // Don't recycle resized here - AVIF encoder may have already done it
 
                 long compressionTime = System.currentTimeMillis() - startTime;
                 Log.d(TAG, "✅ Compressed photo for BLE: " + originalPath + " -> " + compressedData.length + " bytes");

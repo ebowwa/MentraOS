@@ -217,25 +217,6 @@ public class MentraLive extends SGCManager {
 
     // BLE photo transfer tracking
     private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
-    
-    // Photo request tracking for error forwarding
-    private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
-    private static final long PHOTO_REQUEST_TIMEOUT_MS = 60000; // 60 seconds - enough time for upload + response
-    private Handler photoRequestCleanupHandler = new Handler(Looper.getMainLooper());
-    
-    private static class PhotoRequestInfo {
-        String requestId;
-        String webhookUrl;
-        String authToken;
-        long timestamp; // When the request was created
-        
-        PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
-            this.requestId = requestId;
-            this.webhookUrl = webhookUrl != null ? webhookUrl : "";
-            this.authToken = authToken != null ? authToken : "";
-            this.timestamp = System.currentTimeMillis();
-        }
-    }
 
     private static class BlePhotoTransfer {
         String bleImgId;
@@ -350,6 +331,7 @@ public class MentraLive extends SGCManager {
     private Runnable heartbeatRunnable;
     private int heartbeatCounter = 0;
     private boolean glassesReady = false;
+    private boolean rgbLedAuthorityClaimed = false; // Track if we've claimed RGB LED control from BES
 
     // Micbeat tracking - periodically enable custom audio TX
     private Handler micBeatHandler = new Handler(Looper.getMainLooper());
@@ -1728,46 +1710,32 @@ public class MentraLive extends SGCManager {
                 boolean photoSuccess = json.optBoolean("success", false);
 
                 if (!photoSuccess) {
-                    // Handle failed photo response
-                    // Check for errorMessage first (from glasses), then error, then errorCode
-                    String errorMsg = json.optString("errorMessage", null);
-                    String errorCode = json.optString("errorCode", null);
-                    if (errorMsg == null) {
-                        errorMsg = json.optString("error", null);
-                    }
-                    if (errorMsg == null && errorCode != null) {
-                        errorMsg = errorCode;
-                    }
-                    if (errorMsg == null) {
-                        errorMsg = "Unknown error";
-                    }
-                    if (errorCode == null) {
-                        errorCode = "UNKNOWN_ERROR";
-                    }
-                    
+                    // Handle failed photo response - extract proper error fields
+                    String errorCode = json.optString("errorCode", "UNKNOWN_ERROR");
+                    String errorMessage = json.optString("errorMessage", "Unknown error");
                     Bridge.log("LIVE: Photo request failed - requestId: " + requestId +
-                          ", appId: " + appId + ", error: " + errorMsg + ", errorCode: " + errorCode);
+                          ", appId: " + appId + ", errorCode: " + errorCode + ", errorMessage: " + errorMessage);
                     
-                    // Forward error to webhook URL if available via Bridge to React Native
-                    PhotoRequestInfo requestInfo = photoRequestInfo.get(requestId);
-                    if (requestInfo != null && requestInfo.webhookUrl != null && !requestInfo.webhookUrl.isEmpty()) {
-                        Bridge.sendPhotoError(
-                            requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMsg);
-                    } else {
-                        Bridge.log("LIVE: No webhook URL found for requestId: " + requestId + " - error not forwarded");
-                        // Print out all of the current request ids
-                        Bridge.log("LIVE: Current tracked photo requestIds: " + photoRequestInfo.keySet().toString());
+                    // Check if we have webhook info stored for BLE transfers
+                    // Try to find the transfer by requestId or bleImgId
+                    BlePhotoTransfer transfer = null;
+                    for (BlePhotoTransfer t : blePhotoTransfers.values()) {
+                        if (t.requestId.equals(requestId)) {
+                            transfer = t;
+                            break;
+                        }
                     }
-                    // Always clean up tracking after handling error response, regardless of webhook URL presence
-                    if (requestInfo != null) {
-                        photoRequestInfo.remove(requestId);
+                    
+                    // If we have webhook info, forward the error to cloud
+                    if (transfer != null && transfer.webhookUrl != null && !transfer.webhookUrl.isEmpty()) {
+                        Bridge.sendPhotoError(requestId, transfer.webhookUrl, transfer.authToken, 
+                                            errorCode, errorMessage);
+                    } else {
+                        Bridge.log("LIVE: No webhook configured for failed photo request: " + requestId);
                     }
                 } else {
                     // Handle successful photo (in future implementation)
                     Bridge.log("LIVE: Photo request succeeded - requestId: " + requestId);
-                    
-                    // Clean up tracking on success
-                    photoRequestInfo.remove(requestId);
                 }
                 break;
 
@@ -1931,6 +1899,9 @@ public class MentraLive extends SGCManager {
 
                 // Send user settings to glasses
                 sendUserSettings();
+
+                // Claim RGB LED control authority
+                sendRgbLedControlAuthority(true);
 
                 // Initialize LC3 audio logging now that glasses are ready (only if supported)
                 if (supportsLC3Audio) {
@@ -2926,22 +2897,6 @@ public class MentraLive extends SGCManager {
                 BlePhotoTransfer transfer = new BlePhotoTransfer(bleImgId, requestId, webhookUrl);
                 transfer.setAuthToken(authToken); // Store authToken for BLE transfer
                 blePhotoTransfers.put(bleImgId, transfer);
-                
-                // Store request info for error forwarding
-                photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
-                
-                // Schedule cleanup timeout - remove entry if no response received within timeout
-                photoRequestCleanupHandler.postDelayed(() -> {
-                    PhotoRequestInfo info = photoRequestInfo.get(requestId);
-                    if (info != null) {
-                        // Check if entry is stale (older than timeout)
-                        long age = System.currentTimeMillis() - info.timestamp;
-                        if (age >= PHOTO_REQUEST_TIMEOUT_MS) {
-                            Bridge.log("LIVE: Cleaning up stale photo request entry (timeout): " + requestId);
-                            photoRequestInfo.remove(requestId);
-                        }
-                    }
-                }, PHOTO_REQUEST_TIMEOUT_MS);
             }
 
             Bridge.log("LIVE: Using auto transfer mode with BLE fallback ID: " + bleImgId);
@@ -3266,6 +3221,11 @@ public class MentraLive extends SGCManager {
         // Clean up message tracking
         pendingMessages.clear();
         Bridge.log("LIVE: Cleared pending message tracking");
+
+        // Release RGB LED control authority before disconnecting
+        if (rgbLedAuthorityClaimed) {
+            sendRgbLedControlAuthority(false);
+        }
 
         // Disconnect from GATT if connected
         if (bluetoothGatt != null) {
@@ -4013,6 +3973,28 @@ public class MentraLive extends SGCManager {
     }
 
     /**
+     * Claim or release RGB LED control authority from BES chipset
+     * @param claimControl true to claim control, false to release
+     */
+    private void sendRgbLedControlAuthority(boolean claimControl) {
+        try {
+            JSONObject bodyData = new JSONObject();
+            bodyData.put("on", claimControl);
+
+            JSONObject command = new JSONObject();
+            command.put("C", "android_control_led");
+            command.put("V", 1);
+            command.put("B", bodyData.toString());
+
+            Bridge.log("LIVE: " + (claimControl ? "📍 Claiming" : "📍 Releasing") + " RGB LED control authority");
+            sendJson(command, false);
+            rgbLedAuthorityClaimed = claimControl;
+        } catch (JSONException e) {
+            Log.e(TAG, "Error building RGB LED authority command", e);
+        }
+    }
+
+    /**
      * Send RGB LED control command to glasses
      * Matches iOS implementation for cross-platform consistency
      */
@@ -4027,6 +4009,10 @@ public class MentraLive extends SGCManager {
             Bridge.log("LIVE: Cannot handle RGB LED control - glasses not connected");
             Bridge.sendRgbLedControlResponse(requestId, false, "glasses_not_connected");
             return;
+        }
+
+        if (!rgbLedAuthorityClaimed) {
+            sendRgbLedControlAuthority(true);
         }
 
         try {
