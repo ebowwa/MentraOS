@@ -47,7 +47,7 @@ The Mentra Store already has a ton of useful apps that real users are running ev
       <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.augmentos.livecaptions" style="text-decoration: none; color: inherit;">
           <img src="https://appstore.augmentos.org/app-icons/captions.png" alt="Live Captions" width="80" style="border-radius: 18px;" />
-          <br /><b>Live Captions</b>
+          <br /><b>Captions</b>
         </a>
       </td>
       <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
@@ -72,7 +72,7 @@ The Mentra Store already has a ton of useful apps that real users are running ev
     <tr style="border: 0 !important; background: transparent;">
       <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass/package/com.mentra.calendarreminder" style="text-decoration: none; color: inherit;">
-          <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/472942d8-7581-404a-0f2d-e9c9f13d3e00/public" alt="Calendar Reminder" width="80" style="border-radius: 18px;" />
+          <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/dd3e7ad0-89c3-4820-89d0-f6d68ec99b00/square" alt="Calendar Reminder" width="80" style="border-radius: 18px;" />
           <br /><b>Calendar</b>
         </a>
       </td>
@@ -91,7 +91,7 @@ The Mentra Store already has a ton of useful apps that real users are running ev
       <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
         <a href="https://apps.mentra.glass" style="text-decoration: none; color: inherit;">
           <img src="./images/MentraLogoSquareRound.png" alt="Mentra Store" width="80" style="border-radius: 18px;" />
-          <br /><b>→ Browse All Apps</b>
+          <br /><b>See All</b>
         </a>
       </td>
     </tr>
