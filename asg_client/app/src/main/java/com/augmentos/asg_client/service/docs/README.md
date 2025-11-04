@@ -421,6 +421,16 @@ Log.d(TAG, "Command processing took: " + (endTime - startTime) + "ms");
 
 ## Future Development Guidelines
 
+### TODO: Pending Improvements
+
+**Photo Rate Limiting Migration**
+
+- TODO: Move photo rate limiting from PhotoCommandHandler to SDK camera module
+- Current: 1000ms client-side rate limit in PhotoCommandHandler
+- Target: Server-side enforcement in SDK for consistent protection across all clients
+- Benefit: Prevents client bypass, centralized policy, better abuse detection
+- After SDK deployment: Remove client-side rate limit to avoid double-checking
+
 ### Adding New Features
 
 1. **New Manager**: Create interface in `interfaces/` and implementation in `managers/`

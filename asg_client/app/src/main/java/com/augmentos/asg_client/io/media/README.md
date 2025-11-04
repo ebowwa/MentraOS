@@ -311,6 +311,10 @@ Log.d("Media", "File size: " + sizeStr);
   - The client only handles `photo_error` messages
   - `media_error` is deprecated and not handled by the client
   - Use `sendPhotoErrorResponse()` for photo errors instead of `sendMediaErrorResponse()`
+- **Rate Limiting**: Photo requests enforced at 1000ms minimum interval
+  - Implemented in `PhotoCommandHandler` (client-side)
+  - TODO: Migrate to SDK camera module for server-side enforcement
+  - Prevents rapid-fire duplicate requests and filename collisions
 
 ## 📈 Benefits
 
@@ -323,6 +327,13 @@ Log.d("Media", "File size: " + sizeStr);
 
 ## 🔮 Future Enhancements
 
+### Planned Improvements
+
+- **TODO: SDK Rate Limiting**: Move photo rate limiting from client to SDK server for:
+  - Server-side enforcement (clients can't bypass)
+  - Consistent behavior across all platforms (iOS, Android, web)
+  - Centralized policy management
+  - Better abuse detection and monitoring
 - **AI Enhancement**: AI-powered image and video enhancement
 - **Cloud Sync**: Real-time cloud synchronization
 - **Live Streaming**: Live video streaming capabilities
