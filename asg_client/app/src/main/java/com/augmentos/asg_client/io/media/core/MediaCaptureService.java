@@ -1075,6 +1075,9 @@ public class MediaCaptureService {
             // Disable LED for webhook uploads to avoid distracting white flash
             // LED control is handled by CameraNeo for camera lifecycle management
 
+            // DIAGNOSTIC: Log callback creation
+            Log.d(TAG, "🔍 CREATING CALLBACK | capturing requestId: " + requestId + " | photoFilePath: " + photoFilePath);
+
             // Use the new enqueuePhotoRequest for thread-safe rapid capture
             CameraNeo.enqueuePhotoRequest(
                     mContext,
@@ -1084,6 +1087,9 @@ public class MediaCaptureService {
                     new CameraNeo.PhotoCaptureCallback() {
                         @Override
                         public void onPhotoCaptured(String filePath) {
+                            // DIAGNOSTIC: Log callback invocation with captured requestId
+                            String callbackId = Integer.toHexString(System.identityHashCode(this));
+                            Log.d(TAG, "🔍 CALLBACK INVOKED | callback@" + callbackId + " | captured requestId: " + requestId + " | filePath arg: " + filePath);
                             Log.d(TAG, "Photo captured successfully at: " + filePath);
 
                             // LED is now managed by CameraNeo and will turn off when camera closes
@@ -1665,7 +1671,14 @@ public class MediaCaptureService {
                     public void onFailure(String errorMessage) {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.e(TAG, mediaTypeStr + " upload failed: " + errorMessage);
-                        sendMediaErrorResponse(requestId, errorMessage, mediaType);
+                        
+                        // Send photo_response with error (not media_error) so phone app can handle it
+                        if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO) {
+                            sendPhotoErrorResponse(requestId, "UPLOAD_FAILED", errorMessage);
+                        } else {
+                            // Video errors - client doesn't handle media_error, just log it
+                            Log.e(TAG, "Video upload error (not sent to client): " + errorMessage);
+                        }
 
                         // Check if we can fallback to BLE for photos
                         String bleImgId = photoBleIds.get(requestId);

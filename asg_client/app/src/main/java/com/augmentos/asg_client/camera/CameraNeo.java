@@ -276,6 +276,10 @@ public class CameraNeo extends LifecycleService {
             this.callback = callback;
             this.timestamp = System.currentTimeMillis();
             this.retryCount = 0;
+            
+            // DIAGNOSTIC: Log PhotoRequest creation
+            String callbackId = callback != null ? Integer.toHexString(System.identityHashCode(callback)) : "NULL";
+            Log.d(TAG, "🔍 PhotoRequest CREATED | requestId: " + this.requestId + " | filePath: " + filePath + " | callback@" + callbackId);
         }
     }
     // Instance-level queue is deprecated - use globalRequestQueue instead
@@ -431,9 +435,14 @@ public class CameraNeo extends LifecycleService {
             PhotoRequest request = new PhotoRequest(filePath, size, enableLed, callback);
             globalRequestQueue.offer(request);
             
+            // DIAGNOSTIC: Log callback identity
+            String callbackId = callback != null ? Integer.toHexString(System.identityHashCode(callback)) : "NULL";
+            Log.d(TAG, "🔍 ENQUEUE | requestId: " + request.requestId + " | filePath: " + filePath + " | callback@" + callbackId);
+            
             // Store callback in registry for later retrieval
             if (callback != null) {
                 callbackRegistry.put(request.requestId, callback);
+                Log.d(TAG, "🔍 REGISTRY STORE | key: " + request.requestId + " | callback@" + callbackId + " | registry size: " + callbackRegistry.size());
             }
             
             Log.d(TAG, "📸 Enqueued photo request: " + request.requestId + 
@@ -449,6 +458,10 @@ public class CameraNeo extends LifecycleService {
                     // Instead, directly process the request we just queued
                     PhotoRequest queuedRequest = globalRequestQueue.poll();
                     if (queuedRequest != null) {
+                        // DIAGNOSTIC: Log fast-path callback assignment
+                        String fastPathCallbackId = queuedRequest.callback != null ? Integer.toHexString(System.identityHashCode(queuedRequest.callback)) : "NULL";
+                        Log.d(TAG, "🔍 FAST PATH | requestId: " + queuedRequest.requestId + " | filePath: " + queuedRequest.filePath + " | callback@" + fastPathCallbackId);
+                        
                         sInstance.sPhotoCallback = queuedRequest.callback;
                         sInstance.pendingPhotoPath = queuedRequest.filePath;
                         sInstance.pendingRequestedSize = queuedRequest.size;
@@ -1249,11 +1262,15 @@ public class CameraNeo extends LifecycleService {
                     ImageFormat.JPEG, 2);
 
             imageReader.setOnImageAvailableListener(reader -> {
+                // DIAGNOSTIC: Log callback entry
+                Log.d(TAG, "🔍 ImageReader callback fired | shotState: " + shotState + " | pendingPath: " + pendingPhotoPath);
+                
                 // Only process images when we're actually shooting, not during precapture metering
                 if (shotState != ShotState.SHOOTING) {
                     // Suppress logging to prevent logcat overflow
                     // Only log errors or important state changes
                     // Consume the image to prevent backing up the queue
+                    Log.d(TAG, "🔍 Discarding image - not in SHOOTING state (state: " + shotState + ")");
                     try (Image image = reader.acquireLatestImage()) {
                         // Just consume and discard
                     }
@@ -1261,7 +1278,7 @@ public class CameraNeo extends LifecycleService {
                 }
 
                 // Process the captured JPEG (only when in SHOOTING state)
-                Log.d(TAG, "Processing final photo capture...");
+                Log.d(TAG, "🔍 Processing final photo capture | shotState: SHOOTING | targetPath: " + (pendingPhotoPath != null ? pendingPhotoPath : filePath));
                 try (Image image = reader.acquireLatestImage()) {
                     if (image == null) {
                         Log.e(TAG, "Acquired image is null");
@@ -1272,6 +1289,9 @@ public class CameraNeo extends LifecycleService {
                         return;
                     }
 
+                    // DIAGNOSTIC: Log image details
+                    Log.d(TAG, "🔍 Image acquired | timestamp: " + image.getTimestamp() + " | format: " + image.getFormat());
+
                     ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
@@ -1279,13 +1299,19 @@ public class CameraNeo extends LifecycleService {
                     // Use pending photo path if available (from queued requests), otherwise use the original path
                     String targetPath = (pendingPhotoPath != null) ? pendingPhotoPath : filePath;
                     
+                    // DIAGNOSTIC: Check if we're processing the same path twice
+                    if (targetPath.equals(lastPhotoPath)) {
+                        Log.e(TAG, "🔍 ⚠️ WARNING: Processing DUPLICATE photo path! lastPhotoPath: " + lastPhotoPath + " | targetPath: " + targetPath);
+                    }
+                    
                     // Save the image data to the file
+                    Log.d(TAG, "🔍 Saving image to: " + targetPath + " | size: " + bytes.length + " bytes");
                     boolean success = saveImageDataToFile(bytes, targetPath);
 
                     if (success) {
                         lastPhotoPath = targetPath;
                         notifyPhotoCaptured(targetPath);
-                        Log.d(TAG, "Photo saved successfully: " + targetPath);
+                        Log.d(TAG, "🔍 Photo saved successfully: " + targetPath + " | Calling callback");
                         // Clear pending photo path and size after successful capture
                         pendingPhotoPath = null;
                         pendingRequestedSize = null;
@@ -1294,9 +1320,11 @@ public class CameraNeo extends LifecycleService {
                     }
 
                     // Reset state
+                    Log.d(TAG, "🔍 Setting shotState to IDLE (was SHOOTING)");
                     shotState = ShotState.IDLE;
 
                     // Check if there are queued photo requests
+                    Log.d(TAG, "🔍 Checking for queued requests | queue size: " + globalRequestQueue.size());
                     processQueuedPhotoRequests();
                 } catch (Exception e) {
                     Log.e(TAG, "Error handling image data", e);
@@ -1705,15 +1733,24 @@ public class CameraNeo extends LifecycleService {
                                 // Instead, start the preview and then trigger the first photo
                                 PhotoRequest firstRequest = globalRequestQueue.poll(); // Changed from peek() to poll() to remove from queue
                                 if (firstRequest != null) {
+                                    // DIAGNOSTIC: Log initial request setup
+                                    String callbackId = firstRequest.callback != null ? Integer.toHexString(System.identityHashCode(firstRequest.callback)) : "NULL";
+                                    Log.d(TAG, "🔍 onConfigured INITIAL REQUEST | requestId: " + firstRequest.requestId + " | filePath: " + firstRequest.filePath + " | callback@" + callbackId);
+                                    
                                     // Set up for the first queued photo
                                     if (firstRequest.callback == null && callbackRegistry.containsKey(firstRequest.requestId)) {
                                         firstRequest.callback = callbackRegistry.get(firstRequest.requestId);
+                                        String retrievedCallbackId = Integer.toHexString(System.identityHashCode(firstRequest.callback));
+                                        Log.d(TAG, "🔍 onConfigured REGISTRY RETRIEVE | key: " + firstRequest.requestId + " | callback@" + retrievedCallbackId);
                                     }
                                     sPhotoCallback = firstRequest.callback;
                                     pendingPhotoPath = firstRequest.filePath;
                                     pendingRequestedSize = firstRequest.size;
                                     // Store LED state from request
                                     pendingLedEnabled = firstRequest.enableLed;
+                                    
+                                    String finalCallbackId = sPhotoCallback != null ? Integer.toHexString(System.identityHashCode(sPhotoCallback)) : "NULL";
+                                    Log.d(TAG, "🔍 onConfigured SETUP COMPLETE | sPhotoCallback@" + finalCallbackId + " | pendingPath: " + pendingPhotoPath);
                                 }
                             }
                         }
@@ -1925,8 +1962,17 @@ public class CameraNeo extends LifecycleService {
     }
 
     private void notifyPhotoCaptured(String filePath) {
+        // DIAGNOSTIC: Log callback invocation
+        String callbackId = sPhotoCallback != null ? Integer.toHexString(System.identityHashCode(sPhotoCallback)) : "NULL";
+        Log.d(TAG, "🔍 notifyPhotoCaptured() called | filePath: " + filePath + " | sPhotoCallback@" + callbackId);
         if (sPhotoCallback != null) {
-            executor.execute(() -> sPhotoCallback.onPhotoCaptured(filePath));
+            // Capture callback reference to avoid race conditions
+            final PhotoCaptureCallback callbackToInvoke = sPhotoCallback;
+            final String capturedCallbackId = Integer.toHexString(System.identityHashCode(callbackToInvoke));
+            executor.execute(() -> {
+                Log.d(TAG, "🔍 Executing callback@" + capturedCallbackId + ".onPhotoCaptured(filePath: " + filePath + ")");
+                callbackToInvoke.onPhotoCaptured(filePath);
+            });
         }
     }
 
@@ -2044,20 +2090,32 @@ public class CameraNeo extends LifecycleService {
      * Process any queued photo requests after completing current photo
      */
     private void processQueuedPhotoRequests() {
+        // DIAGNOSTIC: Log entry
+        Log.d(TAG, "🔍 processQueuedPhotoRequests() called | queue size: " + globalRequestQueue.size() + " | shotState: " + shotState);
+        
         // First check the global queue (primary)
         synchronized (SERVICE_LOCK) {
             if (!globalRequestQueue.isEmpty() && shotState == ShotState.IDLE) {
                 PhotoRequest nextRequest = globalRequestQueue.poll();
                 if (nextRequest != null) {
-                    Log.d(TAG, "Processing queued photo from GLOBAL queue: " + nextRequest.filePath);
+                    Log.d(TAG, "🔍 Processing queued photo from GLOBAL queue: " + nextRequest.filePath + " | Current lastPhotoPath: " + lastPhotoPath);
+                    
+                    // DIAGNOSTIC: Log current callback state
+                    String oldCallbackId = sPhotoCallback != null ? Integer.toHexString(System.identityHashCode(sPhotoCallback)) : "NULL";
+                    String queueCallbackId = nextRequest.callback != null ? Integer.toHexString(System.identityHashCode(nextRequest.callback)) : "NULL";
+                    Log.d(TAG, "🔍 BEFORE CALLBACK UPDATE | oldCallback@" + oldCallbackId + " | queueCallback@" + queueCallbackId + " | requestId: " + nextRequest.requestId);
                     
                     // Retrieve callback from registry if needed
                     if (nextRequest.callback == null && callbackRegistry.containsKey(nextRequest.requestId)) {
                         nextRequest.callback = callbackRegistry.remove(nextRequest.requestId);
+                        String registryCallbackId = Integer.toHexString(System.identityHashCode(nextRequest.callback));
+                        Log.d(TAG, "🔍 REGISTRY RETRIEVE | key: " + nextRequest.requestId + " | callback@" + registryCallbackId + " | registry size: " + callbackRegistry.size());
                     }
                     
                     // Update the callback for this request
                     sPhotoCallback = nextRequest.callback;
+                    String newCallbackId = sPhotoCallback != null ? Integer.toHexString(System.identityHashCode(sPhotoCallback)) : "NULL";
+                    Log.d(TAG, "🔍 AFTER CALLBACK UPDATE | newCallback@" + newCallbackId);
                     
                     // Cancel any pending keep-alive timer
                     cancelKeepAliveTimer();
@@ -2065,6 +2123,8 @@ public class CameraNeo extends LifecycleService {
                     // Process the queued request
                     pendingPhotoPath = nextRequest.filePath;
                     pendingRequestedSize = nextRequest.size;
+                    
+                    Log.d(TAG, "🔍 Updated pendingPhotoPath to: " + pendingPhotoPath);
                     
                     // Update LED state if this request needs LED
                     if (nextRequest.enableLed) {
@@ -2075,6 +2135,7 @@ public class CameraNeo extends LifecycleService {
                     // Don't try to open camera again if it's already open
                     if (cameraDevice != null && cameraCaptureSession != null) {
                         // Start new capture sequence
+                        Log.d(TAG, "🔍 Starting new capture | shotState: IDLE -> WAITING_AE | pendingPath: " + pendingPhotoPath);
                         shotState = ShotState.WAITING_AE;
                         if (backgroundHandler != null) {
                             backgroundHandler.post(() -> startPrecaptureSequence());
@@ -2337,8 +2398,13 @@ public class CameraNeo extends LifecycleService {
      */
     private void startPreviewWithAeMonitoring() {
         try {
-            // Check if session is still valid before using it
-            if (cameraCaptureSession == null) {
+            // Check if session is still valid before using it - read inside synchronized block for visibility
+            CameraCaptureSession session;
+            synchronized (SERVICE_LOCK) {
+                session = cameraCaptureSession;
+            }
+            
+            if (session == null) {
                 Log.e(TAG, "Camera capture session is null in startPreviewWithAeMonitoring");
                 notifyPhotoError("Camera session not ready");
                 closeCamera();
@@ -2347,7 +2413,7 @@ public class CameraNeo extends LifecycleService {
             }
             
             // Start repeating preview request with AE monitoring
-            cameraCaptureSession.setRepeatingRequest(previewBuilder.build(),
+            session.setRepeatingRequest(previewBuilder.build(),
                 aeCallback, backgroundHandler);
 
             // Trigger the capture sequence immediately
@@ -2367,6 +2433,22 @@ public class CameraNeo extends LifecycleService {
      */
     private void startPrecaptureSequence() {
         try {
+            // Check if camera capture session is null before attempting capture - read inside synchronized block for visibility
+            CameraCaptureSession session;
+            synchronized (SERVICE_LOCK) {
+                session = cameraCaptureSession;
+            }
+            
+            if (session == null) {
+                Log.e(TAG, "Camera capture session is null - cannot start precapture sequence");
+                notifyPhotoError("Camera session not initialized - capture session is null");
+                shotState = ShotState.IDLE;
+                cancelKeepAliveTimer();
+                closeCamera();
+                stopSelf();
+                return;
+            }
+
             shotState = ShotState.WAITING_AE;
             aeStartTimeNs = System.nanoTime();
 
@@ -2377,13 +2459,27 @@ public class CameraNeo extends LifecycleService {
             previewBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                 CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 
-            cameraCaptureSession.capture(previewBuilder.build(), aeCallback, backgroundHandler);
+            session.capture(previewBuilder.build(), aeCallback, backgroundHandler);
 
             Log.d(TAG, "Triggered AE precapture, waiting for convergence...");
 
         } catch (CameraAccessException e) {
             Log.e(TAG, "Error starting AE convergence", e);
             notifyPhotoError("Error starting AE convergence: " + e.getMessage());
+            shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
+            closeCamera();
+            stopSelf();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "NullPointerException in startPrecaptureSequence - camera session may be null", e);
+            notifyPhotoError("Camera session error: " + e.getMessage());
+            shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
+            closeCamera();
+            stopSelf();
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error starting AE convergence", e);
+            notifyPhotoError("Unexpected error starting capture: " + e.getMessage());
             shotState = ShotState.IDLE;
             cancelKeepAliveTimer();
             closeCamera();
@@ -2461,6 +2557,8 @@ public class CameraNeo extends LifecycleService {
      */
     private void capturePhoto() {
         try {
+            // DIAGNOSTIC: Log state transition
+            Log.d(TAG, "🔍 capturePhoto() called | shotState: " + shotState + " -> SHOOTING | pendingPath: " + pendingPhotoPath);
             shotState = ShotState.SHOOTING;
 
             // Create still capture request with high quality settings
@@ -2506,6 +2604,17 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.set(CaptureRequest.JPEG_ORIENTATION, jpegOrientation);
             Log.d(TAG, "Capturing photo with JPEG orientation: " + jpegOrientation + " for display orientation: " + displayOrientation);
 
+            // Check if camera capture session is null before attempting capture
+            if (cameraCaptureSession == null) {
+                Log.e(TAG, "Camera capture session is null - cannot capture photo");
+                notifyPhotoError("Camera session not initialized - capture session is null");
+                shotState = ShotState.IDLE;
+                cancelKeepAliveTimer();
+                closeCamera();
+                stopSelf();
+                return;
+            }
+
             // Capture the photo immediately
             cameraCaptureSession.capture(stillBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
@@ -2532,6 +2641,20 @@ public class CameraNeo extends LifecycleService {
         } catch (CameraAccessException e) {
             Log.e(TAG, "Error during photo capture", e);
             notifyPhotoError("Error capturing photo: " + e.getMessage());
+            shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
+            closeCamera();
+            stopSelf();
+        } catch (NullPointerException e) {
+            Log.e(TAG, "NullPointerException in capturePhoto - camera session may be null", e);
+            notifyPhotoError("Camera session error: " + e.getMessage());
+            shotState = ShotState.IDLE;
+            cancelKeepAliveTimer();
+            closeCamera();
+            stopSelf();
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error capturing photo", e);
+            notifyPhotoError("Unexpected error capturing photo: " + e.getMessage());
             shotState = ShotState.IDLE;
             cancelKeepAliveTimer();
             closeCamera();

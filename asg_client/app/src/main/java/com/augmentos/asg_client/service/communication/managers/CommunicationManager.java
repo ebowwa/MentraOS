@@ -7,6 +7,7 @@ import com.augmentos.asg_client.service.communication.interfaces.ICommunicationM
 import com.augmentos.asg_client.service.communication.reliability.ReliableMessageManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.io.network.models.NetworkInfo;
+import com.augmentos.asg_client.io.media.managers.MediaUploadQueueManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -378,42 +379,12 @@ public class CommunicationManager implements ICommunicationManager {
     
     @Override
     public void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
-        Log.d(TAG, "❌ =========================================");
-        Log.d(TAG, "❌ SEND MEDIA ERROR RESPONSE");
-        Log.d(TAG, "❌ =========================================");
-        Log.d(TAG, "❌ Request ID: " + requestId);
-        Log.d(TAG, "❌ Error Message: " + errorMessage);
-        Log.d(TAG, "❌ Media Type: " + mediaType);
-        
-        if (serviceManager != null && serviceManager.getBluetoothManager() != null && 
-            serviceManager.getBluetoothManager().isConnected()) {
-            Log.d(TAG, "❌ ✅ Service manager and Bluetooth manager available");
-            
-            try {
-                JSONObject response = new JSONObject();
-                response.put("type", "media_error");
-                response.put("requestId", requestId);
-                response.put("errorMessage", errorMessage);
-                response.put("mediaType", mediaType);
-                response.put("timestamp", System.currentTimeMillis());
-
-                String jsonString = response.toString();
-                Log.d(TAG, "❌ 📤 Sending media error response: " + jsonString);
-                
-                boolean sent = serviceManager.getBluetoothManager().sendData(jsonString.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "❌ " + (sent ? "✅ Media error response sent successfully" : "❌ Failed to send media error response"));
-
-            } catch (JSONException e) {
-                Log.e(TAG, "❌ 💥 Error creating media error response", e);
-            }
-        } else {
-            Log.w(TAG, "❌ ❌ Cannot send media error response - not connected to BLE device");
-            if (serviceManager == null) Log.w(TAG, "❌ ❌ Service manager is null");
-            if (serviceManager != null && serviceManager.getBluetoothManager() == null) Log.w(TAG, "❌ ❌ Bluetooth manager is null");
-            if (serviceManager != null && serviceManager.getBluetoothManager() != null && !serviceManager.getBluetoothManager().isConnected()) {
-                Log.w(TAG, "❌ ❌ Bluetooth not connected");
-            }
-        }
+        // DEPRECATED: media_error is not handled by the client
+        // Photos should use sendPhotoErrorResponse() instead
+        // This method is kept for interface compatibility but no longer sends messages over BLE
+        String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+        Log.w(TAG, "⚠️ sendMediaErrorResponse called (deprecated) - " + mediaTypeStr + " error for requestId: " + requestId + ", error: " + errorMessage);
+        Log.w(TAG, "⚠️ Note: Client doesn't handle media_error. Photos should use photo_error response instead.");
     }
     
     @Override
