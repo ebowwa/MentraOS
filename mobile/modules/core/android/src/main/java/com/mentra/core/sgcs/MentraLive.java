@@ -220,16 +220,20 @@ public class MentraLive extends SGCManager {
     
     // Photo request tracking for error forwarding
     private Map<String, PhotoRequestInfo> photoRequestInfo = new HashMap<>();
+    private static final long PHOTO_REQUEST_TIMEOUT_MS = 60000; // 60 seconds - enough time for upload + response
+    private Handler photoRequestCleanupHandler = new Handler(Looper.getMainLooper());
     
     private static class PhotoRequestInfo {
         String requestId;
         String webhookUrl;
         String authToken;
+        long timestamp; // When the request was created
         
         PhotoRequestInfo(String requestId, String webhookUrl, String authToken) {
             this.requestId = requestId;
             this.webhookUrl = webhookUrl != null ? webhookUrl : "";
             this.authToken = authToken != null ? authToken : "";
+            this.timestamp = System.currentTimeMillis();
         }
     }
 
@@ -1749,10 +1753,14 @@ public class MentraLive extends SGCManager {
                     if (requestInfo != null && requestInfo.webhookUrl != null && !requestInfo.webhookUrl.isEmpty()) {
                         Bridge.sendPhotoError(
                             requestId, requestInfo.webhookUrl, requestInfo.authToken, errorCode, errorMsg);
-                        // Clean up tracking
-                        photoRequestInfo.remove(requestId);
                     } else {
                         Bridge.log("LIVE: No webhook URL found for requestId: " + requestId + " - error not forwarded");
+                        // Print out all of the current request ids
+                        Bridge.log("LIVE: Current tracked photo requestIds: " + photoRequestInfo.keySet().toString());
+                    }
+                    // Always clean up tracking after handling error response, regardless of webhook URL presence
+                    if (requestInfo != null) {
+                        photoRequestInfo.remove(requestId);
                     }
                 } else {
                     // Handle successful photo (in future implementation)
@@ -2921,6 +2929,19 @@ public class MentraLive extends SGCManager {
                 
                 // Store request info for error forwarding
                 photoRequestInfo.put(requestId, new PhotoRequestInfo(requestId, webhookUrl, authToken));
+                
+                // Schedule cleanup timeout - remove entry if no response received within timeout
+                photoRequestCleanupHandler.postDelayed(() -> {
+                    PhotoRequestInfo info = photoRequestInfo.get(requestId);
+                    if (info != null) {
+                        // Check if entry is stale (older than timeout)
+                        long age = System.currentTimeMillis() - info.timestamp;
+                        if (age >= PHOTO_REQUEST_TIMEOUT_MS) {
+                            Bridge.log("LIVE: Cleaning up stale photo request entry (timeout): " + requestId);
+                            photoRequestInfo.remove(requestId);
+                        }
+                    }
+                }, PHOTO_REQUEST_TIMEOUT_MS);
             }
 
             Bridge.log("LIVE: Using auto transfer mode with BLE fallback ID: " + bleImgId);
