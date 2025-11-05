@@ -128,6 +128,8 @@ Have questions or ideas? We'd love to hear from you!
 
 MentraOS is made by a community and we welcome PRs. Here's the Contributors Guide: [docs.mentra.glass/contributing](https://docs.mentra.glass/contributing)
 
+Looking for ways to contribute? We mark issues we'd love the community to help with using the **"Help Wanted"** tag. Check them out here: [Help Wanted Issues](https://github.com/Mentra-Community/MentraOS/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22help%20wanted%22)
+
 ## License
 
 MIT License Copyright 2025 MentraOS Community

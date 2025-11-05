@@ -15,13 +15,19 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.mentra.mentra",
-      "versionCode": 49,
+      "versionCode": 52,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
       },
       "allowBackup": false,
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE", "CHANGE_WIFI_STATE"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_WIFI_STATE",
+        "ACCESS_NETWORK_STATE",
+        "CHANGE_WIFI_STATE",
+        "CHANGE_NETWORK_STATE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -127,7 +133,7 @@
         }
       ],
       "./plugins/remove-ipad-orientations.js",
-      "./plugins/android-signing-config.js",
+      "./plugins/android.ts",
       "react-native-bottom-tabs",
       [
         "expo-build-properties",

@@ -43,6 +43,7 @@ const TIMING = {
   SYNC_COMPLETE_DISPLAY_MS: 1000, // How long to show "Sync complete!" message
   ALERT_DELAY_MS: 100, // Delay before showing alerts to allow UI to settle
   HOTSPOT_LOAD_DELAY_MS: 500, // Delay before loading photos after hotspot connects
+  HOTSPOT_CONNECT_DELAY_MS: 1000, // Delay before attempting WiFi connection to allow hotspot to fully activate
   RETRY_AFTER_RATE_LIMIT_MS: 5000, // Delay before retrying after 429 rate limit
 } as const
 
@@ -1005,8 +1006,13 @@ export function GalleryScreen() {
         return
       }
 
-      console.log("[GalleryScreen] Hotspot enabled, attempting to connect...")
-      connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
+      console.log("[GalleryScreen] Hotspot enabled, waiting for it to become discoverable...")
+      // Wait for hotspot to become fully active and discoverable before attempting connection
+      // On Android 10+, connectToProtectedSSID shows system WiFi picker which needs the network to be broadcasting
+      setTimeout(() => {
+        console.log("[GalleryScreen] Attempting to connect to hotspot...")
+        connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
+      }, TIMING.HOTSPOT_CONNECT_DELAY_MS)
     }
 
     GlobalEventEmitter.addListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
