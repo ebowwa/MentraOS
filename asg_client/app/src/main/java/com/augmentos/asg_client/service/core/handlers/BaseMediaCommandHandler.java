@@ -71,14 +71,16 @@ public abstract class BaseMediaCommandHandler implements ICommandHandler {
     }
     
     /**
-     * Generate a unique filename with timestamp.
+     * Generate a unique filename with timestamp including milliseconds.
+     * Format: PREFIX_yyyyMMdd_HHmmss_SSS.extension
+     * Example: IMG_20251104_094956_583.jpg
      * 
      * @param prefix File prefix (e.g., "IMG_", "VID_")
      * @param extension File extension (e.g., ".jpg", ".mp4")
-     * @return Unique filename
+     * @return Unique filename with millisecond precision
      */
     protected String generateUniqueFilename(String prefix, String extension) {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
         return prefix + timeStamp + extension;
     }
     

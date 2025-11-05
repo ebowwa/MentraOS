@@ -622,7 +622,7 @@ public class CameraNeo extends LifecycleService {
                         Log.d(TAG, "Legacy photo request - path: " + photoFilePath);
                         if (photoFilePath == null || photoFilePath.isEmpty()) {
                             Log.d(TAG, "Photo file path is empty, using default");
-                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+                            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
                             photoFilePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
                         }
                         setupCameraAndTakePicture(photoFilePath, requestedSize);
@@ -632,7 +632,7 @@ public class CameraNeo extends LifecycleService {
                     currentVideoId = intent.getStringExtra(EXTRA_VIDEO_ID);
                     currentVideoPath = intent.getStringExtra(EXTRA_VIDEO_FILE_PATH);
                     if (currentVideoPath == null || currentVideoPath.isEmpty()) {
-                        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+                        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
                         currentVideoPath = getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + ".mp4";
                     }
                     // Extract video settings if provided
@@ -1037,7 +1037,7 @@ public class CameraNeo extends LifecycleService {
         }
 
         // Generate output path
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(new Date());
         String outputPath = getExternalFilesDir(null) + File.separator +
                           "BUFFER_" + timeStamp + "_" + requestId + ".mp4";
 

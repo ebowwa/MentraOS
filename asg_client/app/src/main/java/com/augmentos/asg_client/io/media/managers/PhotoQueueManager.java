@@ -118,7 +118,7 @@ public class PhotoQueueManager {
      * @param callback The callback for photo capture events
      */
     public void takePhoto(PhotoCaptureCallback callback) {
-        String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+        String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss_SSS", java.util.Locale.US).format(new java.util.Date());
         String photoFilePath = mContext.getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
         
         CameraNeo.takePictureWithCallback(
