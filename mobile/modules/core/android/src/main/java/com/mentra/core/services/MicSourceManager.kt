@@ -46,7 +46,7 @@ class MicSourceManager(private val context: Context) {
                 getMicConfig(resolvedSource)
             }
 
-            MicSource.PHONE_AUTO_SWITCH -> MicConfig(
+            MicSource.PHONE_INTERNAL -> MicConfig(
                 source = selectedSource,
                 useBLEMic = false,
                 usePhoneMic = true,
@@ -62,12 +62,12 @@ class MicSourceManager(private val context: Context) {
                 canFallbackToPhone = false             // Already on phone
             )
 
-            MicSource.GLASSES_ONLY -> {
+            MicSource.GLASSES_CUSTOM -> {
                 if (!glassesHasMic) {
                     // Z100 case - no glasses mic available
-                    Bridge.log("MIC: Glasses mic not available for this model, falling back to phone")
+                    Bridge.log("MIC: Glasses custom mic not available for this model, falling back to phone")
                     // Should be prevented in UI, but handle gracefully
-                    return getMicConfig(MicSource.PHONE_AUTO_SWITCH)
+                    return getMicConfig(MicSource.PHONE_INTERNAL)
                 }
 
                 MicConfig(
@@ -76,14 +76,14 @@ class MicSourceManager(private val context: Context) {
                     usePhoneMic = false,
                     activateSCO = false,
                     audioMode = AudioManager.MODE_NORMAL,
-                    audioSource = -1, // N/A - using BLE mic
+                    audioSource = -1, // N/A - using BLE custom mic
                     focusGain = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT,
                     canFallbackToGlasses = false,  // Already on glasses
                     canFallbackToPhone = false     // Glasses-only mode
                 )
             }
 
-            MicSource.BLUETOOTH_MIC -> MicConfig(
+            MicSource.BLUETOOTH_CLASSIC -> MicConfig(
                 source = selectedSource,
                 useBLEMic = false,
                 usePhoneMic = false,  // Start with BT, will fallback to phone if needed
@@ -103,26 +103,26 @@ class MicSourceManager(private val context: Context) {
      */
     private fun resolveAutomaticSource(): MicSource {
         val sgc = CoreManager.getInstance().sgc
-        val deviceType = sgc?.type ?: return MicSource.PHONE_AUTO_SWITCH
+        val deviceType = sgc?.type ?: return MicSource.PHONE_INTERNAL
 
         return when (deviceType) {
             DeviceTypes.LIVE -> {
                 // Mentra Live: Has custom mic, but defaulting to phone for now
-                // Once mic quality is improved, can change back to GLASSES_ONLY
-                MicSource.PHONE_AUTO_SWITCH
+                // Once mic quality is improved, can change back to GLASSES_CUSTOM
+                MicSource.PHONE_INTERNAL
             }
             DeviceTypes.G1 -> {
                 // G1: Has custom mic but poor quality, prefer phone with fallback
-                MicSource.PHONE_AUTO_SWITCH
+                MicSource.PHONE_INTERNAL
             }
             DeviceTypes.Z100 -> {
                 // Z100: No custom mic, phone only
-                MicSource.PHONE_AUTO_SWITCH
+                MicSource.PHONE_INTERNAL
             }
             else -> {
                 // Unknown glasses type - default to safe option
-                Bridge.log("MIC: Unknown glasses type: $deviceType, defaulting to PHONE_AUTO_SWITCH")
-                MicSource.PHONE_AUTO_SWITCH
+                Bridge.log("MIC: Unknown glasses type: $deviceType, defaulting to PHONE_INTERNAL")
+                MicSource.PHONE_INTERNAL
             }
         }
     }
@@ -172,9 +172,9 @@ class MicSourceManager(private val context: Context) {
 
         return when (source) {
             MicSource.AUTOMATIC -> "Automatic ($deviceType default)"
-            MicSource.PHONE_AUTO_SWITCH -> "Phone mic (auto-switch to glasses)"
-            MicSource.GLASSES_ONLY -> "Glasses mic only"
-            MicSource.BLUETOOTH_MIC -> "Bluetooth microphone"
+            MicSource.PHONE_INTERNAL -> "Phone internal microphone"
+            MicSource.GLASSES_CUSTOM -> "Glasses custom microphone"
+            MicSource.BLUETOOTH_CLASSIC -> "Bluetooth Classic microphone"
         }
     }
 }

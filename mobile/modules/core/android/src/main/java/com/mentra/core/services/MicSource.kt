@@ -7,44 +7,43 @@ package com.mentra.core.services
 enum class MicSource {
     /**
      * Automatic mode - selects best mic source based on glasses capabilities
-     * - G1: Phone mic with fallback to G1's custom LC3 mic
-     * - Z100: Phone mic only (pauses on conflict)
-     * - Mentra Live: Glasses LC3 mic only
+     * - G1: Phone internal mic with fallback to G1's custom LC3 mic
+     * - Z100: Phone internal mic only (pauses on conflict)
+     * - Mentra Live: Phone internal mic with fallback to glasses custom LC3 mic
      */
     AUTOMATIC,
 
     /**
-     * Phone microphone with auto-switch to glasses mic on conflict
-     * Fallback chain: Phone mic → Glasses mic (if available)
+     * Phone's internal microphone
+     * Fallback chain: Phone internal mic → Glasses custom mic (if available)
      */
-    PHONE_AUTO_SWITCH,
+    PHONE_INTERNAL,
 
     /**
-     * Glasses' custom LC3 microphone only
-     * No fallbacks - always uses glasses mic
-     * Not available for Z100 (no onboard mic)
+     * Glasses' custom BLE/LC3 microphone
+     * No fallbacks - always uses glasses custom mic
+     * Not available for glasses without custom mics (Z100, Mach1, etc.)
      */
-    GLASSES_ONLY,
+    GLASSES_CUSTOM,
 
     /**
-     * External Bluetooth HFP microphone (for lapel mics)
-     * Fallback chain: Bluetooth mic → Phone mic → Glasses mic (if available)
+     * External Bluetooth Classic HFP microphone (for lapel mics)
+     * Fallback chain: Bluetooth Classic mic → Phone internal mic → Glasses custom mic (if available)
      * Activates SCO - degrades audio output to mono 16kHz
      * Intended for Deaf/HoH users with external lapel mics
      */
-    BLUETOOTH_MIC;
+    BLUETOOTH_CLASSIC;
 
     companion object {
         /**
          * Parse string value to MicSource enum
-         * Handles legacy values ("phone", "glasses") and new values
          */
         fun fromString(value: String): MicSource {
             return when (value.lowercase()) {
                 "automatic" -> AUTOMATIC
-                "phone_auto_switch", "phone" -> PHONE_AUTO_SWITCH
-                "glasses_only", "glasses" -> GLASSES_ONLY
-                "bluetooth_mic", "bluetooth" -> BLUETOOTH_MIC
+                "phone_internal" -> PHONE_INTERNAL
+                "glasses_custom" -> GLASSES_CUSTOM
+                "bluetooth_classic" -> BLUETOOTH_CLASSIC
                 else -> {
                     com.mentra.core.Bridge.log("MIC: Unknown mic source '$value', defaulting to AUTOMATIC")
                     AUTOMATIC
@@ -58,9 +57,9 @@ enum class MicSource {
         fun toString(source: MicSource): String {
             return when (source) {
                 AUTOMATIC -> "automatic"
-                PHONE_AUTO_SWITCH -> "phone_auto_switch"
-                GLASSES_ONLY -> "glasses_only"
-                BLUETOOTH_MIC -> "bluetooth_mic"
+                PHONE_INTERNAL -> "phone_internal"
+                GLASSES_CUSTOM -> "glasses_custom"
+                BLUETOOTH_CLASSIC -> "bluetooth_classic"
             }
         }
     }

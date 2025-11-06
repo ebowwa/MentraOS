@@ -54,7 +54,10 @@ export default function DeviceSettings() {
   const hasAdvancedSettingsContent = hasMicrophoneSelector || hasDeviceInfo
 
   const setMic = async (val: string) => {
-    if (val === "phone") {
+    // Check if this mic source uses phone mic
+    const usesPhoneMic = val === "phone_internal" || val === "bluetooth_classic"
+
+    if (usesPhoneMic) {
       // We're potentially about to enable the mic, so request permission
       const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE)
       if (!hasMicPermission) {
@@ -213,7 +216,7 @@ export default function DeviceSettings() {
             <MicrophoneSelector
               preferredMic={preferredMic}
               onMicChange={setMic}
-              glassesConnected={isGlassesConnected}
+              defaultWearableHasMic={features.hasMicrophone}
             />
           )}
 

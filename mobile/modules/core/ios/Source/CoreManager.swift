@@ -81,7 +81,7 @@ struct ViewState {
 
     // mic:
     private var useOnboardMic = false
-    private var preferredMic = "glasses"
+    var preferredMic = "automatic" // Changed to var so MicSourceManager can access
     private var micEnabled = false
 
     // button settings:
@@ -1042,36 +1042,24 @@ struct ViewState {
 
             let glassesHasMic = sgc?.hasMic ?? false
 
-            var useGlassesMic = false
-            var useOnboardMic = false
+            // Get mic configuration from MicSourceManager
+            let micSourceManager = MicSourceManager()
+            let micSource = MicSource.fromString(self.preferredMic)
+            let config = micSourceManager.getMicConfig(micSource)
 
-            useOnboardMic = self.preferredMic == "phone"
-            useGlassesMic = self.preferredMic == "glasses"
+            var useGlassesMic = config.useBLEMic && glassesHasMic
+            var useOnboardMic = (config.usePhoneMic || config.activateBluetooth) && !self.onboardMicUnavailable
 
-            if self.onboardMicUnavailable {
-                useOnboardMic = false
-            }
-
-            if !glassesHasMic {
-                useGlassesMic = false
-            }
-
-            if !useGlassesMic, !useOnboardMic {
-                // if we have a non-preferred mic, use it:
-                if glassesHasMic {
-                    useGlassesMic = true
-                } else if !self.onboardMicUnavailable {
+            // Implement fallback chain if neither mic is available
+            if !useGlassesMic && !useOnboardMic {
+                if config.canFallbackToPhone && !self.onboardMicUnavailable {
                     useOnboardMic = true
-                }
-
-                if !useGlassesMic, !useOnboardMic {
-                    Bridge.log(
-                        "MAN: no mic to use! falling back to glasses mic!!!!! (this should not happen)"
-                    )
+                } else if config.canFallbackToGlasses && glassesHasMic {
                     useGlassesMic = true
                 }
             }
 
+            // Check if app is in background
             let appState = UIApplication.shared.applicationState
             if appState == .background {
                 Bridge.log("App is in background - onboard mic unavailable to start!")
@@ -1089,20 +1077,19 @@ struct ViewState {
                 }
             }
 
-            // preferred state:
+            // Apply actually enabled state:
             useGlassesMic = actuallyEnabled && useGlassesMic
             useOnboardMic = actuallyEnabled && useOnboardMic
 
-            // Core.log(
-            //     "MAN: MIC: isEnabled: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
-            //         "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
-            //         "somethingConnected: \(isSomethingConnected()) onboardMicUnavailable: \(self.onboardMicUnavailable)" +
-            //         "actuallyEnabled: \(actuallyEnabled)"
-            // )
+            Bridge.log(
+                "MIC: isEnabled: \(micEnabled) sensing: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) " +
+                    "useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) " +
+                    "onboardMicUnavailable: \(self.onboardMicUnavailable) actuallyEnabled: \(actuallyEnabled)"
+            )
 
-            // if a g1 is connected, set the mic enabled:
-            if sgc?.type == DeviceTypes.G1, sgc!.ready {
-                await sgc!.setMicEnabled(useGlassesMic)
+            // Set mic enabled for glasses that have custom mics (capability-based, not model-based)
+            if let sgc = sgc, sgc.ready && sgc.hasMic {
+                await sgc.setMicEnabled(useGlassesMic)
             }
 
             setOnboardMicEnabled(useOnboardMic)
@@ -1305,8 +1292,8 @@ struct ViewState {
             // "is_searching": self.isSearching && !self.defaultWearable.isEmpty,
             "is_searching": isSearching,
             // only on if recording from glasses:
-            // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses") && (sgc?.ready ?? false),
+            // Check if using glasses custom mic
+            "is_mic_enabled_for_frontend": micEnabled && preferredMic == "glasses_custom" && (sgc?.ready ?? false),
             "core_token": coreToken,
             "puck_connected": true,
         ]

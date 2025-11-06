@@ -265,7 +265,7 @@ class PhoneMic private constructor(private val context: Context) {
                 // SCO failed, fallback to phone mic
                 Bridge.log("MIC: Bluetooth SCO failed, falling back to phone mic")
                 cleanupSco()
-                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_AUTO_SWITCH)
+                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_INTERNAL)
                 currentMicConfig = phoneConfig  // Update config to reflect actual source
                 return startRecordingNormal(phoneConfig)
             }
@@ -279,7 +279,7 @@ class PhoneMic private constructor(private val context: Context) {
             // Fallback to phone mic if allowed
             if (config.canFallbackToPhone) {
                 Bridge.log("MIC: Falling back to phone mic after SCO error")
-                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_AUTO_SWITCH)
+                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_INTERNAL)
                 currentMicConfig = phoneConfig  // Update config to reflect actual source
                 return startRecordingNormal(phoneConfig)
             }

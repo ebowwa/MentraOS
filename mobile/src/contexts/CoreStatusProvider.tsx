@@ -4,8 +4,8 @@ import {createContext, ReactNode, useCallback, useContext, useEffect, useRef, us
 
 import {deepCompare} from "@/utils/debug/debugging"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getModelCapabilities} from "@/../../cloud/packages/types/src/hardware"
-import {DeviceTypes} from "@/../../cloud/packages/types/src/enums"
+//import {getModelCapabilities} from "@/../../cloud/packages/types/src/hardware"
+//import {DeviceTypes} from "@/../../cloud/packages/types/src/enums"
 import {useSettingsStore, SETTINGS_KEYS} from "@/stores/settings"
 import CoreModule from "core"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -55,26 +55,23 @@ export const CoreStatusProvider = ({children}: {children: ReactNode}) => {
         lastGlassesModel.current = currentModelName
 
         if (currentModelName) {
-          // Glasses connected - check if user has manually set mic source
+          // Glasses connected - ensure automatic is set if user hasn't manually selected
           const storedMicPref = await AsyncStorage.getItem("preferred_mic")
           const userMicOverride = storedMicPref ? JSON.parse(storedMicPref) : null
 
-          if (!userMicOverride || userMicOverride === "automatic") {
-            // User hasn't manually selected or is on automatic - use recommended
-            const capabilities = getModelCapabilities(currentModelName as DeviceTypes)
-            const recommendedSource = capabilities.recommendedMicSource || "phone_auto_switch"
-
-            console.log(`CoreStatus: Setting mic source to ${recommendedSource} for ${currentModelName}`)
+          if (!userMicOverride) {
+            // User hasn't manually selected - default to automatic
+            console.log(`CoreStatus: No mic preference set, defaulting to automatic for ${currentModelName}`)
 
             // Update local setting
-            useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, recommendedSource)
+            useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, "automatic")
 
-            // Send to native
+            // Send to native - native MicSourceManager will resolve automatic
             CoreModule.updateSettings({
-              preferred_mic: recommendedSource,
+              preferred_mic: "automatic",
             })
           } else {
-            console.log(`CoreStatus: User has manual mic selection: ${userMicOverride}, not overriding`)
+            console.log(`CoreStatus: User has mic selection: ${userMicOverride}`)
           }
         }
       }

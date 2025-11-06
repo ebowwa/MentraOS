@@ -442,13 +442,13 @@ class CoreManager {
 
     /**
      * Check if the current mic source uses or could use phone mic
-     * Returns true for: automatic, phone_auto_switch, bluetooth_mic
-     * Returns false for: glasses_only
+     * Returns true for: automatic, phone_internal, bluetooth_classic
+     * Returns false for: glasses_custom
      */
     private fun micSourceUsesPhone(): Boolean {
         return when (preferredMic) {
-            "glasses_only" -> false  // Never uses phone mic
-            else -> true  // automatic, phone_auto_switch, bluetooth_mic, and legacy "phone"/"glasses" all can use phone
+            "glasses_custom" -> false  // Never uses phone mic
+            else -> true  // automatic, phone_internal, bluetooth_classic all can use phone
         }
     }
 

@@ -146,7 +146,7 @@ export interface Capabilities {
 
   // Recommended microphone source for this device
   // Determines default mic behavior for optimal user experience
-  recommendedMicSource?: "phone_auto_switch" | "glasses_only"
+  recommendedMicSource?: "phone_internal" | "glasses_custom" | "bluetooth_classic"
 }
 
 /**

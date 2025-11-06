@@ -59,6 +59,6 @@ export const vuzixZ100: Capabilities = {
   hasWifi: false,
 
   // Recommended microphone source - phone only (no glasses mic available)
-  // Z100 has no onboard microphone, must use phone mic
-  recommendedMicSource: "phone_auto_switch",
+  // Z100 has no onboard microphone, must use phone internal mic
+  recommendedMicSource: "phone_internal",
 }

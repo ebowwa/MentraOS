@@ -101,8 +101,8 @@ export const mentraLive: Capabilities = {
   // WiFi capabilities - Mentra Live supports WiFi
   hasWifi: true,
 
-  // Recommended microphone source - use phone mic with auto-switch
+  // Recommended microphone source - use phone internal mic
   // Mentra Live has custom LC3 mic, but defaulting to phone for now
-  // Once mic quality is improved, can change back to "glasses_only"
-  recommendedMicSource: "phone_auto_switch",
+  // Once mic quality is improved, can change back to "glasses_custom"
+  recommendedMicSource: "phone_internal",
 }

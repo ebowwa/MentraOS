@@ -24,6 +24,9 @@ class PhoneMic {
 
     private var cancellables = Set<AnyCancellable>()
 
+    /// Current mic configuration from MicSourceManager
+    private var currentMicConfig: MicConfig?
+
     // MARK: - Initialization
 
     init() {
@@ -227,14 +230,12 @@ class PhoneMic {
     func startRecording() -> Bool {
         // Ensure we're not already recording
         if isRecording {
-//            Core.log("MIC: Microphone is already ON!")
             return true
         }
 
         // Clean up any existing engine
         if let existingEngine = audioEngine {
             existingEngine.stop()
-//      existingEngine.inputNode.removeTap(onBus: 0)
             audioEngine = nil
         }
 
@@ -244,29 +245,57 @@ class PhoneMic {
             return false
         }
 
-        // Set up audio session BEFORE creating the engine
+        // Get mic configuration from MicSourceManager
+        let micSourceManager = MicSourceManager()
+        let micSource = micSourceManager.getCurrentMicSource()
+        let config = micSourceManager.getMicConfig(micSource)
+        currentMicConfig = config
+
+        Bridge.log("MIC: Starting recording with source: \(micSource.rawValue)")
+
+        // Handle BLE mic (glasses custom mic)
+        if config.useBLEMic {
+            Bridge.log("MIC: Using glasses BLE mic, notifying CoreManager")
+            // CoreManager will handle enabling glasses mic
+            return true
+        }
+
+        // Set up audio session with config from MicSourceManager
         audioSession = AVAudioSession.sharedInstance()
         do {
             try audioSession?.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.allowBluetooth, .defaultToSpeaker, .mixWithOthers]
+                config.audioSessionCategory,
+                mode: config.audioSessionMode,
+                options: config.audioSessionOptions
             )
 
-            // Set preferred input if available
+            // Set preferred input based on config
             if let availableInputs = audioSession?.availableInputs, !availableInputs.isEmpty {
-                let preferredInput =
-                    availableInputs.first { input in
-                        input.portType == .bluetoothHFP || input.portType == .bluetoothA2DP
-                    } ?? availableInputs.first
+                var preferredInput: AVAudioSessionPortDescription?
 
-                try audioSession?.setPreferredInput(preferredInput)
+                if config.activateBluetooth {
+                    // For Bluetooth Classic, prefer HFP/A2DP
+                    preferredInput = availableInputs.first { input in
+                        input.portType == .bluetoothHFP || input.portType == .bluetoothA2DP
+                    }
+                }
+
+                // Fallback to first available input if no Bluetooth found or not requested
+                if preferredInput == nil {
+                    preferredInput = availableInputs.first
+                }
+
+                if let input = preferredInput {
+                    try audioSession?.setPreferredInput(input)
+                    Bridge.log("MIC: Using input: \(input.portName) (\(input.portType.rawValue))")
+                }
             }
 
-            // Activate the session BEFORE creating the engine
+            // Activate the session
             try audioSession?.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             Bridge.log("MIC: Failed to set up audio session: \(error)")
+            // CoreManager will handle fallback to glasses mic if needed
             return false
         }
 

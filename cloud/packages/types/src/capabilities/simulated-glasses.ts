@@ -73,6 +73,6 @@ export const simulatedGlasses: Capabilities = {
   hasWifi: false,
 
   // Recommended microphone source - phone only (no glasses mic available)
-  // Simulated glasses have no custom microphone, must use phone mic
-  recommendedMicSource: "phone_auto_switch",
+  // Simulated glasses have no custom microphone, must use phone internal mic
+  recommendedMicSource: "phone_internal",
 }

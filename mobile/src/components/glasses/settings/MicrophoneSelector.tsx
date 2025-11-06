@@ -8,8 +8,7 @@ import {translate} from "@/i18n/translate"
 interface MicrophoneSelectorProps {
   preferredMic: string
   onMicChange: (mic: string) => void
-  glassesConnected?: boolean
-  glassesHasMic?: boolean
+  defaultWearableHasMic?: boolean
 }
 
 type MicOption = {
@@ -17,7 +16,6 @@ type MicOption = {
   titleKey: string
   descriptionKey: string
   recommended?: boolean
-  requiresGlasses?: boolean
 }
 
 const micOptions: MicOption[] = [
@@ -28,37 +26,39 @@ const micOptions: MicOption[] = [
     recommended: true,
   },
   {
-    value: "phone_auto_switch",
-    titleKey: "deviceSettings:micPhoneAutoSwitch",
-    descriptionKey: "deviceSettings:micPhoneAutoSwitchDesc",
+    value: "phone_internal",
+    titleKey: "deviceSettings:micPhoneInternal",
+    descriptionKey: "deviceSettings:micPhoneInternalDesc",
   },
   {
-    value: "glasses_only",
-    titleKey: "deviceSettings:micGlassesOnly",
-    descriptionKey: "deviceSettings:micGlassesOnlyDesc",
-    requiresGlasses: true,
+    value: "glasses_custom",
+    titleKey: "deviceSettings:micGlassesCustom",
+    descriptionKey: "deviceSettings:micGlassesCustomDesc",
   },
   {
-    value: "bluetooth_mic",
-    titleKey: "deviceSettings:micBluetoothMic",
-    descriptionKey: "deviceSettings:micBluetoothMicDesc",
+    value: "bluetooth_classic",
+    titleKey: "deviceSettings:micBluetoothClassic",
+    descriptionKey: "deviceSettings:micBluetoothClassicDesc",
   },
 ]
 
-export function MicrophoneSelector({preferredMic, onMicChange, glassesConnected}: MicrophoneSelectorProps) {
+export function MicrophoneSelector({preferredMic, onMicChange, defaultWearableHasMic}: MicrophoneSelectorProps) {
   const {theme, themed} = useAppTheme()
 
-  // Normalize legacy values
-  const normalizedMic =
-    preferredMic === "phone" ? "phone_auto_switch" : preferredMic === "glasses" ? "glasses_only" : preferredMic
+  // Filter options - only show glasses_custom if default wearable has a custom mic
+  const availableOptions = micOptions.filter(option => {
+    if (option.value === "glasses_custom") {
+      return defaultWearableHasMic === true
+    }
+    return true
+  })
 
   return (
     <View style={themed($container)}>
       <Text tx="deviceSettings:microphoneSelection" style={[themed($label), {marginBottom: theme.spacing.sm}]} />
 
-      {micOptions.map((option, index) => {
-        const isSelected = normalizedMic === option.value
-        const isDisabled = option.requiresGlasses && !glassesConnected
+      {availableOptions.map((option, index) => {
+        const isSelected = preferredMic === option.value
 
         return (
           <View key={option.value}>
@@ -76,10 +76,8 @@ export function MicrophoneSelector({preferredMic, onMicChange, glassesConnected}
                 flexDirection: "row",
                 justifyContent: "space-between",
                 paddingVertical: theme.spacing.xs,
-                opacity: isDisabled ? 0.5 : 1,
               }}
-              onPress={() => !isDisabled && onMicChange(option.value)}
-              disabled={isDisabled}>
+              onPress={() => onMicChange(option.value)}>
               <View style={{flexDirection: "column", gap: 4, flex: 1, paddingRight: 8}}>
                 <View style={{flexDirection: "row", alignItems: "center", gap: 8}}>
                   <Text style={{color: theme.colors.text, fontWeight: "600"}}>{translate(option.titleKey)}</Text>
@@ -98,12 +96,7 @@ export function MicrophoneSelector({preferredMic, onMicChange, glassesConnected}
                     </View>
                   )}
                 </View>
-                <Text style={{color: theme.colors.textDim, fontSize: 13}}>{translate(option.descriptionKey)}</Text>
-                {isDisabled && (
-                  <Text style={{color: theme.colors.error, fontSize: 12, fontStyle: "italic"}}>
-                    {translate("deviceSettings:glassesNeededForGlassesMic")}
-                  </Text>
-                )}
+                {/* <Text style={{color: theme.colors.textDim, fontSize: 13}}>{translate(option.descriptionKey)}</Text> */}
               </View>
               {isSelected && <MaterialCommunityIcons name="check" size={24} color={theme.colors.primary} />}
             </TouchableOpacity>
