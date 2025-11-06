@@ -54,7 +54,7 @@ User with Glasses
 │ Mobile App   │  (BLE to glasses, manages connection)
 │  (Phone)     │
 └──────┬───────┘
-       │ WebSocket
+       │ WebSocket + REST APIs
        ▼
 ┌──────────────┐      HTTP POST       ┌──────────────┐
 │ MentraOS     │      (webhook)       │  Developer's │
@@ -65,25 +65,22 @@ User with Glasses
 └──────────────┘                       └──────────────┘
 ```
 
-**Session Flow:**
+**Key Points:**
 
-1. User starts app on glasses
-2. Cloud sends POST webhook to app's publicUrl: `{ type: "session_request", sessionId, userId }`
-3. App receives webhook, connects to cloud via WebSocket
-4. App sends `CONNECTION_INIT` message with sessionId, packageName, apiKey
-5. Cloud validates and sends back `CONNECTION_ACK` with settings, capabilities
-6. App subscribes to desired streams (e.g., transcription, button_press)
-7. Cloud sends `DATA_STREAM` messages to app with event data
-8. App sends `DISPLAY_REQUEST` messages to show content
-9. Session ends when user stops app or disconnects
+- Mobile app connects to cloud via WebSocket (for events) and REST APIs (for state management)
+- Cloud handles complexity and abstracts functionality for the client
+- Cloud sends webhooks to developer's app server
+- App server connects back to cloud via WebSocket
+- Cloud relays events between mobile client and app server
 
 ### What `mentra client` Simulates
 
 ```
 ┌──────────────┐
-│mentra client │  (Simulates: mobile app + glasses + user)
+│mentra client │  (Simulates mobile app + glasses)
 └──────┬───────┘
-       │ Triggers webhook + sends events
+       │ WebSocket + REST APIs
+       │ (same as mobile app uses)
        ▼
 ┌──────────────┐      HTTP POST       ┌──────────────┐
 │ MentraOS     │      (webhook)       │  Developer's │
@@ -93,20 +90,75 @@ User with Glasses
 │              │      WebSocket        │              │
 └──────┬───────┘                       └──────────────┘
        │
-       │ Relays app responses back to client
+       │ Relays display/audio/dashboard updates
        ▼
 ┌──────────────┐
-│mentra client │  (Displays layouts, logs messages)
+│mentra client │  (Displays in terminal)
 └──────────────┘
 ```
 
-**Note:** The exact implementation depends on whether we:
+### Implementation Approach
 
-- Option A: Connect through real MentraOS Cloud (requires cloud API support)
-- Option B: Simulate cloud locally and connect directly to app
-- Option C: Hybrid approach
+**`mentra client` will:**
 
-This spec remains flexible on implementation approach until we clarify with backend team.
+1. Connect to MentraOS Cloud using the same APIs as mobile app
+2. Send user events (transcription, button presses, etc.) to cloud
+3. Cloud handles routing these to the app server
+4. Receive display updates, audio requests, dashboard updates from cloud
+5. Render these in the terminal
+
+**Backend:**
+
+- Always uses **real MentraOS Cloud backend**
+- Can connect to remote cloud (production, staging)
+- Can connect to local cloud (developers run `bun run dev` locally)
+- No simulation of cloud behavior - always uses actual backend
+
+**Key Requirement: Cloud Client Library**
+
+To implement this, we need to create a **`cloud-client` package** that:
+
+- Abstracts the client-to-cloud communication layer
+- Can be used by both the mobile app (in future refactor) and CLI tool
+- Handles WebSocket connection management
+- Handles REST API calls to cloud
+- Provides a clean interface for sending events and receiving updates
+
+### API Surface Documentation Needed
+
+Before implementing `mentra client`, we must document:
+
+1. **Client → Cloud WebSocket Messages**
+   - What messages does the client send to cloud?
+   - Message format, types, and payloads
+   - Reference: `websocket-glasses.service.ts` shows what cloud expects from client
+
+2. **Cloud → Client WebSocket Messages**
+   - What messages does cloud send to client?
+   - Display updates, audio playback, dashboard updates, etc.
+
+3. **Client → Cloud REST APIs**
+   - What HTTP endpoints does the mobile client use?
+   - Currently scattered across `cloud/src/routes/` and `cloud/src/api/client/`
+   - Need to identify full API surface
+
+4. **Session Lifecycle**
+   - How does client authenticate?
+   - How does client start/stop app sessions?
+   - How does client handle reconnection?
+
+**Action Items:**
+
+- [ ] Audit existing mobile client API usage
+- [ ] Document complete client-cloud API interface
+- [ ] Design `cloud-client` library interface
+- [ ] Update this spec with concrete API details
+
+**Notes:**
+
+- Always connects to real MentraOS Cloud backend (no local simulation)
+- Developers can run cloud locally for testing: `cd cloud && bun run dev`
+- Spec intentionally remains vague on API details until we complete the API surface audit
 
 ## User Experience
 
@@ -442,89 +494,80 @@ Based on actual layout types from SDK:
 ```
 cli/src/commands/client/
 ├── index.ts              # Main client command
-├── session.ts            # Session management & WebSocket
-├── events.ts             # Event simulation & sending
+├── session.ts            # Session management using cloud-client
+├── events.ts             # Event simulation helpers
 ├── display.ts            # Layout rendering in terminal
 ├── interactive.ts        # Interactive mode REPL
 └── capabilities.ts       # Device capability profiles
+
+cloud-client/             # NEW: Shared client library
+├── src/
+│   ├── connection.ts     # WebSocket connection management
+│   ├── api.ts            # REST API client
+│   ├── events.ts         # Event sending interface
+│   ├── session.ts        # Session lifecycle management
+│   └── types.ts          # Message types
 ```
 
-### Core Session Flow
+### Core Session Flow (High-Level)
 
 ```typescript
+// Using the cloud-client library
+import {CloudClient} from "@mentra/cloud-client"
+
 export class ClientSimulator {
-  private appServerUrl: string
+  private cloudClient: CloudClient
   private packageName: string
-  private sessionId: string
-  private userId: string
-  private capabilities: Capabilities
 
   async start(): Promise<void> {
-    // 1. Generate session ID
-    this.sessionId = generateSessionId()
+    // 1. Create cloud client (handles connection to MentraOS Cloud)
+    this.cloudClient = new CloudClient({
+      userId: this.userId,
+      // ... auth/config
+    })
 
-    // 2. Send webhook to app server
-    await this.sendWebhook()
+    // 2. Connect to cloud
+    await this.cloudClient.connect()
 
-    // 3. Wait for app to connect to cloud (via intercepting WebSocket)
-    // OR connect directly to app if implementing local simulation
-    await this.waitForAppConnection()
+    // 3. Start app session (cloud handles webhook to app server)
+    await this.cloudClient.startApp(this.packageName)
 
-    // 4. Monitor messages from app
+    // 4. Set up listeners for updates from app (via cloud)
     this.setupMessageHandlers()
 
     // 5. Enter interactive mode
     await this.startInteractiveMode()
   }
 
-  private async sendWebhook(): Promise<void> {
-    const webhook = {
-      type: "session_request",
-      sessionId: this.sessionId,
-      userId: this.userId,
-      timestamp: new Date().toISOString(),
-    }
-
-    await fetch(`${this.appServerUrl}/webhook`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(webhook),
-    })
-  }
-
   async sendEvent(streamType: StreamType, data: any): Promise<void> {
-    // Send event to cloud which relays to app
-    // OR send directly to app if implementing local mode
-    const message = {
-      type: "data_stream",
+    // Send event to cloud using cloud-client library
+    await this.cloudClient.sendEvent({
       streamType,
-      sessionId: this.sessionId,
       data,
-      timestamp: new Date(),
-    }
-
-    // Implementation depends on architecture choice
-    await this.sendToCloud(message)
+    })
   }
 
   private setupMessageHandlers(): void {
-    // Handle display requests from app
-    this.on("display_request", (msg) => {
-      this.renderLayout(msg.layout, msg.durationMs)
+    // Listen for messages from cloud (which come from app)
+    this.cloudClient.on("display_update", (msg) => {
+      this.renderLayout(msg)
     })
 
-    // Handle audio requests
-    this.on("audio_playback", (msg) => {
+    this.cloudClient.on("audio_request", (msg) => {
       this.displayAudioRequest(msg)
     })
 
-    // Handle dashboard updates
-    this.on("dashboard_update", (msg) => {
+    this.cloudClient.on("dashboard_update", (msg) => {
       this.displayDashboard(msg)
     })
   }
 }
 ```
+
+**Notes:**
+
+- Connects to real cloud backend (local or remote)
+- Actual implementation details depend on completing the API surface documentation
 
 ### Event Simulation
 
@@ -608,29 +651,42 @@ const CAPABILITY_PROFILES = {
 }
 ```
 
-## Implementation Approaches
+## Cloud Client Library Design
 
-### Option A: Cloud Integration (Ideal)
+The `cloud-client` library will be a **headless client** that abstracts the MentraOS Cloud API.
 
-- `mentra client` connects to real MentraOS Cloud
-- Cloud relays events to app
-- App responses come back through cloud
-- **Requires:** Backend API support for CLI clients
+### Purpose
 
-### Option B: Local Simulation (MVP)
+- Shared library used by both mobile app and CLI tool
+- Handles all client-to-cloud communication
+- Provides clean, typed interface for client applications
 
-- `mentra client` simulates cloud behavior locally
-- Sends webhook to app server
-- Intercepts/mocks WebSocket connection
-- **Advantage:** Works without backend changes
+### Key Responsibilities
 
-### Option C: Hybrid
+1. WebSocket connection management to cloud
+2. REST API calls to cloud
+3. Event sending (transcription, button presses, etc.)
+4. Message receiving (display updates, audio, dashboard)
+5. Session lifecycle (start/stop apps)
+6. Authentication and token management
+7. Reconnection and error handling
 
-- Use real cloud for session management
-- Direct WebSocket to app for messages
-- **Balance:** Some cloud integration, some local control
+### Benefits
 
-**Recommendation:** Start with Option B (Local Simulation) for MVP, migrate to Option A when backend supports it.
+- **Code reuse:** Mobile app and CLI share same cloud interface
+- **Maintainability:** Single source of truth for cloud API
+- **Type safety:** Strongly typed API surface
+- **Testing:** Can mock cloud-client for app testing
+
+### Before Implementation
+
+We must first:
+
+1. **Audit mobile client code** to identify all cloud APIs used
+2. **Document WebSocket message protocol** (client ↔ cloud)
+3. **Document REST endpoints** used by client
+4. **Design cloud-client API interface**
+5. **Update this spec** with concrete implementation details
 
 ## Success Criteria
 
@@ -684,14 +740,43 @@ $ mentra client com.example.app
 - `mentra tunnel` - Exposes app server
 - `mentra app create` - Registers app
 
-## Open Questions
+## Open Questions & Next Steps
 
-1. **Cloud integration approach** - Which option (A, B, or C)?
-2. **WebSocket interception** - How to relay messages in local mode?
-3. **Authentication** - Does mentra client need CLI auth token?
-4. **Photo simulation** - How to simulate camera captures?
+### Critical Prerequisites
 
-These questions should be answered before implementation begins.
+1. **API Surface Audit**
+   - What WebSocket messages does client send/receive to/from cloud?
+   - What REST APIs does mobile client use?
+   - Where is this code? (Scattered across `routes/` and `api/client/`)
+
+2. **Authentication Model**
+   - How does mentra client authenticate with cloud?
+   - Use CLI token? Separate client token? Test user credentials?
+
+3. **Session Management**
+   - How does client tell cloud to start/stop an app?
+   - What's the actual message protocol?
+
+4. **Device Capabilities**
+   - How does client tell cloud what hardware it has?
+   - When/how are capabilities sent?
+
+### Implementation Blockers
+
+- Cannot implement `mentra client` without knowing client-cloud API
+- Cannot design `cloud-client` library without API documentation
+- Current mobile client code needs to be audited
+
+### Action Plan
+
+1. Audit mobile client WebSocket usage (`websocket-glasses.service.ts` shows cloud side)
+2. Audit mobile client REST API usage
+3. Document complete API surface
+4. Design `cloud-client` library interface
+5. Update this spec with concrete details
+6. Begin implementation
+
+**Status:** Spec is intentionally incomplete pending API surface documentation.
 
 ## Resources
 
