@@ -62,8 +62,7 @@ class ForegroundService : Service() {
         }
 
         // Start with dataSync (always allowed)
-        var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        Bridge.log("ForegroundService: Base type - dataSync")
+        var serviceType = 0
 
         // Check Bluetooth permissions
         val hasBluetoothPermission =
@@ -99,6 +98,12 @@ class ForegroundService : Service() {
             Bridge.log("ForegroundService: Added microphone (has RECORD_AUDIO permission)")
         } else {
             Bridge.log("ForegroundService: No microphone permission")
+        }
+
+        // Only use dataSync as fallback if no other types were added
+        if (serviceType == 0) {
+            serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            Bridge.log("ForegroundService: Using dataSync as fallback (no other permissions)")
         }
 
         return serviceType

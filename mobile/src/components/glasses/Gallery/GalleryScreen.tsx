@@ -142,9 +142,14 @@ export function GalleryScreen() {
     has_content: boolean
   } | null>(null)
 
+  // Selection mode state
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
+
   // Track if gallery opened the hotspot
   const galleryOpenedHotspotRef = useRef(false)
   const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  const hotspotConnectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track loaded ranges
   const loadedRanges = useRef<Set<string>>(new Set())
@@ -165,7 +170,7 @@ export function GalleryScreen() {
 
   // Initial load - get total count and first batch
   const loadInitialPhotos = useCallback(
-    async (overrideServerIp?: string) => {
+    async (overrideServerIp?: string, skipThumbnails: boolean = false) => {
       const serverIp = overrideServerIp || hotspotGatewayIp
       const hasConnection = overrideServerIp || (isHotspotEnabled && hotspotGatewayIp)
 
@@ -184,6 +189,15 @@ export function GalleryScreen() {
 
       try {
         asgCameraApi.setServer(serverIp, 8089)
+
+        // If skipThumbnails is true, just transition to READY_TO_SYNC without loading thumbnails
+        // The thumbnails will be loaded progressively during sync
+        if (skipThumbnails) {
+          console.log("[GalleryScreen] Skipping thumbnail load, will show during sync")
+          transitionToState(GalleryState.READY_TO_SYNC)
+          return
+        }
+
         const result = await asgCameraApi.getGalleryPhotos(PAGE_SIZE, 0)
 
         setTotalServerCount(result.totalCount)
@@ -329,6 +343,19 @@ export function GalleryScreen() {
 
           // Use requestAnimationFrame to ensure immediate UI updates
           requestAnimationFrame(() => {
+            // Add thumbnail to gallery when we start downloading this file (first progress update)
+            if (fileProgress === 0 || fileProgress === undefined) {
+              const fileInfo = syncData.changed_files.find(f => f.name === fileName)
+              if (fileInfo) {
+                setLoadedServerPhotos(prev => {
+                  const newMap = new Map(prev)
+                  // Add with index based on current position
+                  newMap.set(current - 1, fileInfo)
+                  return newMap
+                })
+              }
+            }
+
             // Update individual photo progress
             setPhotoSyncStates(prev => {
               const newStates = new Map(prev)
@@ -517,6 +544,12 @@ export function GalleryScreen() {
   const handlePhotoPress = (item: GalleryItem) => {
     if (!item.photo) return
 
+    // If in selection mode, toggle selection
+    if (isSelectionMode) {
+      togglePhotoSelection(item.photo.name)
+      return
+    }
+
     // Prevent opening photos that are currently being synced
     const syncState = photoSyncStates.get(item.photo.name)
     if (
@@ -534,6 +567,35 @@ export function GalleryScreen() {
       return
     }
     setSelectedPhoto(item.photo)
+  }
+
+  // Toggle photo selection
+  const togglePhotoSelection = (photoName: string) => {
+    setSelectedPhotos(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(photoName)) {
+        newSet.delete(photoName)
+        // Exit selection mode if no photos are selected
+        if (newSet.size === 0) {
+          setTimeout(() => exitSelectionMode(), 0)
+        }
+      } else {
+        newSet.add(photoName)
+      }
+      return newSet
+    })
+  }
+
+  // Enter selection mode
+  const enterSelectionMode = (photoName: string) => {
+    setIsSelectionMode(true)
+    setSelectedPhotos(new Set([photoName]))
+  }
+
+  // Exit selection mode
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false)
+    setSelectedPhotos(new Set())
   }
 
   // Handle photo sharing
@@ -630,48 +692,89 @@ export function GalleryScreen() {
     }
   }
 
-  // Handle photo deletion
-  const handleDeletePhoto = async (photo: PhotoInfo) => {
-    const hasConnection = isHotspotEnabled && hotspotGatewayIp
+  // Handle deletion of selected photos
+  const handleDeleteSelectedPhotos = async () => {
+    if (selectedPhotos.size === 0) return
 
-    if (!hasConnection) {
-      showAlert("Error", "Glasses not connected", [{text: translate("common:ok")}])
-      return
-    }
+    const selectedCount = selectedPhotos.size
+    const itemText = selectedCount === 1 ? "item" : "items"
 
-    showAlert("Delete Photo", `Are you sure you want to delete "${photo.name}"?`, [
+    showAlert("Delete Photos", `Are you sure you want to delete ${selectedCount} ${itemText}?`, [
       {text: translate("common:cancel"), style: "cancel"},
       {
         text: translate("common:delete"),
         style: "destructive",
         onPress: async () => {
           try {
-            await asgCameraApi.deleteFilesFromServer([photo.name])
-            showAlert("Success", "Photo deleted successfully!", [{text: translate("common:ok")}])
-            loadInitialPhotos()
-          } catch (err) {
-            showAlert("Error", err instanceof Error ? err.message : "Failed to delete photo", [
-              {text: translate("common:ok")},
-            ])
-          }
-        },
-      },
-    ])
-  }
+            const hasConnection = isHotspotEnabled && hotspotGatewayIp
+            const photosToDelete = Array.from(selectedPhotos)
 
-  // Handle downloaded photo deletion
-  const handleDeleteDownloadedPhoto = async (photo: PhotoInfo) => {
-    showAlert("Delete Downloaded Photo", `Are you sure you want to delete "${photo.name}" from local storage?`, [
-      {text: translate("common:cancel"), style: "cancel"},
-      {
-        text: translate("common:delete"),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await localStorageService.deleteDownloadedFile(photo.name)
+            // Separate server photos and local photos
+            const serverPhotos: string[] = []
+            const localPhotos: string[] = []
+
+            for (const photoName of photosToDelete) {
+              // Check if photo is on server
+              let isOnServer = false
+              for (const [_, photo] of loadedServerPhotos) {
+                if (photo.name === photoName) {
+                  isOnServer = true
+                  break
+                }
+              }
+
+              if (isOnServer) {
+                serverPhotos.push(photoName)
+              } else {
+                localPhotos.push(photoName)
+              }
+            }
+
+            let deleteErrors: string[] = []
+
+            // Delete server photos if connected
+            if (serverPhotos.length > 0 && hasConnection) {
+              try {
+                await asgCameraApi.deleteFilesFromServer(serverPhotos)
+                console.log(`[GalleryScreen] Deleted ${serverPhotos.length} photos from server`)
+              } catch (err) {
+                console.error("Error deleting server photos:", err)
+                deleteErrors.push(`Failed to delete ${serverPhotos.length} photos from glasses`)
+              }
+            }
+
+            // Delete local photos
+            if (localPhotos.length > 0) {
+              for (const photoName of localPhotos) {
+                try {
+                  await localStorageService.deleteDownloadedFile(photoName)
+                } catch (err) {
+                  console.error(`Error deleting local photo ${photoName}:`, err)
+                  deleteErrors.push(`Failed to delete ${photoName} from local storage`)
+                }
+              }
+              console.log(`[GalleryScreen] Deleted ${localPhotos.length} photos from local storage`)
+            }
+
+            // Refresh gallery
             await loadDownloadedPhotos()
-          } catch {
-            showAlert("Error", "Failed to delete photo from local storage", [{text: translate("common:ok")}])
+            if (hasConnection) {
+              loadInitialPhotos()
+            }
+
+            // Exit selection mode
+            exitSelectionMode()
+
+            if (deleteErrors.length > 0) {
+              showAlert("Partial Success", deleteErrors.join(". "), [{text: translate("common:ok")}])
+            } else {
+              showAlert("Success", `${selectedCount} ${itemText} deleted successfully!`, [
+                {text: translate("common:ok")},
+              ])
+            }
+          } catch (err) {
+            console.error("Error deleting photos:", err)
+            showAlert("Error", "Failed to delete photos", [{text: translate("common:ok")}])
           }
         },
       },
@@ -794,7 +897,7 @@ export function GalleryScreen() {
         }
 
         setTimeout(() => {
-          loadInitialPhotos(ip)
+          loadInitialPhotos(ip, true) // Skip thumbnails, they'll appear during sync
         }, TIMING.HOTSPOT_LOAD_DELAY_MS)
       }
     } catch (error: any) {
@@ -846,33 +949,59 @@ export function GalleryScreen() {
       const hasPermission = await MediaLibraryPermissions.checkPermission()
 
       if (!hasPermission) {
-        setIsRequestingPermission(true)
-        const granted = await MediaLibraryPermissions.requestPermission()
-        setIsRequestingPermission(false)
+        // Show explanation BEFORE requesting permission
+        showAlert(
+          "Camera Roll Access",
+          "MentraOS Gallery can automatically save photos and videos from your glasses to your device's camera roll. Would you like to grant camera roll access?",
+          [
+            {
+              text: "Not Now",
+              style: "cancel",
+              onPress: () => goBack(),
+            },
+            {
+              text: "Allow",
+              onPress: async () => {
+                setIsRequestingPermission(true)
+                const granted = await MediaLibraryPermissions.requestPermission()
+                setIsRequestingPermission(false)
 
-        if (!granted) {
-          // Show alert and navigate back
-          showAlert(
-            "Permission Required",
-            "MentraOS needs permission to save photos to your camera roll. Please grant permission in Settings.",
-            [
-              {text: "Cancel", onPress: () => goBack()},
-              {
-                text: "Open Settings",
-                onPress: () => {
-                  Linking.openSettings()
-                  goBack()
-                },
+                if (!granted) {
+                  // Permission was denied - show settings alert
+                  showAlert(
+                    "Permission Required",
+                    "MentraOS needs permission to save photos to your camera roll. Please grant permission in Settings.",
+                    [
+                      {text: "Cancel", onPress: () => goBack()},
+                      {
+                        text: "Open Settings",
+                        onPress: () => {
+                          Linking.openSettings()
+                          goBack()
+                        },
+                      },
+                    ],
+                  )
+                  return
+                }
+
+                // Permission granted, continue with initialization
+                setHasMediaLibraryPermission(true)
+                console.log("[GalleryScreen] Media library permission granted")
+                initializeGallery()
               },
-            ],
-          )
-          return
-        }
+            },
+          ],
+        )
+        return
       }
 
       setHasMediaLibraryPermission(true)
       console.log("[GalleryScreen] Media library permission granted")
+      initializeGallery()
+    }
 
+    const initializeGallery = () => {
       // Continue with existing mount logic
       loadDownloadedPhotos()
 
@@ -907,6 +1036,10 @@ export function GalleryScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        if (isSelectionMode) {
+          exitSelectionMode()
+          return true
+        }
         if (!selectedPhoto) return false
         setSelectedPhoto(null)
         return true
@@ -914,7 +1047,7 @@ export function GalleryScreen() {
 
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress)
       return () => subscription.remove()
-    }, [selectedPhoto]),
+    }, [selectedPhoto, isSelectionMode]),
   )
 
   // Listen for gallery status
@@ -964,7 +1097,8 @@ export function GalleryScreen() {
       if (phoneConnectedToHotspot) {
         console.log("[GalleryScreen] Already connected to hotspot")
         transitionToState(GalleryState.CONNECTED_LOADING)
-        loadInitialPhotos(hotspotGatewayIp)
+        setTotalServerCount(data.total || 0)
+        loadInitialPhotos(hotspotGatewayIp, true)
         return
       }
 
@@ -984,6 +1118,7 @@ export function GalleryScreen() {
         } else {
           console.log("[GalleryScreen] 📸 Gallery status update (state: " + galleryState + "), showing sync option")
         }
+        setTotalServerCount(data.total || 0)
         transitionToState(GalleryState.MEDIA_AVAILABLE)
       }
     }
@@ -1009,14 +1144,27 @@ export function GalleryScreen() {
       console.log("[GalleryScreen] Hotspot enabled, waiting for it to become discoverable...")
       // Wait for hotspot to become fully active and discoverable before attempting connection
       // On Android 10+, connectToProtectedSSID shows system WiFi picker which needs the network to be broadcasting
-      setTimeout(() => {
+
+      // Clear any existing timeout
+      if (hotspotConnectionTimeoutRef.current) {
+        clearTimeout(hotspotConnectionTimeoutRef.current)
+      }
+
+      hotspotConnectionTimeoutRef.current = setTimeout(() => {
         console.log("[GalleryScreen] Attempting to connect to hotspot...")
         connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
+        hotspotConnectionTimeoutRef.current = null
       }, TIMING.HOTSPOT_CONNECT_DELAY_MS)
     }
 
     GlobalEventEmitter.addListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     return () => {
+      // Clean up timeout on unmount
+      if (hotspotConnectionTimeoutRef.current) {
+        console.log("[GalleryScreen] Cleaning up hotspot connection timeout")
+        clearTimeout(hotspotConnectionTimeoutRef.current)
+        hotspotConnectionTimeoutRef.current = null
+      }
       GlobalEventEmitter.removeListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
     }
   }, [])
@@ -1031,10 +1179,12 @@ export function GalleryScreen() {
     transitionToState(GalleryState.CONNECTED_LOADING)
     asgCameraApi.setServer(hotspotGatewayIp, 8089)
 
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       console.log("[GalleryScreen] Loading photos via hotspot...")
-      loadInitialPhotos(hotspotGatewayIp)
+      loadInitialPhotos(hotspotGatewayIp, true)
     }, 500)
+
+    return () => clearTimeout(timeoutId)
   }, [networkStatus.phoneSSID, hotspotSsid, hotspotGatewayIp])
 
   // Auto-trigger sync
@@ -1045,11 +1195,16 @@ export function GalleryScreen() {
 
     console.log("[GalleryScreen] Ready to sync, auto-starting...")
     syncTriggeredRef.current = true
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       handleSync().finally(() => {
         syncTriggeredRef.current = false
       })
     }, 500)
+
+    return () => {
+      clearTimeout(timeoutId)
+      syncTriggeredRef.current = false
+    }
   }, [galleryState, totalServerCount])
 
   // Note: Hotspot cleanup after sync is now handled directly in syncAllPhotos()
@@ -1344,18 +1499,15 @@ export function GalleryScreen() {
     const isDownloading =
       syncState &&
       (syncState.status === "downloading" || syncState.status === "pending" || syncState.status === "completed")
+    const isSelected = selectedPhotos.has(item.photo.name)
 
     return (
       <TouchableOpacity
         style={[themed($photoItem), {width: itemWidth}, isDownloading && themed($photoItemDisabled)]}
         onPress={() => handlePhotoPress(item)}
         onLongPress={() => {
-          if (item.photo) {
-            if (item.isOnServer) {
-              handleDeletePhoto(item.photo)
-            } else {
-              handleDeleteDownloadedPhoto(item.photo)
-            }
+          if (item.photo && !isDownloading) {
+            enterSelectionMode(item.photo.name)
           }
         }}
         disabled={isDownloading}
@@ -1364,16 +1516,26 @@ export function GalleryScreen() {
           <PhotoImage photo={item.photo} style={{...themed($photoImage), width: itemWidth, height: itemWidth}} />
           {isDownloading && <View style={themed($photoDimmingOverlay)} />}
         </View>
-        {item.isOnServer && (
+        {item.isOnServer && !isSelectionMode && (
           <View style={themed($serverBadge)}>
             <MaterialCommunityIcons name="glasses" size={14} color="white" />
           </View>
         )}
-        {item.photo.is_video && (
+        {item.photo.is_video && !isSelectionMode && (
           <View style={themed($videoIndicator)}>
             <MaterialCommunityIcons name="video" size={14} color="white" />
           </View>
         )}
+        {isSelectionMode &&
+          (isSelected ? (
+            <View style={themed($selectionCheckbox)}>
+              <MaterialCommunityIcons name={"check"} size={24} color={"white"} />
+            </View>
+          ) : (
+            <View style={themed($unselectedCheckbox)}>
+              <MaterialCommunityIcons name={"checkbox-blank-circle-outline"} size={24} color={"white"} />
+            </View>
+          ))}
         {(() => {
           const syncState = photoSyncStates.get(item.photo.name)
           if (syncState) {
@@ -1451,13 +1613,38 @@ export function GalleryScreen() {
   return (
     <>
       <Header
-        title="Glasses Gallery"
-        leftIcon="caretLeft"
-        onLeftPress={() => goBack()}
+        title={isSelectionMode ? "" : "Glasses Gallery"}
+        leftIcon={isSelectionMode ? undefined : "caretLeft"}
+        onLeftPress={isSelectionMode ? undefined : () => goBack()}
+        LeftActionComponent={
+          isSelectionMode ? (
+            <TouchableOpacity onPress={() => exitSelectionMode()}>
+              <View style={themed($selectionHeader)}>
+                <MaterialCommunityIcons name="close" size={20} color={theme.colors.text} />
+                <Text style={themed($selectionCountText)}>{selectedPhotos.size}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : undefined
+        }
         RightActionComponent={
-          <TouchableOpacity onPress={() => push("/asg/gallery-settings")} style={themed($settingsButton)}>
-            <MaterialCommunityIcons name="cog" size={24} color={theme.colors.text} />
-          </TouchableOpacity>
+          isSelectionMode ? (
+            <TouchableOpacity
+              onPress={() => {
+                if (selectedPhotos.size > 0) {
+                  handleDeleteSelectedPhotos()
+                }
+              }}
+              disabled={selectedPhotos.size === 0}>
+              <View style={themed($deleteButton)}>
+                <MaterialCommunityIcons name="delete" size={20} color={theme.colors.text} />
+                <Text style={themed($deleteButtonText)}>Delete</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => push("/asg/gallery-settings")} style={themed($settingsButton)}>
+              <MaterialCommunityIcons name="cog" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+          )
         }
       />
       <View style={themed($screenContainer)}>
@@ -1578,7 +1765,8 @@ const $emptyContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $emptyText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 18,
+  fontSize: 20,
+  fontWeight: "600",
   color: colors.text,
   marginBottom: spacing.xs,
 })
@@ -1751,4 +1939,55 @@ const $settingsButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   minWidth: 44,
   minHeight: 44,
+})
+
+const $selectionCheckbox: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  position: "absolute",
+  top: spacing.xxs,
+  left: spacing.xxs,
+  backgroundColor: colors.primary,
+  borderRadius: 20,
+  padding: 2,
+  elevation: 3,
+})
+
+const $unselectedCheckbox: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  position: "absolute",
+  top: spacing.xxs,
+  left: spacing.xxs,
+  backgroundColor: "rgba(0, 0, 0, 0.3)",
+  borderRadius: 20,
+  padding: 2,
+})
+
+const $deleteButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: colors.backgroundAlt,
+  padding: 8,
+  borderRadius: 32,
+  gap: 6,
+})
+
+const $deleteButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  lineHeight: 24,
+  fontWeight: "600",
+})
+
+const $selectionHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: colors.backgroundAlt,
+  padding: 8,
+  borderRadius: 32,
+  gap: 6,
+})
+
+const $selectionCountText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  lineHeight: 24,
+  fontWeight: "600",
 })

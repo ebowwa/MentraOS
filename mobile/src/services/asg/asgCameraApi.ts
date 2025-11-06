@@ -20,6 +20,12 @@ export class AsgCameraApiClient {
     console.log(`[ASG Camera API] Client initialized with server: ${this.baseUrl}`)
   }
 
+  private createTimeoutSignal(timeoutMs: number): AbortSignal {
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller.signal
+  }
+
   /**
    * Set the server URL and port
    */
@@ -245,7 +251,7 @@ export class AsgCameraApiClient {
           "Accept": "application/json",
           "User-Agent": "MentraOS-Mobile/1.0",
         },
-        signal: AbortSignal.timeout(10000), // 10 second timeout
+        signal: this.createTimeoutSignal(10000), // 10 second timeout
       })
 
       console.log(`[ASG Camera API] Response status: ${response.status}`)
@@ -385,7 +391,7 @@ export class AsgCameraApiClient {
             "Accept": "*/*",
             "User-Agent": "MentraOS-Mobile/1.0",
           },
-          signal: AbortSignal.timeout(5000),
+          signal: this.createTimeoutSignal(5000),
         })
 
         if (response.ok) {
@@ -406,7 +412,7 @@ export class AsgCameraApiClient {
                 "Accept": "application/json",
                 "User-Agent": "MentraOS-Mobile/1.0",
               },
-              signal: AbortSignal.timeout(5000),
+              signal: this.createTimeoutSignal(5000),
             })
             console.log(`[ASG Camera API] GET /api/gallery status: ${getResponse.status}`)
             if (getResponse.ok) {

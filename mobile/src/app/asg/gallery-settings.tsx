@@ -6,7 +6,6 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import ActionButton from "@/components/ui/ActionButton"
-import InfoSection from "@/components/ui/InfoSection"
 import RouteButton from "@/components/ui/RouteButton"
 import {gallerySettingsService} from "@/services/asg/gallerySettingsService"
 import {localStorageService} from "@/services/asg/localStorageService"
@@ -14,6 +13,7 @@ import {translate} from "@/i18n"
 import showAlert from "@/utils/AlertUtils"
 import {SETTINGS_KEYS, useSetting} from "@/stores/settings"
 import {getModelCapabilities} from "@/../../cloud/packages/types/src"
+import InfoCardSection from "@/components/ui/InfoCard"
 
 export default function GallerySettingsScreen() {
   const {goBack, push} = useNavigationHistory()
@@ -121,9 +121,9 @@ export default function GallerySettingsScreen() {
   let features = getModelCapabilities(defaultWearable)
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header title="Gallery Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Camera Settings button for glasses with configurable button */}
         {features?.hasButton && (
           <View style={themed($section)}>
@@ -137,7 +137,6 @@ export default function GallerySettingsScreen() {
 
         <View style={themed($sectionCompact)}>
           <Text style={themed($sectionTitle)}>Automatic Sync</Text>
-
           <ToggleSetting
             label="Save to Camera Roll"
             subtitle="Automatically save new photos to your device's camera roll when syncing"
@@ -146,32 +145,29 @@ export default function GallerySettingsScreen() {
           />
         </View>
 
-        <View style={themed($sectionTitleOnly)}>
-          <Text style={themed($sectionTitle)}>Storage</Text>
-        </View>
+        <Text style={themed($sectionTitle)}>Storage info</Text>
 
         <View style={themed($section)}>
-          <InfoSection
-            title="Gallery Statistics"
+          <InfoCardSection
             items={[
               {
-                label: "Photos on Phone",
+                label: "Photos on device",
                 value: localPhotoCount.toString(),
               },
               {
-                label: "Videos on Phone",
+                label: "Videos on device",
                 value: localVideoCount.toString(),
               },
               {
-                label: "Photos on Glasses",
+                label: "Photos on glasses",
                 value: glassesPhotoCount > 0 ? glassesPhotoCount.toString() : "—",
               },
               {
-                label: "Videos on Glasses",
+                label: "Videos on glasses",
                 value: glassesVideoCount > 0 ? glassesVideoCount.toString() : "—",
               },
               {
-                label: "Phone Storage Used",
+                label: "Storage Used",
                 value: formatBytes(totalStorageSize),
               },
             ]}
@@ -200,17 +196,12 @@ const $sectionCompact: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginBottom: spacing.sm,
 })
 
-const $sectionTitleOnly: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginBottom: spacing.xs,
-})
-
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontSize: 13,
-  fontWeight: "600",
-  color: colors.textDim,
-  textTransform: "uppercase",
-  letterSpacing: 0.5,
+  fontSize: 14,
+  fontWeight: "400",
+  color: colors.text,
+  lineHeight: 20,
+  letterSpacing: 0,
   marginBottom: spacing.xs,
-  marginHorizontal: spacing.lg,
   marginTop: spacing.sm,
 })
