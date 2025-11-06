@@ -15,6 +15,9 @@ export default defineConfig({
     allowedHosts: true,
   },
   build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -41,8 +44,13 @@ export default defineConfig({
             "next-themes",
             "sonner",
           ],
+          shared: ["@mentra/shared"],
         },
       },
     },
+    chunkSizeWarningLimit: 1000,
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
   },
 });

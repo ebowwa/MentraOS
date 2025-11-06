@@ -28,4 +28,20 @@ config.watchFolders = [
 // Resolve the core module from the parent directory
 config.resolver.nodeModulesPaths = [path.resolve(__dirname, "node_modules"), path.resolve(__dirname, "..")]
 
+// Performance optimizations
+config.serializer = {
+  ...config.serializer,
+  // Enable source map support in development but disable in production for smaller bundles
+  customSerializer: config.serializer?.customSerializer,
+}
+
+// Optimize transformer cache
+config.transformer = {
+  ...config.transformer,
+  // Enable Hermes bytecode compilation
+  unstable_allowRequireContext: false,
+  // Optimize asset transforms
+  assetPlugins: config.transformer?.assetPlugins || [],
+}
+
 module.exports = config

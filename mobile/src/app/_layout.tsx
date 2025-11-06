@@ -63,10 +63,16 @@ function Root() {
 
   const loadAssets = async () => {
     try {
-      await initI18n()
-      await loadDateFnsLocale()
-      // initialize webrtc
-      await registerGlobals()
+      // Load critical assets first (i18n and date formatting)
+      await Promise.all([
+        initI18n(),
+        loadDateFnsLocale(),
+      ])
+      // Defer WebRTC initialization - it's heavy and may not be needed immediately
+      // Initialize it after critical assets are loaded
+      registerGlobals().catch((error) => {
+        console.warn("Failed to initialize WebRTC (may be needed later):", error)
+      })
     } catch (error) {
       console.error("Error loading assets:", error)
     } finally {
