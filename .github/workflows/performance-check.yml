@@ -1,0 +1,160 @@
+name: Performance Check
+
+on:
+  pull_request:
+    paths:
+      - 'cloud/websites/**'
+      - 'mobile/**'
+      - 'package.json'
+      - '*.json'
+
+jobs:
+  analyze-bundles:
+    name: Analyze Bundle Sizes
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      
+      - name: Install Console dependencies
+        working-directory: cloud/websites/console
+        run: bun install
+      
+      - name: Build Console
+        working-directory: cloud/websites/console
+        run: bun run build
+      
+      - name: Check Console bundle size
+        working-directory: cloud/websites/console
+        run: |
+          BUNDLE_SIZE=$(du -sb dist/assets | cut -f1)
+          MAX_SIZE=3000000  # 3MB for assets
+          echo "Console bundle size: $(numfmt --to=iec $BUNDLE_SIZE)"
+          if [ $BUNDLE_SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Console bundle size exceeds limit: $(numfmt --to=iec $BUNDLE_SIZE) > $(numfmt --to=iec $MAX_SIZE)"
+            exit 1
+          else
+            echo "✅ Console bundle size is within limits"
+          fi
+      
+      - name: Install Store dependencies
+        working-directory: cloud/websites/store
+        run: bun install
+      
+      - name: Build Store
+        working-directory: cloud/websites/store
+        run: bun run build
+      
+      - name: Check Store bundle size
+        working-directory: cloud/websites/store
+        run: |
+          BUNDLE_SIZE=$(du -sb dist/assets | cut -f1)
+          MAX_SIZE=2500000  # 2.5MB for assets
+          echo "Store bundle size: $(numfmt --to=iec $BUNDLE_SIZE)"
+          if [ $BUNDLE_SIZE -gt $MAX_SIZE ]; then
+            echo "❌ Store bundle size exceeds limit: $(numfmt --to=iec $BUNDLE_SIZE) > $(numfmt --to=iec $MAX_SIZE)"
+            exit 1
+          else
+            echo "✅ Store bundle size is within limits"
+          fi
+      
+      - name: Comment bundle sizes on PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Get bundle sizes
+            const consoleDist = path.join(process.env.GITHUB_WORKSPACE, 'cloud/websites/console/dist/assets');
+            const storeDist = path.join(process.env.GITHUB_WORKSPACE, 'cloud/websites/store/dist/assets');
+            
+            const getSize = (dir) => {
+              return require('child_process')
+                .execSync(`du -sb ${dir}`)
+                .toString()
+                .split('\t')[0];
+            };
+            
+            const consoleSize = getSize(consoleDist);
+            const storeSize = getSize(storeDist);
+            
+            const formatBytes = (bytes) => {
+              return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+            };
+            
+            const comment = `## 📦 Bundle Size Report
+            
+            | Application | Size | Status |
+            |------------|------|--------|
+            | Console | ${formatBytes(consoleSize)} | ${consoleSize < 3000000 ? '✅' : '❌'} |
+            | Store | ${formatBytes(storeSize)} | ${storeSize < 2500000 ? '✅' : '❌'} |
+            
+            ${consoleSize < 3000000 && storeSize < 2500000 ? '✅ All bundles are within size limits!' : '⚠️ Some bundles exceed size limits. Consider optimizing.'}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  check-images:
+    name: Check Image Sizes
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Find large images
+        id: large-images
+        run: |
+          echo "Checking for large images (>500KB)..."
+          LARGE_IMAGES=$(find . -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) -size +500k -not -path "*/node_modules/*" -not -path "*/.git/*" || true)
+          
+          if [ -n "$LARGE_IMAGES" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            echo "images<<EOF" >> $GITHUB_OUTPUT
+            echo "$LARGE_IMAGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment on PR if large images found
+        if: steps.large-images.outputs.found == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const images = `${{ steps.large-images.outputs.images }}`;
+            const imageList = images.split('\n').filter(i => i.trim());
+            
+            const comment = `## 🖼️ Large Images Detected
+            
+            The following images are larger than 500KB and should be optimized:
+            
+            ${imageList.map(img => `- \`${img}\``).join('\n')}
+            
+            **Recommendation:** Run \`./scripts/optimize-images.sh\` to automatically optimize these images.
+            
+            This will:
+            - Compress PNG files
+            - Create WebP versions
+            - Reduce file sizes by 70-85%
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

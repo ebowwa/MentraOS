@@ -1,28 +1,35 @@
 // App.tsx
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 // Components
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 
-// Pages
-import LandingPage from "./pages/LandingPage";
-import DashboardHome from "./pages/DashboardHome";
+// Lazy load pages for better performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const DashboardHome = lazy(() => import("./pages/DashboardHome"));
+const LoginOrSignup = lazy(() => import("./pages/AuthPage"));
+const AppList = lazy(() => import("./pages/AppList"));
+const CreateApp = lazy(() => import("./pages/CreateApp"));
+const EditApp = lazy(() => import("./pages/EditApp"));
+const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"));
+const Members = lazy(() => import("./pages/Members"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
-import LoginOrSignup from "./pages/AuthPage";
-import AppList from "./pages/AppList";
-import CreateApp from "./pages/CreateApp";
-import EditApp from "./pages/EditApp";
-import OrganizationSettings from "./pages/OrganizationSettings";
-import Members from "./pages/Members";
-import AdminPanel from "./pages/AdminPanel";
-import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth, ForgotPasswordPage, ResetPasswordPage } from "@mentra/shared";
 import { OrganizationProvider } from "./context/OrganizationContext";
 import { useAccountStore } from "./stores/account.store";
 import { useOrgStore } from "./stores/orgs.store";
 import { useAppStore } from "./stores/apps.store";
+
+// Loading component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+  </div>
+);
 
 // Protected route component
 function ProtectedRoute({
@@ -147,90 +154,92 @@ const AppShell: React.FC = () => {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Login or Signup */}
-        <Route path="/login" element={<LoginOrSignup />} />
-        <Route path="/signup" element={<LoginOrSignup />} />
-        <Route path="/signin" element={<LoginOrSignup />} />
+          {/* Login or Signup */}
+          <Route path="/login" element={<LoginOrSignup />} />
+          <Route path="/signup" element={<LoginOrSignup />} />
+          <Route path="/signin" element={<LoginOrSignup />} />
 
-        {/* Organization Invite */}
-        <Route path="/invite/accept" element={<LoginOrSignup />} />
+          {/* Organization Invite */}
+          <Route path="/invite/accept" element={<LoginOrSignup />} />
 
-        {/* Forgot Password Routes */}
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route
-          path="/reset-password"
-          element={<ResetPasswordPage redirectUrl="/dashboard" />}
-        />
+          {/* Forgot Password Routes */}
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage redirectUrl="/dashboard" />}
+          />
 
-        {/* Dashboard Routes - No auth for now */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps"
-          element={
-            <ProtectedRoute>
-              <AppList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps/create"
-          element={
-            <ProtectedRoute>
-              <CreateApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps/:packageName/edit"
-          element={
-            <ProtectedRoute>
-              <EditApp />
-            </ProtectedRoute>
-          }
-        />
+          {/* Dashboard Routes - No auth for now */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps"
+            element={
+              <ProtectedRoute>
+                <AppList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps/create"
+            element={
+              <ProtectedRoute>
+                <CreateApp />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps/:packageName/edit"
+            element={
+              <ProtectedRoute>
+                <EditApp />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/org-settings"
-          element={
-            <ProtectedRoute>
-              <OrganizationSettings />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/org-settings"
+            element={
+              <ProtectedRoute>
+                <OrganizationSettings />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/members"
-          element={
-            <ProtectedRoute>
-              <Members />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/members"
+            element={
+              <ProtectedRoute>
+                <Members />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Catch-all Not Found route */}
-        <Route path="*" element={<NotFound />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+          {/* Catch-all Not Found route */}
+          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 };

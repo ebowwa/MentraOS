@@ -2,7 +2,7 @@ import {createContext, useCallback, useContext, useEffect, useMemo, useState} fr
 import {Platform, StyleProp, useColorScheme} from "react-native"
 import {DarkTheme, DefaultTheme, useTheme as _useNavTheme} from "@react-navigation/native"
 import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray, lightTheme, darkTheme} from "@/theme"
-import * as SystemUI from "expo-system-ui"
+import {setBackgroundColorAsync} from "expo-system-ui"
 import {useSetting, SETTINGS_KEYS} from "@/stores/settings"
 
 type ThemeContextType = {
@@ -24,9 +24,9 @@ const setImperativeTheming = async (theme: Theme) => {
   // this is the color of the navigation bar on android and so it should be the end of the gradient:
   // on ios it doesn't matter much other than for transitional screens and should be the same as the background
   if (Platform.OS === "ios") {
-    SystemUI.setBackgroundColorAsync(theme.colors.background)
+    setBackgroundColorAsync(theme.colors.background)
   } else {
-    SystemUI.setBackgroundColorAsync(theme.colors.backgroundStart)
+    setBackgroundColorAsync(theme.colors.backgroundStart)
   }
 }
 

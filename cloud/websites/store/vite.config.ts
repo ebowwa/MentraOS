@@ -33,6 +33,7 @@ export default defineConfig({
             "@supabase/auth-ui-react",
             "@supabase/auth-ui-shared",
           ],
+          animation: ["framer-motion"],
           utils: [
             "axios",
             "clsx",
@@ -42,6 +43,18 @@ export default defineConfig({
             "sonner",
           ],
         },
+      },
+    },
+    // Disable source maps in production for smaller bundle
+    sourcemap: false,
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
       },
     },
   },
