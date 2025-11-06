@@ -2,8 +2,15 @@ const en = {
   deviceSettings: {
     microphoneSelection: "Microphone Selection",
     glassesNeededForGlassesMic: "Connect glasses to enable",
-    systemMic: "Automatic",
-    glassesMic: "Glasses only",
+    // Microphone options
+    micAutomatic: "Automatic",
+    micAutomaticDesc: "Picks best mic for your glasses model",
+    micPhoneAutoSwitch: "Phone Mic",
+    micPhoneAutoSwitchDesc: "Uses phone mic, switches to glasses if conflict",
+    micGlassesOnly: "Glasses Mic Only",
+    micGlassesOnlyDesc: "Always uses glasses microphone",
+    micBluetoothMic: "Bluetooth Mic",
+    micBluetoothMicDesc: "External Bluetooth mic (lapel mics for accessibility)",
     batteryStatus: "Battery Status",
     glasses: "Glasses",
     case: "Case",

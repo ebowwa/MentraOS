@@ -5,7 +5,7 @@
  * Defines the hardware and software features available on this device.
  */
 
-import type {Capabilities} from "@mentra/sdk"
+import type {Capabilities} from "../hardware"
 
 /**
  * Even Realities G1 capability profile
@@ -60,4 +60,8 @@ export const evenRealitiesG1: Capabilities = {
 
   // WiFi capabilities - G1 does not support WiFi
   hasWifi: false,
+
+  // Recommended microphone source - phone with auto-fallback to G1's custom BLE mic
+  // G1 has a custom LC3 mic but quality is poor, so prefer phone mic
+  recommendedMicSource: "phone_auto_switch",
 }

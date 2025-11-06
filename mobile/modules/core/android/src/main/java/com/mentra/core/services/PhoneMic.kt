@@ -54,7 +54,10 @@ class PhoneMic private constructor(private val context: Context) {
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
     private val isRecording = AtomicBoolean(false)
-    private var preferScoMode = true // Try SCO first, fallback to normal if needed
+
+    // Mic source management
+    private val micSourceManager = MicSourceManager(context)
+    private var currentMicConfig: MicSourceManager.MicConfig? = null
 
     // Audio manager and routing
     private val audioManager: AudioManager =
@@ -167,14 +170,17 @@ class PhoneMic private constructor(private val context: Context) {
         // Abandon audio focus
         abandonAudioFocus()
 
-        // Reset Bluetooth SCO
-        if (audioManager.isBluetoothScoOn) {
-            audioManager.stopBluetoothSco()
-            audioManager.isBluetoothScoOn = false
+        // Clean up SCO if it was activated
+        val config = currentMicConfig
+        if (config != null && config.activateSCO) {
+            cleanupSco()
+        } else {
+            // For non-SCO recordings, just reset mode to normal
+            audioManager.mode = AudioManager.MODE_NORMAL
         }
 
-        // Reset audio mode
-        audioManager.mode = AudioManager.MODE_NORMAL
+        // Clear current config
+        currentMicConfig = null
 
         // Notify CoreManager
         notifyCoreManager("recording_stopped", getAvailableInputDevices().values.toList())
@@ -194,9 +200,20 @@ class PhoneMic private constructor(private val context: Context) {
             return false
         }
 
+        // Get mic source from CoreManager
+        val preferredMic = CoreManager.getInstance().preferredMic
+        val micSource = MicSource.fromString(preferredMic)
+
+        // Get configuration for selected mic source
+        currentMicConfig = micSourceManager.getMicConfig(micSource)
+        val config = currentMicConfig!!
+
+        Bridge.log("MIC: Starting with source: ${config.source}, useBLEMic: ${config.useBLEMic}, usePhoneMic: ${config.usePhoneMic}, activateSCO: ${config.activateSCO}")
+
         // Request audio focus
-        if (!requestAudioFocus()) {
+        if (!requestAudioFocus(config.focusGain)) {
             Bridge.log("MIC: Failed to get audio focus")
+            currentMicConfig = null  // Clear config since we're not starting
             // On Samsung, test if another app actually needs the mic
             if (isSamsungDevice()) {
                 testMicrophoneAvailabilityOnSamsung()
@@ -206,24 +223,34 @@ class PhoneMic private constructor(private val context: Context) {
             return false
         }
 
-        // Try SCO mode first (if preferred)
-        if (preferScoMode && audioManager.isBluetoothScoAvailableOffCall) {
-            Bridge.log("MIC: Attempting to start with Bluetooth SCO")
-            if (startRecordingWithSco()) {
-                return true
+        return when {
+            config.useBLEMic -> {
+                // Use glasses custom BLE mic
+                Bridge.log("MIC: Using glasses custom BLE mic")
+                notifyCoreManager("enable_glasses_mic", emptyList())
+                true
             }
-            Bridge.log("MIC: SCO failed, falling back to normal mode")
+            config.activateSCO -> {
+                // Try Bluetooth SCO for external HFP mic
+                Bridge.log("MIC: Attempting Bluetooth SCO for external mic")
+                startRecordingWithSco(config)
+            }
+            config.usePhoneMic -> {
+                // Use phone mic
+                Bridge.log("MIC: Using phone mic")
+                startRecordingNormal(config)
+            }
+            else -> {
+                Bridge.log("MIC: No valid mic configuration")
+                false
+            }
         }
-
-        // Fallback to normal mode
-        return startRecordingNormal()
     }
 
-    private fun startRecordingWithSco(): Boolean {
+    private fun startRecordingWithSco(config: MicSourceManager.MicConfig): Boolean {
         try {
-            // Use MODE_IN_COMMUNICATION instead of MODE_IN_CALL
-            // This allows media playback to coexist with microphone recording
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            // Set audio mode from config
+            audioManager.mode = config.audioMode
 
             // Start Bluetooth SCO
             audioManager.startBluetoothSco()
@@ -232,34 +259,47 @@ class PhoneMic private constructor(private val context: Context) {
             // Wait briefly for SCO to connect
             Thread.sleep(100)
 
-            return createAndStartAudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+            val success = createAndStartAudioRecord(config.audioSource)
+
+            if (!success && config.canFallbackToPhone) {
+                // SCO failed, fallback to phone mic
+                Bridge.log("MIC: Bluetooth SCO failed, falling back to phone mic")
+                cleanupSco()
+                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_AUTO_SWITCH)
+                currentMicConfig = phoneConfig  // Update config to reflect actual source
+                return startRecordingNormal(phoneConfig)
+            }
+
+            return success
         } catch (e: Exception) {
             Bridge.log("MIC: SCO recording failed: ${e.message}")
 
-            // Clean up SCO
-            audioManager.stopBluetoothSco()
-            audioManager.isBluetoothScoOn = false
-            audioManager.mode = AudioManager.MODE_NORMAL
+            cleanupSco()
 
-            // Retry logic
-            if (scoRetries < MAX_SCO_RETRIES) {
-                scoRetries++
-                Bridge.log("MIC: Retrying SCO (attempt $scoRetries)")
-                return startRecordingWithSco()
+            // Fallback to phone mic if allowed
+            if (config.canFallbackToPhone) {
+                Bridge.log("MIC: Falling back to phone mic after SCO error")
+                val phoneConfig = micSourceManager.getMicConfig(MicSource.PHONE_AUTO_SWITCH)
+                currentMicConfig = phoneConfig  // Update config to reflect actual source
+                return startRecordingNormal(phoneConfig)
             }
 
             return false
         }
     }
 
-    private fun startRecordingNormal(): Boolean {
-        try {
-            // Set appropriate audio mode for Samsung devices
-            if (isSamsungDevice()) {
-                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            }
+    private fun cleanupSco() {
+        audioManager.stopBluetoothSco()
+        audioManager.isBluetoothScoOn = false
+        audioManager.mode = AudioManager.MODE_NORMAL
+    }
 
-            return createAndStartAudioRecord(MediaRecorder.AudioSource.MIC)
+    private fun startRecordingNormal(config: MicSourceManager.MicConfig): Boolean {
+        try {
+            // Set audio mode from config
+            audioManager.mode = config.audioMode
+
+            return createAndStartAudioRecord(config.audioSource)
         } catch (e: Exception) {
             Bridge.log("MIC: Normal recording failed: ${e.message}")
             return false
@@ -394,17 +434,26 @@ class PhoneMic private constructor(private val context: Context) {
 
                         if (wasCallActive != isPhoneCallActive) {
                             if (isPhoneCallActive) {
-                                Bridge.log("MIC: Phone call started - stopping recording")
+                                Bridge.log("MIC: Phone call started")
                                 if (isRecording.get()) {
-                                    // Notify CoreManager BEFORE stopping - allows switch to glasses mic
-                                    notifyCoreManager("phone_call_interruption", emptyList())
-                                    // Give CoreManager time to switch to glasses mic
-                                    mainHandler.postDelayed({
+                                    val config = currentMicConfig
+                                    if (config != null && config.canFallbackToGlasses) {
+                                        // Can fallback to glasses mic
+                                        Bridge.log("MIC: Phone call conflict - switching to glasses mic")
+                                        notifyCoreManager("phone_call_interruption", emptyList())
+                                        // Give CoreManager time to switch to glasses mic
+                                        mainHandler.postDelayed({
+                                            stopRecording()
+                                        }, MIC_SWITCH_DELAY_MS)
+                                    } else {
+                                        // No fallback available - just stop
+                                        Bridge.log("MIC: Phone call conflict - no fallback available")
                                         stopRecording()
-                                    }, MIC_SWITCH_DELAY_MS)
+                                        notifyCoreManager("phone_call_active", emptyList())
+                                    }
                                 } else {
                                     // Not currently recording, but still notify about unavailability
-                                    notifyCoreManager("phone_call_interruption", emptyList())
+                                    notifyCoreManager("phone_call_active", emptyList())
                                 }
                             } else {
                                 Bridge.log("MIC: Phone call ended")
@@ -427,7 +476,7 @@ class PhoneMic private constructor(private val context: Context) {
                         AudioManager.AUDIOFOCUS_LOSS -> {
                             Bridge.log("MIC: Permanent audio focus loss")
                             hasAudioFocus = false
-                            // Don't stop recording for media playback
+                            // Don't stop recording for media playback - this is usually just media apps
                         }
                         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                             Bridge.log("MIC: Transient audio focus loss")
@@ -441,18 +490,21 @@ class PhoneMic private constructor(private val context: Context) {
                                 mainHandler.postDelayed(
                                         {
                                             if (isExternalAudioActive && isRecording.get()) {
-                                                Bridge.log(
-                                                        "MIC: Another app is recording - stopping"
-                                                )
-                                                // Notify CoreManager BEFORE stopping - allows switch to glasses mic
-                                                notifyCoreManager(
-                                                        "external_app_recording",
-                                                        emptyList()
-                                                )
-                                                // Give CoreManager time to switch to glasses mic
-                                                mainHandler.postDelayed({
+                                                val config = currentMicConfig
+                                                if (config != null && config.canFallbackToGlasses) {
+                                                    // Can fallback to glasses mic
+                                                    Bridge.log("MIC: Audio conflict - switching to glasses mic")
+                                                    notifyCoreManager("external_app_recording", emptyList())
+                                                    // Give CoreManager time to switch to glasses mic
+                                                    mainHandler.postDelayed({
+                                                        stopRecording()
+                                                    }, MIC_SWITCH_DELAY_MS)
+                                                } else {
+                                                    // No fallback available - just stop
+                                                    Bridge.log("MIC: Audio conflict - no fallback available")
                                                     stopRecording()
-                                                }, MIC_SWITCH_DELAY_MS)
+                                                    notifyCoreManager("external_app_recording", emptyList())
+                                                }
                                             }
                                         },
                                         500
@@ -501,12 +553,21 @@ class PhoneMic private constructor(private val context: Context) {
                                 if (isExternalAudioActive) {
                                     Bridge.log("MIC: External app started recording")
                                     if (isRecording.get()) {
-                                        // Notify CoreManager BEFORE stopping - allows switch to glasses mic
-                                        notifyCoreManager("external_app_recording", emptyList())
-                                        // Give CoreManager time to switch to glasses mic before releasing phone mic
-                                        mainHandler.postDelayed({
+                                        val config = currentMicConfig
+                                        if (config != null && config.canFallbackToGlasses) {
+                                            // Can fallback to glasses mic
+                                            Bridge.log("MIC: Conflict detected - switching to glasses mic")
+                                            notifyCoreManager("external_app_recording", emptyList())
+                                            // Give CoreManager time to switch to glasses mic
+                                            mainHandler.postDelayed({
+                                                stopRecording()
+                                            }, MIC_SWITCH_DELAY_MS)
+                                        } else {
+                                            // No fallback available - just stop
+                                            Bridge.log("MIC: Conflict detected - no fallback available")
                                             stopRecording()
-                                        }, MIC_SWITCH_DELAY_MS)
+                                            notifyCoreManager("external_app_recording", emptyList())
+                                        }
                                     } else {
                                         // Not currently recording, but still notify about unavailability
                                         notifyCoreManager("external_app_recording", emptyList())
@@ -618,7 +679,7 @@ class PhoneMic private constructor(private val context: Context) {
         notifyCoreManager("audio_route_changed", availableInputs)
     }
 
-    private fun requestAudioFocus(): Boolean {
+    private fun requestAudioFocus(focusGain: Int): Boolean {
         val result =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val audioAttributes =
@@ -628,7 +689,7 @@ class PhoneMic private constructor(private val context: Context) {
                                     .build()
 
                     audioFocusRequest =
-                            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                            AudioFocusRequest.Builder(focusGain)
                                     .setAudioAttributes(audioAttributes)
                                     .setOnAudioFocusChangeListener(
                                             audioFocusListener!!,
@@ -642,7 +703,7 @@ class PhoneMic private constructor(private val context: Context) {
                     audioManager.requestAudioFocus(
                             audioFocusListener,
                             AudioManager.STREAM_VOICE_CALL,
-                            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                            focusGain
                     )
                 }
 
@@ -681,7 +742,21 @@ class PhoneMic private constructor(private val context: Context) {
                     } else {
                         Bridge.log("MIC: Samsung - mic taken by another app")
                         isExternalAudioActive = true
-                        notifyCoreManager("samsung_mic_conflict", emptyList())
+
+                        val config = currentMicConfig
+                        if (config != null && config.canFallbackToGlasses) {
+                            // Can fallback to glasses mic
+                            Bridge.log("MIC: Samsung conflict - switching to glasses mic")
+                            notifyCoreManager("samsung_mic_conflict", emptyList())
+                            // Give CoreManager time to switch to glasses mic
+                            mainHandler.postDelayed({
+                                stopRecording()
+                            }, MIC_SWITCH_DELAY_MS)
+                        } else {
+                            // No fallback available
+                            Bridge.log("MIC: Samsung conflict - no fallback available")
+                            notifyCoreManager("samsung_mic_conflict", emptyList())
+                        }
                     }
                 },
                 SAMSUNG_MIC_TEST_DELAY_MS

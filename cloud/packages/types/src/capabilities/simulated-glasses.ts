@@ -6,7 +6,7 @@
  * This profile matches the Vuzix Z100 capabilities for testing purposes.
  */
 
-import type { Capabilities } from "@mentra/sdk";
+import type {Capabilities} from "../hardware"
 
 /**
  * Simulated Glasses capability profile
@@ -25,18 +25,16 @@ export const simulatedGlasses: Capabilities = {
     isColor: false,
     color: "green",
     canDisplayBitmap: false,
-    resolution: { width: 640, height: 480 },
-    fieldOfView: { horizontal: 30 },
+    resolution: {width: 640, height: 480},
+    fieldOfView: {horizontal: 30},
     maxTextLines: 7,
     adjustBrightness: true,
   },
 
-  // Microphone capabilities - has a microphone (phone mic)
-  hasMicrophone: true,
-  microphone: {
-    count: 1,
-    hasVAD: false,
-  },
+  // Microphone capabilities - does not have a custom BLE/LC3 microphone
+  // Note: Phone microphone is always available regardless of glasses capabilities
+  hasMicrophone: false,
+  microphone: null,
 
   // Speaker capabilities - has a speaker (phone speaker)
   hasSpeaker: true,
@@ -73,4 +71,8 @@ export const simulatedGlasses: Capabilities = {
 
   // WiFi capabilities - does not support WiFi
   hasWifi: false,
-};
+
+  // Recommended microphone source - phone only (no glasses mic available)
+  // Simulated glasses have no custom microphone, must use phone mic
+  recommendedMicSource: "phone_auto_switch",
+}

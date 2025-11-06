@@ -5,7 +5,7 @@
  * Defines the hardware and software features available on this device.
  */
 
-import type { Capabilities } from "@mentra/sdk";
+import type {Capabilities} from "../hardware"
 
 /**
  * Mentra Live capability profile
@@ -16,7 +16,7 @@ export const mentraLive: Capabilities = {
   // Camera capabilities - Mentra Live has camera with streaming
   hasCamera: true,
   camera: {
-    resolution: { width: 1920, height: 1080 },
+    resolution: {width: 1920, height: 1080},
     hasHDR: false,
     hasFocus: true,
     video: {
@@ -24,9 +24,9 @@ export const mentraLive: Capabilities = {
       canStream: true,
       supportedStreamTypes: ["rtmp"],
       supportedResolutions: [
-        { width: 1920, height: 1080 },
-        { width: 1280, height: 720 },
-        { width: 640, height: 480 },
+        {width: 1920, height: 1080},
+        {width: 1280, height: 720},
+        {width: 640, height: 480},
       ],
     },
   },
@@ -100,4 +100,9 @@ export const mentraLive: Capabilities = {
 
   // WiFi capabilities - Mentra Live supports WiFi
   hasWifi: true,
-};
+
+  // Recommended microphone source - use phone mic with auto-switch
+  // Mentra Live has custom LC3 mic, but defaulting to phone for now
+  // Once mic quality is improved, can change back to "glasses_only"
+  recommendedMicSource: "phone_auto_switch",
+}

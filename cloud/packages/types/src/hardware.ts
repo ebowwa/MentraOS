@@ -143,6 +143,10 @@ export interface Capabilities {
 
   // WiFi capability
   hasWifi: boolean
+
+  // Recommended microphone source for this device
+  // Determines default mic behavior for optimal user experience
+  recommendedMicSource?: "phone_auto_switch" | "glasses_only"
 }
 
 /**

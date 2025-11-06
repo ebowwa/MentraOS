@@ -95,7 +95,7 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   [SETTINGS_KEYS.bypass_audio_encoding_for_debugging]: false,
   [SETTINGS_KEYS.metric_system]: false,
   [SETTINGS_KEYS.enforce_local_transcription]: false,
-  [SETTINGS_KEYS.preferred_mic]: "phone",
+  [SETTINGS_KEYS.preferred_mic]: "automatic",
   [SETTINGS_KEYS.screen_disabled]: false,
   // glasses settings:
   [SETTINGS_KEYS.contextual_dashboard]: true,

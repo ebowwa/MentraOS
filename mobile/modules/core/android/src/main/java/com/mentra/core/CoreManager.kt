@@ -97,7 +97,7 @@ class CoreManager {
 
     // mic
     public var useOnboardMic = false
-    public var preferredMic = "glasses"
+    public var preferredMic = "automatic"  // Default to automatic mode
     public var micEnabled = false
     private var lastMicState: Triple<Boolean, Boolean, String>? = null  // (useGlassesMic, useOnboardMic, preferredMic)
 
@@ -440,6 +440,18 @@ class CoreManager {
         }
     }
 
+    /**
+     * Check if the current mic source uses or could use phone mic
+     * Returns true for: automatic, phone_auto_switch, bluetooth_mic
+     * Returns false for: glasses_only
+     */
+    private fun micSourceUsesPhone(): Boolean {
+        return when (preferredMic) {
+            "glasses_only" -> false  // Never uses phone mic
+            else -> true  // automatic, phone_auto_switch, bluetooth_mic, and legacy "phone"/"glasses" all can use phone
+        }
+    }
+
     private fun updateMicrophoneState() {
         val actuallyEnabled = micEnabled && sensingEnabled
         val glassesHasMic = sgc?.hasMic ?: false
@@ -447,30 +459,32 @@ class CoreManager {
         Bridge.log("MAN: updateMicrophoneState() - micEnabled=$micEnabled, sensingEnabled=$sensingEnabled, actuallyEnabled=$actuallyEnabled")
         Bridge.log("MAN: updateMicrophoneState() - preferredMic=$preferredMic, glassesHasMic=$glassesHasMic, onboardMicUnavailable=$onboardMicUnavailable")
 
-        var useGlassesMic = preferredMic == "glasses"
-        var useOnboardMic = preferredMic == "phone"
+        // Use MicSourceManager to determine which hardware to activate
+        val micSourceManager = com.mentra.core.services.MicSourceManager(Bridge.getContext())
+        val micSource = com.mentra.core.services.MicSource.fromString(preferredMic)
+        val config = micSourceManager.getMicConfig(micSource)
 
-        if (onboardMicUnavailable) {
-            useOnboardMic = false
-        }
+        Bridge.log("MAN: updateMicrophoneState() - MicConfig: useBLEMic=${config.useBLEMic}, usePhoneMic=${config.usePhoneMic}, activateSCO=${config.activateSCO}")
 
-        if (!glassesHasMic) {
-            useGlassesMic = false
-        }
+        // Determine which hardware to enable based on MicConfig
+        var useGlassesMic = config.useBLEMic && glassesHasMic
+        var useOnboardMic = (config.usePhoneMic || config.activateSCO) && !onboardMicUnavailable
 
+        // Implement fallback chain: if preferred mic unavailable, try fallback mics
         if (!useGlassesMic && !useOnboardMic) {
-            Bridge.log("MAN: Preferred mic unavailable - attempting automatic fallback")
-            if (glassesHasMic) {
-                Bridge.log("MAN: AUTO-FALLBACK: Switching to glasses mic (preferred mic unavailable)")
-                useGlassesMic = true
-            } else if (!onboardMicUnavailable) {
-                Bridge.log("MAN: AUTO-FALLBACK: Switching to phone mic (glasses mic not available)")
+            Bridge.log("MAN: Preferred mic unavailable - attempting fallback")
+            // Try phone mic first (for cases where glasses was preferred but unavailable)
+            if (config.canFallbackToPhone && !onboardMicUnavailable) {
+                Bridge.log("MAN: Falling back to phone mic")
                 useOnboardMic = true
             }
-
-            if (!useGlassesMic && !useOnboardMic) {
-                Bridge.log("MAN: no mic to use! falling back to glasses mic!")
+            // Try glasses mic (for cases where phone was preferred but unavailable)
+            else if (config.canFallbackToGlasses && glassesHasMic) {
+                Bridge.log("MAN: Falling back to glasses mic")
                 useGlassesMic = true
+            }
+            else {
+                Bridge.log("MAN: No fallback mic available")
             }
         }
 
@@ -489,8 +503,9 @@ class CoreManager {
         }
         lastMicState = newState
 
+        // Enable/disable glasses mic for all glasses types that support it
         sgc?.let { sgc ->
-            if (sgc.type == DeviceTypes.G1 && sgc.ready) {
+            if (sgc.ready && sgc.hasMic) {
                 sgc.setMicEnabled(useGlassesMic)
             }
         }
@@ -597,12 +612,12 @@ class CoreManager {
 
         // Handle external app conflicts - automatically switch to glasses mic if available
         when (reason) {
-            "external_app_recording" -> {
+            "external_app_recording", "samsung_mic_conflict" -> {
                 // Another app is using the microphone
                 Bridge.log("MAN: External app took microphone - marking onboard mic as unavailable")
                 onboardMicUnavailable = true
-                // Only trigger mic state change if we're in automatic/phone mode
-                if (preferredMic == "phone") {
+                // Only trigger mic state change if mic source uses phone
+                if (micSourceUsesPhone()) {
                     handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
                 }
             }
@@ -610,8 +625,8 @@ class CoreManager {
                 // External app released the microphone
                 Bridge.log("MAN: External app released microphone - marking onboard mic as available")
                 onboardMicUnavailable = false
-                // Only trigger recovery if we're in automatic/phone mode
-                if (preferredMic == "phone") {
+                // Only trigger recovery if mic source uses phone
+                if (micSourceUsesPhone()) {
                     handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
                 }
             }
@@ -619,7 +634,7 @@ class CoreManager {
                 // Phone call started - mark mic as unavailable
                 Bridge.log("MAN: Phone call interruption - marking onboard mic as unavailable")
                 onboardMicUnavailable = true
-                if (preferredMic == "phone") {
+                if (micSourceUsesPhone()) {
                     handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
                 }
             }
@@ -627,9 +642,31 @@ class CoreManager {
                 // Phone call ended - mark mic as available again
                 Bridge.log("MAN: Phone call ended - marking onboard mic as available")
                 onboardMicUnavailable = false
-                if (preferredMic == "phone") {
+                if (micSourceUsesPhone()) {
                     handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
                 }
+            }
+            "phone_call_active" -> {
+                // Tried to start recording while phone call already active
+                Bridge.log("MAN: Phone call already active - marking onboard mic as unavailable")
+                onboardMicUnavailable = true
+                if (micSourceUsesPhone()) {
+                    handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
+                }
+            }
+            "audio_focus_denied" -> {
+                // Another app has audio focus
+                Bridge.log("MAN: Audio focus denied - marking onboard mic as unavailable")
+                onboardMicUnavailable = true
+                if (micSourceUsesPhone()) {
+                    handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
+                }
+            }
+            "permission_denied" -> {
+                // Microphone permission not granted
+                Bridge.log("MAN: Microphone permission denied - cannot use phone mic")
+                onboardMicUnavailable = true
+                // Don't trigger fallback - need to request permission from user
             }
             else -> {
                 // Other route changes (headset plug/unplug, BT connect/disconnect, etc.)
@@ -1315,13 +1352,19 @@ class CoreManager {
         glassesSettings["button_max_recording_time"] = buttonMaxRecordingTime
         glassesSettings["button_camera_led"] = buttonCameraLed
 
+        // Check if glasses mic is currently being used
+        val glassesHasMic = sgc?.hasMic ?: false
+        val micSourceManager = com.mentra.core.services.MicSourceManager(Bridge.getContext())
+        val micSource = com.mentra.core.services.MicSource.fromString(preferredMic)
+        val config = micSourceManager.getMicConfig(micSource)
+        val isUsingGlassesMic = micEnabled && config.useBLEMic && glassesHasMic && sgc?.ready == true
+
         val coreInfo =
             mapOf(
                 "default_wearable" to defaultWearable,
                 "preferred_mic" to preferredMic,
                 "is_searching" to isSearching,
-                "is_mic_enabled_for_frontend" to
-                        (micEnabled && preferredMic == "glasses" && sgc?.ready == true),
+                "is_mic_enabled_for_frontend" to isUsingGlassesMic,
                 "core_token" to coreToken,
             )
 

@@ -223,8 +223,8 @@ export default function SelectGlassesBluetoothScreen() {
       return // Stop the connection process
     }
 
-    // update the preferredmic to be the phone mic:
-    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, "phone")
+    // Set preferred mic to automatic - system will pick best default per glasses type
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.preferred_mic, "automatic")
 
     // All permissions granted, proceed with connecting to the wearable
     setTimeout(() => {

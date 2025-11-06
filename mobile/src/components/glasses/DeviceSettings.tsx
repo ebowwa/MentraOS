@@ -12,7 +12,7 @@ import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import CoreModule from "core"
-import {Platform, View, ViewStyle} from "react-native"
+import {View, ViewStyle} from "react-native"
 import {Spacer} from "@/components/ui/Spacer"
 import {BatteryStatus} from "./info/BatteryStatus"
 import {DeviceInformation} from "./info/DeviceInformation"
@@ -43,12 +43,8 @@ export default function DeviceSettings() {
   const features: Capabilities = getModelCapabilities(defaultWearable)
 
   // Check if we have any advanced settings to show
-  const hasMicrophoneSelector =
-    isGlassesConnected &&
-    defaultWearable &&
-    features?.hasMicrophone &&
-    (defaultWearable !== "Mentra Live" ||
-      (Platform.OS === "android" && status.glasses_info?.glasses_device_model !== "K900"))
+  // Always show mic selector - users can configure preference even when glasses not connected
+  const hasMicrophoneSelector = true
 
   const hasDeviceInfo =
     status.glasses_info?.bluetooth_name ||
@@ -213,7 +209,13 @@ export default function DeviceSettings() {
           isOpen={showAdvancedSettings}
           onToggle={() => setShowAdvancedSettings(!showAdvancedSettings)}>
           {/* Microphone Selector */}
-          {hasMicrophoneSelector && <MicrophoneSelector preferredMic={preferredMic} onMicChange={setMic} />}
+          {hasMicrophoneSelector && (
+            <MicrophoneSelector
+              preferredMic={preferredMic}
+              onMicChange={setMic}
+              glassesConnected={isGlassesConnected}
+            />
+          )}
 
           {/* Spacer between sections */}
           <Spacer height={16} />

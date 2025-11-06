@@ -392,6 +392,7 @@ public class MentraLive extends SGCManager {
     public MentraLive() {
         super();
         this.type = DeviceTypes.LIVE;
+        this.hasMic = true;  // Mentra Live has a built-in LC3 microphone
         this.context = Bridge.getContext();
 
         // Initialize bluetooth adapter
@@ -1358,6 +1359,8 @@ public class MentraLive extends SGCManager {
     }
 
     public void setMicEnabled(boolean enabled) {
+        Bridge.log("LIVE: setMicEnabled(" + enabled + ")");
+        changeSmartGlassesMicrophoneState(enabled);
     }
 
     /**
