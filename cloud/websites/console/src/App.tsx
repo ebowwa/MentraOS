@@ -1,38 +1,39 @@
 // App.tsx
-import { useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {Suspense, lazy, useEffect} from "react"
+import {BrowserRouter, Navigate, Route, Routes} from "react-router-dom"
 
 // Components
-import { Toaster } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
+import {Toaster} from "./components/ui/sonner"
+import {TooltipProvider} from "./components/ui/tooltip"
+import PageLoader from "./components/ui/page-loader"
 
-// Pages
-import LandingPage from "./pages/LandingPage";
-import DashboardHome from "./pages/DashboardHome";
+import {AuthProvider, useAuth, ForgotPasswordPage, ResetPasswordPage} from "@mentra/shared"
+import {OrganizationProvider} from "./context/OrganizationContext"
+import {useAccountStore} from "./stores/account.store"
+import {useOrgStore} from "./stores/orgs.store"
+import {useAppStore} from "./stores/apps.store"
 
-import LoginOrSignup from "./pages/AuthPage";
-import AppList from "./pages/AppList";
-import CreateApp from "./pages/CreateApp";
-import EditApp from "./pages/EditApp";
-import OrganizationSettings from "./pages/OrganizationSettings";
-import Members from "./pages/Members";
-import AdminPanel from "./pages/AdminPanel";
-import NotFound from "./pages/NotFound";
-import { AuthProvider, useAuth, ForgotPasswordPage, ResetPasswordPage } from "@mentra/shared";
-import { OrganizationProvider } from "./context/OrganizationContext";
-import { useAccountStore } from "./stores/account.store";
-import { useOrgStore } from "./stores/orgs.store";
-import { useAppStore } from "./stores/apps.store";
+// Pages (lazy-loaded for smaller initial bundles)
+const LandingPage = lazy(() => import("./pages/LandingPage"))
+const DashboardHome = lazy(() => import("./pages/DashboardHome"))
+const LoginOrSignup = lazy(() => import("./pages/AuthPage"))
+const AppList = lazy(() => import("./pages/AppList"))
+const CreateApp = lazy(() => import("./pages/CreateApp"))
+const EditApp = lazy(() => import("./pages/EditApp"))
+const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"))
+const Members = lazy(() => import("./pages/Members"))
+const AdminPanel = lazy(() => import("./pages/AdminPanel"))
+const NotFound = lazy(() => import("./pages/NotFound"))
 
 // Protected route component
 function ProtectedRoute({
   children,
   // requireAdmin = false,
 }: {
-  children: React.ReactNode;
-  requireAdmin?: boolean;
+  children: React.ReactNode
+  requireAdmin?: boolean
 }) {
-  const { isAuthenticated, isLoading, user, session } = useAuth();
+  const {isAuthenticated, isLoading, user, session} = useAuth()
   // const [isAdmin, setIsAdmin] = React.useState<boolean | null>(null);
   // const [isCheckingAdmin, setIsCheckingAdmin] = React.useState(false);
 
@@ -57,17 +58,13 @@ function ProtectedRoute({
   // }, [requireAdmin, isAuthenticated, isLoading]);
 
   // Only log authentication issues in development mode
-  if (
-    process.env.NODE_ENV === "development" &&
-    !isAuthenticated &&
-    !isLoading
-  ) {
+  if (process.env.NODE_ENV === "development" && !isAuthenticated && !isLoading) {
     console.log("Auth issue:", {
       isAuthenticated,
       isLoading,
       hasUser: !!user,
       hasSession: !!session,
-    });
+    })
   }
 
   // if (isLoading || (requireAdmin && isCheckingAdmin)) {
@@ -76,12 +73,12 @@ function ProtectedRoute({
       <div className="h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
-    );
+    )
   }
 
   if (!isAuthenticated) {
-    console.log("Not authenticated, redirecting to signin page");
-    return <Navigate to="/signin" replace />;
+    console.log("Not authenticated, redirecting to signin page")
+    return <Navigate to="/signin" replace />
   }
 
   // if (requireAdmin && isAdmin === false) {
@@ -90,20 +87,20 @@ function ProtectedRoute({
   // }
 
   // Authentication (and admin check if required) successful
-  return <>{children}</>;
+  return <>{children}</>
 }
 
 const AppShell: React.FC = () => {
   // Initialize Console stores after auth is ready (inside AuthProvider)
-  const { isAuthenticated, coreToken, tokenReady, supabaseToken } = useAuth();
+  const {isAuthenticated, coreToken, tokenReady, supabaseToken} = useAuth()
 
-  const setToken = useAccountStore((s) => s.setToken);
-  const fetchAccount = useAccountStore((s) => s.fetchAccount);
+  const setToken = useAccountStore((s) => s.setToken)
+  const fetchAccount = useAccountStore((s) => s.fetchAccount)
 
-  const bootstrapOrgs = useOrgStore((s) => s.bootstrap);
-  const selectedOrgId = useOrgStore((s) => s.selectedOrgId);
+  const bootstrapOrgs = useOrgStore((s) => s.bootstrap)
+  const selectedOrgId = useOrgStore((s) => s.selectedOrgId)
 
-  const fetchApps = useAppStore((s) => s.fetchApps);
+  const fetchApps = useAppStore((s) => s.fetchApps)
 
   // Effect A: run once when auth is ready to bootstrap account and orgs
   useEffect(() => {
@@ -112,25 +109,14 @@ const AppShell: React.FC = () => {
       console.log("[AppShell] authReady: bootstrap", {
         tokenReady,
         isAuthenticated,
-      });
+      })
 
-      const token = coreToken || supabaseToken || null;
-      setToken(token);
+      const token = coreToken || supabaseToken || null
+      setToken(token)
 
-      (async () => {
-        await fetchAccount();
-        await bootstrapOrgs();
-      })();
+      void Promise.all([fetchAccount(), bootstrapOrgs()])
     }
-  }, [
-    isAuthenticated,
-    tokenReady,
-    coreToken,
-    supabaseToken,
-    setToken,
-    fetchAccount,
-    bootstrapOrgs,
-  ]);
+  }, [isAuthenticated, tokenReady, coreToken, supabaseToken, setToken, fetchAccount, bootstrapOrgs])
 
   // Effect B: when org changes, fetch apps for that org (do not re-bootstrap)
   useEffect(() => {
@@ -139,101 +125,99 @@ const AppShell: React.FC = () => {
     console.log("[AppShell] orgChanged: fetchApps", {
       selectedOrgId,
       isAuthenticated,
-    });
+    })
     if (isAuthenticated && selectedOrgId) {
-      fetchApps({ orgId: selectedOrgId });
+      fetchApps({orgId: selectedOrgId})
     }
-  }, [isAuthenticated, selectedOrgId, fetchApps]);
+  }, [isAuthenticated, selectedOrgId, fetchApps])
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Login or Signup */}
-        <Route path="/login" element={<LoginOrSignup />} />
-        <Route path="/signup" element={<LoginOrSignup />} />
-        <Route path="/signin" element={<LoginOrSignup />} />
+          {/* Login or Signup */}
+          <Route path="/login" element={<LoginOrSignup />} />
+          <Route path="/signup" element={<LoginOrSignup />} />
+          <Route path="/signin" element={<LoginOrSignup />} />
 
-        {/* Organization Invite */}
-        <Route path="/invite/accept" element={<LoginOrSignup />} />
+          {/* Organization Invite */}
+          <Route path="/invite/accept" element={<LoginOrSignup />} />
 
-        {/* Forgot Password Routes */}
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route
-          path="/reset-password"
-          element={<ResetPasswordPage redirectUrl="/dashboard" />}
-        />
+          {/* Forgot Password Routes */}
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage redirectUrl="/dashboard" />} />
 
-        {/* Dashboard Routes - No auth for now */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardHome />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps"
-          element={
-            <ProtectedRoute>
-              <AppList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps/create"
-          element={
-            <ProtectedRoute>
-              <CreateApp />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/apps/:packageName/edit"
-          element={
-            <ProtectedRoute>
-              <EditApp />
-            </ProtectedRoute>
-          }
-        />
+          {/* Dashboard Routes - No auth for now */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardHome />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps"
+            element={
+              <ProtectedRoute>
+                <AppList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps/create"
+            element={
+              <ProtectedRoute>
+                <CreateApp />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/apps/:packageName/edit"
+            element={
+              <ProtectedRoute>
+                <EditApp />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/org-settings"
-          element={
-            <ProtectedRoute>
-              <OrganizationSettings />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/org-settings"
+            element={
+              <ProtectedRoute>
+                <OrganizationSettings />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/members"
-          element={
-            <ProtectedRoute>
-              <Members />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/members"
+            element={
+              <ProtectedRoute>
+                <Members />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requireAdmin={true}>
-              <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminPanel />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Catch-all Not Found route */}
-        <Route path="*" element={<NotFound />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+          {/* Catch-all Not Found route */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
-  );
-};
+  )
+}
 
 const App: React.FC = () => {
   return (
@@ -245,7 +229,7 @@ const App: React.FC = () => {
         </TooltipProvider>
       </OrganizationProvider>
     </AuthProvider>
-  );
-};
+  )
+}
 
-export default App;
+export default App
