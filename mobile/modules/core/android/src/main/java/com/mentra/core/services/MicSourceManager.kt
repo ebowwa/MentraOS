@@ -51,13 +51,13 @@ class MicSourceManager(private val context: Context) {
                 useBLEMic = false,
                 usePhoneMic = true,
                 activateSCO = false,
-                audioMode = AudioManager.MODE_NORMAL,
+                audioMode = AudioManager.MODE_IN_COMMUNICATION,
                 audioSource = if (isSamsungDevice()) {
                     MediaRecorder.AudioSource.VOICE_RECOGNITION
                 } else {
                     MediaRecorder.AudioSource.MIC
                 },
-                focusGain = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT,
+                focusGain = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK,
                 canFallbackToGlasses = glassesHasMic,  // Can fallback if glasses has mic
                 canFallbackToPhone = false             // Already on phone
             )
@@ -77,7 +77,7 @@ class MicSourceManager(private val context: Context) {
                     activateSCO = false,
                     audioMode = AudioManager.MODE_NORMAL,
                     audioSource = -1, // N/A - using BLE custom mic
-                    focusGain = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT,
+                    focusGain = AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK,
                     canFallbackToGlasses = false,  // Already on glasses
                     canFallbackToPhone = false     // Glasses-only mode
                 )

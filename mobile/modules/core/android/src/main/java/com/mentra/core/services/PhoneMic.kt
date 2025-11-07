@@ -299,6 +299,12 @@ class PhoneMic private constructor(private val context: Context) {
             // Set audio mode from config
             audioManager.mode = config.audioMode
 
+            // Force speaker output (not earpiece) for MODE_IN_COMMUNICATION
+            if (config.audioMode == AudioManager.MODE_IN_COMMUNICATION) {
+                audioManager.isSpeakerphoneOn = true
+                Bridge.log("MIC: Enabled speakerphone for MODE_IN_COMMUNICATION")
+            }
+
             return createAndStartAudioRecord(config.audioSource)
         } catch (e: Exception) {
             Bridge.log("MIC: Normal recording failed: ${e.message}")
@@ -370,20 +376,52 @@ class PhoneMic private constructor(private val context: Context) {
 
                     val audioBuffer = ShortArray(bufferSize / 2)
 
-                    while (isRecording.get()) {
-                        val readResult = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
+                    try {
+                        while (isRecording.get()) {
+                            val readResult = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
 
-                        if (readResult > 0) {
-                            // Convert short array to byte array (16-bit PCM)
-                            val pcmData = ByteArray(readResult * 2)
-                            val byteBuffer = ByteBuffer.wrap(pcmData).order(ByteOrder.LITTLE_ENDIAN)
+                            when {
+                                readResult > 0 -> {
+                                    // Convert short array to byte array (16-bit PCM)
+                                    val pcmData = ByteArray(readResult * 2)
+                                    val byteBuffer = ByteBuffer.wrap(pcmData).order(ByteOrder.LITTLE_ENDIAN)
 
-                            for (i in 0 until readResult) {
-                                byteBuffer.putShort(audioBuffer[i])
+                                    for (i in 0 until readResult) {
+                                        byteBuffer.putShort(audioBuffer[i])
+                                    }
+
+                                    // Send PCM data to CoreManager
+                                    CoreManager.getInstance().handlePcm(pcmData)
+                                }
+                                readResult == AudioRecord.ERROR_INVALID_OPERATION -> {
+                                    Bridge.log("MIC: Recording thread - ERROR_INVALID_OPERATION, stopping recording")
+                                    break
+                                }
+                                readResult == AudioRecord.ERROR_BAD_VALUE -> {
+                                    Bridge.log("MIC: Recording thread - ERROR_BAD_VALUE, stopping recording")
+                                    break
+                                }
+                                readResult == AudioRecord.ERROR_DEAD_OBJECT -> {
+                                    Bridge.log("MIC: Recording thread - ERROR_DEAD_OBJECT, stopping recording")
+                                    break
+                                }
+                                readResult == AudioRecord.ERROR -> {
+                                    Bridge.log("MIC: Recording thread - ERROR, stopping recording")
+                                    break
+                                }
+                                readResult == 0 -> {
+                                    // No data available, continue loop
+                                }
                             }
-
-                            // Send PCM data to CoreManager
-                            CoreManager.getInstance().handlePcm(pcmData)
+                        }
+                    } catch (e: Exception) {
+                        Bridge.log("MIC: Recording thread exception: ${e.message}")
+                        e.printStackTrace()
+                    } finally {
+                        Bridge.log("MIC: Recording thread exited")
+                        // Ensure we clean up if thread exits unexpectedly
+                        if (isRecording.get()) {
+                            mainHandler.post { stopRecording() }
                         }
                     }
                 }
@@ -684,8 +722,8 @@ class PhoneMic private constructor(private val context: Context) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     val audioAttributes =
                             AudioAttributes.Builder()
-                                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                                     .build()
 
                     audioFocusRequest =
@@ -702,7 +740,7 @@ class PhoneMic private constructor(private val context: Context) {
                 } else {
                     audioManager.requestAudioFocus(
                             audioFocusListener,
-                            AudioManager.STREAM_VOICE_CALL,
+                            AudioManager.STREAM_MUSIC,
                             focusGain
                     )
                 }
