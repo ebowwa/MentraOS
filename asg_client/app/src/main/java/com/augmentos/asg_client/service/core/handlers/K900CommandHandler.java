@@ -52,12 +52,10 @@ public class K900CommandHandler {
 
             switch (command) {
                 case "cs_pho":
-                    extractAndUpdateBattery(bData);
                     handleCameraButtonShortPress();
                     break;
 
                 case "cs_vdo":
-                    extractAndUpdateBattery(bData);
                     handleCameraButtonLongPress();
                     break;
 
@@ -193,9 +191,6 @@ public class K900CommandHandler {
     private void handleBatteryVoltage(JSONObject bData) {
         Log.d(TAG, "🔋 Processing battery voltage data from K900");
         if (bData != null) {
-            extractAndUpdateBattery(bData);
-
-            // Also send over BLE for compatibility
             int newBatteryPercentage = bData.optInt("pt", -1);
             int newBatteryVoltage = bData.optInt("vt", -1);
 
@@ -405,7 +400,7 @@ public class K900CommandHandler {
                 Log.d(TAG, "📹 Starting video recording (long press) with LED: " + ledEnabled + ", battery: " + batteryLevel + "%");
 
                 // Check if battery is too low to start recording
-                if (batteryLevel >= 0 && batteryLevel <= 90) {
+                if (batteryLevel >= 0 && batteryLevel <= 10) {
                     Log.w(TAG, "🚫 Video recording rejected - battery too low (" + batteryLevel + "%)");
                     // Play battery low sound
                     captureService.playBatteryLowSound();
@@ -460,40 +455,6 @@ public class K900CommandHandler {
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating button press response", e);
             }
-        }
-    }
-
-    /**
-     * Extract and update battery status from B field data
-     * Supports both "percent"/"type" format (cs_pho) and "pt"/"vt" format (hm_batv)
-     */
-    private void extractAndUpdateBattery(JSONObject bData) {
-        if (bData == null) {
-            return;
-        }
-
-        // Try "percent" field first (used in cs_pho commands)
-        int batteryPercentage = bData.optInt("percent", -1);
-
-        // Fall back to "pt" field if "percent" not found (used in hm_batv commands)
-        if (batteryPercentage == -1) {
-            batteryPercentage = bData.optInt("pt", -1);
-        }
-
-        // Try "type" field for voltage estimation (cs_pho format)
-        int batteryVoltage = bData.optInt("type", -1);
-
-        // Fall back to "vt" field if "type" not found (hm_batv format)
-        if (batteryVoltage == -1) {
-            batteryVoltage = bData.optInt("vt", -1);
-        }
-
-        // Update StateManager if we have battery percentage
-        if (batteryPercentage != -1 && stateManager != null) {
-            // Calculate charging status based on voltage if available
-            boolean isCharging = batteryVoltage > 3900;
-            stateManager.updateBatteryStatus(batteryPercentage, isCharging, System.currentTimeMillis());
-            Log.d(TAG, "🔋 Updated battery: " + batteryPercentage + "% (charging: " + isCharging + ")");
         }
     }
 
