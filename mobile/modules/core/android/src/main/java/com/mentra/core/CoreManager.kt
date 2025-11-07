@@ -441,15 +441,13 @@ class CoreManager {
     }
 
     /**
-     * Check if the current mic source uses or could use phone mic
-     * Returns true for: automatic, phone_internal, bluetooth_classic
-     * Returns false for: glasses_custom
+     * Check if the mic is actually using the phone mic right now
+     * Accounts for fallback scenarios (e.g., glasses_custom falling back to phone)
+     * Returns true if PhoneMic is actively using phone/BT mic
+     * Returns false if using BLE glasses mic or not recording
      */
     private fun micSourceUsesPhone(): Boolean {
-        return when (preferredMic) {
-            "glasses_custom" -> false  // Never uses phone mic
-            else -> true  // automatic, phone_internal, bluetooth_classic all can use phone
-        }
+        return PhoneMic.getInstance(Bridge.getContext()).isUsingPhoneMic()
     }
 
     private fun updateMicrophoneState() {

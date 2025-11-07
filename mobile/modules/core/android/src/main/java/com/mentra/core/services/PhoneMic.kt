@@ -188,6 +188,16 @@ class PhoneMic private constructor(private val context: Context) {
         Bridge.log("MIC: Recording stopped")
     }
 
+    /**
+     * Check if PhoneMic is actually using the phone mic
+     * Returns true if currently using phone mic (including fallback scenarios)
+     * Returns false if using BLE mic or not recording
+     */
+    fun isUsingPhoneMic(): Boolean {
+        val config = currentMicConfig ?: return false
+        return config.usePhoneMic || config.activateSCO
+    }
+
     // MARK: - Private Methods
 
     private fun startRecordingInternal(): Boolean {

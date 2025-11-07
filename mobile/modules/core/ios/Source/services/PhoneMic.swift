@@ -417,6 +417,14 @@ class PhoneMic {
         Bridge.log("MIC: Stopped recording")
     }
 
+    /// Check if PhoneMic is actually using the phone mic
+    /// Returns true if currently using phone mic (including Bluetooth)
+    /// Returns false if using BLE glasses mic or not recording
+    func isUsingPhoneMic() -> Bool {
+        guard let config = currentMicConfig else { return false }
+        return config.usePhoneMic || config.activateBluetooth
+    }
+
     // MARK: - Cleanup
 
     func cleanup() {
