@@ -47,6 +47,7 @@ import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.events.StreamingCommand;
 import com.augmentos.asg_client.io.streaming.events.StreamingEvent;
 import com.augmentos.asg_client.io.streaming.interfaces.StreamingStatusCallback;
+import com.augmentos.asg_client.events.BatteryStatusEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -1362,6 +1363,20 @@ public class RtmpStreamingService extends Service {
     }
 
     /**
+     * Play battery low sound to alert user (static convenience method)
+     * @param context Context to use for accessing hardware manager
+     */
+    public static void playBatteryLowSound(Context context) {
+        IHardwareManager hardwareManager = HardwareManagerFactory.getInstance(context);
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(com.augmentos.asg_client.audio.AudioAssets.BATTERY_LOW);
+            Log.d(TAG, "🔋 Playing battery low sound");
+        } else {
+            Log.w(TAG, "⚠️ Cannot play battery low sound - hardware manager not available");
+        }
+    }
+
+    /**
      * Determine if an error is retryable (network/connection) or fatal (config/permission)
      * @param error The StreamPackError to classify
      * @return true if the error should trigger reconnection attempts, false if it's fatal
@@ -1537,6 +1552,34 @@ public class RtmpStreamingService extends Service {
             stopStreaming();
         } else if (command instanceof StreamingCommand.SetRtmpUrl) {
             setRtmpUrl(((StreamingCommand.SetRtmpUrl) command).getRtmpUrl());
+        }
+    }
+
+    /**
+     * Handle battery status updates to monitor during streaming
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onBatteryStatusEvent(BatteryStatusEvent event) {
+        int batteryLevel = event.getBatteryLevel();
+
+        // Only act if we're streaming and battery drops below 10%
+        if (mIsStreaming && batteryLevel != -1 && batteryLevel < 10) {
+            Log.w(TAG, "🔋⚠️ Battery dropped to " + batteryLevel + "% during streaming - stopping stream");
+
+            // Send termination event with reason
+            String terminationReason = "Battery too low (" + batteryLevel + "%)";
+            EventBus.getDefault().post(new StreamingEvent.Error(terminationReason));
+            if (sStatusCallback != null) {
+                sStatusCallback.onStreamError(terminationReason);
+            }
+
+            // Stop streaming gracefully
+            stopStreaming();
+
+            // Play battery low sound
+            playBatteryLowSound(this);
+
+            Log.i(TAG, "🔋 Stream stopped due to low battery");
         }
     }
 

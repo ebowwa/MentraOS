@@ -6,6 +6,7 @@ import android.util.Log;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
+import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 
 import org.json.JSONObject;
 
@@ -20,10 +21,13 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
     private static final String TAG = "PhotoCommandHandler";
 
     private final AsgClientServiceManager serviceManager;
+    private final IStateManager stateManager;
+    private static final int MIN_BATTERY_LEVEL = 10;
 
-    public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager, FileManager fileManager) {
+    public PhotoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStateManager stateManager, FileManager fileManager) {
         super(context, fileManager);
         this.serviceManager = serviceManager;
+        this.stateManager = stateManager;
     }
 
     @Override
@@ -83,6 +87,21 @@ public class PhotoCommandHandler extends BaseMediaCommandHandler {
             MediaCaptureService captureService = serviceManager.getMediaCaptureService();
             if (captureService == null) {
                 logCommandResult("take_photo", false, "Media capture service not available");
+                return false;
+            }
+
+            // BATTERY CHECK: Reject photo requests if battery is too low (≤ 10%)
+            int batteryLevel = stateManager.getBatteryLevel();
+            if (batteryLevel != -1 && batteryLevel <= MIN_BATTERY_LEVEL) {
+                Log.w(TAG, "🚫 Photo request rejected - battery too low (" + batteryLevel + "%)");
+                logCommandResult("take_photo", false, "Battery too low - request rejected");
+
+                // Play battery low sound
+                captureService.playBatteryLowSound();
+
+                // Send immediate error response to phone
+                captureService.sendPhotoErrorResponse(requestId, "BATTERY_TOO_LOW",
+                    "Battery level too low (" + batteryLevel + "%) - request rejected");
                 return false;
             }
 

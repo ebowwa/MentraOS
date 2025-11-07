@@ -8,6 +8,7 @@ import com.augmentos.asg_client.io.media.core.MediaCaptureService;
 import com.augmentos.asg_client.io.file.core.FileManager;
 import com.augmentos.asg_client.service.legacy.managers.AsgClientServiceManager;
 import com.augmentos.asg_client.service.media.interfaces.IMediaManager;
+import com.augmentos.asg_client.service.system.interfaces.IStateManager;
 import com.augmentos.asg_client.settings.VideoSettings;
 
 import org.json.JSONException;
@@ -26,10 +27,13 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
 
     private final AsgClientServiceManager serviceManager;
     private final IMediaManager streamingManager;
+    private final IStateManager stateManager;
+    private static final int MIN_BATTERY_LEVEL = 10;
 
-    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IMediaManager streamingManager, FileManager fileManager) {
+    public VideoCommandHandler(Context context, AsgClientServiceManager serviceManager, IStateManager stateManager, IMediaManager streamingManager, FileManager fileManager) {
         super(context, fileManager);
         this.serviceManager = serviceManager;
+        this.stateManager = stateManager;
         this.streamingManager = streamingManager;
     }
 
@@ -91,6 +95,20 @@ public class VideoCommandHandler extends BaseMediaCommandHandler {
                 logCommandResult("start_video_recording", true, "Already recording video");
                 streamingManager.sendVideoRecordingStatusResponse(true, "already_recording", null);
                 return true;
+            }
+
+            // BATTERY CHECK: Reject video recording if battery is too low (≤ 10%)
+            int batteryLevel = stateManager.getBatteryLevel();
+            if (batteryLevel != -1 && batteryLevel <= MIN_BATTERY_LEVEL) {
+                Log.w(TAG, "🚫 Video recording rejected - battery too low (" + batteryLevel + "%)");
+                logCommandResult("start_video_recording", false, "Battery too low - request rejected");
+
+                // Play battery low sound
+                captureService.playBatteryLowSound();
+
+                streamingManager.sendVideoRecordingStatusResponse(false, "battery_too_low",
+                    "Battery level too low (" + batteryLevel + "%) - request rejected");
+                return false;
             }
 
             // Parse video settings if provided

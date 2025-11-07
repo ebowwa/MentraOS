@@ -400,8 +400,10 @@ public class K900CommandHandler {
                 Log.d(TAG, "📹 Starting video recording (long press) with LED: " + ledEnabled + ", battery: " + batteryLevel + "%");
 
                 // Check if battery is too low to start recording
-                if (batteryLevel >= 0 && batteryLevel < 10) {
-                    Log.w(TAG, "⚠️ Battery too low to start recording: " + batteryLevel + "% (minimum 10% required)");
+                if (batteryLevel >= 0 && batteryLevel <= 10) {
+                    Log.w(TAG, "🚫 Video recording rejected - battery too low (" + batteryLevel + "%)");
+                    // Play battery low sound
+                    captureService.playBatteryLowSound();
                     return;
                 }
 
@@ -417,6 +419,14 @@ public class K900CommandHandler {
                 Log.d(TAG, "⏹️ Stopping video recording (short press during recording)");
                 captureService.stopVideoRecording();
             } else {
+                // Check if battery is too low to take photo
+                if (batteryLevel >= 0 && batteryLevel <= 10) {
+                    Log.w(TAG, "🚫 Photo capture rejected - battery too low (" + batteryLevel + "%)");
+                    // Play battery low sound
+                    captureService.playBatteryLowSound();
+                    return;
+                }
+
                 Log.d(TAG, "📸 Taking photo locally (short press) with LED: " + ledEnabled);
                 // Get saved photo size for button press
                 String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();

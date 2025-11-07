@@ -24,6 +24,7 @@ public class RtmpCommandHandler implements ICommandHandler {
     private final Context context;
     private final IStateManager stateManager;
     private final IMediaManager streamingManager;
+    private static final int MIN_BATTERY_LEVEL = 10;
 
     public RtmpCommandHandler(Context context, IStateManager stateManager, IMediaManager streamingManager) {
         this.context = context;
@@ -73,6 +74,19 @@ public class RtmpCommandHandler implements ICommandHandler {
             if (!stateManager.isConnectedToWifi()) {
                 Log.e(TAG, "Cannot start RTMP stream - no WiFi connection");
                 streamingManager.sendRtmpStatusResponse(false, ServiceConstants.STATUS_ERROR, ServiceConstants.ERROR_NO_WIFI_CONNECTION);
+                return false;
+            }
+
+            // BATTERY CHECK: Reject streaming if battery is too low (≤ 10%)
+            int batteryLevel = stateManager.getBatteryLevel();
+            if (batteryLevel != -1 && batteryLevel <= MIN_BATTERY_LEVEL) {
+                Log.w(TAG, "🚫 RTMP stream rejected - battery too low (" + batteryLevel + "%)");
+
+                // Play battery low sound
+                RtmpStreamingService.playBatteryLowSound(context);
+
+                streamingManager.sendRtmpStatusResponse(false, ServiceConstants.STATUS_ERROR,
+                    "Battery level too low (" + batteryLevel + "%) - request rejected");
                 return false;
             }
 

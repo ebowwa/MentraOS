@@ -20,7 +20,11 @@ import com.augmentos.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.augmentos.asg_client.io.hardware.core.HardwareManagerFactory;
 import com.augmentos.asg_client.io.streaming.services.RtmpStreamingService;
 import com.augmentos.asg_client.audio.AudioAssets;
+import com.augmentos.asg_client.events.BatteryStatusEvent;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -342,6 +346,43 @@ public class MediaCaptureService {
                 }
             }
         });
+
+        // Register for battery status events
+        if (!EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().register(this);
+            Log.d(TAG, "MediaCaptureService registered for battery events");
+        }
+    }
+
+    /**
+     * Cleanup resources and unregister from EventBus
+     */
+    public void cleanup() {
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
+            Log.d(TAG, "MediaCaptureService unregistered from battery events");
+        }
+    }
+
+    /**
+     * Handle battery status updates to monitor during video recording
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onBatteryStatusEvent(BatteryStatusEvent event) {
+        int batteryLevel = event.getBatteryLevel();
+
+        // Only act if we're recording video and battery drops below 10%
+        if (isRecordingVideo && batteryLevel != -1 && batteryLevel < 10) {
+            Log.w(TAG, "🔋⚠️ Battery dropped to " + batteryLevel + "% during video recording - stopping recording");
+
+            // Stop video recording gracefully
+            stopVideoRecording();
+
+            // Play battery low sound
+            playBatteryLowSound();
+
+            Log.i(TAG, "🔋 Video recording stopped and saved due to low battery");
+        }
     }
 
     /**
@@ -425,7 +466,19 @@ public class MediaCaptureService {
             hardwareManager.playAudioAsset(AudioAssets.VIDEO_RECORDING_STOP);
         }
     }
-    
+
+    /**
+     * Play battery low sound to alert user
+     */
+    public void playBatteryLowSound() {
+        if (hardwareManager != null && hardwareManager.supportsAudioPlayback()) {
+            hardwareManager.playAudioAsset(AudioAssets.BATTERY_LOW);
+            Log.d(TAG, "🔋 Playing battery low sound");
+        } else {
+            Log.w(TAG, "⚠️ Cannot play battery low sound - hardware manager not available");
+        }
+    }
+
     /**
      * Start video recording with specific settings
      * @param settings Video settings (resolution, fps)

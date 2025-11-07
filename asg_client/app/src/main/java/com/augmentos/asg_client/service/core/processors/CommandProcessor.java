@@ -295,10 +295,10 @@ public class CommandProcessor {
             commandHandlerRegistry.registerHandler(new AuthTokenCommandHandler(communicationManager, configurationManager));
             Log.d(TAG, "✅ Registered AuthTokenCommandHandler");
 
-            commandHandlerRegistry.registerHandler(new PhotoCommandHandler(context, serviceManager, fileManager));
+            commandHandlerRegistry.registerHandler(new PhotoCommandHandler(context, serviceManager, stateManager, fileManager));
             Log.d(TAG, "✅ Registered PhotoCommandHandler");
 
-            commandHandlerRegistry.registerHandler(new VideoCommandHandler(context, serviceManager, streamingManager, fileManager));
+            commandHandlerRegistry.registerHandler(new VideoCommandHandler(context, serviceManager, stateManager, streamingManager, fileManager));
             Log.d(TAG, "✅ Registered VideoCommandHandler");
 
             commandHandlerRegistry.registerHandler(new PingCommandHandler(communicationManager, responseBuilder));
