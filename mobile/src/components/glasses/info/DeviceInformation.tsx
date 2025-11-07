@@ -11,7 +11,7 @@ export function DeviceInformation() {
     <InfoSection
       title="Device Information"
       items={[
-        {label: "Bluetooth Name", value: bluetoothName?.split("_")[3]},
+        {label: "Bluetooth Name", value: bluetoothName},
         {label: "Build Number", value: buildNumber},
         {label: "Local IP Address", value: localIpAddress},
       ]}
