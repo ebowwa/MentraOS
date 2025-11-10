@@ -8,17 +8,56 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
 import restComms from "@/services/RestComms"
+import Constants from "expo-constants"
+import {useCoreStatus} from "@/contexts/CoreStatusProvider"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {useAppletStatusStore} from "@/stores/applets"
 
 export default function FeedbackPage() {
   const [feedbackText, setFeedbackText] = useState("")
   const {goBack} = useNavigationHistory()
   const {theme, themed} = useAppTheme()
+  const {status} = useCoreStatus()
+  const apps = useAppletStatusStore(state => state.apps)
 
   const handleSubmitFeedback = async (feedbackBody: string) => {
     console.log("Feedback submitted:", feedbackBody)
 
+    // Collect diagnostic information
+    const customBackendUrl = Constants.expoConfig?.extra?.CUSTOM_BACKEND_URL_OVERRIDE
+    const isBetaBuild = !!customBackendUrl
+    const deviceName = Constants.deviceName || "Unknown"
+    const osVersion = `${Platform.OS} ${Platform.Version}`
+    const appVersion = Constants.expoConfig?.version || "Unknown"
+
+    // Glasses info
+    const connectedGlassesModel = status.glasses_info?.model_name || "Not connected"
+    const defaultWearable = useSettingsStore.getState().getSetting(SETTINGS_KEYS.default_wearable) || "Not set"
+
+    // Running apps
+    const runningApps = apps.filter(app => app.running).map(app => app.packageName)
+    const runningAppsText = runningApps.length > 0 ? runningApps.join(", ") : "None"
+
+    // Build additional info section
+    const additionalInfo = [
+      `Beta Build: ${isBetaBuild ? "Yes" : "No"}`,
+      isBetaBuild ? `Backend URL: ${customBackendUrl}` : null,
+      `App Version: ${appVersion}`,
+      `Device: ${deviceName}`,
+      `OS: ${osVersion}`,
+      `Platform: ${Platform.OS}`,
+      `Connected Glasses: ${connectedGlassesModel}`,
+      `Default Wearable: ${defaultWearable}`,
+      `Running Apps: ${runningAppsText}`,
+    ]
+      .filter(Boolean)
+      .join("\n")
+
+    // Combine feedback with diagnostic info
+    const fullFeedback = `FEEDBACK:\n${feedbackBody}\n\nADDITIONAL INFO:\n${additionalInfo}`
+    console.log("Full Feedback submitted:", fullFeedback)
     try {
-      await restComms.sendFeedback(feedbackBody)
+      await restComms.sendFeedback(fullFeedback)
 
       showAlert(translate("feedback:thankYou"), translate("feedback:feedbackReceived"), [
         {
