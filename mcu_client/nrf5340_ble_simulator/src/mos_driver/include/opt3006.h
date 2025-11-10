@@ -1,7 +1,7 @@
 /*** 
  * @Author       : Cole
  * @Date         : 2025-10-15 16:01:10
- * @LastEditTime : 2025-10-16 19:25:45
+ * @LastEditTime : 2025-11-10 16:15:29
  * @FilePath     : opt3006.h
  * @Description  : 
  * @
@@ -20,10 +20,7 @@
 // I2C Device Address | I2C设备地址
 // Note: This is 7-bit address format (Zephyr standard)
 // 注意: 这是7位地址格式（Zephyr标准）
-// TI GUI shows 8-bit format: Write=0x88, Read=0x89 (includes R/W bit)
-// TI上位机显示8位格式: 写=0x88, 读=0x89（包含读写位）
-#define OPT3006_I2C_ADDR 0x44  // 7-bit address (ADDR pin = GND) | 7位地址(ADDR引脚=GND)
-                               // 8-bit: Write=0x88, Read=0x89 | 8位地址: 写=0x88, 读=0x89
+#define OPT3006_I2C_ADDR 0x45 // ti最新邮件确认了，opt3006的地址是0x45 | ti latest email confirmed, opt3006 address is 0x45
 
 // Register Addresses | 寄存器地址
 #define OPT3006_REG_RESULT          0x00  // Result register (read-only) | 结果寄存器(只读)

@@ -11,7 +11,7 @@
  * HARDWARE CONFIGURATION:
  * - PDM_CLK: P1.12 (nRF5340 PDM Clock Output)  
  * - PDM_DIN: P1.11 (nRF5340 PDM Data Input)
- * - Microphone: Digital PDM microphone connected to P1.11/P1.12
+ * - Microphone: Dual MSM261DCB002 digital PDM microphones connected to P1.11/P1.12
  * 
  * AUDIO SPECIFICATIONS:
  * - Sample Rate: 16 kHz (optimized for voice)
@@ -36,6 +36,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "mos_components/mos_pdm/include/mos_pdm.h"
 
 /* Audio configuration constants */
 #define PDM_SAMPLE_RATE         16000    // 16 kHz voice optimized
@@ -104,15 +106,21 @@ void pdm_audio_stream_get_stats(uint32_t *frames_captured, uint32_t *frames_enco
  * 启用/禁用I2S音频输出（环回播放）
  * 
  * @param enabled true to enable I2S playback, false to disable
+ * @return 0 on success, negative error code on failure
  */
-void pdm_audio_set_i2s_output(bool enabled);
+int pdm_audio_set_i2s_output(bool enabled);
+bool pdm_audio_get_i2s_output(void);
+
+int lc3_decoder_start(void);
+int lc3_decoder_stop(void);
 
 /**
- * @brief Get I2S audio output status
- * 获取I2S音频输出状态
- * 
- * @return true if I2S output is enabled
+ *  @brief Select which PDM channel(s) feed the CPU mixer (left/right/stereo-mix).
  */
-bool pdm_audio_get_i2s_output(void);
+int pdm_audio_stream_set_channel(pdm_channel_t channel);
+
+pdm_channel_t pdm_audio_stream_get_channel(void);
+
+bool pdm_audio_stream_is_initialized(void);
 
 #endif /* PDM_AUDIO_STREAM_H */

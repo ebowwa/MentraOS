@@ -58,6 +58,7 @@ void audio_i2s_stop(void);
  * @return true if initialized, false otherwise / 如果已初始化返回 true，否则返回 false
  */
 bool audio_i2s_is_initialized(void);
+bool audio_i2s_is_started(void);
 
 /**
  * @brief Initialize I2S module / 初始化 I2S 模块

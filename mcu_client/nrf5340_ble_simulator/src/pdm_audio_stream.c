@@ -8,6 +8,9 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "bspal_audio_i2s.h"
 #include "mentra_ble_service.h"
@@ -35,6 +38,7 @@ static uint32_t frames_captured    = 0;  /* Count of captured frames / 已采集
 static uint32_t frames_encoded     = 0;  /* Count of encoded frames / 已编码帧计数 */
 static uint32_t frames_decoded     = 0;  /* Count of decoded frames for I2S / I2S 已解码帧计数 */
 static uint16_t pcm_bytes_req_enc;
+static bool     lc3_decoder_active = false;
 // Mock audio processing thread
 static K_THREAD_STACK_DEFINE(audio_thread_stack, 1024 * 4);
 static struct k_thread audio_thread_data;
@@ -55,7 +59,7 @@ uint8_t stream_id = 0;  // 0=MIC, 1=TTS
 #define MIC_TAIL_MS 80u /* 关麦尾巴丢弃时长 Tail discard duration */
 #endif
 
-#define MS_TO_SAMPLES(ms) ((uint32_t)((uint64_t)(ms) * PDM_SAMPLE_RATE / 1000u))
+#define MS_TO_SAMPLES(ms) ((uint32_t)((uint64_t)(ms) * PDM_SAMPLE_RATE * PDM_AUDIO_CHANNELS / 1000u))
 
 typedef enum
 {
@@ -139,6 +143,95 @@ static int apply_fade_linear_q15(int16_t *buf, size_t n)
     return 0;
 }
 
+/* ---- 简易滤波器：DC阻断 + 低通平均 ---- */
+static int32_t dc_prev_in  = 0;
+static int32_t dc_prev_out = 0;
+static int32_t lp_prev_out = 0;
+
+static inline void reset_mic_filters(void)
+{
+    dc_prev_in  = 0;
+    dc_prev_out = 0;
+    lp_prev_out = 0;
+}
+
+static inline int16_t apply_mic_filters(int16_t sample)
+{
+    const int32_t alpha_q15 = 32512; /* ≈0.995 */
+    int32_t       x         = sample;
+    int32_t       y         = x - dc_prev_in + ((alpha_q15 * dc_prev_out) >> 15);
+    dc_prev_in             = x;
+    dc_prev_out            = y;
+
+    lp_prev_out += (y - lp_prev_out) >> 3; /* 一阶低通 */
+    int32_t filtered = lp_prev_out;
+
+    if (filtered > 32767)
+    {
+        filtered = 32767;
+    }
+    else if (filtered < -32768)
+    {
+        filtered = -32768;
+    }
+    return (int16_t)filtered;
+}
+
+static inline size_t mix_frame_to_mono(const int16_t *input_frame,
+                                       size_t         input_samples,
+                                       bool           stereo_input,
+                                       int16_t *      mono_frame)
+{
+    pdm_channel_t channel      = pdm_audio_stream_get_channel();
+    size_t        mono_samples = stereo_input ? (input_samples >> 1) : input_samples;
+
+    for (size_t i = 0; i < mono_samples; ++i)
+    {
+        int32_t mixed = 0;
+
+        if (stereo_input)
+        {
+            const int16_t left  = input_frame[(i << 1) + 0];
+            const int16_t right = input_frame[(i << 1) + 1];
+            switch (channel)
+            {
+                case PDM_CHANNEL_LEFT:
+                    mixed = left;
+                    break;
+                case PDM_CHANNEL_RIGHT:
+                    mixed = right;
+                    break;
+                case PDM_CHANNEL_STEREO_MIXED:
+                default:
+                    mixed = ((int32_t)left + (int32_t)right) / 2;
+                    break;
+            }
+        }
+        else
+        {
+            mixed = input_frame[i];
+        }
+
+        if (mixed > 32767)
+        {
+            mixed = 32767;
+        }
+        else if (mixed < -32768)
+        {
+            mixed = -32768;
+        }
+
+        mono_frame[i] = apply_mic_filters((int16_t)mixed);
+    }
+
+    if (mono_samples < PDM_PCM_REQ_BUFFER_SIZE)
+    {
+        memset(&mono_frame[mono_samples], 0, (PDM_PCM_REQ_BUFFER_SIZE - mono_samples) * sizeof(int16_t));
+    }
+
+    return mono_samples;
+}
+
 static inline uint8_t get_frames_per_packet(void)
 {
     // 可用空间 = MTU - 包头（type+stream_id）;
@@ -191,12 +284,19 @@ int lc3_encoder_start(void)
 }
 int lc3_decoder_start(void)
 {
+    if (lc3_decoder_active)
+    {
+        LOG_WRN("LC3 decoder already initialized");
+        return -EALREADY;
+    }
+
     int ret = sw_codec_lc3_dec_init(PDM_SAMPLE_RATE, PDM_BIT_DEPTH, LC3_FRAME_DURATION_US, PDM_CHANNELS);
     if (ret < 0)
     {
         LOG_ERR("LC3 decoder initialization failed with error: %d", ret);
-        return -1;
+        return ret;
     }
+    lc3_decoder_active = true;
     LOG_INF("LC3 decoder initialized successfully");
     return 0;
 }
@@ -213,12 +313,19 @@ int lc3_encoder_stop(void)
 }
 int lc3_decoder_stop(void)
 {
+    if (!lc3_decoder_active)
+    {
+        LOG_WRN("LC3 decoder already uninitialized");
+        return -EALREADY;
+    }
+
     int ret = sw_codec_lc3_dec_uninit_all();
     if (ret < 0)
     {
         LOG_ERR("LC3 decoder uninitialization failed with error: %d", ret);
-        return -1;
+        return ret;
     }
+    lc3_decoder_active = false;
     LOG_INF("LC3 decoder uninitialized successfully");
     return 0;
 }
@@ -231,27 +338,32 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
 
     LOG_INF("🎤 Audio processing thread started");
     int             ret;
-    int16_t         pcm_req_buffer[PDM_PCM_REQ_BUFFER_SIZE]  = {0};
-    int16_t         pcm_req_buffer1[PDM_PCM_REQ_BUFFER_SIZE] = {0};
+    int16_t         pcm_frame_buffer[PDM_PCM_FRAME_SAMPLES]  = {0};
+    int16_t         pcm_mono_buffer[PDM_PCM_REQ_BUFFER_SIZE] = {0};
+    int16_t         pcm_decode_buffer[PDM_PCM_REQ_BUFFER_SIZE] = {0};
     static uint16_t encoded_bytes_written_l;
     static uint16_t decoded_bytes_written_l;
     uint8_t         lc3_frame_buffer[MAX_FRAMES_PER_PACKET][LC3_FRAME_LEN];
     uint8_t         frame_count = 0;
     uint8_t         max_frames_per_packet;
+    bool            frame_loop_logged = false;
     pdm_init();
     user_sw_codec_lc3_init();
 
     while (1)
     {
         // Check if PDM audio is enabled
-        bool need_run = pdm_enabled || (mic_phase == MIC_DROP_WARM) || (mic_phase == MIC_DROP_TAIL) || fade_in_active
-                        || fade_out_active;
+        bool need_run = pdm_enabled || (mic_phase == MIC_DROP_WARM) || (mic_phase == MIC_DROP_TAIL)
+                     || fade_in_active || fade_out_active;
         if (need_run)
         {
-            if (!get_pdm_sample(pcm_req_buffer, PDM_PCM_REQ_BUFFER_SIZE))
+            uint32_t raw_frame_samples = pdm_get_frame_samples();
+            if (!get_pdm_sample(pcm_frame_buffer, raw_frame_samples))
             {
                 frames_captured++;  /* Count captured frames */
-                size_t frame_samples = PDM_PCM_REQ_BUFFER_SIZE;
+                bool   stereo_input = (raw_frame_samples == PDM_PCM_FRAME_SAMPLES);
+                size_t frame_samples =
+                    mix_frame_to_mono(pcm_frame_buffer, raw_frame_samples, stereo_input, pcm_mono_buffer);
                 /* 丢弃阶段：开麦预热 or 关麦尾巴，在帧边界处理 */
                 // Drop phase: warm-up when opening mic or tail when closing mic, handled at frame boundary
                 if (mic_phase == MIC_DROP_WARM)
@@ -305,7 +417,7 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                     }
                 }
                 {
-                    int fstat = apply_fade_linear_q15(pcm_req_buffer, frame_samples);
+                    int fstat = apply_fade_linear_q15(pcm_mono_buffer, frame_samples);
                     if (fstat == 1)
                     {
                         /* ② 淡出刚结束：进入尾巴丢弃，并清掉待关闭标记 */
@@ -319,8 +431,8 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                      * continue normal encoding; */
                 }
                 
-                __ASSERT_NO_MSG(pcm_bytes_req_enc == sizeof(pcm_req_buffer));
-                ret = sw_codec_lc3_enc_run(pcm_req_buffer, sizeof(pcm_req_buffer), LC3_USE_BITRATE_FROM_INIT, 0,
+                __ASSERT_NO_MSG(pcm_bytes_req_enc == sizeof(pcm_mono_buffer));
+                ret = sw_codec_lc3_enc_run(pcm_mono_buffer, sizeof(pcm_mono_buffer), LC3_USE_BITRATE_FROM_INIT, 0,
                                            LC3_FRAME_LEN, lc3_frame_buffer[frame_count], &encoded_bytes_written_l);
                 
                 if (ret < 0)
@@ -339,7 +451,7 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                 if (i2s_output_enabled)
                 {
                     ret = sw_codec_lc3_dec_run(lc3_frame_buffer[frame_count], encoded_bytes_written_l,
-                                               PDM_PCM_REQ_BUFFER_SIZE * 2, 0, pcm_req_buffer1,
+                                               PDM_PCM_REQ_BUFFER_SIZE * sizeof(int16_t), 0, pcm_decode_buffer,
                                                &decoded_bytes_written_l, false);
                     if (ret < 0)
                     {
@@ -350,7 +462,8 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                     {
                         frames_decoded++;  /* Count decoded frames */
                         // LOG_INF("LC3 decoding successful, bytes written: %d", decoded_bytes_written_l);
-                        i2s_pcm_player((void *)pcm_req_buffer1, decoded_bytes_written_l / 2, 0);
+                        i2s_pcm_player((void *)pcm_decode_buffer,
+                                   (int16_t)(decoded_bytes_written_l / sizeof(int16_t)), 0);
                     }
                 }
                 
@@ -365,6 +478,11 @@ static void audio_processing_thread(void *p1, void *p2, void *p3)
                 {
                     send_lc3_multi_frame_packet((uint8_t *)lc3_frame_buffer, frame_count, stream_id);
                     frame_count = 0;
+                }
+                if (!frame_loop_logged)
+                {
+                    LOG_INF("audio thread: frame loop active after start (samples=%zu)", frame_samples);
+                    frame_loop_logged = true;
                 }
                 k_sleep(K_MSEC(1));
             }
@@ -414,6 +532,7 @@ int enable_audio_system(bool enable)
 {
     if (enable && !audio_system_enabled)  // Start audio system
     {
+        reset_mic_filters();
         pdm_start();
         lc3_encoder_start();
 
@@ -432,10 +551,14 @@ int enable_audio_system(bool enable)
         extern void audio_i2s_stop(void);
         extern int lc3_decoder_stop(void);
         
-        if (audio_i2s_is_initialized())
+        bool i2s_was_initialized = audio_i2s_is_initialized();
+        if (i2s_was_initialized)
         {
             audio_i2s_stop();
-            lc3_decoder_stop();
+        }
+        int dec_ret = lc3_decoder_stop();
+        if (i2s_was_initialized || dec_ret == 0 || dec_ret == -EALREADY)
+        {
             LOG_INF("I2S and LC3 decoder stopped");
         }
         
@@ -552,17 +675,67 @@ void pdm_audio_stream_get_stats(uint32_t *frames_captured_out, uint32_t *frames_
  * @brief Enable/disable I2S audio output (loopback playback)
  * 启用/禁用I2S音频输出（环回播放）
  */
-void pdm_audio_set_i2s_output(bool enabled)
-{
-    i2s_output_enabled = enabled;
-    LOG_INF("I2S loopback output %s", enabled ? "enabled" : "disabled");
-}
-
-/**
- * @brief Get I2S output status
- * 获取I2S输出状态
- */
 bool pdm_audio_get_i2s_output(void)
 {
     return i2s_output_enabled;
+}
+
+int pdm_audio_set_i2s_output(bool enabled)
+{
+    if (enabled == i2s_output_enabled)
+    {
+        LOG_INF("I2S loopback output %s (no change)", enabled ? "enabled" : "disabled");
+        return 0;
+    }
+
+    if (enabled)
+    {
+        int ret = lc3_decoder_start();
+        if (ret < 0 && ret != -EALREADY)
+        {
+            LOG_ERR("Failed to enable I2S loopback: LC3 decoder start error %d", ret);
+            return ret;
+        }
+    }
+    else
+    {
+        int ret = lc3_decoder_stop();
+        if (ret < 0 && ret != -EALREADY)
+        {
+            LOG_WRN("LC3 decoder stop returned %d while disabling I2S", ret);
+        }
+    }
+
+    i2s_output_enabled = enabled;
+    LOG_INF("I2S loopback output %s", enabled ? "enabled" : "disabled");
+    return 0;
+}
+
+int pdm_audio_stream_set_channel(pdm_channel_t channel)
+{
+    if (!pdm_audio_stream_is_initialized())
+    {
+        LOG_ERR("PDM device not initialized");
+        return -ENODEV;
+    }
+
+    int ret = pdm_set_channel(channel);
+    if (ret == 0)
+    {
+        const char *ch_name = (channel == PDM_CHANNEL_LEFT)
+                                  ? "left"
+                                  : (channel == PDM_CHANNEL_RIGHT ? "right" : "mixed");
+        LOG_INF("PDM channel selection updated to %s", ch_name);
+    }
+    return ret;
+}
+
+pdm_channel_t pdm_audio_stream_get_channel(void)
+{
+    return pdm_get_channel();
+}
+
+bool pdm_audio_stream_is_initialized(void)
+{
+    return pdm_initialized;
 }

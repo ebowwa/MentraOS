@@ -4,125 +4,32 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
-### 🎙 Shell PDM Audio Test System with I2S Loopback - 2025-10-31
+### 🎧 Dual-Mic Debug & Hardware Adaptation Enhancements - 2025-11-10
 
 #### Overview
+- Document the new microphone model `MSM261DCB002`, and extend the shell tooling so left/right/mixed-channel tests can be run on the fly.
+- Allow the speaker loopback to be toggled while BLE streaming stays active; LC3 decoder state is managed automatically.
+- Harden the PDM/LC3 pipeline against repeated start/stop cycles and noisy error spam.
+- Confirm the OPT3006 ambient-light sensor I2C address as `0x45` (per the latest TI support email).
 
-Added shell commands for testing PDM microphone data quality through I2S loopback playback. This feature verifies audio capture and LC3 encode/decode pipeline independently from BLE operation.
+#### Shell Command Updates
+- `audio mic <left|right|mix>`: switch between single-left, single-right, or stereo-mixed capture to validate the new hardware quickly.
+- `audio i2s <on|off>`: open/close the I2S loopback without stopping BLE capture; the command will init/start/stop the I2S block and LC3 decoder as needed.
+- `audio status`: now reports the active mic channel, I2S state, frame counters, and error totals; all prompts use plain ASCII and include a short test flow reminder.
 
-#### Shell Commands
+#### I2S / LC3 Safety Nets
+- `pdm_audio_set_i2s_output()` now returns a status code:
+  - On enable, it automatically calls `lc3_decoder_start()`; any failure rolls back state and surfaces the error.
+  - On disable, it calls `lc3_decoder_stop()`, ignoring `-EALREADY`, so the final state is always consistent.
+- `audio i2s on/off` tracks whether the session was opened manually via `i2s_manual_session`; when the caller exits, it stops/uninits I2S to release resources.
+- `audio start` will roll back I2S/LC3 initialization immediately if either stage fails, leaving hardware in a clean state.
 
-- `audio start`  - Start PDM + LC3 + I2S loopback (auto-init I2S)
-- `audio stop`   - Stop audio system (auto-uninit I2S)
-- `audio status` - Display statistics and LC3 configuration
-- `audio help`   - Show command help
+#### PDM Pipeline Stability
+- `pdm_start()` resets the semaphore and FIFO before every start, preventing deadlocks when restarting in dual-mic mode.
+- `enable_audio_system(false)` always releases the LC3 decoder, even if I2S stopped earlier, eliminating subsequent "decoder already initialized" warnings.
 
-#### Key Features
-
-**1. Independent I2S Test Mode**
-- I2S hardware only initialized during shell testing, not used in BLE mode
-- Complete hardware cleanup after test (clock stop, IRQ disable, pin sleep)
-- Resource efficient for normal operation
-
-**2. Runtime I2S Control**
-- Replace compile-time TEST_IIS_OUTPUT macro with runtime flag
-- Dynamic control of LC3 decode and I2S playback
-- Flexible switching between shell test and BLE mode
-
-**3. Comprehensive Frame Statistics**
-- Frames captured (PDM)
-- Frames encoded (LC3 encoder)
-- Frames decoded (LC3 decoder, I2S test only)
-- Frames transmitted (BLE)
-- Error count
-
-**4. Pop Noise Prevention**
-- On start: Clear I2S buffers, begin playback from silence
-- On stop: Complete sequence - PDM fade-out 8ms → tail drop 80ms → I2S uninit
-- Pin sleep state to avoid residual noise
-
-**5. Duplicate Operation Protection**
-- Check I2S state before start/stop
-- Early rejection of duplicate operations with friendly prompts
-- Three-layer state consistency protection
-
-#### Technical Implementation
-
-**New Files:**
-- `src/shell_audio_control.c` (247 lines) - Shell command implementation
-
-**Modified Files:**
-- `src/pdm_audio_stream.c/h` (+133 lines) - Runtime I2S control + frame stats
-- `src/mos_driver/src/bspal_audio_i2s.c/h` (+74 lines) - uninit API + buffer cleanup
-- `boards/nrf5340dk_nrf5340_cpuapp_ns.overlay` (+20 lines) - I2S pin config
-- `CMakeLists.txt` (+1 line) - Add new file to build
-- `src/main.c` (-1 line) - Comment redundant log
-
-**Core Improvements:**
-
-1. pdm_audio_stream.c
-   - Added i2s_output_enabled runtime control flag
-   - Added frame counters: frames_captured, frames_encoded, frames_decoded
-   - enable_audio_system() enhanced: auto-cleanup I2S/LC3 decoder on stop
-   - pdm_audio_stream_set_enabled() enhanced duplicate detection
-
-2. bspal_audio_i2s.c
-   - audio_i2s_start(): Clear buffers before start (pop prevention)
-   - audio_i2s_uninit(): Complete hardware cleanup (NEW)
-   - audio_i2s_is_initialized(): State query (NEW)
-   - I2S stop event log: ERROR → DEBUG
-
-3. shell_audio_control.c
-   - Complete shell command interface
-   - Automatic I2S lifecycle management
-   - Detailed status and configuration display
-
-#### Data Flow
-
-**Normal BLE Mode:**
-```
-Microphone → PDM → LC3 Encode → BLE to App
-```
-
-**Shell Test Mode:**
-```
-Microphone → PDM → LC3 Encode → BLE
-                 ↓
-             LC3 Decode → I2S → Speaker (loopback test)
-```
-
-#### Usage Example
-
-```bash
-nrf5340:~$ audio start
-✅ Audio test system ready
-🎤 Speak to microphone to hear loopback via I2S
-
-nrf5340:~$ audio status
-🎙 Audio System Status:
-  State           : Streaming
-  Frames Captured : 523
-🔧 LC3 Codec Configuration:
-  Sample Rate     : 16000 Hz
-  Bitrate         : 32000 bps (32 kbps)
-
-nrf5340:~$ audio stop
-✅ Audio test system stopped
-```
-
-#### Testing Status
-
-- ✅ Shell independent testing working
-- ✅ BLE protobuf control working
-- ✅ Mode switching working
-- ✅ Duplicate operation protection working
-- ✅ Hardware cleanup verified
-
-#### Code Statistics
-
-9 files modified: +597 lines / -57 lines
-
----
+#### Sensor & Documentation Sync
+- `opt3006.h` now hardcodes `#define OPT3006_I2C_ADDR 0x45` and cites TI’s confirmation email so the driver and documentation stay aligned.
 
 ### 🔌 USB Cable Detection + Battery Monitoring System - 2025-10-29
 
