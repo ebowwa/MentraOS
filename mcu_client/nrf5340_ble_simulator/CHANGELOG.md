@@ -8,6 +8,7 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 #### Overview
 - Document the new microphone model `MSM261DCB002`, and extend the shell tooling so left/right/mixed-channel tests can be run on the fly.
+- Confirm backward compatibility with the legacy microphone `SD15OB371-007`, verified in bench testing after the hardware swap.
 - Allow the speaker loopback to be toggled while BLE streaming stays active; LC3 decoder state is managed automatically.
 - Harden the PDM/LC3 pipeline against repeated start/stop cycles and noisy error spam.
 - Confirm the OPT3006 ambient-light sensor I2C address as `0x45` (per the latest TI support email).
