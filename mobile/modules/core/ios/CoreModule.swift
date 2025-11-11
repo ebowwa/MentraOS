@@ -176,13 +176,35 @@ public class CoreModule: Module {
             return STTTools.extractTarBz2(sourcePath: sourcePath, destinationPath: destinationPath)
         }
 
-        // android stubs:
+        // MARK: - Android Stubs
+
         AsyncFunction("getInstalledApps") { () -> Any in
             return false
         }
 
         AsyncFunction("hasNotificationListenerPermission") { () -> Any in
             return false
+        }
+
+        // Notification management stubs (iOS doesn't support these features)
+        Function("setNotificationsEnabled") { (_: Bool) in
+            // No-op on iOS
+        }
+
+        Function("getNotificationsEnabled") { () -> Bool in
+            return false
+        }
+
+        Function("setNotificationsBlocklist") { (_: [String]) in
+            // No-op on iOS
+        }
+
+        Function("getNotificationsBlocklist") { () -> [String] in
+            return []
+        }
+
+        AsyncFunction("getInstalledAppsForNotifications") { () -> [[String: Any]] in
+            return []
         }
     }
 }

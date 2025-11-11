@@ -24,7 +24,6 @@ const ShimmerPlaceholder = createShimmerPlaceholder(LinearGradient)
 import showAlert from "@/utils/AlertUtils"
 import {translate} from "@/i18n"
 import {shareFile} from "@/utils/FileUtils"
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import bridge from "@/bridge/MantleBridge"
 import WifiManager from "react-native-wifi-reborn"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
@@ -139,6 +138,7 @@ export function GalleryScreen() {
   // Track if gallery opened the hotspot
   const galleryOpenedHotspotRef = useRef(false)
   const [galleryOpenedHotspot, setGalleryOpenedHotspot] = useState(false)
+  const hotspotConnectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track loaded ranges
   const loadedRanges = useRef<Set<string>>(new Set())
@@ -1123,28 +1123,46 @@ export function GalleryScreen() {
 
   // Listen for hotspot ready
   useEffect(() => {
-    console.log(
-      "[GalleryScreen] hotspot status changed:",
-      hotspotEnabled,
-      hotspotSsid,
-      hotspotPassword,
-      hotspotGatewayIp,
-    )
+    const handleHotspotStatusChange = (eventData: any) => {
+      console.log(
+        "[GalleryScreen] hotspot status changed:",
+        eventData.enabled,
+        eventData.ssid,
+        eventData.password,
+        eventData.local_ip,
+      )
 
-    if (!hotspotEnabled || !hotspotSsid || !hotspotPassword || !galleryOpenedHotspotRef.current) {
-      return
+      if (!eventData.enabled || !eventData.ssid || !eventData.password || !galleryOpenedHotspotRef.current) {
+        return
+      }
+
+      console.log("[GalleryScreen] Hotspot enabled, waiting for it to become discoverable...")
+      // Wait for hotspot to become fully active and discoverable before attempting connection
+      // On Android 10+, connectToProtectedSSID shows system WiFi picker which needs the network to be broadcasting
+
+      // Clear any existing timeout
+      if (hotspotConnectionTimeoutRef.current) {
+        clearTimeout(hotspotConnectionTimeoutRef.current)
+      }
+
+      hotspotConnectionTimeoutRef.current = setTimeout(() => {
+        console.log("[GalleryScreen] Attempting to connect to hotspot...")
+        connectToHotspot(eventData.ssid, eventData.password, eventData.local_ip)
+        hotspotConnectionTimeoutRef.current = null
+      }, TIMING.HOTSPOT_CONNECT_DELAY_MS)
     }
 
-    console.log("[GalleryScreen] Hotspot enabled, waiting for it to become discoverable...")
-    // Wait for hotspot to become fully active and discoverable before attempting connection
-    // On Android 10+, connectToProtectedSSID shows system WiFi picker which needs the network to be broadcasting
-    setTimeout(() => {
-      console.log("[GalleryScreen] Attempting to connect to hotspot...")
-      connectToHotspot(hotspotSsid, hotspotPassword, hotspotGatewayIp)
-    }, TIMING.HOTSPOT_CONNECT_DELAY_MS)
-
-    return () => {}
-  }, [hotspotEnabled, hotspotSsid, hotspotPassword, hotspotGatewayIp])
+    GlobalEventEmitter.addListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
+    return () => {
+      // Clean up timeout on unmount
+      if (hotspotConnectionTimeoutRef.current) {
+        console.log("[GalleryScreen] Cleaning up hotspot connection timeout")
+        clearTimeout(hotspotConnectionTimeoutRef.current)
+        hotspotConnectionTimeoutRef.current = null
+      }
+      GlobalEventEmitter.removeListener("HOTSPOT_STATUS_CHANGE", handleHotspotStatusChange)
+    }
+  }, [])
 
   // Monitor phone SSID
   useEffect(() => {
@@ -1363,12 +1381,7 @@ export function GalleryScreen() {
           return (
             <View>
               <View style={themed($syncButtonRow)}>
-                <Icon
-                  name="wifi-alert"
-                  size={20}
-                  color={theme.colors.text}
-                  style={{marginRight: spacing.s2}}
-                />
+                <Icon name="wifi-alert" size={20} color={theme.colors.text} style={{marginRight: spacing.s2}} />
                 <Text style={themed($syncButtonText)}>
                   Sync {glassesGalleryStatus?.total || 0}{" "}
                   {(glassesGalleryStatus?.photos || 0) > 0 && (glassesGalleryStatus?.videos || 0) > 0
@@ -1591,7 +1604,7 @@ export function GalleryScreen() {
     <>
       <Header
         title={isSelectionMode ? "" : "Glasses Gallery"}
-        leftIcon={isSelectionMode ? undefined : "arrow-left"}
+        leftIcon={isSelectionMode ? undefined : "chevron-left"}
         onLeftPress={isSelectionMode ? undefined : () => goBack()}
         LeftActionComponent={
           isSelectionMode ? (
@@ -1613,7 +1626,7 @@ export function GalleryScreen() {
               }}
               disabled={selectedPhotos.size === 0}>
               <View style={themed($deleteButton)}>
-                <Icon name="delete" size={20} color={theme.colors.text} />
+                <Icon name="trash" size={20} color={theme.colors.text} />
                 <Text style={themed($deleteButtonText)}>Delete</Text>
               </View>
             </TouchableOpacity>

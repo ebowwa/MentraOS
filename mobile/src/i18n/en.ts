@@ -382,11 +382,16 @@ const en = {
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
+    testFlightBuild:
+      "You are using a TestFlight build. Some features may have issues or work differently than the production version.",
+    betaBuild:
+      "You are using a beta version of MentraOS. Some features may have issues or work differently than in the production version.",
     sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
     microphoneActive: "Microphone Active",
     microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
     warning: "Warning",
     developerSettingsWarning: "These settings may break the app. Use at your own risk.",
+    optOutOfBeta: "Opt Out of Beta",
   },
   errors: {
     appNotOnlineTitle: "App Not Online",

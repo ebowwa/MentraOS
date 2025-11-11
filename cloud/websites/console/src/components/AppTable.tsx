@@ -1,48 +1,32 @@
 // components/AppTable.tsx
-import { useState, type FC } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Link } from "react-router-dom";
-import { Edit, Trash, Share2, Plus, Upload, KeyRound } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { AppResponse } from "../services/api.service";
-import { useOrganization } from "../context/OrganizationContext";
+import {useEffect, useState, type FC} from "react"
+import {useNavigate} from "react-router-dom"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
+import {Link} from "react-router-dom"
+import {Edit, Trash, Share2, Plus, BadgeCheck, BadgeMinus} from "lucide-react"
+import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip"
+import api, {AppResponse} from "../services/api.service"
+import {useOrganization} from "../context/OrganizationContext"
 
 // Import dialogs
-import ApiKeyDialog from "./dialogs/ApiKeyDialog";
-import SharingDialog from "./dialogs/SharingDialog";
-import DeleteDialog from "./dialogs/DeleteDialog";
-import PublishDialog from "./dialogs/PublishDialog";
+import ApiKeyDialog from "./dialogs/ApiKeyDialog"
+import SharingDialog from "./dialogs/SharingDialog"
+import DeleteDialog from "./dialogs/DeleteDialog"
+import PublishDialog from "./dialogs/PublishDialog"
+import InstallDialog from "./dialogs/InstallDialog"
 
 interface AppTableProps {
-  apps: AppResponse[];
-  isLoading: boolean;
-  error: string | null;
-  maxDisplayCount?: number;
-  showViewAll?: boolean;
-  showSearch?: boolean;
-  onAppDeleted?: (packageName: string) => void;
-  onAppUpdated?: (updatedApp: AppResponse) => void;
+  apps: AppResponse[]
+  isLoading: boolean
+  error: string | null
+  maxDisplayCount?: number
+  showViewAll?: boolean
+  showSearch?: boolean
+  onAppDeleted?: (packageName: string) => void
+  onAppUpdated?: (updatedApp: AppResponse) => void
 }
 
 const AppTable: FC<AppTableProps> = ({
@@ -55,17 +39,57 @@ const AppTable: FC<AppTableProps> = ({
   onAppDeleted,
   onAppUpdated,
 }) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const navigate = useNavigate()
+  const {currentOrg} = useOrganization()
+
+  useEffect(() => {
+    console.log("Apps data:", apps)
+  }, [apps])
 
   // States for dialogs
-  const [selectedApp, setSelectedApp] = useState<AppResponse | null>(null);
-  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [generatedApiKey, setGeneratedApiKey] = useState("");
+  const [selectedApp, setSelectedApp] = useState<AppResponse | null>(null)
+  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+  const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [generatedApiKey, setGeneratedApiKey] = useState("")
+  const [installedAppPackages, setInstalledAppPackages] = useState<Set<string>>(new Set())
+
+  // Fetch installed apps when component mounts
+  useEffect(() => {
+    const fetchInstalledApps = async () => {
+      try {
+        const installedApps = await api.userApps.getInstalledApps()
+        const packageNames = new Set(installedApps.map((app) => app.packageName))
+        setInstalledAppPackages(packageNames)
+        console.log("Fetched installed apps:", packageNames)
+      } catch (error) {
+        console.error("Error fetching installed apps:", error)
+      }
+    }
+
+    fetchInstalledApps()
+  }, [])
+
+  // Helper function to check if an app is installed
+  const isAppInstalled = (packageName: string): boolean => {
+    return installedAppPackages.has(packageName)
+  }
+
+  // Handler for when install status changes
+  const handleInstallStatusChange = (packageName: string, installed: boolean) => {
+    setInstalledAppPackages((prev) => {
+      const newSet = new Set(prev)
+      if (installed) {
+        newSet.add(packageName)
+      } else {
+        newSet.delete(packageName)
+      }
+      return newSet
+    })
+  }
 
   // Filter Apps based on search query
   const filteredApps = searchQuery
@@ -74,11 +98,11 @@ const AppTable: FC<AppTableProps> = ({
           app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           app.packageName.toLowerCase().includes(searchQuery.toLowerCase()),
       )
-    : apps;
+    : apps
 
   // Limit the number of Apps displayed
-  const displayedApps = filteredApps.slice(0, maxDisplayCount);
-  const hasNoApps = apps.length === 0;
+  const displayedApps = filteredApps.slice(0, maxDisplayCount)
+  const hasNoApps = apps.length === 0
 
   return (
     <Card>
@@ -116,12 +140,7 @@ const AppTable: FC<AppTableProps> = ({
           ) : error ? (
             <div className="p-8 text-center text-red-500">
               <p>{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={() => window.location.reload()}
-              >
+              <Button variant="outline" size="sm" className="mt-2" onClick={() => window.location.reload()}>
                 Try Again
               </Button>
             </div>
@@ -144,22 +163,13 @@ const AppTable: FC<AppTableProps> = ({
                         <a
                           key={app.packageName}
                           className="font-medium flex flex-row items-center"
-                          href={`https://apps.mentra.glass/package/${app.packageName}`}
-                        >
-                          <img
-                            src={app.logoURL}
-                            alt={app.name}
-                            className="w-6 h-6 rounded-full mr-2"
-                          />
+                          href={`https://apps.mentra.glass/package/${app.packageName}`}>
+                          <img src={app.logoURL} alt={app.name} className="w-6 h-6 rounded-full mr-2" />
                           {app.name}
                         </a>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-gray-500">
-                        {app.packageName}
-                      </TableCell>
-                      <TableCell className="text-gray-500">
-                        {new Date(app.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell className="font-mono text-xs text-gray-500">{app.packageName}</TableCell>
+                      <TableCell className="text-gray-500">{new Date(app.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div>
                           <span
@@ -171,8 +181,7 @@ const AppTable: FC<AppTableProps> = ({
                                   : app.appStoreStatus === "REJECTED"
                                     ? "bg-red-100 text-red-800"
                                     : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
+                            }`}>
                             {app.appStoreStatus === "DEVELOPMENT"
                               ? "Development"
                               : app.appStoreStatus === "SUBMITTED"
@@ -183,20 +192,16 @@ const AppTable: FC<AppTableProps> = ({
                                     ? "Published"
                                     : "Development"}
                           </span>
-                          {app.appStoreStatus === "REJECTED" &&
-                            app.reviewNotes && (
-                              <div className="mt-1">
-                                <button
-                                  onClick={() =>
-                                    navigate(`/apps/${app.packageName}/edit`)
-                                  }
-                                  className="text-xs text-red-600 hover:underline focus:outline-none"
-                                  title={app.reviewNotes}
-                                >
-                                  View Rejection Reason
-                                </button>
-                              </div>
-                            )}
+                          {app.appStoreStatus === "REJECTED" && app.reviewNotes && (
+                            <div className="mt-1">
+                              <button
+                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
+                                className="text-xs text-red-600 hover:underline focus:outline-none"
+                                title={app.reviewNotes}>
+                                View Rejection Reason
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -206,11 +211,34 @@ const AppTable: FC<AppTableProps> = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  navigate(`/apps/${app.packageName}/edit`)
-                                }
-                                title="Edit App"
-                              >
+                                onClick={() => {
+                                  setSelectedApp(app)
+                                  setIsInstallDialogOpen(true)
+                                }}
+                                title={isAppInstalled(app.packageName) ? "Click to uninstall" : "Click to install"}
+                                className="cursor-pointer">
+                                {isAppInstalled(app.packageName) ? (
+                                  <BadgeCheck className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <BadgeMinus className="h-4 w-4 text-gray-400" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                {isAppInstalled(app.packageName)
+                                  ? "Installed - Click to uninstall"
+                                  : "Not installed - Click to install"}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
+                                title="Edit App">
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -219,7 +247,7 @@ const AppTable: FC<AppTableProps> = ({
                             </TooltipContent>
                           </Tooltip>
 
-                          <Tooltip>
+                          {/* <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
@@ -240,7 +268,7 @@ const AppTable: FC<AppTableProps> = ({
                             <TooltipContent>
                               <p>Manage API Key</p>
                             </TooltipContent>
-                          </Tooltip>
+                          </Tooltip> */}
 
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -248,11 +276,10 @@ const AppTable: FC<AppTableProps> = ({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setSelectedApp(app);
-                                  setIsShareDialogOpen(true);
+                                  setSelectedApp(app)
+                                  setIsShareDialogOpen(true)
                                 }}
-                                title="Share with Testers"
-                              >
+                                title="Share with Testers">
                                 <Share2 className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -261,7 +288,7 @@ const AppTable: FC<AppTableProps> = ({
                             </TooltipContent>
                           </Tooltip>
 
-                          <Tooltip>
+                          {/* <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
@@ -286,7 +313,7 @@ const AppTable: FC<AppTableProps> = ({
                                   : "Publish to App Store"}
                               </p>
                             </TooltipContent>
-                          </Tooltip>
+                          </Tooltip> */}
 
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -295,11 +322,10 @@ const AppTable: FC<AppTableProps> = ({
                                 size="sm"
                                 className="text-red-600"
                                 onClick={() => {
-                                  setSelectedApp(app);
-                                  setIsDeleteDialogOpen(true);
+                                  setSelectedApp(app)
+                                  setIsDeleteDialogOpen(true)
                                 }}
-                                title="Delete App"
-                              >
+                                title="Delete App">
                                 <Trash className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
@@ -313,13 +339,8 @@ const AppTable: FC<AppTableProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-6 text-gray-500"
-                    >
-                      {searchQuery
-                        ? "No apps match your search criteria"
-                        : "No apps to display"}
+                    <TableCell colSpan={5} className="text-center py-6 text-gray-500">
+                      {searchQuery ? "No apps match your search criteria" : "No apps to display"}
                     </TableCell>
                   </TableRow>
                 )}
@@ -338,9 +359,7 @@ const AppTable: FC<AppTableProps> = ({
 
         {hasNoApps && !isLoading && !error && !searchQuery && (
           <div className="p-6 text-center">
-            <p className="text-gray-500 mb-4">
-              Get started by creating your first app
-            </p>
+            <p className="text-gray-500 mb-4">Get started by creating your first app</p>
             <Button onClick={() => navigate("/apps/create")} className="gap-2">
               <Plus className="h-4 w-4" />
               Create App
@@ -359,8 +378,8 @@ const AppTable: FC<AppTableProps> = ({
             apiKey={generatedApiKey}
             onKeyRegenerated={(newKey) => {
               // Update the API key in the parent component's state
-              setGeneratedApiKey(newKey);
-              console.log(`API key regenerated for ${selectedApp?.name}`);
+              setGeneratedApiKey(newKey)
+              console.log(`API key regenerated for ${selectedApp?.name}`)
             }}
             orgId={currentOrg?.id}
           />
@@ -379,11 +398,11 @@ const AppTable: FC<AppTableProps> = ({
             orgId={currentOrg?.id}
             onPublishComplete={(updatedApp) => {
               // Update the selected App with the new data
-              setSelectedApp(updatedApp);
+              setSelectedApp(updatedApp)
 
               // Notify parent component to update the app
               if (onAppUpdated) {
-                onAppUpdated(updatedApp);
+                onAppUpdated(updatedApp)
               }
             }}
           />
@@ -396,14 +415,22 @@ const AppTable: FC<AppTableProps> = ({
             onConfirmDelete={(packageName) => {
               // Notify parent component of deletion
               if (onAppDeleted) {
-                onAppDeleted(packageName);
+                onAppDeleted(packageName)
               }
             }}
+          />
+
+          <InstallDialog
+            app={selectedApp}
+            open={isInstallDialogOpen}
+            onOpenChange={setIsInstallDialogOpen}
+            isInstalled={selectedApp ? isAppInstalled(selectedApp.packageName) : false}
+            onInstallStatusChange={handleInstallStatusChange}
           />
         </>
       )}
     </Card>
-  );
-};
+  )
+}
 
-export default AppTable;
+export default AppTable
