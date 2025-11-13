@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
@@ -36,9 +37,12 @@ class NotificationListener private constructor(private val context: Context) {
 
     private val listeners = mutableListOf<OnNotificationReceivedListener>()
 
-    // Deduplication tracking
+    // Deduplication tracking with dedicated background thread
+    // Using HandlerThread instead of main looper to ensure the service works
+    // independently of the app's lifecycle (fixes Android 15 background crashes)
     private val notificationBuffer = mutableMapOf<String, Runnable>()
-    private val notificationHandler = Handler(Looper.getMainLooper())
+    private val notificationThread = HandlerThread("NotificationHandler").apply { start() }
+    private val notificationHandler = Handler(notificationThread.looper)
     private val DUPLICATE_THRESHOLD_MS = 200L
 
     /** Check if notification listener permission is granted */
@@ -89,6 +93,7 @@ class NotificationListener private constructor(private val context: Context) {
     /** Called internally by the service when a notification is posted */
     internal fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
+        Bridge.log("NOTIF: Received notification from $packageName (key: ${sbn.key})")
 
         // Filter system packages
         if (isSystemPackageToBlock(packageName)) {
@@ -149,36 +154,42 @@ class NotificationListener private constructor(private val context: Context) {
 
             // Create delayed task
             val task = Runnable {
-                // Send to server via Bridge
-                Bridge.sendPhoneNotification(
-                    notificationKey = sbn.key,
-                    packageName = packageName,
-                    appName = appName,
-                    title = title,
-                    text = text,
-                    timestamp = sbn.postTime
-                )
+                try {
+                    Bridge.log("NOTIF: Processing buffered notification from $appName")
+                    // Send to server via Bridge
+                    Bridge.sendPhoneNotification(
+                        notificationKey = sbn.key,
+                        packageName = packageName,
+                        appName = appName,
+                        title = title,
+                        text = text,
+                        timestamp = sbn.postTime
+                    )
 
-                // Notify listeners (for future extensibility)
-                val notificationData = NotificationData(
-                    packageName = packageName,
-                    title = title,
-                    text = text,
-                    timestamp = sbn.postTime,
-                    id = sbn.id,
-                    tag = sbn.tag
-                )
-                listeners.forEach { listener ->
-                    listener.onNotificationReceived(notificationData)
-                }
-
-                synchronized(notificationBuffer) {
-                    notificationBuffer.remove(notificationKey)
+                    // Notify listeners (for future extensibility)
+                    val notificationData = NotificationData(
+                        packageName = packageName,
+                        title = title,
+                        text = text,
+                        timestamp = sbn.postTime,
+                        id = sbn.id,
+                        tag = sbn.tag
+                    )
+                    listeners.forEach { listener ->
+                        listener.onNotificationReceived(notificationData)
+                    }
+                } catch (e: Exception) {
+                    Bridge.log("NOTIF: Error processing notification: ${e.message}")
+                } finally {
+                    synchronized(notificationBuffer) {
+                        notificationBuffer.remove(notificationKey)
+                    }
                 }
             }
 
             // Buffer for 200ms to deduplicate
             notificationBuffer[notificationKey] = task
+            Bridge.log("NOTIF: Buffering notification (${DUPLICATE_THRESHOLD_MS}ms delay)")
             notificationHandler.postDelayed(task, DUPLICATE_THRESHOLD_MS)
         }
     }
@@ -262,6 +273,18 @@ class NotificationListener private constructor(private val context: Context) {
                 }
                 .sortedBy { it["appName"] as String }
     }
+
+    /** Clean up resources when the service is destroyed */
+    fun cleanup() {
+        Bridge.log("NOTIF: Cleaning up notification handler thread")
+        synchronized(notificationBuffer) {
+            // Remove all pending callbacks
+            notificationBuffer.values.forEach { notificationHandler.removeCallbacks(it) }
+            notificationBuffer.clear()
+        }
+        // Safely quit the handler thread
+        notificationThread.quitSafely()
+    }
 }
 
 /** The actual NotificationListenerService implementation */
@@ -279,12 +302,20 @@ class NotificationListenerServiceImpl : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // Service is connected and ready
+        Bridge.log("NOTIF: NotificationListenerService connected and ready")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        Bridge.log("NOTIF: NotificationListenerService disconnected, requesting rebind")
         // Service was disconnected, request rebind
         requestRebind(ComponentName(this, NotificationListenerServiceImpl::class.java))
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Bridge.log("NOTIF: NotificationListenerService being destroyed")
+        // Clean up the handler thread when service is destroyed
+        NotificationListener.getInstance(applicationContext).cleanup()
     }
 }

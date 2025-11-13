@@ -528,6 +528,7 @@ public class Bridge private constructor() {
             timestamp: Long
         ) {
             try {
+                log("NOTIF: Attempting to send notification from $appName: $title")
                 val data = HashMap<String, Any>()
                 data["notificationId"] = "$packageName-$notificationKey" // Stable ID combining package and Android key
                 data["app"] = appName
@@ -538,9 +539,9 @@ public class Bridge private constructor() {
                 data["packageName"] = packageName
 
                 sendTypedMessage("phone_notification", data as Map<String, Any>)
-                log("NOTIF: Sent phone notification: $title - $text")
+                log("NOTIF: Successfully queued phone notification: $title - $text")
             } catch (e: Exception) {
-                log("Bridge: Error sending phone notification: $e")
+                Log.e(TAG, "NOTIF: Error sending phone notification from $packageName", e)
             }
         }
 
@@ -551,15 +552,16 @@ public class Bridge private constructor() {
             packageName: String
         ) {
             try {
+                log("NOTIF: Attempting to send dismissal for $packageName")
                 val data = HashMap<String, Any>()
                 data["notificationId"] = "$packageName-$notificationKey" // Same format as posting for correlation
                 data["notificationKey"] = notificationKey // Keep Android key for reference
                 data["packageName"] = packageName
 
                 sendTypedMessage("phone_notification_dismissed", data as Map<String, Any>)
-                log("NOTIF: Notification dismissed: $notificationKey")
+                log("NOTIF: Successfully queued notification dismissal: $notificationKey")
             } catch (e: Exception) {
-                log("Bridge: Error sending notification dismissal: $e")
+                Log.e(TAG, "NOTIF: Error sending notification dismissal for $packageName", e)
             }
         }
 
@@ -601,14 +603,27 @@ public class Bridge private constructor() {
             (mutableBody as HashMap<String, Any>)["type"] = type
 
             try {
+                // Check if event callback is available before proceeding
+                if (eventCallback == null) {
+                    Log.w(TAG, "Cannot send typed message '$type': eventCallback is null (app may be killed/backgrounded)")
+                    return
+                }
+
                 val jsonData = JSONObject(mutableBody as Map<*, *>)
                 val jsonString = jsonData.toString()
 
                 val eventData = HashMap<String, Any>()
                 eventData["body"] = jsonString
-                eventCallback?.invoke("CoreMessageEvent", eventData as Map<String, Any>)
+
+                // Additional safety: wrap the actual callback invocation
+                try {
+                    eventCallback?.invoke("CoreMessageEvent", eventData as Map<String, Any>)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error invoking eventCallback for type '$type' (React Native may be dead)", e)
+                    // Don't rethrow - this prevents crashes when RN context is destroyed
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error sending typed message", e)
+                Log.e(TAG, "Error sending typed message of type '$type'", e)
             }
         }
     }
