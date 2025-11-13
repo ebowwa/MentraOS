@@ -3,6 +3,9 @@
         zephyr,display = &hls12vga;
         nordic-nus-uart = &uart0;
         nordic,pm-ext-flash = &mx25r64;
+        /* UART0 for console/shell (like Cole's setup) */
+        zephyr,console = &uart0;
+        zephyr,shell-uart = &uart0;
     };
 };
 
@@ -139,14 +142,7 @@
     pinctrl-names = "default", "sleep";
 };
 
-/* USB disabled for now - will add back for secure shell later */
-/* 
-&zephyr_udc0 {
-    status = "okay";
-    
-    cdc_acm_uart0: cdc_acm_uart0 {
-        compatible = "zephyr,cdc-acm-uart";
-        label = "CDC_ACM_0";
-    };
+/* USB device disabled for now - using UART0 console */
+&usbd {
+    status = "disabled";
 };
-*/

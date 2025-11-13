@@ -3,6 +3,9 @@
 		nordic,pm-ext-flash = &mx25r64;
 		zephyr,display = &hls12vga;  // Switch to HLS12VGA projector for testing
 		nordic-nus-uart = &uart0;
+		/* USB CDC ACM for console/shell - based on Cole's dev-nexfirmware-a6n implementation */
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
 	};
 };
 
@@ -132,5 +135,15 @@
         prechargep = <0x22>;
         segment-remap;
         status = "disabled";  // Disable SSD1306 for HLS12VGA testing
+    };
+};
+
+/* USB CDC ACM device configuration - based on Cole's dev-nexfirmware-a6n */
+zephyr_udc0: &usbd {
+    compatible = "nordic,nrf-usbd";
+    status = "okay";
+
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
     };
 };
