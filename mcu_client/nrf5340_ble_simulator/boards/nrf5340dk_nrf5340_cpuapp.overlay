@@ -138,3 +138,15 @@
     pinctrl-1 = <&qspi_sleep>;
     pinctrl-names = "default", "sleep";
 };
+
+/* USB disabled for now - will add back for secure shell later */
+/* 
+&zephyr_udc0 {
+    status = "okay";
+    
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
+        label = "CDC_ACM_0";
+    };
+};
+*/
