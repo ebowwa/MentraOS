@@ -45,7 +45,24 @@ class MantleManager {
   }
 
   private constructor() {
-    this.transcriptProcessor = new TranscriptProcessor()
+    // Pass callback to send pending updates when timer fires
+    this.transcriptProcessor = new TranscriptProcessor(() => {
+      this.sendPendingTranscript()
+    })
+  }
+
+  private sendPendingTranscript() {
+    const pendingText = this.transcriptProcessor.getPendingUpdate()
+    if (pendingText) {
+      socketComms.handle_display_event({
+        type: "display_event",
+        view: "main",
+        layout: {
+          layoutType: "text_wall",
+          text: pendingText,
+        },
+      })
+    }
   }
 
   // run at app start on the init.tsx screen:

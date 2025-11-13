@@ -2713,7 +2713,7 @@ public class G1 extends SGCManager {
     private static final float FONT_MULTIPLIER = 1 / 50.0f;
     private static final int OLD_FONT_SIZE = 21; // Font size
     private static final float FONT_DIVIDER = 2.0f;
-    private static final int LINES_PER_SCREEN = 3; // Lines per screen
+    private static final int LINES_PER_SCREEN = 5; // Lines per screen
     private static final int MAX_CHUNK_SIZE = 176; // Maximum chunk size for BLE packets
     // private static final int INDENT_SPACES = 32; // Number of spaces to indent
     // text
