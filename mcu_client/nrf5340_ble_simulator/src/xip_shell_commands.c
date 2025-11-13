@@ -26,8 +26,8 @@ extern void function_in_extern_flash(void);
 extern void test_extern_flash(void);
 extern uint32_t var_ext_sram_data;
 
-// XIP memory range definitions (from pm_static.yml)
-#define XIP_FLASH_START_ADDR    0x80000000  // External flash XIP region start
+// XIP memory range definitions (nRF5340 QSPI XIP mapping)
+#define XIP_FLASH_START_ADDR    0x10000000  // nRF5340 QSPI XIP base address
 #define XIP_FLASH_SIZE          0x800000    // 8MB external flash
 #define XIP_FLASH_END_ADDR      (XIP_FLASH_START_ADDR + XIP_FLASH_SIZE - 1)
 

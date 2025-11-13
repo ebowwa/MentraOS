@@ -42,7 +42,7 @@ fi
 # Check for required build files
 echo ""
 echo "🔍 Checking build files..."
-MAIN_APP_FILE="build/zephyr/zephyr.hex"
+MAIN_APP_FILE="build/nrf5340_ble_simulator/zephyr/zephyr.hex"
 MCUBOOT_FILE="build/mcuboot/zephyr/zephyr.hex"
 
 echo "   🔍 Main application..."

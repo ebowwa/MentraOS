@@ -1,7 +1,7 @@
 / {
 	chosen {
 		nordic,pm-ext-flash = &mx25r64;
-		zephyr,display = &ssd1306;
+		zephyr,display = &hls12vga;  // Switch to HLS12VGA projector for testing
 		nordic-nus-uart = &uart0;
 	};
 };
@@ -131,6 +131,6 @@
         com-invdir;
         prechargep = <0x22>;
         segment-remap;
-        status = "okay";  // Enable SSD1306 for XIP font testing
+        status = "disabled";  // Disable SSD1306 for HLS12VGA testing
     };
 };
