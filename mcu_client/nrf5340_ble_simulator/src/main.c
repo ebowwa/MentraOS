@@ -1121,7 +1121,7 @@ int main(void)
 	advertising_start();
 	opt3006_initialize();
 	pm1300_init();
-	usb_detect_init();
+	// usb_detect_init();
 	
 	for (;;) {
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);

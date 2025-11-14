@@ -4,6 +4,24 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🖋️ Font Configuration Cleanup & USB UI Guard - 2025-11-14
+
+1. **`prj.conf`**
+   - Re-enable `CONFIG_LV_FONT_MONTSERRAT_30=y` and `CONFIG_LV_FONT_MONTSERRAT_48=y` so large fonts are available again.
+   - Comment out `CONFIG_LV_FONT_SIMSUN_14_CJK` to remove the SimSun CJK dependency and keep the build on the Montserrat family.
+
+2. **`mos_components/mos_lvgl_display/src/display_config.c`**
+   - Map every display profile (Unknown, SSD1306, Dummy 640×480, A6N) so `.fonts.cjk` points to `&lv_font_montserrat_48`.
+   - For the A6N profile: set `.secondary = &lv_font_montserrat_30`, `.large = &lv_font_montserrat_48`, `.cjk = &lv_font_montserrat_48`.
+   - `display_get_font("cjk")` now falls back to `.secondary`, ensuring callers that still request `"cjk"` automatically receive the secondary font.
+
+3. **`mos_components/mos_lvgl_display/src/mos_lvgl_display.c`**
+   - `create_scrolling_text_container()` uses `display_get_font("secondary")` so the scrolling label follows the new font mapping.
+   - `update_xy_positioned_text()` also switches to the secondary font, with a fallback to the primary font if secondary is missing, and the log text now states “secondary_font”.
+
+4. **`src/main.c`**
+   - Comment out the USB detection helper that previously ran during startup, preventing unwanted UI prompts on hardware where USB sensing is not in use.
+
 ### 🎧 Dual-Mic Debug & Hardware Adaptation Enhancements - 2025-11-10
 
 #### Overview

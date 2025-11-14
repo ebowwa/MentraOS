@@ -1,7 +1,7 @@
 /*
  * @Author       : Loay Yari
  * @Date         : 2025-09-15 
- * @LastEditTime : 2025-09-30 14:16:54
+ * @LastEditTime : 2025-11-14 18:06:08
  * @FilePath     : display_config.c
  * @Description  : Modular display configuration system implementation
  *
@@ -39,7 +39,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .primary = &lv_font_montserrat_12,
             .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
             .large = &lv_font_montserrat_14,
-            .cjk = &lv_font_simsun_14_cjk,
+            .cjk = &lv_font_montserrat_48,
             .line_spacing = 1
         },
         .patterns = {
@@ -67,7 +67,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .primary = &lv_font_montserrat_14,    // Use 14 instead of 24 (not available)
             .secondary = &lv_font_montserrat_12,  // Use 12 instead of 18 (not available)
             .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
-            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
+            .cjk = &lv_font_montserrat_48,       
             .line_spacing = 3
         },
         .patterns = {
@@ -95,7 +95,7 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
             .primary = &lv_font_montserrat_12,
             .secondary = &lv_font_montserrat_12,  // Use 12 instead of 10 (not available)
             .large = &lv_font_montserrat_14,
-            .cjk = &lv_font_simsun_14_cjk,
+            .cjk = &lv_font_montserrat_48,
             .line_spacing = 1
         },
         .patterns = {
@@ -121,9 +121,9 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         },
         .fonts = {
             .primary = &lv_font_montserrat_14,    // Use 14 instead of 30 (not available)
-            .secondary = &lv_font_montserrat_12,  // Use 12 instead of 24 (not available)
-            .large = &lv_font_montserrat_14,      // Use 14 instead of 48 (not available)
-            .cjk = &lv_font_simsun_14_cjk,        // Only CJK font available
+            .secondary = &lv_font_montserrat_30,  // Use 12 instead of 24 (not available)
+            .large = &lv_font_montserrat_48,      // Use 14 instead of 48 (not available)
+            .cjk = &lv_font_montserrat_48,        // Only CJK font available
             .line_spacing = 4
         },
         .patterns = {
@@ -256,7 +256,7 @@ const lv_font_t* display_get_font(const char *text_type)
     } else if (strcmp(text_type, "large") == 0) {
         return config->fonts.large;
     } else if (strcmp(text_type, "cjk") == 0) {
-        return config->fonts.cjk;
+        return config->fonts.secondary;
     }
 
     // Default fallback

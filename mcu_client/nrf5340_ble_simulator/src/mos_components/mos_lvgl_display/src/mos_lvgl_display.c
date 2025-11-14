@@ -1,7 +1,7 @@
 /*
  * @Author       : Cole
  * @Date         : 2025-07-31 10:40:40
- * @LastEditTime : 2025-10-21 17:41:50
+ * @LastEditTime : 2025-11-14 18:03:50
  * @FilePath     : mos_lvgl_display.c
  * @Description  :
  *
@@ -646,7 +646,7 @@ static void create_scrolling_text_container(lv_obj_t *screen)
 
     // **NEW: Style the label using modular font configuration**
     lv_obj_set_style_text_color(label, lv_color_black(), 0);
-    lv_obj_set_style_text_font(label, display_get_font("cjk"), 0);  // CJK font for Chinese support
+    lv_obj_set_style_text_font(label, display_get_font("secondary"), 0);  
     lv_obj_set_style_text_line_space(label, config->fonts.line_spacing, 0);
 
     // Position label at top of container
@@ -842,12 +842,11 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
         LOG_WRN( "📍 Clamped to: (%u,%u)", x, y);
     }
 
-    // **FIXED: Use CJK font for Chinese character support - same as Pattern 4**
-    // Always use the CJK font which supports both English and Chinese characters
-    const lv_font_t *font = display_get_font("cjk");  // Use CJK font for multilingual support
+
+    const lv_font_t *font = display_get_font("secondary");  
     if (!font)
     {
-        LOG_WRN("CJK font not available, falling back to primary font");
+        LOG_WRN("secondary font not available, falling back to primary font");
         font = display_get_font("primary");  // Fallback to primary display font
     }
 
@@ -868,7 +867,7 @@ static void update_xy_positioned_text(uint16_t x, uint16_t y, const char *text_c
     lv_obj_set_pos(current_xy_text_label, x, y);
 
     const char *pattern_name = (target_container == xy_text_container) ? "Pattern 5" : "Pattern 4";
-    LOG_INF("📝 [%s] Cleared all text, positioned new at (%u,%u), CJK_font, color:0x%06X: %.30s%s", 
+    LOG_INF("📝 [%s] Cleared all text, positioned new at (%u,%u), secondary_font, color:0x%06X: %.30s%s", 
              pattern_name, x, y, color, text_content, strlen(text_content) > 30 ? "..." : "");
 }
 
