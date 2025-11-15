@@ -117,6 +117,13 @@ int display_manager_set_brightness(uint8_t brightness_level);
 const lv_font_t *display_manager_map_font(uint16_t font_code);
 
 /**
+ * @brief Get LVGL font by size (for shell and display system)
+ * @param size Font size in points (12, 14, 30, 48)
+ * @return Pointer to LVGL font, or default 14pt font if not found
+ */
+const lv_font_t *display_get_font_by_size(int size);
+
+/**
  * @brief Convert RGB888 color to LVGL color
  * @param rgb888_color 24-bit RGB color
  * @return LVGL color structure

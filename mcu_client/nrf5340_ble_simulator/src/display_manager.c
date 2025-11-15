@@ -31,21 +31,33 @@ static bool display_enabled = false;
 static lv_obj_t *current_text_label = NULL;
 static lv_obj_t *current_scroll_container = NULL;
 
-// Font mapping table
+// Font mapping table - All English Montserrat fonts enabled
 static const struct {
     uint16_t code;
     const lv_font_t *font;
 } font_map[] = {
     {12, &lv_font_montserrat_12},
     {14, &lv_font_montserrat_14},
-    // Removed large fonts to save FLASH memory
-    // {16, &lv_font_montserrat_16},  // Not available
-    // {18, &lv_font_montserrat_18},  // Not available  
-    // {24, &lv_font_montserrat_24},  // Not available
-    // {30, &lv_font_montserrat_30},  // Not available
-    // {48, &lv_font_montserrat_48},  // Not available
-    {0, &lv_font_montserrat_14} // Default font (was 16)
+    // Note: 16,18,24 pt fonts may not be available in current build
+    // Using 30pt and 48pt as they're commonly enabled
+    {30, &lv_font_montserrat_30},
+    {48, &lv_font_montserrat_48},
+    {0, &lv_font_montserrat_14}  // Default font (14pt) - guaranteed available
 };
+
+// Public function to get font by size - used by LVGL display system
+const lv_font_t *display_get_font_by_size(int size)
+{
+    // Search for exact size match
+    for (int i = 0; i < ARRAY_SIZE(font_map) - 1; i++) {  // -1 to skip default entry
+        if (font_map[i].code == size) {
+            return font_map[i].font;
+        }
+    }
+    
+    // Return default font if size not found
+    return &lv_font_montserrat_14;
+}
 
 static void display_thread_entry(void *arg1, void *arg2, void *arg3);
 static void handle_static_text_message(const display_msg_t *msg);
