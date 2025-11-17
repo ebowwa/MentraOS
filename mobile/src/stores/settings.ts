@@ -1,6 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import CoreModule from "core"
-import {Platform} from "react-native"
 import {getTimeZone} from "react-native-localize"
 import Toast from "react-native-toast-message"
 import {create} from "zustand"
@@ -75,7 +74,7 @@ export const SETTINGS_KEYS = {
 const DEFAULT_SETTINGS: Record<string, any> = {
   // feature flags / dev:
   [SETTINGS_KEYS.dev_mode]: false,
-  [SETTINGS_KEYS.enable_squircles]: Platform.OS === "ios",
+  [SETTINGS_KEYS.enable_squircles]: true,
   [SETTINGS_KEYS.debug_console]: false,
   [SETTINGS_KEYS.china_deployment]: process.env.EXPO_PUBLIC_DEPLOYMENT_REGION === "china" ? true : false,
   // ui state:
@@ -174,10 +173,7 @@ const CORE_SETTINGS_KEYS = [
   SETTINGS_KEYS.notifications_blocklist,
 ]
 
-const PER_GLASSES_SETTINGS_KEYS = [
-  SETTINGS_KEYS.default_wearable,
-  SETTINGS_KEYS.preferred_mic,
-]
+const _PER_GLASSES_SETTINGS_KEYS = [SETTINGS_KEYS.default_wearable, SETTINGS_KEYS.preferred_mic]
 
 interface SettingsState {
   // Settings values
@@ -413,6 +409,13 @@ export const useSettingsStore = create<SettingsState>()(
 // Initialize settings on app startup
 export const initializeSettings = async () => {
   await useSettingsStore.getState().loadAllSettings()
+
+  // Migration: Force enable squircles for all users
+  const currentSquirclesSetting = useSettingsStore.getState().getSetting(SETTINGS_KEYS.enable_squircles)
+  if (currentSquirclesSetting !== true) {
+    await useSettingsStore.getState().setSetting(SETTINGS_KEYS.enable_squircles, true, false, false)
+  }
+
   // await useSettingsStore.getState().initUserSettings()
 }
 // Utility hooks for common patterns
