@@ -152,6 +152,9 @@ public class ComManager {
     public void sendFile(byte[] data) {
         if (mbStart && mOS != null && !mbOtaUpdating) {
             try {
+                Log.d(TAG, "📤 [DEEPEST] About to write image BLE packet to OutputStream - packet size: " + data.length + " bytes");
+                Log.d(TAG, "📤 [DEEPEST] About to write image BLE packet to OutputStream - data: " + data);
+                
                 // Don't log file data content, just write it
                 mOS.write(data);
                 mOS.flush();

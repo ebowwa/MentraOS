@@ -1221,8 +1221,8 @@ public class CameraNeo extends LifecycleService {
                 int targetVideoWidth;
                 int targetVideoHeight;
                 if (pendingVideoSettings != null && pendingVideoSettings.isValid()) {
-                    targetVideoWidth = pendingVideoSettings.width;
-                    targetVideoHeight = pendingVideoSettings.height;
+                    targetVideoWidth = 1920;
+                    targetVideoHeight = 1080;
                     Log.d(TAG, "Using requested video settings: " + pendingVideoSettings);
                 } else {
                     targetVideoWidth = 1920;
@@ -1383,7 +1383,7 @@ public class CameraNeo extends LifecycleService {
 
             // Set video encoding parameters
             // Use higher bitrate for better reliability and to prevent encoder issues
-            int bitRate = (videoSize.getWidth() >= 1920) ? 8000000 : 5000000; // 8Mbps for 1080p, 5Mbps for 720p
+            int bitRate = (videoSize.getWidth() >= 1920) ? 10000000 : 5000000; // 8Mbps for 1080p, 5Mbps for 720p
             mediaRecorder.setVideoEncodingBitRate(bitRate);
             
             // Use fps from settings if available

@@ -78,10 +78,10 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
-    private static final int SURFACE_WIDTH = 1280;  // 16:9 aspect ratio for proper video streaming
-    private static final int SURFACE_HEIGHT = 720;  // HD resolution (720p)
+    private static final int SURFACE_WIDTH = 1920;  // 16:9 aspect ratio for proper video streaming
+    private static final int SURFACE_HEIGHT = 1080;  // HD resolution (720p)
 
-    private static final int START_BITRATE = 800000; //2,000,000 => 800,000
+    private static final int START_BITRATE = 10000000; //2,000,000 => 800,000
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
@@ -604,7 +604,7 @@ public class RtmpStreamingService extends Service {
                     MediaFormat.MIMETYPE_VIDEO_AVC,
                     START_BITRATE,
                     new Size(SURFACE_WIDTH, SURFACE_HEIGHT),
-                    15, // Increase to 15 FPS minimum
+                    30, // Increase to 30 FPS minimum
                     profile,
                     level,
                     2.0f // Force keyframe every 2 seconds
