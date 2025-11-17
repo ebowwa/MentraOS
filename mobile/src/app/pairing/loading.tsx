@@ -12,13 +12,12 @@ import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useRoute} from "@react-navigation/native"
 import CoreModule from "core"
-import {router} from "expo-router"
-import {useCallback, useEffect, useRef, useState} from "react"
+import {useEffect, useRef, useState} from "react"
 import {BackHandler, Platform, ScrollView, TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 import Icon from "react-native-vector-icons/FontAwesome"
 
 export default function GlassesPairingGuideScreen() {
-  const {replace, clearHistory, clearHistoryAndGoHome} = useNavigationHistory()
+  const {replace, clearHistoryAndGoHome, goBack} = useNavigationHistory()
   const route = useRoute()
   const {themed} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -32,19 +31,11 @@ export default function GlassesPairingGuideScreen() {
   const backHandlerRef = useRef<any>(null)
   const glassesConnected = useGlassesStore(state => state.connected)
 
-  const handleForgetGlasses = useCallback(async () => {
-    setPairingInProgress(false)
-    await CoreModule.disconnect()
-    await CoreModule.forget()
-    clearHistory()
-    router.dismissTo("/pairing/select-glasses-model")
-  }, [clearHistory])
-
   useEffect(() => {
     if (Platform.OS !== "android") return
 
     const onBackPress = () => {
-      handleForgetGlasses()
+      goBack()
       return true
     }
 
@@ -60,7 +51,7 @@ export default function GlassesPairingGuideScreen() {
         backHandlerRef.current = null
       }
     }
-  }, [handleForgetGlasses])
+  }, [goBack])
 
   const handlePairFailure = (error: string) => {
     CoreModule.forget()
@@ -132,7 +123,7 @@ export default function GlassesPairingGuideScreen() {
       <Screen preset="fixed" style={themed($styles.screen)}>
         <Header
           leftIcon="chevron-left"
-          onLeftPress={handleForgetGlasses}
+          onLeftPress={goBack}
           RightActionComponent={
             <PillButton
               text="Help"
@@ -159,7 +150,7 @@ export default function GlassesPairingGuideScreen() {
       <Screen preset="fixed" style={themed($styles.screen)}>
         <Header
           leftIcon="chevron-left"
-          onLeftPress={handleForgetGlasses}
+          onLeftPress={goBack}
           RightActionComponent={
             <PillButton
               text="Help"
@@ -193,7 +184,7 @@ export default function GlassesPairingGuideScreen() {
     <Screen preset="fixed" style={themed($screen)}>
       <Header
         leftIcon="chevron-left"
-        onLeftPress={handleForgetGlasses}
+        onLeftPress={goBack}
         RightActionComponent={
           <PillButton
             text="Help"

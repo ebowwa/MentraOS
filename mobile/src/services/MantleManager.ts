@@ -80,7 +80,6 @@ class MantleManager {
       console.error("Mantle: No settings received from server")
     }
 
-    await useSettingsStore.getState().initUserSettings() // initialize user settings
     await CoreModule.updateSettings(useSettingsStore.getState().getCoreSettings()) // send settings to core
 
     setTimeout(async () => {

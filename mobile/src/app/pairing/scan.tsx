@@ -39,7 +39,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push, clearHistory, clearHistoryAndGoHome} = useNavigationHistory()
+  const {goBack, replace, clearHistoryAndGoHome} = useNavigationHistory()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<SearchResultDevice[]>(searchResults)
@@ -62,16 +62,6 @@ export default function SelectGlassesBluetoothScreen() {
     }, [setSearchResults]),
   )
 
-  // Shared function to handle the forget glasses logic
-  const handleForgetGlasses = useCallback(async () => {
-    await CoreModule.disconnect()
-    await CoreModule.forget()
-    // Clear NavigationHistoryContext history to prevent issues with back navigation
-    clearHistory()
-    // Use dismissTo to properly go back to select-glasses-model and clear the stack
-    router.dismissTo("/pairing/select-glasses-model")
-  }, [clearHistory])
-
   // Handle Android hardware back button
   useEffect(() => {
     // Only handle on Android
@@ -79,7 +69,7 @@ export default function SelectGlassesBluetoothScreen() {
 
     const onBackPress = () => {
       // Call our custom back handler
-      handleForgetGlasses()
+      goBack()
       // Return true to prevent default back behavior and stop propagation
       return true
     }
@@ -101,7 +91,7 @@ export default function SelectGlassesBluetoothScreen() {
         backHandlerRef.current = null
       }
     }
-  }, [handleForgetGlasses])
+  }, [goBack])
 
   // Ref to store the back handler for cleanup
   const backHandlerRef = useRef<any>(null)
@@ -242,14 +232,14 @@ export default function SelectGlassesBluetoothScreen() {
     setTimeout(() => {
       CoreModule.connectByName(deviceName)
     }, 2000)
-    push("/pairing/loading", {glassesModelName: glassesModelName})
+    replace("/pairing/loading", {glassesModelName: glassesModelName})
   }
 
   return (
     <Screen preset="fixed" style={themed($styles.screen)} safeAreaEdges={["bottom"]}>
       <Header
         leftIcon="chevron-left"
-        onLeftPress={handleForgetGlasses}
+        onLeftPress={goBack}
         RightActionComponent={
           <PillButton
             text="Help"

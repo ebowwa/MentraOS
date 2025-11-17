@@ -9,12 +9,23 @@ import {getGlassesImage} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 
 import {DeviceTypes} from "@/../../cloud/packages/types/src"
+import {useCallback} from "react"
+import CoreModule from "core"
+import {useFocusEffect} from "expo-router"
+import {Spacer} from "@/components/ui/Spacer"
 // import {useLocalSearchParams} from "expo-router"
 
 export default function SelectGlassesModelScreen() {
   const {theme, themed} = useAppTheme()
   const {push, goBack} = useNavigationHistory()
-  // const {onboarding} = useLocalSearchParams()
+
+  // when this screen is focused, forget any glasses that may be paired:
+  useFocusEffect(
+    useCallback(() => {
+      CoreModule.forget()
+      return () => {}
+    }, []),
+  )
 
   // Platform-specific glasses options
   const glassesOptions =
@@ -46,7 +57,7 @@ export default function SelectGlassesModelScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={themed($styles.screen)} safeAreaEdges={["bottom"]}>
+    <Screen preset="fixed" style={themed($styles.screen)}>
       <Header
         titleTx="pairing:selectModel"
         leftIcon="chevron-left"
@@ -54,25 +65,19 @@ export default function SelectGlassesModelScreen() {
           goBack()
         }}
       />
+      <Spacer height={theme.spacing.s4} />
       <ScrollView style={{marginRight: -theme.spacing.s4, paddingRight: theme.spacing.s4}}>
         <View style={{flexDirection: "column", gap: theme.spacing.s4}}>
-          {glassesOptions
-            // .filter(glasses => {
-            //   // Hide simulated glasses during onboarding (users get there via "I don't have glasses yet")
-            //   if (onboarding && glasses.modelName === DeviceTypes.SIMULATED) {
-            //     return false
-            //   }
-            //   return true
-            // })
-            .map(glasses => (
-              <TouchableOpacity
-                key={glasses.key}
-                style={themed($settingItem)}
-                onPress={() => triggerGlassesPairingGuide(glasses.modelName)}>
-                <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
-                <Text style={[themed($label)]}>{glasses.modelName}</Text>
-              </TouchableOpacity>
-            ))}
+          {glassesOptions.map(glasses => (
+            <TouchableOpacity
+              key={glasses.key}
+              style={themed($settingItem)}
+              onPress={() => triggerGlassesPairingGuide(glasses.modelName)}>
+              <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
+              <Text style={[themed($label)]}>{glasses.modelName}</Text>
+            </TouchableOpacity>
+          ))}
+          <Spacer height={theme.spacing.s4} />
         </View>
       </ScrollView>
     </Screen>

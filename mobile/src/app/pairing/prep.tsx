@@ -16,7 +16,7 @@ export default function PairingPrepScreen() {
   const route = useRoute()
   const {themed, theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
-  const {goBack, push, clearHistoryAndGoHome} = useNavigationHistory()
+  const {goBack, replace, clearHistoryAndGoHome} = useNavigationHistory()
 
   const advanceToPairing = async () => {
     if (glassesModelName == null || glassesModelName == "") {
@@ -209,7 +209,7 @@ export default function PairingPrepScreen() {
       return
     }
 
-    push("/pairing/scan", {glassesModelName})
+    replace("/pairing/scan", {glassesModelName})
   }
 
   return (

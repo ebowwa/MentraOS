@@ -6,7 +6,7 @@ import {useEffect, useState} from "react"
 import {LogBox} from "react-native"
 
 import {initI18n} from "@/i18n"
-import {initializeSettings, SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
+import {SETTINGS_KEYS, useSettingsStore} from "@/stores/settings"
 import {customFontsToLoad} from "@/theme"
 import {ConsoleLogger} from "@/utils/debug/console"
 import {loadDateFnsLocale} from "@/utils/formatDate"
@@ -73,7 +73,7 @@ const setupSentry = () => {
 setupSentry()
 
 // initialize the settings store
-initializeSettings()
+useSettingsStore.getState().loadAllSettings()
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()

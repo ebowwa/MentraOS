@@ -78,7 +78,15 @@ export default function AccountPage() {
               style={themed($buildInfo)}
               text={translate("common:version", {number: process.env?.EXPO_PUBLIC_MENTRAOS_VERSION})}
             />
-            <Text style={themed($buildInfo)} text={`${process.env.EXPO_PUBLIC_BUILD_BRANCH}`} />
+            <Text
+              style={themed($buildInfo)}
+              text={translate("common:version", {number: process.env?.EXPO_PUBLIC_VERSION})}
+            />
+            <Text
+              style={themed($buildInfo)}
+              text={process.env?.EXPO_PUBLIC_DEPLOYMENT_REGION}
+            />
+            {/* <Text style={themed($buildInfo)} text={`${process.env.EXPO_PUBLIC_BUILD_BRANCH}`} /> */}
           </View>
           <View style={{flexDirection: "row", gap: theme.spacing.s2}}>
             <Text style={themed($buildInfo)} text={`${process.env.EXPO_PUBLIC_BUILD_TIME}`} />
