@@ -1,4 +1,3 @@
-
 import Foundation
 
 class STTTools {
@@ -6,7 +5,8 @@ class STTTools {
 
     static func didReceivePartialTranscription(_ text: String) {
         // Send partial result to server witgetConnectedBluetoothNameh proper formatting
-        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
+        let transcriptionLanguage =
+            UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
         Bridge.log("Mentra: Sending partial transcription: \(text), \(transcriptionLanguage)")
         let transcription: [String: Any] = [
             "type": "local_transcription",
@@ -24,7 +24,8 @@ class STTTools {
 
     static func didReceiveFinalTranscription(_ text: String) {
         // Send final result to server with proper formatting
-        let transcriptionLanguage = UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
+        let transcriptionLanguage =
+            UserDefaults.standard.string(forKey: "STTModelLanguageCode") ?? "en-US"
         Bridge.log("Mentra: Sending final transcription: \(text), \(transcriptionLanguage)")
         if !text.isEmpty {
             let transcription: [String: Any] = [
@@ -118,36 +119,36 @@ class STTTools {
         // }
     }
 
-    static func extractTarBz2(sourcePath _: String, destinationPath _: String) -> Bool {
-        // do {
-        // let fileManager = FileManager.default
+    static func extractTarBz2(sourcePath: String, destinationPath: String) -> Bool {
+        do {
+            let fileManager = FileManager.default
 
-        // // Create destination directory if it doesn't exist
-        // try fileManager.createDirectory(
-        //     atPath: destinationPath,
-        //     withIntermediateDirectories: true,
-        //     attributes: nil
-        // )
+            // Create destination directory if it doesn't exist
+            try fileManager.createDirectory(
+                atPath: destinationPath,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
 
-        // // Use the Swift TarBz2Extractor with SWCompression
-        // var extractionError: NSError?
-        // let success = TarBz2Extractor.extractTarBz2From(
-        //     sourcePath,
-        //     to: destinationPath,
-        //     error: &extractionError
-        // )
+            // Use the Swift TarBz2Extractor with SWCompression
+            var extractionError: NSError?
+            let success = TarBz2Extractor.extractTarBz2From(
+                sourcePath,
+                to: destinationPath,
+                error: &extractionError
+            )
 
-        // if !success || extractionError != nil {
-        //     print(
-        //         "EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")"
-        //     )
-        //     return false
-        // }
+            if !success || extractionError != nil {
+                print(
+                    "EXTRACTION_ERROR: \(extractionError?.localizedDescription ?? "Failed to extract tar.bz2")"
+                )
+                return false
+            }
 
+        } catch {
+            Bridge.log("EXTRACTION_ERROR: \(error.localizedDescription)")
+            return false
+        }
         return true
-        // } catch {
-        // Bridge.log("EXTRACTION_ERROR: \(error.localizedDescription)")
-        // return false
-        // }
     }
 }
