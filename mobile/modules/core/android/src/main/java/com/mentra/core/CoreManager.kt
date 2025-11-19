@@ -924,6 +924,17 @@ class CoreManager {
         isSearching = false
         handle_request_status()
 
+        // Show welcome message on first connect for all display glasses
+        if (shouldSendBootingMessage) {
+            shouldSendBootingMessage = false
+            executor.execute {
+                sgc?.sendTextWall("// MentraOS Connected")
+                Thread.sleep(3000)
+                sgc?.clearDisplay()
+            }
+        }
+
+        // Call device-specific setup handlers
         if (defaultWearable.contains(DeviceTypes.G1)) {
             handleG1Ready()
         } else if (defaultWearable.contains(DeviceTypes.MACH1)) {
@@ -941,42 +952,13 @@ class CoreManager {
     }
 
     private fun handleG1Ready() {
-        // load settings and send the animation:
-        // give the glasses some extra time to finish booting:
-        // Thread.sleep(1000)
-        // await sgc?.setSilentMode(false) // turn off silent mode
-        // await sgc?.getBatteryStatus()
-
-        // if shouldSendBootingMessage {
-        //     sgc?.sendTextWall("// BOOTING MENTRAOS")
-        // }
-
-        // // send loaded settings to glasses:
-        // try? await Task.sleep(nanoseconds: 400_000_000)
-        // sgc?.setHeadUpAngle(headUpAngle)
-        // try? await Task.sleep(nanoseconds: 400_000_000)
-        // sgc?.setBrightness(brightness, autoMode: autoBrightness)
-        // try? await Task.sleep(nanoseconds: 400_000_000)
-        // // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-        // // try? await Task.sleep(nanoseconds: 400_000_000)
-        // //      playStartupSequence()
-        // if shouldSendBootingMessage {
-        //     sgc?.sendTextWall("// MENTRAOS CONNECTED")
-        //     try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-        //     sgc?.clearDisplay()
-        // }
-
-        // shouldSendBootingMessage = false
-
-        // handle_request_status()
+        // G1-specific setup (if any needed in the future)
+        // Note: G1-specific settings like silent mode, battery status,
+        // head up angle, brightness, etc. could be configured here
     }
 
     private fun handleMach1Ready() {
-        // Send startup message
-        sgc?.sendTextWall("MENTRAOS CONNECTED")
-        Thread.sleep(1000)
-        sgc?.clearDisplay()
-
+        // Mach1-specific setup (if any needed in the future)
         handle_request_status()
     }
 
@@ -984,6 +966,7 @@ class CoreManager {
         Bridge.log("MAN: Device disconnected")
         isHeadUp = false
         lastMicState = null  // Clear cache - hardware is definitely off now
+        shouldSendBootingMessage = true  // Reset for next first connect
         handle_request_status()
     }
 

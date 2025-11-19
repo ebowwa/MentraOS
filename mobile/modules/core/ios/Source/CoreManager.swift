@@ -769,6 +769,17 @@ struct ViewState {
         isSearching = false
         handle_request_status()
 
+        // Show welcome message on first connect for all display glasses
+        if shouldSendBootingMessage {
+            Task {
+                sgc.sendTextWall("// MentraOS Connected")
+                try? await Task.sleep(nanoseconds: 3_000_000_000) // 1 second
+                sgc.clearDisplay()
+            }
+            shouldSendBootingMessage = false
+        }
+
+        // Call device-specific setup handlers
         if defaultWearable.contains(DeviceTypes.G1) {
             handleG1Ready()
         } else if defaultWearable.contains(DeviceTypes.MACH1) {
@@ -786,16 +797,12 @@ struct ViewState {
     }
 
     private func handleG1Ready() {
-        // load settings and send the animation:
+        // G1-specific setup and configuration
         Task {
             // give the glasses some extra time to finish booting:
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             await sgc?.setSilentMode(false) // turn off silent mode
             await sgc?.getBatteryStatus()
-
-            if shouldSendBootingMessage {
-                sgc?.sendTextWall("// BOOTING MENTRAOS")
-            }
 
             // send loaded settings to glasses:
             try? await Task.sleep(nanoseconds: 400_000_000)
@@ -806,13 +813,6 @@ struct ViewState {
             // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // try? await Task.sleep(nanoseconds: 400_000_000)
             //      playStartupSequence()
-            if shouldSendBootingMessage {
-                sgc?.sendTextWall("// MENTRAOS CONNECTED")
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                sgc?.clearDisplay()
-            }
-
-            shouldSendBootingMessage = false
 
             self.handle_request_status()
         }
@@ -820,11 +820,7 @@ struct ViewState {
 
     private func handleMach1Ready() {
         Task {
-            // Send startup message
-            sgc?.sendTextWall("MENTRAOS CONNECTED")
-            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-            sgc?.clearDisplay()
-
+            // Mach1-specific setup (if any needed in the future)
             self.handle_request_status()
         }
     }
@@ -832,6 +828,7 @@ struct ViewState {
     private func handleDeviceDisconnected() {
         Bridge.log("MAN: Device disconnected")
         handle_microphone_state_change([], false)
+        shouldSendBootingMessage = true // Reset for next first connect
         Bridge.sendGlassesConnectionState(modelName: defaultWearable, status: "DISCONNECTED")
         handle_request_status()
     }
