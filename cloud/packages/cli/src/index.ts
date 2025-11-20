@@ -6,9 +6,11 @@
  */
 
 import {Command} from "commander"
+import {appCommand} from "./commands/app"
 import {authCommand} from "./commands/auth"
 import {cloudCommand} from "./commands/cloud"
-import {appCommand} from "./commands/app"
+import {createCommand} from "./commands/create"
+import {linksCommand} from "./commands/links"
 import {orgCommand} from "./commands/org"
 
 const program = new Command()
@@ -16,9 +18,11 @@ const program = new Command()
 program.name("mentra").description("Mentra CLI - Manage apps and organizations").version("1.0.0")
 
 // Add commands
+program.addCommand(appCommand)
 program.addCommand(authCommand)
 program.addCommand(cloudCommand)
-program.addCommand(appCommand)
+program.addCommand(createCommand)
+program.addCommand(linksCommand)
 program.addCommand(orgCommand)
 
 // Global options

@@ -14,6 +14,7 @@ export async function input(
   options?: {
     required?: boolean
     default?: string
+    validate?: (value: string) => true | string
   },
 ): Promise<string> {
   const answer = await inquirer.prompt([
@@ -25,6 +26,9 @@ export async function input(
       validate: (value: string) => {
         if (options?.required && !value.trim()) {
           return "This field is required"
+        }
+        if (options?.validate) {
+          return options.validate(value)
         }
         return true
       },
@@ -51,7 +55,10 @@ export async function confirm(message: string, defaultValue = false): Promise<bo
 /**
  * Prompt for selection from a list
  */
-export async function select(message: string, choices: string[]): Promise<string> {
+export async function select(
+  message: string,
+  choices: string[] | Array<{name: string; value: string; description?: string}>,
+): Promise<string> {
   const answer = await inquirer.prompt([
     {
       type: "list",
@@ -81,13 +88,19 @@ export async function multiSelect(message: string, choices: string[]): Promise<s
 /**
  * Prompt for password input (hidden)
  */
-export async function password(message: string): Promise<string> {
+export async function password(
+  message: string,
+  options?: {
+    validate?: (value: string) => true | string
+  },
+): Promise<string> {
   const answer = await inquirer.prompt([
     {
       type: "password",
       name: "value",
       message,
       mask: "*",
+      validate: options?.validate,
     },
   ])
   return answer.value
