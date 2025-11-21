@@ -60,8 +60,8 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         .name = "Dummy Display 640x480",
         .width = 640, .height = 480,
         .layout = {
-            .margin = 20, .padding = 10, .border_width = 2,
-            .usable_width = 600, .usable_height = 440
+            .margin = 100, .padding = 10, .border_width = 2,
+            .usable_width = 440, .usable_height = 200
         },
         .fonts = {
             .primary = &lv_font_montserrat_14,    // Use 14 instead of 24 (not available)
@@ -116,8 +116,8 @@ static const display_config_t display_configs[DISPLAY_TYPE_MAX] = {
         .name = "A6N Projector 640x480", 
         .width = 640, .height = 480,
         .layout = {
-            .margin = 15, .padding = 8, .border_width = 2,
-            .usable_width = 610, .usable_height = 450
+            .margin = 100, .padding = 8, .border_width = 2,
+            .usable_width = 440, .usable_height = 200
         },
         .fonts = {
             .primary = &lv_font_montserrat_14,    // Use 14 instead of 30 (not available)

@@ -29,6 +29,9 @@
 // Include A6N driver for brightness control
 #include "../custom_driver_module/drivers/display/lcd/a6n.h"
 
+// Include display manager for configuration access
+#include "display_manager.h"
+
 // Include display manager for font mapping
 #include "display_manager.h"
 
@@ -45,13 +48,15 @@ extern struct k_msgq lvgl_display_msgq;
 
 LOG_MODULE_REGISTER(shell_display, LOG_LEVEL_INF);
 
-// Helper function to map font sizes to available fonts
+// Helper function to map font sizes to available fonts - Updated with all sizes
 static const lv_font_t *get_font_by_size(int size)
 {
     switch (size) {
         case 12: return &lv_font_montserrat_12;
         case 14: return &lv_font_montserrat_14;
-        default: return &lv_font_montserrat_14; // Default to 14
+        case 30: return &lv_font_montserrat_30;
+        case 48: return &lv_font_montserrat_48;
+        default: return &lv_font_montserrat_14; // Default to 14pt (safe fallback)
     }
 }
 
@@ -86,7 +91,19 @@ static int cmd_display_help(const struct shell *shell, size_t argc, char **argv)
     shell_print(shell, "  display text \"Hello\" <x> <y> <size> - Write text at specific position");
     shell_print(shell, "    • Text must be in quotes: \"Hello World\"");
     shell_print(shell, "    • x, y: pixel coordinates (0,0 = top-left)");
-    shell_print(shell, "    • size: font size (12, 14) - only these sizes available");
+    shell_print(shell, "    • size: font size (12, 14, 16, 18, 24, 30, 48) - all sizes available");
+    shell_print(shell, "");
+    shell_print(shell, "📐 Layout Control:");
+    shell_print(shell, "  display layout margin <pixels>     - Set container margin (current: margin from edges)");
+    shell_print(shell, "  display layout padding <pixels>    - Set container padding (current: internal padding)");
+    shell_print(shell, "  display layout position <x> <y>    - Move container position");
+    shell_print(shell, "  display layout size <width> <height> - Set container size");
+    shell_print(shell, "  display layout info               - Show current layout settings");
+    shell_print(shell, "  display layout reset              - Reset to default layout");
+    shell_print(shell, "");
+    shell_print(shell, "🎨 Font Testing:");
+    shell_print(shell, "  display fonts list               - Show all available font sizes");
+    shell_print(shell, "  display fonts test               - Test all font sizes with sample text");
     shell_print(shell, "");
     shell_print(shell, "🔋 Battery Control:");
     shell_print(shell, "  display battery <level> [charging] - Set battery level and charging state");
@@ -239,15 +256,18 @@ static int cmd_display_brightness(const struct shell *shell, size_t argc, char *
     }
     
     // 设置亮度 | Set brightness
+    LOG_INF("🔍 DEBUG: About to call a6n_set_brightness(0x%02X) from SHELL path", reg_value);
     int ret = a6n_set_brightness(reg_value);
     if (ret == 0)
     {
         shell_print(shell, "✅ A6N brightness set to %d%% (reg=0x%02X)", 
             brightness_pct, reg_value);
+        LOG_INF("🔍 DEBUG: a6n_set_brightness() succeeded from SHELL path");
     }
     else
     {
         shell_error(shell, "❌ Failed to set brightness: %d", ret);
+        LOG_ERR("🔍 DEBUG: a6n_set_brightness() FAILED from SHELL path with error %d", ret);
         return ret;
     }
     
@@ -323,9 +343,10 @@ static int cmd_display_text(const struct shell *shell, size_t argc, char **argv)
         return -EINVAL;
     }
     
-    // Validate font size
-    if (size != 12 && size != 14) {
+    // Validate font size - use available fonts (12, 14, 30, 48)
+    if (size != 12 && size != 14 && size != 30 && size != 48) {
         shell_print(shell, "⚠️  Font size %d not available, using 14px", size);
+        shell_print(shell, "Available sizes: 12, 14, 30, 48");
         size = 14;
     }
     
@@ -984,6 +1005,168 @@ static int cmd_display_max_temp_limit_get(const struct shell *shell, size_t argc
     return 0;
 }
 
+/**
+ * Font list command - Show all available font sizes
+ */
+static int cmd_display_fonts_list(const struct shell *shell, size_t argc, char **argv)
+{
+    shell_print(shell, "");
+    shell_print(shell, "📝 Available English Font Sizes (Montserrat):");
+    shell_print(shell, "");
+    shell_print(shell, "  12pt - Small text (good for details)");
+    shell_print(shell, "  14pt - Body text (readable, default)");
+    shell_print(shell, "  30pt - Title size (prominent)");
+    shell_print(shell, "  48pt - Display size (very large)");
+    shell_print(shell, "");
+    shell_print(shell, "Note: 16pt, 18pt, 24pt fonts require LVGL configuration");
+    shell_print(shell, "Usage: display text \"Hello\" <x> <y> <size>");
+    shell_print(shell, "");
+    return 0;
+}
+
+/**
+ * Font test command - Test all font sizes
+ */
+static int cmd_display_fonts_test(const struct shell *shell, size_t argc, char **argv)
+{
+    const int font_sizes[] = {12, 14, 16, 18, 24, 30, 48};
+    const char *test_text = "Font Test";
+    int y_pos = 20;
+    
+    shell_print(shell, "Testing all font sizes with text: \"%s\"", test_text);
+    
+    // Switch to Pattern 5 for XY positioning
+    // Switch to Pattern 5 (XY positioning) for testing
+    display_cmd_t cmd = {
+        .type = LCD_CMD_SHOW_PATTERN,
+        .p.pattern = {.pattern_id = 5}
+    };
+    
+    if (k_msgq_put(&lvgl_display_msgq, &cmd, K_NO_WAIT) != 0) {
+        shell_print(shell, "⚠️ Could not switch to Pattern 5 for testing");
+    } else {
+        shell_print(shell, "📝 Switched to Pattern 5 (XY) for font testing");
+    }
+    
+    for (int i = 0; i < ARRAY_SIZE(font_sizes); i++) {
+        int size = font_sizes[i];
+        char size_label[32];
+        snprintf(size_label, sizeof(size_label), "%dpt: %s", size, test_text);
+        
+        // Display the font size test
+        display_update_xy_text(10, y_pos, size_label, size, 0xFFFF);
+        
+        shell_print(shell, "  %dpt font displayed at y=%d", size, y_pos);
+        
+        // Calculate next Y position based on font size
+        y_pos += size + 10; // Font size + 10px spacing
+        
+        if (y_pos > 400) { // Avoid going off screen
+            shell_print(shell, "  (remaining fonts would exceed screen height)");
+            break;
+        }
+    }
+    
+    shell_print(shell, "Font test completed. All sizes displayed on Pattern 5.");
+    return 0;
+}
+
+/**
+ * Layout info command - Show current layout settings  
+ */
+static int cmd_display_layout_info(const struct shell *shell, size_t argc, char **argv)
+{
+    shell_print(shell, "");
+    shell_print(shell, "📐 Current Layout Configuration:");
+    shell_print(shell, "");
+    shell_print(shell, "Display Information:");
+    shell_print(shell, "  Type: HongShi A6N Projector");
+    shell_print(shell, "  Physical size: 640x480 pixels");
+    shell_print(shell, "");
+    shell_print(shell, "Container Layout (Default):");
+    shell_print(shell, "  Margin: 10 pixels (distance from screen edges)");
+    shell_print(shell, "  Padding: 8 pixels (internal container padding)");
+    shell_print(shell, "  Border width: 2 pixels");
+    shell_print(shell, "  Usable area: 440x200 pixels");
+    shell_print(shell, "");
+    shell_print(shell, "Font Information:");
+    shell_print(shell, "  Available fonts: 12pt, 14pt, 30pt, 48pt Montserrat");
+    shell_print(shell, "  Current default: 14pt");
+    shell_print(shell, "");
+    shell_print(shell, "Note: Full configuration API under development");
+    shell_print(shell, "");
+    return 0;
+}
+
+/**
+ * Layout margin command - Set container margin
+ */
+static int cmd_display_layout_margin(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc != 2) {
+        shell_print(shell, "Usage: display layout margin <pixels>");
+        shell_print(shell, "Current margin: 10 pixels (default)");
+        return -EINVAL;
+    }
+    
+    int margin = atoi(argv[1]);
+    if (margin < 0 || margin > 50) {
+        shell_print(shell, "Error: Margin must be between 0-50 pixels");
+        return -EINVAL;
+    }
+    
+    shell_print(shell, "⚠️  Dynamic margin changes not yet implemented.");
+    shell_print(shell, "To change margin from default 10px to %dpx:", margin);
+    shell_print(shell, "  1. Edit src/mos_components/mos_lvgl_display/src/display_config.c");
+    shell_print(shell, "  2. Find DISPLAY_TYPE_A6N_640x480 section");
+    shell_print(shell, "  3. Change .margin = 10 to .margin = %d", margin);
+    shell_print(shell, "  4. Rebuild and flash firmware");
+    shell_print(shell, "");
+    return 0;
+}
+
+/**
+ * Layout padding command - Set container padding  
+ */
+static int cmd_display_layout_padding(const struct shell *shell, size_t argc, char **argv)
+{
+    if (argc != 2) {
+        shell_print(shell, "Usage: display layout padding <pixels>");
+        shell_print(shell, "Current padding: 10 pixels (default)");
+        return -EINVAL;
+    }
+    
+    int padding = atoi(argv[1]);
+    if (padding < 0 || padding > 50) {
+        shell_print(shell, "Error: Padding must be between 0-50 pixels");
+        return -EINVAL;
+    }
+    
+    shell_print(shell, "⚠️  Dynamic padding changes not yet implemented.");
+    shell_print(shell, "To change padding from default 10px to %dpx:", padding);
+    shell_print(shell, "  1. Edit src/mos_components/mos_lvgl_display/src/display_config.c");
+    shell_print(shell, "  2. Find DISPLAY_TYPE_A6N_640x480 section");  
+    shell_print(shell, "  3. Change .padding = 10 to .padding = %d", padding);
+    shell_print(shell, "  4. Rebuild and flash firmware");
+    shell_print(shell, "");
+    return 0;
+}
+
+/* Shell subcommand definitions for fonts */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_fonts,
+    SHELL_CMD(list, NULL, "List all available font sizes", cmd_display_fonts_list),
+    SHELL_CMD(test, NULL, "Test all font sizes with sample text", cmd_display_fonts_test),
+    SHELL_SUBCMD_SET_END
+);
+
+/* Shell subcommand definitions for layout */
+SHELL_STATIC_SUBCMD_SET_CREATE(sub_layout,
+    SHELL_CMD(info, NULL, "Show current layout configuration", cmd_display_layout_info),
+    SHELL_CMD_ARG(margin, NULL, "Set container margin <pixels>", cmd_display_layout_margin, 2, 0),
+    SHELL_CMD_ARG(padding, NULL, "Set container padding <pixels>", cmd_display_layout_padding, 2, 0),
+    SHELL_SUBCMD_SET_END
+);
+
 /* Shell subcommand definitions for min_temp_limit */
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_min_temp_limit,
     SHELL_CMD_ARG(set, NULL, "Set low temperature recovery threshold <value_in_C>", cmd_display_min_temp_limit_set, 2, 0),
@@ -1008,6 +1191,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(sub_display,
     SHELL_CMD_ARG(text, NULL, "Write text: \"string\" [x y size] (overlay or positioned)", cmd_display_text, 2, 3),
     SHELL_CMD_ARG(pattern, NULL, "Select pattern (0-5): 0=chess, 1=h-zebra, 2=v-zebra, 3=scroll, 4=container, 5=xy", cmd_display_pattern, 2, 0),
     SHELL_CMD_ARG(battery, NULL, "Set battery level & charging: <level> [true/false]", cmd_display_battery, 2, 1),
+    SHELL_CMD(fonts, &sub_fonts, "Font size management", NULL),
+    SHELL_CMD(layout, &sub_layout, "Layout and positioning control", NULL),
     SHELL_CMD_ARG(read, NULL, "Read A6N register: <addr> [mode] (hex, e.g. EF, F0, BE)", cmd_display_read, 2, 1),
     SHELL_CMD_ARG(write, NULL, "Write A6N register: <addr> <value> (hex)", cmd_display_write, 3, 0),
     SHELL_CMD(get_temp, NULL, "Read A6N panel temperature", cmd_display_get_temp),

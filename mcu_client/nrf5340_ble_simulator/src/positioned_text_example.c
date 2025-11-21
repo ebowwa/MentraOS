@@ -107,8 +107,8 @@ void example_livecaption_simulation(void)
     k_msleep(100);
     
     // Simulate LiveCaption messages with different coordinates
-    // User coordinates (0,0) = top-left of 600x440 area
-    // User coordinates (600,440) = bottom-right of 600x440 area
+    // User coordinates (0,0) = top-left of 440x200 area
+    // User coordinates (440,200) = bottom-right of 440x200 area
     
     // Top-left corner (0,0) should appear at screen (20,20)
     display_manager_show_positioned_text(0, 0, "TOP-LEFT (0,0)", 16, 0xFF0000, false);
