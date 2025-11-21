@@ -194,7 +194,7 @@ class G1: NSObject, SGCManager {
 
     func sendJson(_: [String: Any], wakeUp _: Bool, requireAck _: Bool) {}
 
-    let type = DeviceTypes.G1
+    var type = DeviceTypes.G1
     let hasMic = true
 
     // TODO: we probably don't need this

@@ -1,7 +1,7 @@
 protocol SGCManager {
     // MARK: - Device Information
 
-    var type: String { get }
+    var type: String { get set }
     var ready: Bool { get }
     var connectionState: String { get }
 

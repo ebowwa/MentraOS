@@ -52,6 +52,8 @@ PODS:
     - ZXingObjC/PDF417
   - ExpoClipboard (8.0.7):
     - ExpoModulesCore
+  - ExpoDevice (8.0.9):
+    - ExpoModulesCore
   - ExpoFileSystem (19.0.17):
     - ExpoModulesCore
   - ExpoFont (14.0.9):
@@ -2627,6 +2629,7 @@ DEPENDENCIES:
   - ExpoCalendar (from `../node_modules/expo-calendar/ios`)
   - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
+  - ExpoDevice (from `../node_modules/expo-device/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
@@ -2788,6 +2791,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-camera/ios"
   ExpoClipboard:
     :path: "../node_modules/expo-clipboard/ios"
+  ExpoDevice:
+    :path: "../node_modules/expo-device/ios"
   ExpoFileSystem:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
@@ -3019,7 +3024,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   BitByteData: 2422ed269fcddc44976d97f171a183d25ef535ce
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
-  Core: 55372875a0530ba70fc117fca1ac63ee93e2cd38
+  Core: 2ecf041afe628167de962cd62278d249a0d2daa1
   EXApplication: 296622817d459f46b6c5fe8691f4aac44d2b79e7
   EXAV: e3fefaca88f14624bca01d9a128562a5f8e738f8
   EXConstants: a95804601ee4a6aa7800645f9b070d753b1142b3
@@ -3029,6 +3034,7 @@ SPEC CHECKSUMS:
   ExpoCalendar: 34fe3956dab6278057a8ad04c648fe43bd642ef5
   ExpoCamera: e75f6807a2c047f3338bbadd101af4c71a1d13a5
   ExpoClipboard: af650d14765f19c60ce2a1eaf9dfe6445eff7365
+  ExpoDevice: 148accb4071873d19fba80a2506c58ffa433d620
   ExpoFileSystem: b79eadbda7b7f285f378f95f959cc9313a1c9c61
   ExpoFont: cf9d90ec1d3b97c4f513211905724c8171f82961
   ExpoHead: 66d25bb51bcd6d62acc0bf5f15e8d156abd3e936

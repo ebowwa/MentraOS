@@ -1,8 +1,12 @@
+import Compression
 import Foundation
+import libbz2
 import SWCompression
 
 @objc(TarBz2Extractor)
 public class TarBz2Extractor: NSObject {
+    private static let chunkSize = 1 << 16 // 64 KB
+
     @objc
     public static func extractTarBz2From(
         _ sourcePath: String,
@@ -50,14 +54,49 @@ public class TarBz2Extractor: NSObject {
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("tar")
 
-        let sourceURL = URL(fileURLWithPath: sourcePath)
-        let compressedData = try Data(contentsOf: sourceURL)
+        guard let sourceFile = fopen(sourcePath, "rb") else {
+            throw makeError(code: 1001, message: "Unable to open source file at \(sourcePath)")
+        }
+        defer { fclose(sourceFile) }
 
-        guard let decompressedData = try? BZip2.decompress(data: compressedData) else {
-            throw makeError(code: 1003, message: "Unable to decompress bzip2 archive")
+        guard let destinationFile = fopen(tempTarURL.path, "wb") else {
+            throw makeError(code: 1002, message: "Unable to create temporary tar file")
+        }
+        defer { fclose(destinationFile) }
+
+        var bzError: Int32 = BZ_OK
+        guard let bzFile = BZ2_bzReadOpen(&bzError, sourceFile, 0, 0, nil, 0), bzError == BZ_OK else {
+            throw makeError(code: 1003, message: "Unable to open bzip stream (code \(bzError))")
         }
 
-        try decompressedData.write(to: tempTarURL, options: .atomic)
+        var buffer = [Int8](repeating: 0, count: chunkSize)
+        while true {
+            let bytesRead = BZ2_bzRead(&bzError, bzFile, &buffer, Int32(buffer.count))
+            if bzError == BZ_OK || bzError == BZ_STREAM_END {
+                if bytesRead > 0 {
+                    let written = buffer.withUnsafeBytes { rawBuffer -> Int in
+                        guard let baseAddress = rawBuffer.baseAddress else { return 0 }
+                        return fwrite(baseAddress, 1, Int(bytesRead), destinationFile)
+                    }
+                    guard written == Int(bytesRead) else {
+                        BZ2_bzReadClose(&bzError, bzFile)
+                        throw makeError(code: 1004, message: "Failed to write decompressed data")
+                    }
+                }
+                if bzError == BZ_STREAM_END {
+                    break
+                }
+            } else {
+                BZ2_bzReadClose(&bzError, bzFile)
+                throw makeError(code: 1005, message: "bzip2 read failed with code \(bzError)")
+            }
+        }
+
+        BZ2_bzReadClose(&bzError, bzFile)
+        guard bzError == BZ_OK else {
+            throw makeError(code: 1006, message: "bzip2 close failed with code \(bzError)")
+        }
+
         return tempTarURL
     }
 
