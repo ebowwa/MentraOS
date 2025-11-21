@@ -4,6 +4,63 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🎯 LSM6DSV16X IMU Sensor Integration & J-Link/USB Switch Control - 2025-11-21
+
+1. **LSM6DSV16X 6-axis IMU Sensor Driver Integration**
+   - Implemented complete sensor driver wrapper (lsm6dsv16x.c/h)
+   - Support for accelerometer and gyroscope data reading
+   - Support for device ID reading and I2C address auto-detection (0x6a/0x6b)
+   - Support for ODR and range configuration (interfaces implemented, shell commands temporarily disabled)
+   - Optimized data reading: lsm6dsv16x_read_all() performs single fetch for multiple channels
+
+2. **Shell Command Control Interface (shell_lsm6dsv16x.c)**
+   - `imu help/status/read`: Basic commands
+   - `imu start [interval]`: Continuous reading of accelerometer and gyroscope data (default 100ms interval)
+   - `imu stop`: Stop continuous reading
+   - Uses LOG_INF for standard log output
+   - Configuration commands (accel_odr/gyro_odr/accel_range/gyro_range) temporarily disabled
+
+3. **J-Link/USB Switch Control (shell_jlink_usb_switch.c)**
+   - Use P0.27 GPIO to control J-Link/USB switching
+   - Hardware logic: HIGH = USB mode, LOW = J-Link mode
+   - Shell commands: `jlink_usb status/jlink/usb/toggle`
+   - System starts in USB mode (HIGH) by default
+
+4. **GPIO Test Logic Level Control**
+   - P1.05 (imu_ctrl): IMU start/stop test logic level control
+     * Pulls HIGH on `imu start` command, LOW on `imu stop` command
+     * Default LOW at system startup, ensuring GPIO is low when not started
+   - P1.04 (imu_ctrl_init): IMU initialization test logic level control
+     * Pulls HIGH at start of lsm6dsv16x_init(), LOW at end
+   - P0.27 (jlink_usb_switch): J-Link/USB switch test logic level control
+     * USB mode = HIGH, J-Link mode = LOW
+   - All GPIOs used for logic level monitoring during hardware testing
+
+5. **Device Tree Configuration (nrf5340dk_nrf5340_cpuapp_ns.overlay)**
+   - Added LSM6DSV16X node to I2C3 bus (address 0x6a, AD0=GND)
+   - Configured I2C clock frequency to 100kHz
+   - Added all GPIO definitions to zephyr,user node
+   - Added sensor alias definition
+   - Added MX25U256 external Flash node (QSPI interface, 32MB capacity)
+   - Set nordic,pm-ext-flash = &mx25u256 in chosen node
+   - Removed old MX25R64 node configuration
+
+6. **Configuration File Updates**
+   - `prj.conf`: Enable CONFIG_LSM6DSV16X
+   - `prj.conf`: Enable CONFIG_SHELL_BACKEND_RTT and CONFIG_USE_SEGGER_RTT (RTT debugging support)
+   - `CMakeLists.txt`: Add new source files to build system
+     * CMakeLists.txt: Add src/shell_lsm6dsv16x.c, src/shell_jlink_usb_switch.c
+     * src/mos_driver/CMakeLists.txt: Add src/lsm6dsv16x.c
+   - `main.c`: Add LSM6DSV16X sensor initialization call (include header and lsm6dsv16x_init() function call)
+
+**Technical Details:**
+- I2C address: AD0=GND → 0x6a, AD0=VDD → 0x6b (user-confirmed mapping)
+- Sensor communication: Uses Zephyr standard sensor framework
+- Data format: Accelerometer (m/s²), Gyroscope (degrees/second)
+- Error handling: Comprehensive error checking and log output
+- GPIO control: Uses SYS_INIT to ensure correct GPIO state at startup
+- QSPI Flash: MX25U256 configured with 32MHz clock frequency, supports 4-byte address mode
+
 ### 🖋️ Font Configuration Cleanup & USB UI Guard - 2025-11-14
 
 1. **`prj.conf`**

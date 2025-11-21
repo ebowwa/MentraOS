@@ -12,4 +12,5 @@ target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include/.)
 target_sources(app PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bspal_audio_i2s.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/opt3006.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lsm6dsv16x.c
 )

@@ -32,6 +32,7 @@
 #include "mos_lvgl_display.h"  // Working LVGL display integration
 // #include "display/lcd/a6n.h"  // Working A6N driver
 #include "opt3006.h"  // OPT3006 ambient light sensor
+#include "lsm6dsv16x.h"  // LSM6DSV16X 6-axis IMU sensor
 
 #include <dk_buttons_and_leds.h>
 
@@ -1121,12 +1122,13 @@ int main(void)
 	advertising_start();
 	opt3006_initialize();
 	pm1300_init();
+	lsm6dsv16x_init();
 	// usb_detect_init();
 	
-	for (;;) {
+	for (;;) 
+	{
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
-
 	}
 }
 
@@ -1134,7 +1136,8 @@ void ble_write_thread(void)
 {
 	/* Don't go any further until BLE is initialized */
 	k_sem_take(&ble_init_ok, K_FOREVER);
-	struct uart_data_t mentra_data = {
+	struct uart_data_t mentra_data = 
+	{
 		.len = 0,
 	};
 
