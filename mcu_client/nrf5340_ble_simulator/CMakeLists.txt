@@ -36,6 +36,7 @@ target_sources(app PRIVATE
     src/shell_audio_control.c
     src/shell_lsm6dsv16x.c
     src/shell_jlink_usb_switch.c
+    src/shell_npm1300_led.c
     src/mos_components/mos_sysport/src/bal_os.c
     src/mos_components/mos_lvgl_display/src/mos_lvgl_display.c
     src/mos_components/mos_lvgl_display/src/display_config.c

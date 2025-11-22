@@ -50,6 +50,7 @@
 
 #include "mos_fuel_gauge.h"
 #include "opt3006.h"
+#include "npm1300_led.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -1124,6 +1125,7 @@ int main(void)
 	pm1300_init();
 	lsm6dsv16x_init();
 	// usb_detect_init();
+	npm1300_led_init();
 	
 	for (;;) 
 	{

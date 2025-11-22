@@ -4,6 +4,79 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 💡 nPM1300 LED Control Module & Shell Testing Commands - 2025-11-22
+
+1. **nPM1300 LED Driver Module Implementation**
+   - Created `npm1300_led.c/.h` driver module supporting LED on/off and blinking control
+   - Implemented three main functions: `on`, `off`, and `blinking` with adjustable time interval
+   - LED blinking supports configurable interval (100-10000ms)
+   - LED on time fixed at 100ms, off time is `(interval_ms - 100ms)`
+   - Complete state management: automatically stops blinking tasks to avoid state conflicts
+   - Support for 3 independent LEDs (LED0, LED1, LED2)
+
+2. **Shell Command Interface (shell_npm1300_led.c)**
+   - `led help`: Display comprehensive help information
+   - `led on <0|1|2>`: Turn on specified LED
+   - `led off <0|1|2>`: Turn off specified LED
+   - `led blink <0|1|2> [interval_ms]`: Start blinking (default: 500ms)
+   - `led stop <0|1|2>`: Stop blinking
+   - `led status [0|1|2]`: Display LED status (all LEDs or specific LED)
+   - Uses `strtoul` for safe string-to-integer parsing (replacing unsafe `atoi`)
+   - Complete error handling with user-friendly messages
+
+3. **Technical Implementation**
+   - Uses Zephyr LED driver API to control nPM1300 PMIC LEDs
+   - Uses `k_work_delayable` for periodic blinking implementation
+   - Safe parameter parsing: `strtoul` with comprehensive error checking (overflow, invalid input, partial conversion)
+   - State tracking: LED on/off state and blinking status
+   - Work queue scheduling: Automatic task cancellation when switching modes
+
+4. **Blinking Logic**
+   - LED on time: Fixed 100ms duration
+   - LED off time: `(interval_ms - 100ms)` duration
+   - Total cycle: `interval_ms`
+   - Minimum interval: 100ms (ensures on time is always 100ms)
+   - Maximum interval: 10000ms (10 seconds)
+   - Default interval: 500ms (100ms on, 400ms off)
+
+5. **Configuration Updates**
+   - `npm1300_config.overlay`: Modified LED0/LED1 mode to `host` (for testing convenience)
+   - `prj.conf`: Adjusted Shell buffer sizes
+   - `CMakeLists.txt`: Added new files to build system
+   - `main.c`: Added LED module initialization (`npm1300_led_init()`)
+
+6. **Code Quality**
+   - All braces occupy separate lines (code style consistency)
+   - Safe string parsing functions (`strtoul` with error checking)
+   - Complete error handling and logging
+   - Bilingual comments and help messages (Chinese/English)
+
+**Technical Details:**
+- LED device: Retrieved from device tree (`npm1300_ek_leds` node)
+- Work handler: `led_blink_work_handler()` toggles LED state periodically
+- State management: Tracks `is_on`, `is_blinking`, and `interval_ms` for each LED
+- Error codes: Standard Zephyr error codes (`-EINVAL`, `-ENODEV`, `-ERANGE`)
+- Shell integration: Full Zephyr Shell framework integration with subcommands
+
+**Files Added:**
+- `mos_driver/include/npm1300_led.h`: LED control interface definitions (95 lines)
+- `mos_driver/src/npm1300_led.c`: LED driver implementation (307 lines)
+- `shell_npm1300_led.c`: Shell command implementation (431 lines)
+
+**Files Modified:**
+- `CMakeLists.txt`: Added `shell_npm1300_led.c`
+- `mos_driver/CMakeLists.txt`: Added `npm1300_led.c`
+- `npm1300_config.overlay`: LED mode configuration
+- `prj.conf`: Shell buffer configuration
+- `main.c`: LED initialization
+
+**Testing Status:**
+✅ LED on/off functionality verified
+✅ Blinking with various intervals tested (100ms, 500ms, 3000ms)
+✅ Shell commands working correctly
+✅ State management verified (no conflicts when switching modes)
+✅ Safe string parsing validated
+
 ### 🎯 LSM6DSV16X IMU Sensor Integration & J-Link/USB Switch Control - 2025-11-21
 
 1. **LSM6DSV16X 6-axis IMU Sensor Driver Integration**
