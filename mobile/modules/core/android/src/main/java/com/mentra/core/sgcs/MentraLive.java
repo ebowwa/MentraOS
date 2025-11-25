@@ -218,6 +218,12 @@ public class MentraLive extends SGCManager {
     // BLE photo transfer tracking
     private Map<String, BlePhotoTransfer> blePhotoTransfers = new HashMap<>();
 
+    // File packet buffer for handling partial/sticky packets (similar to BleFileParser)
+    private byte[] filePacketBuffer;
+    private int filePacketBufferSize;
+    private static final int MAX_FILE_BUFFER_SIZE = 64 * 1024; // 64KB buffer
+    private final Object filePacketBufferLock = new Object(); // Lock for thread-safe buffer access
+
     private static class BlePhotoTransfer {
         String bleImgId;
         String requestId;
@@ -455,6 +461,10 @@ public class MentraLive extends SGCManager {
             lc3DecoderPtr = Lc3Cpp.initDecoder();
             Bridge.log("LIVE: Initialized LC3 decoder for PCM conversion: " + lc3DecoderPtr);
         }
+
+        // Initialize file packet buffer for handling partial/sticky packets
+        filePacketBuffer = new byte[MAX_FILE_BUFFER_SIZE];
+        filePacketBufferSize = 0;
     }
 
     public void cleanup() {
@@ -1001,8 +1011,21 @@ public class MentraLive extends SGCManager {
 
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
+            boolean isFileReadCharacteristic = uuid.equals(FILE_READ_UUID);
             boolean isLc3ReadCharacteristic = uuid.equals(LC3_READ_UUID) && supportsLC3Audio;
             boolean isLc3WriteCharacteristic = uuid.equals(LC3_WRITE_UUID) && supportsLC3Audio;
+
+            byte[] data = characteristic.getValue();
+            if (data == null || data.length == 0) {
+                return;
+            }
+
+            // Route FILE_READ characteristic data directly to file packet parser
+            if (isFileReadCharacteristic) {
+                Bridge.log("LIVE: Thread-" + threadId + ": 📁 Received data on FILE_READ characteristic (" + data.length + " bytes)");
+                processFilePacketData(data, 0, data.length);
+                return; // Exit early - file data is handled separately
+            }
 
             if (isRxCharacteristic) {
                 Bridge.log("LIVE: Received data on RX characteristic");
@@ -1011,27 +1034,20 @@ public class MentraLive extends SGCManager {
             } else if (isLc3ReadCharacteristic) {
                 // Bridge.log("LIVE: Received data on LC3_READ characteristic");
                 if (supportsLC3Audio) {
-                    processLc3AudioPacket(characteristic.getValue());
+                    processLc3AudioPacket(data);
                 } else {
                     Log.w(TAG, "Received LC3 data on device that doesn't support LC3 audio");
                 }
+                return; // LC3 audio is handled separately
             } else if (isLc3WriteCharacteristic) {
                 Bridge.log("LIVE: Received data on LC3_WRITE characteristic");
             } else {
                 Log.w(TAG, "Received data on unknown characteristic: " + uuid);
             }
 
-            // Process ALL data regardless of which characteristic it came from
-            {
-                byte[] data = characteristic.getValue();
-
-                // Convert first few bytes to hex for better viewing
-
-                if (data != null && data.length > 0) {
-                    // Process the received data
-                    processReceivedData(data, data.length);
-                }
-            }
+            // Process command/data on main characteristics (RX/TX)
+            // Note: File packets can also come through RX if FILE_READ isn't available
+            processReceivedData(data, data.length);
         }
 
         @Override
@@ -1508,6 +1524,235 @@ public class MentraLive extends SGCManager {
     }
 
     /**
+     * Process file packet data with buffer management for partial/sticky packets
+     * Similar to BleFileParser from k900_android_sdk
+     * Thread-safe: uses synchronized block to prevent race conditions
+     */
+    private void processFilePacketData(byte[] data, int offset, int len) {
+        if (data == null || len <= 0 || offset + len > data.length) {
+            Log.w(TAG, "processFilePacketData: invalid parameters");
+            return;
+        }
+
+        synchronized (filePacketBufferLock) {
+            // Add new data to buffer
+            if (filePacketBufferSize + len > MAX_FILE_BUFFER_SIZE) {
+                Log.e(TAG, "processFilePacketData: buffer overflow, clearing buffer");
+                filePacketBufferSize = 0;
+                return;
+            }
+
+            System.arraycopy(data, offset, filePacketBuffer, filePacketBufferSize, len);
+            filePacketBufferSize += len;
+
+            // Process buffer to extract complete packets
+            processFilePacketBufferLocked();
+        }
+    }
+
+    /**
+     * Process file packet buffer to extract complete packets
+     * Handles partial packets, sticky packets, and validates start/end codes
+     * Must be called within synchronized(filePacketBufferLock) block
+     */
+    private void processFilePacketBufferLocked() {
+        int pos = 0;
+        int processedCount = 0;
+        final int MAX_ITERATIONS = 100; // Prevent infinite loops
+
+        while (pos < filePacketBufferSize && processedCount < MAX_ITERATIONS) {
+            processedCount++;
+
+            // Find start code (##)
+            int startPos = findFilePacketStartCode(filePacketBuffer, pos, filePacketBufferSize - pos);
+            if (startPos < 0) {
+                // No start code found in remaining data
+                if (pos > 0) {
+                    // We've processed some data, remove it
+                    removeFileBufferHeadLocked(pos);
+                } else {
+                    // No start code at all, clear buffer
+                    Log.d(TAG, "processFilePacketBuffer: no start code found, clearing buffer");
+                    filePacketBufferSize = 0;
+                }
+                return;
+            }
+
+            // Skip invalid data before start code
+            if (startPos > pos) {
+                // Only log if significant amount of data is being skipped
+                if (startPos - pos > 10) {
+                    Log.w(TAG, "processFilePacketBuffer: invalid data before start code, skipping " + (startPos - pos) + " bytes");
+                }
+                pos = startPos;
+            }
+
+            // Check if we have enough data for minimum packet size
+            int minPacketSize = K900ProtocolUtils.LENGTH_FILE_START + K900ProtocolUtils.LENGTH_FILE_TYPE +
+                               K900ProtocolUtils.LENGTH_FILE_PACKSIZE + K900ProtocolUtils.LENGTH_FILE_PACKINDEX +
+                               K900ProtocolUtils.LENGTH_FILE_SIZE + K900ProtocolUtils.LENGTH_FILE_NAME +
+                               K900ProtocolUtils.LENGTH_FILE_FLAG + K900ProtocolUtils.LENGTH_FILE_VERIFY +
+                               K900ProtocolUtils.LENGTH_FILE_END;
+
+            if (filePacketBufferSize - pos < minPacketSize) {
+                // Not enough data, keep from start code
+                if (pos > 0) {
+                    removeFileBufferHeadLocked(pos);
+                }
+                return;
+            }
+
+            // Read pack size to determine full packet size
+            int packSizeOffset = pos + K900ProtocolUtils.LENGTH_FILE_START + K900ProtocolUtils.LENGTH_FILE_TYPE;
+            if (packSizeOffset + 2 > filePacketBufferSize) {
+                // Not enough data for pack size
+                if (pos > 0) {
+                    removeFileBufferHeadLocked(pos);
+                }
+                return;
+            }
+
+            int packSize = ((filePacketBuffer[packSizeOffset] & 0xFF) << 8) |
+                          (filePacketBuffer[packSizeOffset + 1] & 0xFF);
+
+            // Validate pack size (should be <= FILE_PACK_SIZE)
+            if (packSize > K900ProtocolUtils.FILE_PACK_SIZE || packSize < 0) {
+                Log.w(TAG, "processFilePacketBuffer: invalid pack size " + packSize + ", skipping start code");
+                pos = startPos + 1;
+                continue;
+            }
+
+            // Calculate full packet size
+            int fullPacketSize = minPacketSize + packSize;
+
+            // Check if we have complete packet
+            if (filePacketBufferSize - pos < fullPacketSize) {
+                // Not enough data, keep from start code
+                if (pos > 0) {
+                    removeFileBufferHeadLocked(pos);
+                }
+                return;
+            }
+
+            // ALWAYS try extractFilePacket first - it has the most comprehensive validation
+            // This handles cases where packets are split across BLE notifications or end code position seems wrong
+            if (filePacketBufferSize - pos >= fullPacketSize) {
+                byte[] potentialPacket = new byte[fullPacketSize];
+                System.arraycopy(filePacketBuffer, pos, potentialPacket, 0, fullPacketSize);
+                
+                K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(potentialPacket);
+                if (packetInfo != null && packetInfo.isValid) {
+                    // extractFilePacket validated it successfully - this is the authoritative validation
+                    Bridge.log("LIVE: 📦 Extracted file packet: index=" + packetInfo.packIndex + 
+                              ", size=" + packetInfo.packSize + ", fileName=" + packetInfo.fileName);
+                    // Process outside lock to avoid deadlock
+                    final K900ProtocolUtils.FilePacketInfo finalPacketInfo = packetInfo;
+                    handler.post(() -> processFilePacket(finalPacketInfo));
+                    pos += fullPacketSize;
+                    continue;
+                }
+            }
+            
+            // If extractFilePacket failed, the packet might be incomplete or corrupted
+            // Check if we have enough data - if not, wait for more
+            int endCodePos = pos + fullPacketSize - K900ProtocolUtils.LENGTH_FILE_END;
+            if (endCodePos >= filePacketBufferSize) {
+                // Not enough data for complete packet - wait for more
+                if (pos > 0) {
+                    removeFileBufferHeadLocked(pos);
+                }
+                return;
+            }
+            
+            // We have enough data but extractFilePacket failed - might be corrupted
+            // Try to find next start code to skip this potentially corrupted packet
+            int nextStartPos = findFilePacketStartCode(filePacketBuffer, startPos + 1, filePacketBufferSize - startPos - 1);
+            if (nextStartPos > 0) {
+                // Found another start code - skip corrupted data
+                // Only log occasionally to reduce noise
+                if (processedCount % 20 == 0) {
+                    Log.w(TAG, "processFilePacketBuffer: extractFilePacket failed at pos " + pos + 
+                          " (packSize=" + packSize + ", buffer=" + filePacketBufferSize + 
+                          "), skipping to next start code at " + nextStartPos);
+                }
+                pos = nextStartPos;
+                continue;
+            } else {
+                // No more start codes - might be partial packet, wait for more data
+                if (pos > 0) {
+                    removeFileBufferHeadLocked(pos);
+                }
+                return;
+            }
+        }
+
+        // Remove processed data from buffer
+        if (pos > 0) {
+            removeFileBufferHeadLocked(pos);
+        }
+
+        if (processedCount >= MAX_ITERATIONS) {
+            Log.e(TAG, "processFilePacketBuffer: reached max iterations, clearing buffer to prevent infinite loop");
+            filePacketBufferSize = 0;
+        }
+    }
+
+    /**
+     * Find start code (##) in buffer
+     */
+    private int findFilePacketStartCode(byte[] data, int offset, int len) {
+        if (data == null || offset + len > data.length || len < K900ProtocolUtils.LENGTH_FILE_START) {
+            return -1;
+        }
+
+        for (int i = offset; i <= offset + len - K900ProtocolUtils.LENGTH_FILE_START; i++) {
+            if (data[i] == K900ProtocolUtils.CMD_START_CODE[0] &&
+                data[i + 1] == K900ProtocolUtils.CMD_START_CODE[1]) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Check if end code ($$) is present
+     */
+    private boolean isFilePacketEndCode(byte[] data, int offset) {
+        if (data == null || offset + K900ProtocolUtils.LENGTH_FILE_END > data.length) {
+            return false;
+        }
+
+        return data[offset] == K900ProtocolUtils.CMD_END_CODE[0] &&
+               data[offset + 1] == K900ProtocolUtils.CMD_END_CODE[1];
+    }
+
+    /**
+     * Remove processed data from buffer head
+     * Must be called within synchronized(filePacketBufferLock) block
+     */
+    private void removeFileBufferHeadLocked(int count) {
+        if (count <= 0 || count >= filePacketBufferSize) {
+            filePacketBufferSize = 0;
+            return;
+        }
+
+        int remaining = filePacketBufferSize - count;
+        System.arraycopy(filePacketBuffer, count, filePacketBuffer, 0, remaining);
+        filePacketBufferSize = remaining;
+    }
+
+    /**
+     * Clear file packet buffer
+     * Thread-safe
+     */
+    private void clearFilePacketBuffer() {
+        synchronized (filePacketBufferLock) {
+            filePacketBufferSize = 0;
+        }
+    }
+
+    /**
      * Process data received from the glasses
      */
     private void processReceivedData(byte[] data, int size) {
@@ -1555,6 +1800,11 @@ public class MentraLive extends SGCManager {
 
                 // The data IS the file packet - it starts with ## and contains the full file packet structure
                 K900ProtocolUtils.FilePacketInfo packetInfo = K900ProtocolUtils.extractFilePacket(data);
+                if (packetInfo != null) {
+                    Bridge.log("LIVE: Thread-" + threadId + ": 📦 Packet info: " + packetInfo.toString());
+                } else {
+                    Bridge.log("LIVE: Thread-" + threadId + ": 📦 Packet info is null");
+                }
                 if (packetInfo != null && packetInfo.isValid) {
                     processFilePacket(packetInfo);
                 } else {
@@ -3314,6 +3564,9 @@ public class MentraLive extends SGCManager {
 
         // Clear the send queue
         sendQueue.clear();
+
+        // Clear file packet buffer
+        clearFilePacketBuffer();
 
         // Reset state variables
         reconnectAttempts = 0;

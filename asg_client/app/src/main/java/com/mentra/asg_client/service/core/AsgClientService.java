@@ -982,15 +982,45 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             public boolean sendFileViaBluetooth(String filePath) {
                 Log.d(TAG, "📁 sendFileViaBluetooth() called - File: " + filePath);
                 
+                // Validate file path
+                if (filePath == null || filePath.isEmpty()) {
+                    Log.e(TAG, "❌ Invalid file path provided for BLE transfer");
+                    return false;
+                }
+                
+                // Check if file exists
+                java.io.File file = new java.io.File(filePath);
+                if (!file.exists() || !file.isFile()) {
+                    Log.e(TAG, "❌ File does not exist or is not a file: " + filePath);
+                    return false;
+                }
+                
+                // Check file size (BLE transfers have practical limits)
+                long fileSize = file.length();
+                if (fileSize == 0) {
+                    Log.e(TAG, "❌ File is empty: " + filePath);
+                    return false;
+                }
+                
+                // Warn about very large files (BLE transfers are slow)
+                if (fileSize > 5 * 1024 * 1024) { // 5MB
+                    Log.w(TAG, "⚠️ Large file detected (" + (fileSize / 1024 / 1024) + "MB) - BLE transfer may be slow");
+                }
+                
                 if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
-                    Log.d(TAG, "📶 Starting BLE file transfer");
-                    boolean started = serviceContainer.getServiceManager().getBluetoothManager().sendImageFile(filePath);
-                    if (started) {
-                        Log.i(TAG, "✅ BLE file transfer started successfully for: " + filePath);
-                    } else {
-                        Log.e(TAG, "❌ Failed to start BLE file transfer for: " + filePath);
+                    Log.d(TAG, "📶 Starting BLE file transfer for file: " + filePath + " (" + fileSize + " bytes)");
+                    try {
+                        boolean started = serviceContainer.getServiceManager().getBluetoothManager().sendImageFile(filePath);
+                        if (started) {
+                            Log.i(TAG, "✅ BLE file transfer started successfully for: " + filePath);
+                        } else {
+                            Log.e(TAG, "❌ Failed to start BLE file transfer for: " + filePath);
+                        }
+                        return started;
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Exception while starting BLE file transfer: " + e.getMessage(), e);
+                        return false;
                     }
-                    return started;
                 } else {
                     Log.w(TAG, "⚠️ Bluetooth manager is null - cannot send file");
                     return false;
@@ -1002,9 +1032,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "📊 isBleTransferInProgress() called");
                 
                 if (serviceContainer.getServiceManager().getBluetoothManager() != null) {
-                    boolean inProgress = serviceContainer.getServiceManager().getBluetoothManager().isFileTransferInProgress();
-                    Log.d(TAG, "📊 BLE transfer in progress: " + inProgress);
-                    return inProgress;
+                    try {
+                        boolean inProgress = serviceContainer.getServiceManager().getBluetoothManager().isFileTransferInProgress();
+                        Log.d(TAG, "📊 BLE transfer in progress: " + inProgress);
+                        return inProgress;
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Exception while checking BLE transfer status: " + e.getMessage(), e);
+                        // Return false on error to allow new transfers to be attempted
+                        return false;
+                    }
                 } else {
                     Log.w(TAG, "⚠️ Bluetooth manager is null - cannot check transfer status");
                     return false;

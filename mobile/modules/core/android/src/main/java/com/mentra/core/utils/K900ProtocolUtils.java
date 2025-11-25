@@ -676,10 +676,15 @@ public class K900ProtocolUtils {
      * @return FilePacketInfo object with parsed data, or null if invalid
      */
     public static FilePacketInfo extractFilePacket(byte[] protocolData) {
-        if (!isK900ProtocolFormat(protocolData) || protocolData.length < 31) {
-            Log.e("K900ProtocolUtils", "extractFilePacket: Invalid format or too short. Length=" +
-                  (protocolData != null ? protocolData.length : 0) +
-                  ", isK900Format=" + isK900ProtocolFormat(protocolData));
+        Log.d("K900ProtocolUtils", "extractFilePacket: Protocol data length: " + (protocolData != null ? protocolData.length : 0));
+        if (protocolData == null || protocolData.length < 31) {
+            Log.e("K900ProtocolUtils", "extractFilePacket: Data null or too short. Length=" +
+                  (protocolData != null ? protocolData.length : 0));
+            return null;
+        }
+        if (!isK900ProtocolFormat(protocolData)) {
+            Log.e("K900ProtocolUtils", "extractFilePacket: Not K900 format. First bytes: " +
+                  (protocolData.length >= 2 ? (protocolData[0] & 0xFF) + " " + (protocolData[1] & 0xFF) : "N/A"));
             return null;
         }
 
@@ -741,6 +746,9 @@ public class K900ProtocolUtils {
 
         // Check end code
         if (protocolData[pos] != CMD_END_CODE[0] || protocolData[pos + 1] != CMD_END_CODE[1]) {
+            Log.e("K900ProtocolUtils", "File packet end code mismatch. Expected: " + 
+                  String.format("%02X", CMD_END_CODE[0]) + String.format("%02X", CMD_END_CODE[1]) + 
+                  ", Have: " + String.format("%02X", protocolData[pos]) + String.format("%02X", protocolData[pos + 1]));
             return null;
         }
 

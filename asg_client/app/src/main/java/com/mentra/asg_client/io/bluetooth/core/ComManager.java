@@ -152,6 +152,7 @@ public class ComManager {
     public void sendFile(byte[] data) {
         if (mbStart && mOS != null && !mbOtaUpdating) {
             try {
+                Log.d(TAG, ">>> sending file " + data.length + " bytes");
                 // Don't log file data content, just write it
                 mOS.write(data);
                 mOS.flush();
