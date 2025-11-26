@@ -160,7 +160,7 @@ export default function BackendUrl() {
           {hasEnvOverride
             ? `${translate("developer:betaBuildBackendInfo")}\n${translate("developer:buildDefault", {url: process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE})}`
             : translate("developer:customBackendDescription")}
-          {sessionBackendOverride && `\n⚡ ${translate("developer:sessionOverride", {url: sessionBackendOverride})}`}
+          {sessionBackendOverride && `\n${translate("developer:sessionOverride", {url: sessionBackendOverride})}`}
           {!hasEnvOverride && backendUrl && `\n${translate("developer:currentlyUsing", {url: backendUrl})}`}
         </Text>
         <TextInput
