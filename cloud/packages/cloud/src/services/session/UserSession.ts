@@ -539,6 +539,39 @@ export class UserSession {
   }
 
   /**
+   * Break ping/pong mechanism by simulating a timeout
+   * This is used for debugging/testing mobile reconnection logic
+   *
+   * @returns true if WebSocket was closed, false otherwise
+   */
+  public breakPingPong(): boolean {
+    try {
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.logger.warn(
+          { userId: this.userId, service: "UserSession" },
+          `[DEBUG] Simulating ping/pong timeout - closing WebSocket with code 1001`,
+        );
+
+        // Close with same code and message as real pong timeout
+        this.websocket.close(1001, "Ping timeout - no pong received");
+        return true;
+      } else {
+        this.logger.warn(
+          { userId: this.userId, service: "UserSession" },
+          `[DEBUG] Cannot break ping/pong - WebSocket is not open`,
+        );
+        return false;
+      }
+    } catch (error) {
+      this.logger.error(
+        { error, userId: this.userId, service: "UserSession" },
+        "[DEBUG] Error breaking ping/pong",
+      );
+      return false;
+    }
+  }
+
+  /**
    * Send error message to glasses
    *
    * @param message Error message

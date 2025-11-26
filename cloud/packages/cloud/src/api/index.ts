@@ -6,6 +6,7 @@ import feedbackApi from "./client/feedback.api";
 import minVersionApi from "./client/min-version.api";
 import clientAppsApi from "./client/client.apps.api";
 import deviceStateApi from "./client/device-state.api";
+import debugApi from "./client/debug.api";
 import simpleStorageApi from "./sdk/simple-storage.api";
 import sdkVersionApi from "./sdk/sdk-version.api";
 import publicPermissionsApi from "./public/permission";
@@ -62,6 +63,7 @@ export function registerApi(app: Application) {
   app.use("/api/client/location", locationApi);
   app.use("/api/client/notifications", notificationsApi);
   app.use("/api/client/device/state", deviceStateApi);
+  app.use("/api/client/debug", debugApi);
 
   app.use("/api/sdk", sdkVersionApi);
   app.use("/api/sdk/version", sdkVersionApi);
