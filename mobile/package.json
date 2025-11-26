@@ -95,6 +95,8 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-localize": "^3.6.0",
     "react-native-mmkv": "4.0.0",
+    "react-native-nitro-bg-timer": "^0.1.0",
+    "react-native-nitro-modules": "^0.31.10",
     "react-native-pager-view": "6.9.1",
     "react-native-permissions": "^5.4.4",
     "react-native-popover-view": "^6.1.0",
