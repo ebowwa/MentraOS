@@ -4,6 +4,31 @@ All notable changes to the nRF5340 DK BLE Glasses Protobuf Simulator will be doc
 
 ## Unreleased
 
+### 🔧 GPIO Pin Remapping & I2C Shell Testing - 2025-11-26
+
+#### GPIO Pin Reassignment
+- **IMU Control Pins Remapped**
+  - `imu_ctrl`: P1.05 → P0.25 (IMU start/stop control)
+  - `imu_ctrl_init`: P1.04 → P0.26 (IMU initial power control)
+- **I2C3 Bus Pins Remapped**
+  - SDA: P1.03 → P1.04
+  - SCL: P1.02 → P1.05
+
+#### Shell Debugging Features
+- **I2C Shell Commands Enabled**: `CONFIG_I2C_SHELL=y` for I2C bus debugging
+- **Sensor Shell Commands Enabled**: `CONFIG_SENSOR_SHELL=y` for sensor testing
+- **Purpose**: Enable I2C shell commands for hardware debugging and testing
+
+#### Configuration Changes
+- **Temporarily Disabled Zephyr Drivers**
+  - Commented out `CONFIG_LSM6DSV16X=y`
+  - Commented out `CONFIG_LIS2MDL=y`
+  - Allows direct I2C register access via shell for debugging
+
+#### Files Modified
+- `boards/nrf5340dk_nrf5340_cpuapp_ns.overlay`: GPIO and I2C pin remapping
+- `prj.conf`: Shell configuration and driver toggles
+
 ### 💡 nPM1300 LED Control Module & Shell Testing Commands - 2025-11-22
 
 1. **nPM1300 LED Driver Module Implementation**
