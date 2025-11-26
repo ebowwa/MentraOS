@@ -6,21 +6,21 @@
  */
 
 import {
-  PhotoRequest,
+  AppPhotoRequest,
   PhotoData,
   AppToCloudMessageType,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
   RtmpStreamStatus,
-  isRtmpStreamStatus,
+  isRtmpStreamStatusFromCloud as isRtmpStreamStatus,
   ManagedStreamStatus,
   StreamStatusCheckResponse,
 } from "../../../types"
-import {VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler} from "../../../types/rtmp-stream"
-import {StreamType} from "../../../types/streams"
-import {Logger} from "pino"
-import {CameraManagedExtension, ManagedStreamOptions, ManagedStreamResult} from "./camera-managed-extension"
-import {cameraWarnLog} from "../../../utils/permissions-utils"
+import { VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler } from "../../../types"
+import { StreamType } from "../../../types"
+import { Logger } from "pino"
+import { CameraManagedExtension, ManagedStreamOptions, ManagedStreamResult } from "./camera-managed-extension"
+import { cameraWarnLog } from "../../../utils/permissions-utils"
 
 /**
  * Options for photo requests
@@ -159,10 +159,10 @@ export class CameraModule {
         const requestId = `photo_req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
         // Store promise resolvers for when we get the response
-        this.pendingPhotoRequests.set(requestId, {resolve, reject})
+        this.pendingPhotoRequests.set(requestId, { resolve, reject })
 
         // Create photo request message
-        const message: PhotoRequest = {
+        const message: AppPhotoRequest = {
           type: AppToCloudMessageType.PHOTO_REQUEST,
           packageName: this.packageName,
           sessionId: this.sessionId,
@@ -191,7 +191,7 @@ export class CameraModule {
         // If using custom webhook URL, resolve immediately since photo will be uploaded directly to custom endpoint
         if (options?.customWebhookUrl) {
           this.logger.info(
-            {requestId, customWebhookUrl: options.customWebhookUrl},
+            { requestId, customWebhookUrl: options.customWebhookUrl },
             `📸 Using custom webhook URL - resolving promise immediately since photo will be uploaded directly to custom endpoint`,
           )
 
@@ -219,7 +219,7 @@ export class CameraModule {
             if (this.pendingPhotoRequests.has(requestId)) {
               this.pendingPhotoRequests.get(requestId)!.reject("Photo request timed out")
               this.pendingPhotoRequests.delete(requestId)
-              this.logger.warn({requestId}, `📸 Photo request timed out`)
+              this.logger.warn({ requestId }, `📸 Photo request timed out`)
             }
           }, timeoutMs)
         } else {
@@ -228,7 +228,7 @@ export class CameraModule {
             if (this.pendingPhotoRequests.has(requestId)) {
               this.pendingPhotoRequests.get(requestId)!.reject("Photo request timed out")
               this.pendingPhotoRequests.delete(requestId)
-              this.logger.warn({requestId}, `📸 Photo request timed out`)
+              this.logger.warn({ requestId }, `📸 Photo request timed out`)
             }
           }, timeoutMs)
         }
@@ -249,11 +249,11 @@ export class CameraModule {
    * @internal This method is used internally by AppSession
    */
   handlePhotoReceived(photoData: PhotoData): void {
-    const {requestId} = photoData
+    const { requestId } = photoData
     const pendingRequest = this.pendingPhotoRequests.get(requestId)
 
     if (pendingRequest) {
-      this.logger.info({requestId}, `📸 Photo received for request ${requestId}`)
+      this.logger.info({ requestId }, `📸 Photo received for request ${requestId}`)
 
       // Resolve the promise with the photo data
       pendingRequest.resolve(photoData)
@@ -261,7 +261,7 @@ export class CameraModule {
       // Clean up
       this.pendingPhotoRequests.delete(requestId)
     } else {
-      this.logger.warn({requestId}, `📸 Received photo for unknown request ID: ${requestId}`)
+      this.logger.warn({ requestId }, `📸 Received photo for unknown request ID: ${requestId}`)
     }
   }
 
@@ -282,12 +282,12 @@ export class CameraModule {
       message: string
     }
   }): void {
-    const {requestId, error} = errorResponse
+    const { requestId, error } = errorResponse
     const pendingRequest = this.pendingPhotoRequests.get(requestId)
 
     if (pendingRequest) {
       this.logger.error(
-        {requestId, errorCode: error.code, errorMessage: error.message},
+        { requestId, errorCode: error.code, errorMessage: error.message },
         `📸 Photo capture failed: ${error.code} - ${error.message}`,
       )
 
@@ -298,7 +298,7 @@ export class CameraModule {
       this.pendingPhotoRequests.delete(requestId)
     } else {
       this.logger.warn(
-        {requestId, errorCode: error.code, errorMessage: error.message},
+        { requestId, errorCode: error.code, errorMessage: error.message },
         `📸 Received photo error for unknown request ID: ${requestId}`,
       )
     }
@@ -343,7 +343,7 @@ export class CameraModule {
     if (pendingRequest) {
       pendingRequest.reject("Photo request cancelled")
       this.pendingPhotoRequests.delete(requestId)
-      this.logger.info({requestId}, `📸 Photo request cancelled`)
+      this.logger.info({ requestId }, `📸 Photo request cancelled`)
       return true
     }
     return false
@@ -357,9 +357,9 @@ export class CameraModule {
   cancelAllPhotoRequests(): number {
     const count = this.pendingPhotoRequests.size
 
-    for (const [requestId, {reject}] of this.pendingPhotoRequests) {
+    for (const [requestId, { reject }] of this.pendingPhotoRequests) {
       reject("Photo request cancelled - session cleanup")
-      this.logger.info({requestId}, `📸 Photo request cancelled during cleanup`)
+      this.logger.info({ requestId }, `📸 Photo request cancelled during cleanup`)
     }
 
     this.pendingPhotoRequests.clear()
@@ -386,7 +386,7 @@ export class CameraModule {
    * ```
    */
   async startStream(options: RtmpStreamOptions): Promise<void> {
-    this.logger.info({rtmpUrl: options.rtmpUrl}, `📹 RTMP stream request starting`)
+    this.logger.info({ rtmpUrl: options.rtmpUrl }, `📹 RTMP stream request starting`)
 
     cameraWarnLog(this.session.getHttpsServerUrl?.(), this.packageName, "startStream")
 
@@ -425,10 +425,10 @@ export class CameraModule {
       this.session.sendMessage(message)
       this.isStreaming = true
 
-      this.logger.info({rtmpUrl: options.rtmpUrl}, `📹 RTMP stream request sent successfully`)
+      this.logger.info({ rtmpUrl: options.rtmpUrl }, `📹 RTMP stream request sent successfully`)
       return Promise.resolve()
     } catch (error) {
-      this.logger.error({error, rtmpUrl: options.rtmpUrl}, `📹 Failed to send RTMP stream request`)
+      this.logger.error({ error, rtmpUrl: options.rtmpUrl }, `📹 Failed to send RTMP stream request`)
       const errorMessage = error instanceof Error ? error.message : String(error)
       return Promise.reject(`Failed to request RTMP stream: ${errorMessage}`)
     }
@@ -547,7 +547,7 @@ export class CameraModule {
   onStreamStatus(handler: StreamStatusHandler): () => void {
     if (!this.session) {
       this.logger.error("Cannot listen for status updates: session reference not available")
-      return () => {}
+      return () => { }
     }
 
     this.subscribeToStreamStatusUpdates()
@@ -572,15 +572,14 @@ export class CameraModule {
 
     // Verify this is a valid stream response
     if (!isRtmpStreamStatus(message)) {
-      this.logger.warn({message}, `📹 Received invalid stream status message`)
+      this.logger.warn({ message }, `📹 Received invalid stream status message`)
       return
     }
 
-    // Convert to StreamStatus format
     const status: RtmpStreamStatus = {
-      type: message.type,
+      type: message.type as any, // Cast to any to avoid enum mismatch between App and Client types
       streamId: message.streamId,
-      status: message.status,
+      status: message.status as any,
       errorDetails: message.errorDetails,
       appId: message.appId,
       stats: message.stats,
@@ -758,22 +757,22 @@ export class CameraModule {
    *
    * @returns Object with counts of cancelled requests
    */
-  cancelAllRequests(): {photoRequests: number} {
+  cancelAllRequests(): { photoRequests: number } {
     const photoRequests = this.cancelAllPhotoRequests()
 
     // Stop streaming if active
     if (this.isStreaming) {
       this.stopStream().catch((error) => {
-        this.logger.error({error}, "Error stopping stream during cleanup")
+        this.logger.error({ error }, "Error stopping stream during cleanup")
       })
     }
 
     // Clean up managed extension
     this.managedExtension.cleanup()
 
-    return {photoRequests}
+    return { photoRequests }
   }
 }
 
 // Re-export types for convenience
-export {VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler}
+export { VideoConfig, AudioConfig, StreamConfig, StreamStatusHandler }

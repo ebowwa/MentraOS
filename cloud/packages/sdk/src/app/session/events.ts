@@ -34,8 +34,8 @@ import {
   TouchEvent,
   createTouchEventStream,
 } from "../../types";
-import { DashboardMode } from "../../types/dashboard";
-import { PermissionErrorDetail } from "../../types/messages/cloud-to-app";
+import { DashboardMode } from "../../types";
+import { PermissionErrorDetail } from "../../types";
 import {
   calendarWarnLog,
   microPhoneWarnLog,
@@ -48,15 +48,15 @@ type Handler<T> = (data: T) => void;
 interface SystemEvents {
   connected: AppSettings | undefined;
   disconnected:
-    | string
-    | {
-        message: string; // Human-readable close message
-        code: number; // WebSocket close code (1000 = normal)
-        reason: string; // Reason provided by server
-        wasClean: boolean; // Whether this was a clean closure
-        permanent?: boolean; // Whether this is a permanent disconnection (no more reconnection attempts)
-        sessionEnded?: boolean; // Whether this disconnection is due to user session ending
-      };
+  | string
+  | {
+    message: string; // Human-readable close message
+    code: number; // WebSocket close code (1000 = normal)
+    reason: string; // Reason provided by server
+    wasClean: boolean; // Whether this was a clean closure
+    permanent?: boolean; // Whether this is a permanent disconnection (no more reconnection attempts)
+    sessionEnded?: boolean; // Whether this disconnection is due to user session ending
+  };
   error: WebSocketError | Error;
   settings_update: AppSettings;
   capabilities_update: {
@@ -113,14 +113,14 @@ export interface StreamDataTypes {
 export type EventData<T extends EventType> = T extends keyof StreamDataTypes
   ? StreamDataTypes[T]
   : T extends keyof SystemEvents
-    ? SystemEvents[T]
-    : T extends string
-      ? T extends `${StreamType.TRANSCRIPTION}:${string}`
-        ? TranscriptionData
-        : T extends `${StreamType.TRANSLATION}:${string}`
-          ? TranslationData
-          : never
-      : never;
+  ? SystemEvents[T]
+  : T extends string
+  ? T extends `${StreamType.TRANSCRIPTION}:${string}`
+  ? TranscriptionData
+  : T extends `${StreamType.TRANSLATION}:${string}`
+  ? TranslationData
+  : never
+  : never;
 
 export class EventManager {
   private emitter: EventEmitter;
@@ -136,8 +136,8 @@ export class EventManager {
   ) {
     this.emitter = new EventEmitter();
     this.handlers = new Map();
-    this.lastLanguageTranscriptioCleanupHandler = () => {};
-    this.lastLanguageTranslationCleanupHandler = () => {};
+    this.lastLanguageTranscriptioCleanupHandler = () => { };
+    this.lastLanguageTranslationCleanupHandler = () => { };
   }
 
   // Convenience handlers for common event types

@@ -1,0 +1,33 @@
+{
+    "name": "@mentra/client-sdk",
+    "version": "0.0.1",
+    "description": "Shared Core SDK for MentraOS Clients (Headless & Mobile)",
+    "main": "src/index.ts",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@mentra/types": "workspace:*",
+        "axios": "^1.6.0",
+        "eventemitter3": "^5.0.1",
+        "zustand": "^4.4.0"
+    },
+    "devDependencies": {
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^20.0.0",
+        "@types/ws": "^8.5.0",
+        "dotenv": "^17.2.3",
+        "jsonwebtoken": "^9.0.2",
+        "typescript": "^5.0.0",
+        "ws": "^8.14.0"
+    },
+    "peerDependencies": {
+        "ws": "^8.0.0"
+    },
+    "peerDependenciesMeta": {
+        "ws": {
+            "optional": true
+        }
+    }
+}

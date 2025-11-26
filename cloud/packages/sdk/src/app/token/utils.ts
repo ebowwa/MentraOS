@@ -4,7 +4,7 @@
  * Provides utilities for working with App tokens.
  */
 import * as jwt from 'jsonwebtoken';
-import { AppTokenPayload, TokenValidationResult, TokenConfig } from '../../types/token';
+import { AppTokenPayload, TokenValidationResult, TokenConfig } from '../../types';
 
 /**
  * Default token expiration (1 day)

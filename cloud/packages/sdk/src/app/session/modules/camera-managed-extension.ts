@@ -15,8 +15,8 @@ import {
   StreamType,
   RestreamDestination,
 } from "../../../types"
-import {VideoConfig, AudioConfig, StreamConfig} from "../../../types/rtmp-stream"
-import {Logger} from "pino"
+import { VideoConfig, AudioConfig, StreamConfig } from "../../../types"
+import { Logger } from "pino"
 
 /**
  * Configuration options for a managed stream
@@ -112,7 +112,7 @@ export class CameraManagedExtension {
     this.session = session
     this.packageName = packageName
     this.sessionId = sessionId
-    this.logger = logger.child({module: "CameraManagedExtension"})
+    this.logger = logger.child({ module: "CameraManagedExtension" })
   }
 
   /**
@@ -141,7 +141,7 @@ export class CameraManagedExtension {
    * ```
    */
   async startManagedStream(options: ManagedStreamOptions = {}): Promise<ManagedStreamResult> {
-    this.logger.info({options}, "📹 Managed stream request starting")
+    this.logger.info({ options }, "📹 Managed stream request starting")
 
     if (this.isManagedStreaming) {
       this.logger.error(
@@ -171,7 +171,7 @@ export class CameraManagedExtension {
 
     // Create promise to wait for URLs
     return new Promise((resolve, reject) => {
-      this.pendingManagedStreamRequest = {resolve, reject}
+      this.pendingManagedStreamRequest = { resolve, reject }
 
       // Set a timeout
       setTimeout(() => {
@@ -260,7 +260,7 @@ export class CameraManagedExtension {
 
       const timeoutId = setTimeout(() => {
         this.pendingStreamChecks?.delete(requestId)
-        resolve({hasActiveStream: false})
+        resolve({ hasActiveStream: false })
       }, 5000) // 5 second timeout
 
       this.pendingStreamChecks.set(requestId, {
@@ -328,7 +328,7 @@ export class CameraManagedExtension {
   onManagedStreamStatus(handler: (status: ManagedStreamStatus) => void): () => void {
     if (!this.session) {
       this.logger.error("Cannot listen for managed status updates: session reference not available")
-      return () => {}
+      return () => { }
     }
 
     this.session.subscribe(StreamType.MANAGED_STREAM_STATUS)

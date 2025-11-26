@@ -4,15 +4,15 @@
  * Manages an active Third Party App session with MentraOS Cloud.
  * Handles real-time communication, event subscriptions, and display management.
  */
-import {WebSocket} from "ws"
-import {EventManager, EventData} from "./events"
-import {LayoutManager} from "./layouts"
-import {SettingsManager} from "./settings"
-import {LocationManager} from "./modules/location"
-import {CameraModule} from "./modules/camera"
-import {LedModule} from "./modules/led"
-import {AudioManager} from "./modules/audio"
-import {ResourceTracker} from "../../utils/resource-tracker"
+import { WebSocket } from "ws"
+import { EventManager, EventData } from "./events"
+import { LayoutManager } from "./layouts"
+import { SettingsManager } from "./settings"
+import { LocationManager } from "./modules/location"
+import { CameraModule } from "./modules/camera"
+import { LedModule } from "./modules/led"
+import { AudioManager } from "./modules/audio"
+import { ResourceTracker } from "../../utils/resource-tracker"
 import {
   // Message types
   AppToCloudMessage,
@@ -41,10 +41,8 @@ import {
   isAppConnectionError,
   isDataStream,
   isAppStopped,
-  isSettingsUpdate,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
-  isAudioPlayResponse,
   isCapabilitiesUpdate,
 
   // Other types
@@ -59,23 +57,26 @@ import {
   Capabilities,
   CapabilitiesUpdate,
 } from "../../types"
-import {DashboardAPI} from "../../types/dashboard"
-import {MentraosSettingsUpdate} from "../../types/messages/cloud-to-app"
-import {Logger} from "pino"
-import {AppServer} from "../server"
+import { DashboardAPI } from "../../types"
+import { MentraosSettingsUpdate } from "../../types"
+import { Logger } from "pino"
+import { AppServer } from "../server"
 import axios from "axios"
 import EventEmitter from "events"
 
 // Import the cloud-to-app specific type guards
 import {
-  isPhotoResponse,
-  isRgbLedControlResponse,
-  isRtmpStreamStatus,
+  isPhotoResponseFromCloud as isPhotoResponse,
+  isRgbLedControlResponseFromCloud as isRgbLedControlResponse,
+  isRtmpStreamStatusFromCloud as isRtmpStreamStatus,
+  isSettingsUpdateToApp as isSettingsUpdate,
+  isAudioPlayResponseFromApp as isAudioPlayResponse,
+  isPermissionError,
   isManagedStreamStatus,
   isStreamStatusCheckResponse,
-} from "../../types/messages/cloud-to-app"
-import {SimpleStorage} from "./modules/simple-storage"
-import {readNotificationWarnLog} from "../../utils/permissions-utils"
+} from "../../types"
+import { SimpleStorage } from "./modules/simple-storage"
+import { readNotificationWarnLog } from "../../utils/permissions-utils"
 
 /**
  * ⚙️ Configuration options for App Session
@@ -261,7 +262,7 @@ export class AppSession {
         const url = new URL(this.config.mentraOSWebsocketUrl)
         if (!["ws:", "wss:"].includes(url.protocol)) {
           this.logger.error(
-            {config: this.config},
+            { config: this.config },
             `⚠️ [${this.config.packageName}] Invalid WebSocket URL protocol: ${url.protocol}. Should be ws: or wss:`,
           )
         }
@@ -288,7 +289,7 @@ export class AppSession {
       this.config.mentraOSWebsocketUrl,
       this.sessionId ?? undefined,
       async (streams: string[]) => {
-        this.logger.debug({streams: JSON.stringify(streams)}, `[AppSession] subscribeFn called for streams`)
+        this.logger.debug({ streams: JSON.stringify(streams) }, `[AppSession] subscribeFn called for streams`)
         streams.forEach((stream) => {
           if (!this.subscriptions.has(stream as ExtendedStreamType)) {
             this.subscriptions.add(stream as ExtendedStreamType)
@@ -298,7 +299,7 @@ export class AppSession {
           }
         })
         this.logger.debug(
-          {subscriptions: JSON.stringify(Array.from(this.subscriptions))},
+          { subscriptions: JSON.stringify(Array.from(this.subscriptions)) },
           `[AppSession] Current subscriptions after subscribeFn`,
         )
         if (this.ws?.readyState === 1) {
@@ -314,7 +315,7 @@ export class AppSession {
 
     // Initialize dashboard API with this session instance
     // Import DashboardManager dynamically to avoid circular dependency
-    const {DashboardManager} = require("./dashboard")
+    const { DashboardManager } = require("./dashboard")
     this.dashboard = new DashboardManager(this)
 
     // Initialize camera module with session reference
@@ -322,7 +323,7 @@ export class AppSession {
       this,
       this.config.packageName,
       this.sessionId || "unknown-session-id",
-      this.logger.child({module: "camera"}),
+      this.logger.child({ module: "camera" }),
     )
 
     // Initialize LED control module
@@ -330,7 +331,7 @@ export class AppSession {
       this,
       this.config.packageName,
       this.sessionId || "unknown-session-id",
-      this.logger.child({module: "led"}),
+      this.logger.child({ module: "led" }),
     )
 
     // Initialize audio module with session reference
@@ -338,7 +339,7 @@ export class AppSession {
       this,
       this.config.packageName,
       this.sessionId || "unknown-session-id",
-      this.logger.child({module: "audio"}),
+      this.logger.child({ module: "audio" }),
     )
 
     this.simpleStorage = new SimpleStorage(this)
@@ -727,7 +728,7 @@ export class AppSession {
             }
           } catch (error: unknown) {
             // Final catch - should never reach here if individual handlers work correctly
-            this.logger.error({error}, "Unhandled message processing error")
+            this.logger.error({ error }, "Unhandled message processing error")
             const errorMessage = error instanceof Error ? error.message : String(error)
             this.events.emit("error", new Error(`Unhandled message error: ${errorMessage}`))
           }
@@ -1055,7 +1056,7 @@ export class AppSession {
     }
 
     return this.appConfig.settings
-      .filter((s: AppSetting | {type: "group"; title: string}): s is AppSetting => s.type !== "group")
+      .filter((s: AppSetting | { type: "group"; title: string }): s is AppSetting => s.type !== "group")
       .map((s: AppSetting) => ({
         ...s,
         value: s.defaultValue, // Set value to defaultValue
@@ -1071,7 +1072,7 @@ export class AppSession {
     if (!this.appConfig) return undefined
 
     const setting = this.appConfig.settings.find(
-      (s: AppSetting | {type: "group"; title: string}) => s.type !== "group" && "key" in s && s.key === key,
+      (s: AppSetting | { type: "group"; title: string }) => s.type !== "group" && "key" in s && s.key === key,
     )
 
     return setting as AppSetting | undefined
@@ -1081,7 +1082,7 @@ export class AppSession {
    * 📡 Get WiFi connection status of glasses
    * @returns WiFi status object or null if glasses don't support WiFi or status not available
    */
-  getWifiStatus(): {connected: boolean; ssid?: string | null} | null {
+  getWifiStatus(): { connected: boolean; ssid?: string | null } | null {
     if (!this.capabilities?.hasWifi) {
       return null
     }
@@ -1173,12 +1174,12 @@ export class AppSession {
 
           // Handle MentraOS system settings if provided
           this.logger.debug(
-            {mentraosSettings: JSON.stringify(message.mentraosSettings)},
+            { mentraosSettings: JSON.stringify(message.mentraosSettings) },
             `[AppSession] CONNECTION_ACK mentraosSettings}`,
           )
           if (message.mentraosSettings) {
             this.logger.info(
-              {mentraosSettings: JSON.stringify(message.mentraosSettings)},
+              { mentraosSettings: JSON.stringify(message.mentraosSettings) },
               `[AppSession] Calling updatementraosSettings with`,
             )
             this.settings.updateMentraosSettings(message.mentraosSettings)
@@ -1249,7 +1250,7 @@ export class AppSession {
         } else if (isRtmpStreamStatus(message)) {
           // Emit as a standard stream event if subscribed
           if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
-            this.events.emit(StreamType.RTMP_STREAM_STATUS, message)
+            this.events.emit(StreamType.RTMP_STREAM_STATUS, message as any)
           }
 
           // Update camera module's internal stream state
@@ -1330,7 +1331,7 @@ export class AppSession {
 
             // Update dashboard state in the API
             if (this.dashboard && "content" in this.dashboard) {
-              ;(this.dashboard.content as any).setCurrentMode(mode)
+              ; (this.dashboard.content as any).setCurrentMode(mode)
             }
           } catch (error) {
             this.logger.error(error, "Error handling dashboard mode change")
@@ -1344,7 +1345,7 @@ export class AppSession {
 
             // Update dashboard state in the API
             if (this.dashboard && "content" in this.dashboard) {
-              ;(this.dashboard.content as any).setAlwaysOnEnabled(enabled)
+              ; (this.dashboard.content as any).setAlwaysOnEnabled(enabled)
             }
           } catch (error) {
             this.logger.error(error, "Error handling dashboard always-on change")
@@ -1367,7 +1368,7 @@ export class AppSession {
         } else if ((message as any).type === "app_direct_message_response") {
           const response = message as any
           if (response.messageId && this.pendingDirectMessages.has(response.messageId)) {
-            const {resolve} = this.pendingDirectMessages.get(response.messageId)!
+            const { resolve } = this.pendingDirectMessages.get(response.messageId)!
             resolve(response.success)
             this.pendingDirectMessages.delete(response.messageId)
           }
@@ -1387,7 +1388,7 @@ export class AppSession {
             `Received 'connection_error' type directly. Consider aligning cloud to send 'tpa_connection_error'. Message: ${errorMessage}`,
           )
           this.events.emit("error", new Error(errorMessage))
-        } else if (message.type === "permission_error") {
+        } else if (isPermissionError(message)) {
           // Handle permission errors from cloud
           this.logger.warn(
             {
@@ -1417,18 +1418,18 @@ export class AppSession {
         } else if (isAudioPlayResponse(message)) {
           // Delegate audio play response handling to the audio module
           if (this.audio) {
-            this.audio.handleAudioPlayResponse(message as AudioPlayResponse)
+            this.audio.handleAudioPlayResponse(message as any) // Cast to any as AudioModule expects Client type
           }
         } else if (isPhotoResponse(message)) {
           // Legacy photo response handling - now photos come directly via webhook
           // This branch can be removed in the future as all photos now go through /photo-upload
           this.logger.warn(
-            {message},
+            { message },
             "Received legacy photo response - photos should now come via /photo-upload webhook",
           )
         } else if (isRgbLedControlResponse(message)) {
           // LED control responses are no longer handled - fire-and-forget mode
-          this.logger.debug({message}, "Received LED control response (ignored - fire-and-forget mode)")
+          this.logger.debug({ message }, "Received LED control response (ignored - fire-and-forget mode)")
         }
         // Handle unrecognized message types gracefully
         else {
@@ -1541,7 +1542,7 @@ export class AppSession {
           // Handle HeadPosition - Note the property position instead of x,y,z
           const pos = data as any
           if (typeof pos?.position !== "string") {
-            return {position: "up", timestamp: new Date()}
+            return { position: "up", timestamp: new Date() }
           }
           break
         }
@@ -1587,7 +1588,7 @@ export class AppSession {
    */
   private updateSubscriptions(): void {
     this.logger.info(
-      {subscriptions: JSON.stringify(Array.from(this.subscriptions))},
+      { subscriptions: JSON.stringify(Array.from(this.subscriptions)) },
       `[AppSession] updateSubscriptions: sending subscriptions to cloud`,
     )
 
@@ -1595,7 +1596,7 @@ export class AppSession {
     const subscriptionPayload: SubscriptionRequest[] = Array.from(this.subscriptions).map((stream) => {
       const rate = this.streamRates.get(stream)
       if (rate && stream === StreamType.LOCATION_STREAM) {
-        return {stream: "location_stream", rate: rate as any}
+        return { stream: "location_stream", rate: rate as any }
       }
       return stream
     })
@@ -1617,8 +1618,7 @@ export class AppSession {
     // Check if reconnection is allowed
     if (!this.config.autoReconnect || !this.sessionId) {
       this.logger.debug(
-        `🔄 Reconnection skipped: autoReconnect=${
-          this.config.autoReconnect
+        `🔄 Reconnection skipped: autoReconnect=${this.config.autoReconnect
         }, sessionId=${this.sessionId ? "valid" : "invalid"}`,
       )
       return
@@ -1759,7 +1759,7 @@ export class AppSession {
     try {
       const baseUrl = this.getServerUrl()
       const response = await axios.get(`${baseUrl}/api/instructions`, {
-        params: {userId: this.userId},
+        params: { userId: this.userId },
       })
       return response.data.instructions || null
     } catch (err) {
@@ -1818,7 +1818,7 @@ export class AppSession {
       const userList = await this.discoverAppUsers("", false)
       return userList.users.some((user: any) => user.userId === userId)
     } catch (error) {
-      this.logger.error({error, userId}, "Error checking if user is active")
+      this.logger.error({ error, userId }, "Error checking if user is active")
       return false
     }
   }
@@ -1876,7 +1876,7 @@ export class AppSession {
         const messageId = this.generateMessageId()
 
         // Store promise resolver
-        this.pendingDirectMessages.set(messageId, {resolve, reject})
+        this.pendingDirectMessages.set(messageId, { resolve, reject })
 
         const message = {
           type: "app_direct_message",
@@ -2042,14 +2042,14 @@ export class TpaSession extends AppSession {
     // Emit a deprecation warning to help developers migrate
     console.warn(
       "⚠️  DEPRECATION WARNING: TpaSession is deprecated and will be removed in a future version. " +
-        "Please use AppSession instead. " +
-        'Simply replace "TpaSession" with "AppSession" in your code.',
+      "Please use AppSession instead. " +
+      'Simply replace "TpaSession" with "AppSession" in your code.',
     )
   }
 }
 
 // Export module types for developers
-export {CameraModule, PhotoRequestOptions, RtmpStreamOptions} from "./modules/camera"
-export {LedModule, LedControlOptions} from "./modules/led"
-export {AudioManager, AudioPlayOptions, AudioPlayResult, SpeakOptions} from "./modules/audio"
-export {SimpleStorage} from "./modules/simple-storage"
+export { CameraModule, PhotoRequestOptions, RtmpStreamOptions } from "./modules/camera"
+export { LedModule, LedControlOptions } from "./modules/led"
+export { AudioManager, AudioPlayOptions, AudioPlayResult, SpeakOptions } from "./modules/audio"
+export { SimpleStorage } from "./modules/simple-storage"

@@ -29,7 +29,7 @@ import {
 import {
   PackagePermissions,
   Permission,
-} from "../../src/types/messages/cloud-to-app";
+} from "../types";
 // Check if app has microphone permission, warn if missing
 export const microPhoneWarnLog = (
   cloudServerUrl: string,

@@ -13,12 +13,12 @@ import {
   DashboardContentUpdate,
   DashboardModeChange,
   DashboardSystemUpdate,
-} from "../../types/dashboard"
-import {AppToCloudMessageType} from "../../types/message-types"
-import {EventManager} from "./events"
+} from "../../types"
+import { AppToCloudMessageType } from "../../types"
+import { EventManager } from "./events"
 
 // Import AppSession interface for typing
-import type {AppSession} from "./index"
+import type { AppSession } from "./index"
 import dotenv from "dotenv"
 // Load environment variables from .env file
 dotenv.config()
@@ -35,6 +35,14 @@ export class DashboardSystemManager implements DashboardSystemAPI {
   constructor(session: AppSession, packageName: string) {
     this.session = session
     this.packageName = packageName
+  }
+
+  async update(section: "topLeft" | "topRight" | "bottomLeft" | "bottomRight", content: string): Promise<void> {
+    this.updateSystemSection(section, content)
+  }
+
+  async clear(section: "topLeft" | "topRight" | "bottomLeft" | "bottomRight"): Promise<void> {
+    this.updateSystemSection(section, "")
   }
 
   setTopLeft(content: string): void {
@@ -91,6 +99,14 @@ export class DashboardContentManager implements DashboardContentAPI {
     this.session = session
     this.packageName = packageName
     this.events = events
+  }
+
+  async update(content: string, modes: DashboardMode[] = [DashboardMode.MAIN]): Promise<void> {
+    this.write(content, modes)
+  }
+
+  async clear(modes: DashboardMode[] = [DashboardMode.MAIN]): Promise<void> {
+    this.write("", modes)
   }
 
   write(content: string, targets: DashboardMode[] = [DashboardMode.MAIN]): void {
@@ -150,7 +166,7 @@ export class DashboardContentManager implements DashboardContentAPI {
   // Internal methods to update state
   setCurrentMode(mode: DashboardMode | "none"): void {
     this.currentMode = mode
-    this.events.emit("dashboard_mode_change", {mode})
+    this.events.emit("dashboard_mode_change", { mode })
   }
 
   // setAlwaysOnEnabled(enabled: boolean): void {
@@ -166,6 +182,7 @@ export class DashboardContentManager implements DashboardContentAPI {
 export class DashboardManager implements DashboardAPI {
   public content: DashboardContentAPI
   public system?: DashboardSystemAPI
+  public mode: DashboardMode = DashboardMode.MAIN // Default mode
 
   constructor(session: AppSession) {
     const packageName = session.getPackageName()
@@ -176,10 +193,21 @@ export class DashboardManager implements DashboardAPI {
 
     // Add system API if this is the system dashboard App
     if (packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
-      session.logger.info({service: "SDK:DashboardManager"}, "Initializing system dashboard manager")
+      session.logger.info({ service: "SDK:DashboardManager" }, "Initializing system dashboard manager")
       this.system = new DashboardSystemManager(session, packageName)
     } else {
-      session.logger.info({service: "SDK:DashboardManager"}, `Not the system dashboard: ${packageName}`)
+      session.logger.info({ service: "SDK:DashboardManager" }, `Not the system dashboard: ${packageName}`)
+    }
+  }
+
+  async setMode(mode: DashboardMode): Promise<void> {
+    this.mode = mode
+    // If we had a way to request mode change from cloud, we'd do it here
+    // For now, this just updates local state
+    // If this is the system dashboard, it can actually change the mode
+    if (this.system) {
+      // Cast to DashboardSystemManager to access setViewMode
+      (this.system as any).setViewMode(mode)
     }
   }
 }
