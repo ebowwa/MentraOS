@@ -100,7 +100,7 @@ export default function DeveloperSettingsScreen() {
           </Group>
         )}
 
-        {!process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE && <BackendUrl />}
+        <BackendUrl />
 
         <Spacer height={theme.spacing.s4} />
         <Spacer height={theme.spacing.s12} />

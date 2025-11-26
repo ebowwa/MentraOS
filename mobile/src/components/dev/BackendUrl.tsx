@@ -4,10 +4,13 @@ import {TextInput, View, ViewStyle, TextStyle} from "react-native"
 import {Button, Text} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n"
-import {SETTINGS, useSetting} from "@/stores/settings"
+import {SETTINGS, useSetting, useSettingsStore} from "@/stores/settings"
 import {ThemedStyle} from "@/theme"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
+
+// Check if we have a build-time override (beta builds)
+const hasEnvOverride = !!process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE
 
 export default function BackendUrl() {
   const {theme, themed} = useAppTheme()
@@ -15,6 +18,8 @@ export default function BackendUrl() {
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [isSavingUrl, setIsSavingUrl] = useState(false)
   const [backendUrl, setBackendUrl] = useSetting(SETTINGS.backend_url.key)
+  const sessionBackendOverride = useSettingsStore(state => state.sessionBackendOverride)
+  const setSessionBackendOverride = useSettingsStore(state => state.setSessionBackendOverride)
 
   // Triple-tap detection for Asia East button
   const [asiaButtonTapCount, setAsiaButtonTapCount] = useState(0)
@@ -57,20 +62,25 @@ export default function BackendUrl() {
           const data = await response.json()
           console.log("URL Test Successful:", data)
 
-          await setBackendUrl(urlToTest)
+          if (hasEnvOverride) {
+            // Use session override for beta builds (not persisted)
+            setSessionBackendOverride(urlToTest)
+          } else {
+            await setBackendUrl(urlToTest)
+          }
 
-          await showAlert(
-            "Success",
-            "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
-            [
-              {
-                text: translate("common:ok"),
-                onPress: () => {
-                  replace("/init")
-                },
+          const message = hasEnvOverride
+            ? translate("developer:sessionBackendSet")
+            : translate("developer:customBackendSaved")
+
+          await showAlert(translate("login:success"), message, [
+            {
+              text: translate("common:ok"),
+              onPress: () => {
+                replace("/init")
               },
-            ],
-          )
+            },
+          ])
         } else {
           console.error(`URL Test Failed: Status ${response.status}`)
           showAlert(
@@ -101,11 +111,21 @@ export default function BackendUrl() {
   }
 
   const handleResetUrl = async () => {
-    setBackendUrl(null)
+    if (hasEnvOverride) {
+      // Clear session override, will fall back to env override
+      setSessionBackendOverride(null)
+    } else {
+      setBackendUrl(null)
+    }
     setCustomUrlInput("")
-    showAlert("Success", "Reset backend URL to default.", [
+
+    const message = hasEnvOverride
+      ? translate("developer:sessionOverrideCleared")
+      : translate("developer:backendResetToDefault")
+
+    showAlert(translate("login:success"), message, [
       {
-        text: "OK",
+        text: translate("common:ok"),
         onPress: () => {
           replace("/init")
         },
@@ -135,10 +155,13 @@ export default function BackendUrl() {
   return (
     <View style={themed($container)}>
       <View style={themed($textContainer)}>
-        <Text style={themed($label)}>Custom Backend URL</Text>
+        <Text style={themed($label)} tx="developer:customBackendUrl" />
         <Text style={themed($subtitle)}>
-          Override the default backend server URL. Leave blank to use default.
-          {backendUrl && `\nCurrently using: ${backendUrl}`}
+          {hasEnvOverride
+            ? `${translate("developer:betaBuildBackendInfo")}\n${translate("developer:buildDefault", {url: process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE})}`
+            : translate("developer:customBackendDescription")}
+          {sessionBackendOverride && `\n⚡ ${translate("developer:sessionOverride", {url: sessionBackendOverride})}`}
+          {!hasEnvOverride && backendUrl && `\n${translate("developer:currentlyUsing", {url: backendUrl})}`}
         </Text>
         <TextInput
           style={themed($urlInput)}
@@ -154,7 +177,7 @@ export default function BackendUrl() {
         <View style={themed($buttonRow)}>
           <Button
             // compact
-            text={isSavingUrl ? "Testing..." : "Save & Test URL"}
+            text={isSavingUrl ? translate("developer:testing") : translate("developer:saveAndTest")}
             onPress={handleSaveUrl}
             disabled={isSavingUrl}
             preset="alternate"

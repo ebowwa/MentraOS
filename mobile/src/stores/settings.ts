@@ -39,6 +39,11 @@ export const SETTINGS: Record<string, Setting> = {
         : "https://api.mentra.glass:443",
     writable: true,
     override: () => {
+      // Session override takes precedence (for internal dev escape hatch)
+      const sessionOverride = useSettingsStore.getState().sessionBackendOverride
+      if (sessionOverride) {
+        return sessionOverride
+      }
       if (process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE) {
         return process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE
       }
@@ -242,10 +247,13 @@ interface SettingsState {
   settings: Record<string, any>
   // Loading states
   isInitialized: boolean
+  // Session-only overrides (not persisted, cleared on app restart)
+  sessionBackendOverride: string | null
   // Actions
   setSetting: (key: string, value: any, updateServer?: boolean) => AsyncResult<void, Error>
   setManyLocally: (settings: Record<string, any>) => AsyncResult<void, Error>
   getSetting: (key: string) => any
+  setSessionBackendOverride: (url: string | null) => void
   // loadSetting: (key: string) => AsyncResult<void, Error>
   loadAllSettings: () => AsyncResult<void, Error>
   // Utility methods
@@ -273,6 +281,7 @@ export const useSettingsStore = create<SettingsState>()(
   subscribeWithSelector((set, get) => ({
     settings: getDefaultSettings(),
     isInitialized: false,
+    sessionBackendOverride: null,
     loadingKeys: new Set(),
     setSetting: (key: string, value: any, updateServer = true): AsyncResult<void, Error> => {
       return Res.try_async(async () => {
@@ -356,6 +365,11 @@ export const useSettingsStore = create<SettingsState>()(
         // Persist all to storage
         await Promise.all(Object.entries(settings).map(([key, value]) => storage.save(key, value)))
       })
+    },
+    // Session-only backend override (not persisted, for internal dev use)
+    setSessionBackendOverride: (url: string | null) => {
+      console.log(`SETTINGS: Session backend override set to: ${url}`)
+      set({sessionBackendOverride: url})
     },
     // loads any preferences that have been changed from the default and saved to DISK!
     loadAllSettings: (): AsyncResult<void, Error> => {

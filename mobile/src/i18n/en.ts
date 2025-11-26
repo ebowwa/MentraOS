@@ -464,6 +464,19 @@ const en = {
     global: "Global",
     debug: "Debug",
     staging: "Staging",
+    customBackendUrl: "Custom Backend URL",
+    customBackendDescription: "Override the default backend server URL. Leave blank to use default.",
+    betaBuildBackendInfo: "Beta build with locked backend. Use this to temporarily override (session only).",
+    buildDefault: "Build default: {{url}}",
+    sessionOverride: "Session override: {{url}}",
+    currentlyUsing: "Currently using: {{url}}",
+    sessionBackendSet: "Session backend URL set. This will be used until the app is restarted.",
+    customBackendSaved:
+      "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
+    sessionOverrideCleared: "Session override cleared. Using build default.",
+    backendResetToDefault: "Reset backend URL to default.",
+    saveAndTest: "Save & Test URL",
+    testing: "Testing...",
   },
   welcomeScreen: {
     postscript:
