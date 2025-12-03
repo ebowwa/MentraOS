@@ -667,12 +667,12 @@ class G1: NSObject, SGCManager {
             CoreManager.shared.sendStateQueue.asyncAfter(deadline: .now() + 3, execute: workItem)
         }
 
-        let chunks = textHelper.createTextWallChunks(text)
-        // if text.isEmpty {
-        //     clearDisplay()
-        //     return
-        // }
-        // let chunks = textHelper.chunkTextForTransmission(text)
+        // let chunks = textHelper.createTextWallChunks(text)
+        if text.isEmpty {
+            clearDisplay()
+            return
+        }
+        let chunks = textHelper.chunkTextForTransmission(text)
         queueChunks(chunks, sleepAfterMs: 10)
     }
 
