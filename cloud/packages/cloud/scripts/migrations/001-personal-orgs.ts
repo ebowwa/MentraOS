@@ -9,7 +9,7 @@
  *
  * Usage:
  * ts-node -r tsconfig-paths/register scripts/migrations/001-personal-orgs.ts
- *
+ * 
  * Add --dry-run to check what would happen without making changes
  * Add --email-filter=pattern to only process users with matching email (supports regex)
  * Add --force to migrate users even if they already have organizations
