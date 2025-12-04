@@ -1,0 +1,109 @@
+---
+title: "AI IDE Integration"
+description: "Connect your AI coding assistant to MentraOS docs for smarter development"
+icon: "robot"
+---
+
+<Info>
+**TL;DR** - Get your AI coding assistant to understand MentraOS instantly. Works with Cursor, Claude Code, Windsurf, and more.
+</Info>
+
+## Why Connect Your AI IDE?
+
+When you connect your AI coding assistant to MentraOS docs, it can:
+
+- Answer questions about the MentraOS SDK
+- Help you write smart glasses apps faster
+- Look up API references automatically
+- Debug your code with context about how MentraOS works
+
+## One-Click Setup
+
+### Cursor
+
+Run this in your terminal:
+
+```bash
+npx @anthropic-ai/create-mcp -t url https://docs.mentraglass.com/mcp -n mentraos-docs
+```
+
+Then **restart Cursor** and you're done.
+
+<Accordion title="What does this do?">
+This adds MentraOS docs as an MCP (Model Context Protocol) server to Cursor. Your AI assistant can now search our docs automatically when you ask questions about MentraOS.
+</Accordion>
+
+---
+
+### Claude Code
+
+Run this in your terminal:
+
+```bash
+claude mcp add mentraos-docs --transport http https://docs.mentraglass.com/mcp
+```
+
+That's it. Claude Code now has access to MentraOS docs.
+
+<Accordion title="Verify it worked">
+Run `claude mcp list` to see your connected servers. You should see `mentraos-docs` in the list.
+</Accordion>
+
+---
+
+### Windsurf / Other MCP-Compatible IDEs
+
+Add this to your MCP configuration file:
+
+```json
+{
+  "mcpServers": {
+    "mentraos-docs": {
+      "url": "https://docs.mentraglass.com/mcp"
+    }
+  }
+}
+```
+
+<Accordion title="Where is my MCP config file?">
+- **Windsurf**: `~/.windsurf/mcp.json`
+- **VS Code + Continue**: `~/.continue/config.json`
+- **Other tools**: Check your IDE's MCP documentation
+</Accordion>
+
+---
+
+## Test It Out
+
+After setup, try asking your AI assistant:
+
+- *"How do I display text on smart glasses with MentraOS?"*
+- *"Show me how to use the camera API"*
+- *"What events can I listen to in an AppSession?"*
+
+Your AI should now give you accurate, up-to-date answers using our docs.
+
+---
+
+## MCP Server URL
+
+If you need to configure things manually, here's the URL:
+
+```
+https://docs.mentraglass.com/mcp
+```
+
+This hosted MCP server gives AI assistants access to search across all MentraOS documentation, code examples, and API references.
+
+---
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/app-devs/getting-started/quickstart">
+    Build your first smart glasses app in 15 minutes
+  </Card>
+  <Card title="Example Apps" icon="code" href="/app-devs/getting-started/example-apps">
+    Clone a working example and start hacking
+  </Card>
+</CardGroup>
