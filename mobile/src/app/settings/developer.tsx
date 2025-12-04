@@ -1,6 +1,8 @@
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
 import {ScrollView, View, ViewStyle, TextStyle} from "react-native"
 
 import BackendUrl from "@/components/dev/BackendUrl"
+import StoreUrl from "@/components/dev/StoreUrl"
 import {Header, Icon, Screen, Text} from "@/components/ignite"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {Group} from "@/components/ui/Group"
@@ -11,9 +13,6 @@ import {translate} from "@/i18n"
 import {SETTINGS, useSetting} from "@/stores/settings"
 import {$styles, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-
-import {DeviceTypes} from "@/../../cloud/packages/types/src"
-import StoreUrl from "@/components/dev/StoreUrl"
 
 export default function DeveloperSettingsScreen() {
   const {theme, themed} = useAppTheme()
@@ -87,7 +86,7 @@ export default function DeveloperSettingsScreen() {
         <Spacer height={theme.spacing.s4} />
 
         {/* G1 Specific Settings - Only show when connected to Even Realities G1 */}
-        {defaultWearable && defaultWearable.includes(DeviceTypes.G1) && (
+        {defaultWearable?.includes(DeviceTypes.G1) && (
           <Group title="G1 Specific Settings">
             <ToggleSetting
               label={translate("settings:powerSavingMode")}
@@ -97,9 +96,10 @@ export default function DeveloperSettingsScreen() {
                 await setPowerSavingMode(value)
               }}
             />
-            <Spacer height={theme.spacing.s4} />
           </Group>
         )}
+
+        <Spacer height={theme.spacing.s4} />
 
         <BackendUrl />
 

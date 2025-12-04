@@ -52,13 +52,11 @@ export default function AccountPage() {
           )}
 
           <Group title={translate("account:appSettings")}>
-            {/* App appearance temporarily disabled - forcing light mode
             <RouteButton
               icon={<Icon name="sun" size={24} color={theme.colors.secondary_foreground} />}
               label={translate("settings:appAppearance")}
               onPress={() => push("/settings/theme")}
             />
-            */}
             {(Platform.OS === "android" || devMode) && (
               <RouteButton
                 icon={<Icon name="bell" size={24} color={theme.colors.secondary_foreground} />}

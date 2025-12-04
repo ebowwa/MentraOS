@@ -47,34 +47,32 @@ export const SETTINGS: Record<string, Setting> = {
   },
   backend_url: {
     key: "backend_url",
-    defaultValue: () =>
-      process.env.EXPO_PUBLIC_DEPLOYMENT_REGION === "china"
-        ? "https://api.mentraglass.cn:443"
-        : "https://api.mentra.glass",
-    writable: true,
-    override: () => {
+    defaultValue: () => {
       if (process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE) {
         return process.env.EXPO_PUBLIC_BACKEND_URL_OVERRIDE
       }
-      return undefined
+      if (process.env.EXPO_PUBLIC_DEPLOYMENT_REGION === "china") {
+        return "https://api.mentraglass.cn:443"
+      }
+      return "https://api.mentra.glass"
     },
+    writable: true,
     saveOnServer: false,
     persist: false,
   },
   store_url: {
     key: "store_url",
-    defaultValue: () =>
-      process.env.EXPO_PUBLIC_DEPLOYMENT_REGION === "china"
-        ? "https://store.mentraglass.cn"
-        : "https://apps.mentra.glass",
-    writable: true,
-    override: () => {
+    defaultValue: () => {
       if (process.env.EXPO_PUBLIC_STORE_URL_OVERRIDE) {
         return process.env.EXPO_PUBLIC_STORE_URL_OVERRIDE
       }
-      return undefined
+      if (process.env.EXPO_PUBLIC_DEPLOYMENT_REGION === "china") {
+        return "https://store.mentraglass.cn"
+      }
+      return "https://apps.mentra.glass"
     },
-    saveOnServer: true,
+    writable: true,
+    saveOnServer: false,
     persist: false,
   },
   reconnect_on_app_foreground: {
@@ -105,9 +103,7 @@ export const SETTINGS: Record<string, Setting> = {
   // ui state:
   theme_preference: {
     key: "theme_preference",
-    defaultValue: () => "light",
-    // Force light mode - dark mode is not complete yet
-    override: () => "light",
+    defaultValue: () => "system",
     writable: true,
     saveOnServer: true,
     persist: true,
