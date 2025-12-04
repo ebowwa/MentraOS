@@ -877,7 +877,7 @@ class MentraLive: NSObject, SGCManager {
     }
 
     var type = "Mentra Live"
-    var hasMic = false
+    var hasMic = true
     var micEnabled = false
     var isHeadUp = false
     var caseOpen = false
