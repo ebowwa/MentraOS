@@ -255,6 +255,7 @@ export const iconRegistry = {
   "battery-charging": 1,
   "alert": 1,
   "chevron-left": 1,
+  "chevron-right": 1,
   "trash": 1,
   "trash-x": 1,
   // lucide-react-native icons:

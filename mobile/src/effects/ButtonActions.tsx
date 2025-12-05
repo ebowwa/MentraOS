@@ -1,16 +1,10 @@
-import {createContext, useContext, useEffect, ReactNode} from "react"
+import {useEffect} from "react"
 
 import {useApplets, useStartApplet} from "@/stores/applets"
 import {SETTINGS, useSettingsStore} from "@/stores/settings"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
-interface ButtonActionContextType {
-  // Reserved for future extensions (e.g., custom button mappings)
-}
-
-const ButtonActionContext = createContext<ButtonActionContextType | undefined>(undefined)
-
-export const ButtonActionProvider = ({children}: {children: ReactNode}) => {
+export function ButtonActions() {
   const applets = useApplets()
   const startApplet = useStartApplet()
 
@@ -121,13 +115,5 @@ export const ButtonActionProvider = ({children}: {children: ReactNode}) => {
     }
   }, [applets, startApplet])
 
-  return <ButtonActionContext.Provider value={{}}>{children}</ButtonActionContext.Provider>
-}
-
-export const useButtonAction = () => {
-  const context = useContext(ButtonActionContext)
-  if (context === undefined) {
-    throw new Error("useButtonAction must be used within a ButtonActionProvider")
-  }
-  return context
+  return null
 }

@@ -1,23 +1,9 @@
-import {createContext, ReactNode, useContext, useEffect, useState} from "react"
+import {useEffect, useState} from "react"
 
 import {networkConnectivityService, NetworkStatus} from "@/services/asg/networkConnectivityService"
 import {useGlassesStore} from "@/stores/glasses"
 
-interface NetworkConnectivityContextType {
-  networkStatus: NetworkStatus
-  isGalleryReachable: boolean
-  shouldShowWarning: () => boolean
-  getStatusMessage: () => string
-  checkConnectivity: () => Promise<NetworkStatus>
-}
-
-const NetworkConnectivityContext = createContext<NetworkConnectivityContextType | undefined>(undefined)
-
-interface NetworkConnectivityProviderProps {
-  children: ReactNode
-}
-
-export function NetworkConnectivityProvider({children}: NetworkConnectivityProviderProps) {
+export function NetworkMonitoring() {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus>(networkConnectivityService.getStatus())
   const wifiLocalIp = useGlassesStore(state => state.wifiLocalIp)
   const wifiConnected = useGlassesStore(state => state.wifiConnected)
@@ -92,21 +78,5 @@ export function NetworkConnectivityProvider({children}: NetworkConnectivityProvi
     }
   }, [activeConnection, activeSSID, activeGlassesIp])
 
-  const value: NetworkConnectivityContextType = {
-    networkStatus,
-    isGalleryReachable: networkStatus.galleryReachable,
-    shouldShowWarning: () => networkConnectivityService.shouldShowWarning(),
-    getStatusMessage: () => networkConnectivityService.getStatusMessage(),
-    checkConnectivity: () => networkConnectivityService.checkConnectivity(),
-  }
-
-  return <NetworkConnectivityContext.Provider value={value}>{children}</NetworkConnectivityContext.Provider>
-}
-
-export function useNetworkConnectivity() {
-  const context = useContext(NetworkConnectivityContext)
-  if (!context) {
-    throw new Error("useNetworkConnectivity must be used within NetworkConnectivityProvider")
-  }
-  return context
+  return null
 }

@@ -15,8 +15,8 @@ import {
   ViewStyle,
 } from "react-native"
 import {useSharedValue, withDelay, withTiming} from "react-native-reanimated"
-import Icon from "react-native-vector-icons/FontAwesome"
 
+import {Icon} from "@/components/ignite"
 import {Button, Header, Screen, Text} from "@/components/ignite"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import Divider from "@/components/ui/Divider"
@@ -268,7 +268,7 @@ export default function SelectGlassesBluetoothScreen() {
                           numberOfLines={2}
                         />
                       </View>
-                      <Icon name="angle-right" size={24} color={theme.colors.text} />
+                      <Icon name="chevron-right" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
                   ))}
                 </Group>
