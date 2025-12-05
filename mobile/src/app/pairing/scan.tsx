@@ -16,6 +16,7 @@ import {
 } from "react-native"
 import {useSharedValue, withDelay, withTiming} from "react-native-reanimated"
 
+import {MentraLogoStandalone} from "@/components/brands/MentraLogoStandalone"
 import {Icon} from "@/components/ignite"
 import {Button, Header, Screen, Text} from "@/components/ignite"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
@@ -249,7 +250,7 @@ export default function SelectGlassesBluetoothScreen() {
 
   return (
     <Screen preset="fixed" style={themed($styles.screen)} safeAreaEdges={["bottom"]}>
-      <Header leftIcon="chevron-left" onLeftPress={goBack} />
+      <Header leftIcon="chevron-left" onLeftPress={goBack} RightActionComponent={<MentraLogoStandalone />} />
       <View style={themed($container)}>
         <View style={themed($centerWrapper)}>
           <View style={themed($contentContainer)}>
