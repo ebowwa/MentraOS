@@ -22,7 +22,6 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import Divider from "@/components/ui/Divider"
 import {Group} from "@/components/ui/Group"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {SearchResultDevice, useSearchResults} from "@/contexts/SearchResultsContext"
 import {translate} from "@/i18n"
 import {useGlassesStore} from "@/stores/glasses"
 import {$styles, ThemedStyle} from "@/theme"
@@ -33,8 +32,19 @@ import {PermissionFeatures, requestFeaturePermissions} from "@/utils/Permissions
 import {getGlassesOpenImage} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
 
+class SearchResultDevice {
+  deviceMode: string
+  deviceName: string
+  deviceAddress: string
+  constructor(deviceMode: string, deviceName: string, deviceAddress: string) {
+    this.deviceMode = deviceMode
+    this.deviceName = deviceName
+    this.deviceAddress = deviceAddress
+  }
+}
+
 export default function SelectGlassesBluetoothScreen() {
-  const {searchResults, setSearchResults} = useSearchResults()
+  const [searchResults, setSearchResults] = useState<SearchResultDevice[]>([])
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {goBack, replace, clearHistoryAndGoHome} = useNavigationHistory()

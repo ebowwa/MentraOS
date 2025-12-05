@@ -14,11 +14,9 @@ import {Text} from "@/components/ignite"
 import BackgroundGradient from "@/components/ui/BackgroundGradient"
 import {AppStoreWebviewPrefetchProvider} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {AuthProvider} from "@/contexts/AuthContext"
-import {ButtonActionProvider} from "@/contexts/ButtonActionProvider"
 import {CoreStatusProvider} from "@/contexts/CoreStatusProvider"
 import {DeeplinkProvider} from "@/contexts/DeeplinkContext"
 import {NavigationHistoryProvider} from "@/contexts/NavigationHistoryContext"
-import {SearchResultsProvider} from "@/contexts/SearchResultsContext"
 import {SETTINGS, useSettingsStore} from "@/stores/settings"
 import {ThemedStyle} from "@/theme"
 import {ModalProvider} from "@/utils/AlertUtils"
@@ -72,9 +70,7 @@ export const AllProviders = withWrappers(
   KeyboardProvider,
   CoreStatusProvider,
   AuthProvider,
-  SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
-  ButtonActionProvider,
   NavigationHistoryProvider,
   DeeplinkProvider,
   props => {
