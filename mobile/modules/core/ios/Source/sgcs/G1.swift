@@ -2222,7 +2222,7 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func stopReconnectionTimer() {
-        reconnectionQueue.sync {
+        reconnectionQueue.async {
             Bridge.log("G1: Stopping reconnection timer")
             reconnectionTimer?.cancel()
             reconnectionTimer = nil
@@ -2230,7 +2230,7 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
 
     private func startReconnectionTimer() {
-        reconnectionQueue.sync {
+        reconnectionQueue.async {
             Bridge.log("G1: Starting reconnection timer")
 
             reconnectionTimer?.cancel()
