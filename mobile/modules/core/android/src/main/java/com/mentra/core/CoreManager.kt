@@ -18,8 +18,8 @@ import com.mentra.core.sgcs.MentraLive
 import com.mentra.core.sgcs.SGCManager
 import com.mentra.core.sgcs.Simulated
 import com.mentra.core.utils.DeviceTypes
-import com.mentra.core.utils.MicTypes
 import com.mentra.core.utils.MicMap
+import com.mentra.core.utils.MicTypes
 import com.mentra.mentra.stt.SherpaOnnxTranscriber
 import java.text.SimpleDateFormat
 import java.util.*
@@ -449,7 +449,9 @@ class CoreManager {
 
     // turns a single mic on and turns off all other mics:
     private fun updateMicState() {
-        Bridge.log("MAN: updateMicState() - micEnabled=$micEnabled, systemMicUnavailable=$systemMicUnavailable")
+        Bridge.log(
+                "MAN: updateMicState() - micEnabled=$micEnabled, systemMicUnavailable=$systemMicUnavailable"
+        )
         Bridge.log("MAN: micRanking=$micRanking")
 
         // go through the micRanking and find the first mic that is available:
@@ -465,7 +467,6 @@ class CoreManager {
                                 micMode == MicTypes.BT_CLASSIC ||
                                 micMode == MicTypes.BT
                 ) {
-
 
                     if (phoneMic?.isRecordingWithMode(micMode) == true) {
                         micUsed = micMode
@@ -505,7 +506,7 @@ class CoreManager {
             if (micMode == micUsed) {
                 continue
             }
-            
+
             if (micMode == MicTypes.PHONE_INTERNAL ||
                             micMode == MicTypes.BT_CLASSIC ||
                             micMode == MicTypes.BT
@@ -687,7 +688,9 @@ class CoreManager {
     }
 
     fun updatePreferredMic(mic: String) {
-        micRanking = MicMap.map[mic]?.toMutableList() ?: MicMap.map["auto"]?.toMutableList() ?: mutableListOf()
+        micRanking =
+                MicMap.map[mic]?.toMutableList()
+                        ?: MicMap.map["auto"]?.toMutableList() ?: mutableListOf()
         handle_microphone_state_change(currentRequiredData, bypassVadForPCM)
         handle_request_status()
     }
@@ -711,14 +714,20 @@ class CoreManager {
     }
 
     fun updateButtonVideoSettings(width: Int, height: Int, fps: Int) {
-        Log.d("CoreManager", "🎥 [SETTINGS_SYNC] updateButtonVideoSettings called: ${width}x${height}@${fps}fps")
+        Log.d(
+                "CoreManager",
+                "🎥 [SETTINGS_SYNC] updateButtonVideoSettings called: ${width}x${height}@${fps}fps"
+        )
         Log.d("CoreManager", "📱 [SETTINGS_SYNC] Connected device model: $defaultWearable")
         buttonVideoWidth = width
         buttonVideoHeight = height
         buttonVideoFps = fps
         Log.d("CoreManager", "📡 [SETTINGS_SYNC] Sending button video settings to glasses via SGC")
         sgc?.sendButtonVideoRecordingSettings()
-        Log.d("CoreManager", "✅ [SETTINGS_SYNC] Button video settings updated to: ${width}x${height}@${fps}fps")
+        Log.d(
+                "CoreManager",
+                "✅ [SETTINGS_SYNC] Button video settings updated to: ${width}x${height}@${fps}fps"
+        )
         handle_request_status()
     }
 
@@ -972,8 +981,8 @@ class CoreManager {
     private fun handleDeviceDisconnected() {
         Bridge.log("MAN: Device disconnected")
         isHeadUp = false
-        lastMicState = null  // Clear cache - hardware is definitely off now
-        shouldSendBootingMessage = true  // Reset for next first connect
+        lastMicState = null // Clear cache - hardware is definitely off now
+        shouldSendBootingMessage = true // Reset for next first connect
         handle_request_status()
     }
 
@@ -1331,8 +1340,7 @@ class CoreManager {
                         "default_wearable" to defaultWearable,
                         "preferred_mic" to preferredMic,
                         "is_searching" to isSearching,
-                        "is_mic_enabled_for_frontend" to
-                                (micEnabled && preferredMic == "glasses" && sgc?.ready == true),
+                        "is_mic_enabled_for_frontend" to (micEnabled && sgc?.micEnabled == true),
                         "core_token" to coreToken,
                 )
 
@@ -1463,26 +1471,34 @@ class CoreManager {
         // Button video settings - handle both nested object and flat keys
         // First check for nested object structure (from AsyncStorage)
         val videoSettingsObj = settings["button_video_settings"] as? Map<*, *>
-        val newWidth = if (videoSettingsObj != null) {
-            (videoSettingsObj["width"] as? Number)?.toInt() ?: buttonVideoWidth
-        } else {
-            // Fallback to flat key structure (backwards compatibility)
-            (settings["button_video_width"] as? Number)?.toInt() ?: buttonVideoWidth
-        }
-        val newHeight = if (videoSettingsObj != null) {
-            (videoSettingsObj["height"] as? Number)?.toInt() ?: buttonVideoHeight
-        } else {
-            (settings["button_video_height"] as? Number)?.toInt() ?: buttonVideoHeight
-        }
-        val newFps = if (videoSettingsObj != null) {
-            (videoSettingsObj["fps"] as? Number)?.toInt() ?: buttonVideoFps
-        } else {
-            (settings["button_video_fps"] as? Number)?.toInt() ?: buttonVideoFps
-        }
-        
+        val newWidth =
+                if (videoSettingsObj != null) {
+                    (videoSettingsObj["width"] as? Number)?.toInt() ?: buttonVideoWidth
+                } else {
+                    // Fallback to flat key structure (backwards compatibility)
+                    (settings["button_video_width"] as? Number)?.toInt() ?: buttonVideoWidth
+                }
+        val newHeight =
+                if (videoSettingsObj != null) {
+                    (videoSettingsObj["height"] as? Number)?.toInt() ?: buttonVideoHeight
+                } else {
+                    (settings["button_video_height"] as? Number)?.toInt() ?: buttonVideoHeight
+                }
+        val newFps =
+                if (videoSettingsObj != null) {
+                    (videoSettingsObj["fps"] as? Number)?.toInt() ?: buttonVideoFps
+                } else {
+                    (settings["button_video_fps"] as? Number)?.toInt() ?: buttonVideoFps
+                }
+
         // Only update if any value actually changed
-        if (newWidth != buttonVideoWidth || newHeight != buttonVideoHeight || newFps != buttonVideoFps) {
-            Bridge.log("MAN: Updating button video settings: $newWidth x $newHeight @ ${newFps}fps (was: $buttonVideoWidth x $buttonVideoHeight @ ${buttonVideoFps}fps)")
+        if (newWidth != buttonVideoWidth ||
+                        newHeight != buttonVideoHeight ||
+                        newFps != buttonVideoFps
+        ) {
+            Bridge.log(
+                    "MAN: Updating button video settings: $newWidth x $newHeight @ ${newFps}fps (was: $buttonVideoWidth x $buttonVideoHeight @ ${buttonVideoFps}fps)"
+            )
             updateButtonVideoSettings(newWidth, newHeight, newFps)
         }
 

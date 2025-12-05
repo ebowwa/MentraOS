@@ -1384,8 +1384,7 @@ struct ViewState {
             "is_searching": isSearching,
             // only on if recording from glasses:
             // TODO: this isn't robust:
-            "is_mic_enabled_for_frontend": micEnabled && (preferredMic == "glasses")
-                && (sgc?.ready ?? false),
+            "is_mic_enabled_for_frontend": micEnabled && sgc?.micEnabled ?? false,
             "core_token": coreToken,
         ]
 
