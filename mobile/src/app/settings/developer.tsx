@@ -76,6 +76,14 @@ export default function DeveloperSettingsScreen() {
         <Spacer height={theme.spacing.s4} />
 
         <RouteButton
+          label="Sitemap"
+          subtitle="view the app's route map"
+          onPress={() => push("/_sitemap")}
+        />
+
+        <Spacer height={theme.spacing.s4} />
+
+        <RouteButton
           label="Test Sentry"
           subtitle="Send a crash to Sentry"
           onPress={() => {

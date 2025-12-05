@@ -193,7 +193,6 @@ const $sectionCompact: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 14,
-  fontWeight: "400",
   color: colors.text,
   lineHeight: 20,
   letterSpacing: 0,

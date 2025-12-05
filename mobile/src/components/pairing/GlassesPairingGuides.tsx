@@ -176,14 +176,12 @@ const $guideTitle: ThemedStyle<TextStyle> = ({colors, typography, spacing}) => (
   fontWeight: "bold",
   marginBottom: spacing.s3 + 2,
   color: colors.text,
-  fontFamily: typography.primary.bold,
 })
 
 const $guideStep: ThemedStyle<TextStyle> = ({colors, spacing, typography}) => ({
   fontSize: 16,
   marginBottom: spacing.s3,
   color: colors.text,
-  fontFamily: typography.primary.normal,
 })
 
 const $guideDescription: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -216,11 +214,9 @@ const $preorderButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.tint,
 })
 
-const $buyButtonText: ThemedStyle<TextStyle> = ({colors, typography}) => ({
+const $buyButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
-  fontWeight: "bold",
   color: colors.background,
-  fontFamily: typography.primary.bold,
 })
 
 const $shippingText: ThemedStyle<TextStyle> = ({colors}) => ({
@@ -290,7 +286,7 @@ export function MentraMach1PairingGuide() {
 
   return (
     <View style={themed($guideContainer)}>
-      <Text text="Mentra Mach1" style={themed($guideTitle)} />
+      <Text text="Mentra Mach1" style={themed($guideTitle)} weight="bold" />
       <Text text="1. Make sure your Mach1 is fully charged and turned on." style={themed($guideStep)} />
       <Text
         text="2. Make sure your device is running the latest firmware by using the Vuzix Connect app."
@@ -343,7 +339,7 @@ export function MentraLivePairingGuide() {
                 },
               ])
             }}>
-            <Text text={`${translate("pairing:preorderNow")}`} style={themed($buyButtonText)} />
+            <Text text={`${translate("pairing:preorderNow")}`} style={themed($buyButtonText)} weight="bold" />
             <Text tx="pairing:preorderNowShipMessage" style={themed($shippingText)} />
           </TouchableOpacity>
           <Spacer height={16} />

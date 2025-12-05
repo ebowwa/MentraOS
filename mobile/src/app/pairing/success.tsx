@@ -98,7 +98,6 @@ const $successTitle: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $successMessage: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 18,
-  fontWeight: "400",
   color: colors.textDim,
   textAlign: "center",
 })
