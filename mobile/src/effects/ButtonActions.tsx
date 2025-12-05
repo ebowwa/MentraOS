@@ -3,10 +3,13 @@ import {useEffect} from "react"
 import {useApplets, useStartApplet} from "@/stores/applets"
 import {SETTINGS, useSettingsStore} from "@/stores/settings"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {askPermissionsUI} from "@/utils/PermissionsUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 export function ButtonActions() {
   const applets = useApplets()
   const startApplet = useStartApplet()
+  const {theme} = useAppTheme()
 
   // Validate and update default button action app when device or applets change
   useEffect(() => {
@@ -105,6 +108,13 @@ export function ButtonActions() {
         return
       }
 
+      // Check and request permissions before starting
+      const result = await askPermissionsUI(targetApp, theme)
+      if (result !== 1) {
+        console.log("🔘 Permissions not granted for default app:", defaultAppPackageName)
+        return
+      }
+
       console.log("🔘 Starting default app:", defaultAppPackageName)
       startApplet(defaultAppPackageName)
     }
@@ -113,7 +123,7 @@ export function ButtonActions() {
     return () => {
       GlobalEventEmitter.removeListener("BUTTON_PRESS", onButtonPress)
     }
-  }, [applets, startApplet])
+  }, [applets, startApplet, theme])
 
   return null
 }
