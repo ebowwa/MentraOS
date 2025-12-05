@@ -25,7 +25,7 @@ import {
   ViewStyle,
 } from "react-native"
 
-import {HomeIcon, ShoppingBagIcon, UserIcon} from "@/components/icons"
+import {ShoppingBagIcon, HomeIcon} from "@/components/icons"
 import {useAppTheme} from "@/utils/useAppTheme"
 
 export type IconTypes = keyof typeof iconRegistry
@@ -102,6 +102,7 @@ const lucideIcons = {
   "bell": Bell,
   "file-type-2": FileType2,
   "user-round": UserRound,
+  "user-round-filled": UserRound,
   "wifi": Wifi,
   "unplug": Unplug,
   "unlink": Unlink,
@@ -134,17 +135,6 @@ export function Icon(props: IconProps) {
   ]
 
   // Special handling for custom icons
-  if (name === "shopping-bag") {
-    return (
-      <ShoppingBagIcon
-        size={size}
-        color={color}
-        theme={theme}
-        containerStyle={$containerStyleOverride}
-        {...viewProps}
-      />
-    )
-  }
 
   if (name === "shopping-bag-filled") {
     return (
@@ -159,30 +149,9 @@ export function Icon(props: IconProps) {
     )
   }
 
-  if (name === "home") {
-    return <HomeIcon size={size} color={color} theme={theme} containerStyle={$containerStyleOverride} {...viewProps} />
-  }
-
   if (name === "home-filled") {
     return (
       <HomeIcon
-        size={size}
-        color={color}
-        theme={theme}
-        containerStyle={$containerStyleOverride}
-        variant="filled"
-        {...viewProps}
-      />
-    )
-  }
-
-  if (name === "user") {
-    return <UserIcon size={size} color={color} theme={theme} containerStyle={$containerStyleOverride} {...viewProps} />
-  }
-
-  if (name === "user-filled") {
-    return (
-      <UserIcon
         size={size}
         color={color}
         theme={theme}
@@ -200,6 +169,7 @@ export function Icon(props: IconProps) {
     const fill = name.includes("filled") ? color : "transparent"
     // const fill = color
     // const fill = undefined
+    // const variant = name.includes("filled") ? "filled" : "default"
 
     return (
       <View {...viewProps} style={$containerStyleOverride}>
@@ -218,7 +188,7 @@ export function Icon(props: IconProps) {
 
   return (
     <View {...viewProps} style={$containerStyleOverride}>
-      <Image style={$imageStyle} source={iconRegistry[name]} />
+      <Image style={$imageStyle} source={iconRegistry[name] as any} />
     </View>
   )
 }
