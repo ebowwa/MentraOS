@@ -2221,23 +2221,30 @@ extension G1: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
     }
 
-    private func startReconnectionTimer() {
-        Bridge.log("G1: Starting reconnection timer")
-        stopReconnectionTimer()
-        reconnectionAttempts = 0
-
-        let timer = DispatchSource.makeTimerSource(queue: reconnectionQueue)
-        timer.schedule(deadline: .now(), repeating: reconnectionInterval)
-        timer.setEventHandler { [weak self] in
-            self?.attemptReconnection()
+    private func stopReconnectionTimer() {
+        reconnectionQueue.sync {
+            Bridge.log("G1: Stopping reconnection timer")
+            reconnectionTimer?.cancel()
+            reconnectionTimer = nil
         }
-        reconnectionTimer = timer
-        timer.resume()
     }
 
-    private func stopReconnectionTimer() {
-        reconnectionTimer?.cancel()
-        reconnectionTimer = nil
+    private func startReconnectionTimer() {
+        reconnectionQueue.sync {
+            Bridge.log("G1: Starting reconnection timer")
+
+            reconnectionTimer?.cancel()
+            reconnectionTimer = nil
+            reconnectionAttempts = 0
+
+            let timer = DispatchSource.makeTimerSource(queue: reconnectionQueue)
+            timer.schedule(deadline: .now(), repeating: reconnectionInterval)
+            timer.setEventHandler { [weak self] in
+                self?.attemptReconnection()
+            }
+            reconnectionTimer = timer
+            timer.resume()
+        }
     }
 
     // Connect by UUID
