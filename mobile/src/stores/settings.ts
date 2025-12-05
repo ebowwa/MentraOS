@@ -58,7 +58,7 @@ export const SETTINGS: Record<string, Setting> = {
     },
     writable: true,
     saveOnServer: false,
-    persist: false,
+    persist: true,
   },
   store_url: {
     key: "store_url",
@@ -73,7 +73,7 @@ export const SETTINGS: Record<string, Setting> = {
     },
     writable: true,
     saveOnServer: false,
-    persist: false,
+    persist: true,
   },
   reconnect_on_app_foreground: {
     key: "reconnect_on_app_foreground",
