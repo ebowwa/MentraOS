@@ -128,7 +128,7 @@ export default function GlassesPairingGuideScreen() {
           </View>
           <Button
             preset="secondary"
-            text="I need more help"
+            tx="pairing:needMoreHelp"
             onPress={() => setShowTroubleshootingModal(true)}
             style={themed($helpButtonBottom)}
           />
@@ -193,7 +193,9 @@ export default function GlassesPairingGuideScreen() {
         <View style={themed($contentContainer)}>
           <TouchableOpacity style={themed($helpButton)} onPress={() => setShowTroubleshootingModal(true)}>
             <Icon name="help-circle" size={16} color="#FFFFFF" style={{marginRight: 8}} />
-            <Text style={themed($helpButtonText)} weight="bold">Need Help Pairing?</Text>
+            <Text style={themed($helpButtonText)} weight="bold">
+              Need Help Pairing?
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

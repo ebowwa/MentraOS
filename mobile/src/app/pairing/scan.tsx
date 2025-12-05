@@ -299,7 +299,7 @@ export default function SelectGlassesBluetoothScreen() {
         </View>
         <Button
           preset="secondary"
-          text="I need more help"
+          tx="pairing:needMoreHelp"
           onPress={() => setShowTroubleshootingModal(true)}
           style={themed($helpButton)}
         />
