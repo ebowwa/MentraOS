@@ -1,3 +1,4 @@
+import {DeviceTypes} from "@/../../cloud/packages/types/src"
 import CoreModule from "core"
 import {useFocusEffect} from "expo-router"
 import {useCallback} from "react"
@@ -5,6 +6,7 @@ import {View, TouchableOpacity, Platform, ScrollView, Image, ViewStyle, ImageSty
 
 import {EvenRealitiesLogo} from "@/components/brands/EvenRealitiesLogo"
 import {MentraLogo} from "@/components/brands/MentraLogo"
+import {MentraLogoStandalone} from "@/components/brands/MentraLogoStandalone"
 import {VuzixLogo} from "@/components/brands/VuzixLogo"
 import {Text} from "@/components/ignite"
 import {Header} from "@/components/ignite"
@@ -14,8 +16,6 @@ import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {$styles, ThemedStyle} from "@/theme"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import {useAppTheme} from "@/utils/useAppTheme"
-
-import {DeviceTypes} from "@/../../cloud/packages/types/src"
 
 // import {useLocalSearchParams} from "expo-router"
 
@@ -83,6 +83,7 @@ export default function SelectGlassesModelScreen() {
         onLeftPress={() => {
           goBack()
         }}
+        RightActionComponent={<MentraLogoStandalone />}
       />
       <Spacer height={theme.spacing.s4} />
       <ScrollView style={{marginRight: -theme.spacing.s4, paddingRight: theme.spacing.s4}}>

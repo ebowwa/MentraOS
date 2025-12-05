@@ -208,7 +208,7 @@ export function Header(props: HeaderProps) {
               $titleContainerStyleOverride,
             ]}
             pointerEvents="none">
-            <Text weight="medium" size="md" text={titleContent} style={[$title, $titleStyleOverride]} />
+            <Text weight="normal" size="lg" text={titleContent} style={[$title, $titleStyleOverride]} />
           </View>
         )}
 
@@ -283,8 +283,10 @@ const $container: ViewStyle = {
 }
 
 const $title: TextStyle = {
+  // textAlign: "center",
+  // fontSize: 15,
   textAlign: "left",
-  fontSize: 15,
+  fontSize: 20,
 }
 
 const $actionTextContainer: ThemedStyle<ViewStyle> = () => ({

@@ -4,6 +4,7 @@ import {useState, useCallback, useMemo, useEffect} from "react"
 import {View, ViewStyle, ActivityIndicator, BackHandler, TextStyle} from "react-native"
 import {WebView} from "react-native-webview"
 
+import {MentraLogoStandalone} from "@/components/brands/MentraLogoStandalone"
 import {Text, Screen, Header} from "@/components/ignite"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
@@ -135,7 +136,7 @@ export default function AppStoreWeb() {
   if (!finalUrl) {
     return (
       <Screen preset="fixed" style={themed($styles.screen)}>
-        <Header leftTx="store:title" />
+        <Header leftTx="store:title" RightActionComponent={<MentraLogoStandalone />} />
         <View style={[themed($loadingContainer), {marginHorizontal: -theme.spacing.s4}]}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text text="Preparing App Store..." style={themed($loadingText)} />
@@ -147,7 +148,7 @@ export default function AppStoreWeb() {
   if (hasError) {
     return (
       <Screen preset="fixed" style={themed($styles.screen)}>
-        <Header leftTx="store:title" />
+        <Header leftTx="store:title" RightActionComponent={<MentraLogoStandalone />} />
         <InternetConnectionFallbackComponent
           retry={handleRetry}
           message={errorMessage || "Unable to load the App Store. Please check your connection and try again."}
@@ -159,7 +160,7 @@ export default function AppStoreWeb() {
   // If the prefetched WebView is ready, show it in the correct style
   return (
     <Screen preset="fixed" style={themed($styles.screen)}>
-      <Header leftTx="store:title" />
+      <Header leftTx="store:title" RightActionComponent={<MentraLogoStandalone />} />
       <View style={[themed($webViewContainer), {marginHorizontal: -theme.spacing.s6}]}>
         {/* Show the prefetched WebView, but now visible and full size */}
         <WebView

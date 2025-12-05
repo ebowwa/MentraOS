@@ -2,6 +2,7 @@ import {Platform, View} from "react-native"
 import {ScrollView} from "react-native-gesture-handler"
 
 import {ProfileCard} from "@/components/account/ProfileCard"
+import {MentraLogoStandalone} from "@/components/brands/MentraLogoStandalone"
 import {VersionInfo} from "@/components/dev/VersionInfo"
 import {Header, Icon, Screen} from "@/components/ignite"
 import {Group} from "@/components/ui/Group"
@@ -20,7 +21,7 @@ export default function AccountPage() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.s6}}>
-      <Header leftTx="settings:title" />
+      <Header leftTx="settings:title" RightActionComponent={<MentraLogoStandalone />} />
 
       <ScrollView
         style={{marginRight: -theme.spacing.s6, paddingRight: theme.spacing.s6}}
@@ -60,7 +61,7 @@ export default function AccountPage() {
             {(Platform.OS === "android" || devMode) && (
               <RouteButton
                 icon={<Icon name="bell" size={24} color={theme.colors.secondary_foreground} />}
-                label="Notification Settings"
+                label={translate("settings:notificationsSettings")}
                 onPress={() => push("/settings/notifications")}
               />
             )}

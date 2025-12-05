@@ -27,7 +27,7 @@ export function StatusCard({label, style, iconStart, iconEnd, textStyle, subtitl
             gap: theme.spacing.s1,
           }}>
           <Text style={[themed($label), textStyle]} weight="semiBold" text={label} />
-          {subtitle && <Text style={themed($subtitle)} text={subtitle}/>}
+          {subtitle && <Text style={themed($subtitle)} text={subtitle} />}
         </View>
       </View>
       {iconEnd && iconEnd}
@@ -137,11 +137,11 @@ const $iconContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 const $label: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.secondary_foreground,
   fontSize: 14,
-  lineHeight: 14,
+  lineHeight: 16,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
   fontSize: 12,
-  lineHeight: 12,
+  lineHeight: 14,
 })
