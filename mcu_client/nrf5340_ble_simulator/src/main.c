@@ -42,7 +42,8 @@
 #include <zephyr/logging/log_ctrl.h>
 #include <nrfx_clock.h>
 
-
+#include "bsp_gx8002.h"
+#include "interrupt_handler.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -674,13 +675,22 @@ int ble_send_data(const uint8_t *data, uint16_t len)
         // LOG_ERR("Invalid data or length || ble not connected");
         return -1;
     }
-    LOG_INF("<--Sending data to BLE-->: len=%d", len);
-    // LOG_INF("Data: %s", data);
-    // LOG_HEXDUMP_INF(data, len, "Hexdump:");
+    // Reduce logging frequency to avoid blocking
+    static uint32_t send_count = 0;
+    send_count++;
+    if (send_count % 100 == 0)
+    {
+        LOG_INF("<--Sending data to BLE-->: len=%d (logged every 100th)", len);
+    }
+    
     uint16_t offset = 0;
     uint16_t mtu    = get_ble_payload_mtu();
-    while (offset < len)
+    uint32_t max_iterations = (len + mtu - 1) / mtu + 10;  // Safety limit
+    uint32_t iteration = 0;
+    
+    while (offset < len && iteration < max_iterations)
     {
+        iteration++;
         uint16_t chunk_len = MIN(len - offset, mtu);
         int      retry     = 0;
         int      err;
@@ -689,16 +699,29 @@ int ble_send_data(const uint8_t *data, uint16_t len)
             err = mentra_ble_send(NULL, &data[offset], chunk_len);
             if (err == 0)
                 break;
-            LOG_ERR(" Chunk send failed (offset=%u len=%u), retry %d", offset, chunk_len, retry);
-        } while (++retry < 3);  // max 3 retries
-        // LOG_HEXDUMP_INF( &data[offset], chunk_len, "Hexdump:");
+            if (retry > 0)
+            {
+                k_msleep(1);
+            }
+            if (retry == 2)  // Only log last retry to reduce spam
+            {
+                LOG_WRN("BLE chunk send failed (offset=%u len=%u), retry %d", offset, chunk_len, retry);
+            }
+        } while (++retry < 3);
+        
         if (err != 0)
         {
-            LOG_ERR("Final failure at offset=%u", offset);
+            LOG_WRN("BLE send failed after retries at offset=%u, aborting send", offset);
             return -1;
         }
         offset += chunk_len;
-        k_msleep(1);  // delay 2ms to avoid flooding the BLE interface
+        k_msleep(1);
+    }
+    
+    if (iteration >= max_iterations)
+	{
+        LOG_ERR("BLE send loop exceeded max iterations, possible infinite loop!");
+        return -1;
     }
 
     return 0;
@@ -904,6 +927,19 @@ int main(void)
 	LOG_INF("✅ Ping monitoring started - glasses will ping phone every 10 seconds");
 	LOG_INF("📱 Phone should respond with pong messages to maintain connection");
 
+	// Initialize interrupt handler framework (must be called before any interrupt handlers)
+	LOG_INF("⚡ Initializing interrupt handler framework...");
+	err = interrupt_handler_init();
+	if (err != 0)
+	{
+		LOG_ERR("Failed to initialize interrupt handler framework (err: %d)", err);
+		// Continue anyway, but interrupt handling may not work
+	}
+	else
+	{
+		LOG_INF("✅ Interrupt handler framework initialized");
+	}
+
 	// Initialize LVGL display system with working driver implementation
 	LOG_INF("🔥🔥🔥 About to initialize LVGL display system... 🔥🔥🔥\n");
 	
@@ -956,8 +992,9 @@ int main(void)
 #endif
 	k_work_init(&adv_work, adv_work_handler);
 	advertising_start();
-
-	for (;;) {
+	bsp_gx8002_init();
+	for (;;) 
+	{
 		dk_set_led(RUN_STATUS_LED, (++blink_status) % 2);
 		k_sleep(K_MSEC(RUN_LED_BLINK_INTERVAL));
 	}
