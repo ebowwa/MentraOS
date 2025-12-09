@@ -1894,8 +1894,8 @@ public class CameraNeo extends LifecycleService {
         try {
             cameraCaptureSession.setRepeatingRequest(previewBuilder.build(), null, backgroundHandler);
             
-            // Add small delay to ensure camera surface is connected and first frames are captured
-            // This helps prevent audio-only recordings
+            // Add delay to ensure camera surface is connected, first frames are captured,
+            // and auto-exposure has time to stabilize (prevents dark initial frames)
             backgroundHandler.postDelayed(() -> {
                 try {
                     if (cameraCaptureSession == null || recorderSurface == null || !recorderSurface.isValid()) {
@@ -1932,7 +1932,7 @@ public class CameraNeo extends LifecycleService {
                     notifyVideoError(currentVideoId, "Failed to start recording: " + e.getMessage());
                     isRecording = false;
                 }
-            }, 100); // 100ms delay to ensure surface is ready
+            }, 300); // 300ms delay to ensure surface is ready and auto-exposure stabilizes
         } catch (CameraAccessException | IllegalStateException e) {
             Log.e(TAG, "Failed to start video recording", e);
             notifyVideoError(currentVideoId, "Failed to start recording: " + e.getMessage());
