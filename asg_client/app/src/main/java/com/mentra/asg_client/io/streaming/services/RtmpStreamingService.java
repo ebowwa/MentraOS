@@ -451,10 +451,10 @@ public class RtmpStreamingService extends Service {
 
                                 updateNotificationIfImportant();
 
-                                // Turn on LED if enabled for livestream
+                                // Start pulsing LED if enabled for livestream
                                 if (mLedEnabled && mHardwareManager != null && mHardwareManager.supportsRecordingLed()) {
-                                    mHardwareManager.setRecordingLedOn();
-                                    Log.d(TAG, "📹 Recording LED turned ON for livestream");
+                                    mHardwareManager.setRecordingLedPulsing();
+                                    Log.d(TAG, "📹 Recording LED pulsing started for livestream");
                                 }
 
                                 // Start battery monitoring
@@ -1051,13 +1051,13 @@ public class RtmpStreamingService extends Service {
         // Notify listeners
         updateNotificationIfImportant();
 
-        // Turn off LED if it was on
+        // Stop pulsing LED if it was on
         if (mLedEnabled && mHardwareManager != null && mHardwareManager.supportsRecordingLed()) {
             if (preserveSession) {
                 Log.d(TAG, "📹 Preserving recording LED state during reconnection");
             } else {
-                mHardwareManager.setRecordingLedOff();
-                Log.d(TAG, "📹 Recording LED turned OFF (stream stopped)");
+                mHardwareManager.stopRecordingLedPulsing();
+                Log.d(TAG, "📹 Recording LED pulsing stopped (stream stopped)");
             }
         }
 

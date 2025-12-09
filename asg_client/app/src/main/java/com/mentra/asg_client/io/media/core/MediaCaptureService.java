@@ -355,9 +355,9 @@ public class MediaCaptureService {
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
-                // Turn off LED on buffer error
-                hardwareManager.setRecordingLedOff();
-                Log.d(TAG, "Recording LED turned OFF (buffer error)");
+                // Stop LED pulsing on buffer error
+                hardwareManager.stopRecordingLedPulsing();
+                Log.d(TAG, "Recording LED pulsing stopped (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
@@ -696,10 +696,10 @@ public class MediaCaptureService {
                     // Start battery monitoring on main thread (callback runs on background thread)
                     new Handler(Looper.getMainLooper()).post(() -> startBatteryMonitoring());
 
-                    // Turn on recording LED if enabled
+                    // Turn on recording LED with pulsing animation if enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
-                        hardwareManager.setRecordingLedOn();
-                        Log.d(TAG, "Recording LED turned ON");
+                        hardwareManager.setRecordingLedPulsing();
+                        Log.d(TAG, "Recording LED pulsing started");
                     }
 
                     // Notify listener
@@ -747,10 +747,10 @@ public class MediaCaptureService {
 
                     // Note: RGB white LED already turned off in stopVideoRecording() synchronized with sound
 
-                    // Turn off recording LED if it was enabled
+                    // Stop recording LED pulsing with fade-out if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
-                        hardwareManager.setRecordingLedOff();
-                        Log.d(TAG, "Recording LED turned OFF");
+                        hardwareManager.stopRecordingLedPulsing();
+                        Log.d(TAG, "Recording LED pulsing stopped (fading out)");
                     }
 
                     // Notify listener
@@ -776,11 +776,11 @@ public class MediaCaptureService {
                     
                     // Turn off RGB white LED on error (error path may not go through stopVideoRecording)
                     stopVideoRecordingLed();
-                    
-                    // Turn off recording LED on error if it was enabled
+
+                    // Stop recording LED pulsing on error if it was enabled
                     if (enableLed && hardwareManager.supportsRecordingLed()) {
-                        hardwareManager.setRecordingLedOff();
-                        Log.d(TAG, "Recording LED turned OFF (due to error)");
+                        hardwareManager.stopRecordingLedPulsing();
+                        Log.d(TAG, "Recording LED pulsing stopped (due to error)");
                     }
 
                     // Notify listener
@@ -886,10 +886,10 @@ public class MediaCaptureService {
             currentVideoId = null;
             currentVideoPath = null;
 
-            // Ensure LED is turned off even if stop fails (if it was enabled)
+            // Ensure LED pulsing is stopped even if stop fails (if it was enabled)
             if (currentVideoLedEnabled && hardwareManager.supportsRecordingLed()) {
-                hardwareManager.setRecordingLedOff();
-                Log.d(TAG, "Recording LED turned OFF (stop error recovery)");
+                hardwareManager.stopRecordingLedPulsing();
+                Log.d(TAG, "Recording LED pulsing stopped (stop error recovery)");
             }
         } finally {
             mCurrentStopReason = null;  // Reset for next recording
@@ -970,9 +970,9 @@ public class MediaCaptureService {
             @Override
             public void onBufferStopped() {
                 Log.d(TAG, "Buffer recording stopped");
-                // Turn off LED when buffer recording stops
-                hardwareManager.setRecordingLedOff();
-                Log.d(TAG, "Recording LED turned OFF (buffer stopped)");
+                // Stop LED pulsing when buffer recording stops
+                hardwareManager.stopRecordingLedPulsing();
+                Log.d(TAG, "Recording LED pulsing stopped (buffer stopped)");
             }
 
             @Override
@@ -986,9 +986,9 @@ public class MediaCaptureService {
             @Override
             public void onBufferError(String error) {
                 Log.e(TAG, "Buffer error: " + error);
-                // Turn off LED on buffer error
-                hardwareManager.setRecordingLedOff();
-                Log.d(TAG, "Recording LED turned OFF (buffer error)");
+                // Stop LED pulsing on buffer error
+                hardwareManager.stopRecordingLedPulsing();
+                Log.d(TAG, "Recording LED pulsing stopped (buffer error)");
                 if (mMediaCaptureListener != null) {
                     mMediaCaptureListener.onMediaError("buffer", error, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
                 }
@@ -1002,9 +1002,9 @@ public class MediaCaptureService {
     public void stopBufferRecording() {
         Log.d(TAG, "Stopping buffer recording via CameraNeo");
         CameraNeo.stopBufferRecording(mContext);
-        // Ensure LED is turned off when manually stopping buffer
-        hardwareManager.setRecordingLedOff();
-        Log.d(TAG, "Recording LED turned OFF (manual buffer stop)");
+        // Ensure LED pulsing is stopped when manually stopping buffer
+        hardwareManager.stopRecordingLedPulsing();
+        Log.d(TAG, "Recording LED pulsing stopped (manual buffer stop)");
     }
 
     /**

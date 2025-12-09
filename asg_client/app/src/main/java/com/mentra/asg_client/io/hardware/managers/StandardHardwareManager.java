@@ -156,6 +156,35 @@ public class StandardHardwareManager extends BaseHardwareManager {
     }
 
     // ============================================
+    // MTK LED Pulsing Animation (Not Supported)
+    // ============================================
+
+    @Override
+    public void setRecordingLedPulsing() {
+        // Standard torch doesn't support pulsing, just turn on
+        setTorch(true);
+        Log.w(TAG, "LED pulsing not supported, using simple on state");
+    }
+
+    @Override
+    public void stopRecordingLedPulsing() {
+        setTorch(false);
+    }
+
+    @Override
+    public void stopRecordingLedPulsing(Runnable onComplete) {
+        setTorch(false);
+        if (onComplete != null) {
+            onComplete.run();
+        }
+    }
+
+    @Override
+    public boolean isRecordingLedPulsing() {
+        return false;
+    }
+
+    // ============================================
     // RGB LED Control (Not Supported)
     // ============================================
 

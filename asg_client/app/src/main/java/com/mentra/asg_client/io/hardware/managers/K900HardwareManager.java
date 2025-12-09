@@ -217,6 +217,51 @@ public class K900HardwareManager extends BaseHardwareManager {
     }
 
     // ============================================
+    // MTK LED Pulsing Animation
+    // ============================================
+
+    @Override
+    public void setRecordingLedPulsing() {
+        if (ledController != null) {
+            ledController.startPulsing();
+            Log.d(TAG, "💫 Recording LED set to PULSING (fade-in → oscillate)");
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
+
+    @Override
+    public void stopRecordingLedPulsing() {
+        if (ledController != null) {
+            ledController.stopPulsing();
+            Log.d(TAG, "💫 Recording LED pulsing stopped (fading out)");
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
+
+    @Override
+    public void stopRecordingLedPulsing(Runnable onComplete) {
+        if (ledController != null) {
+            ledController.stopPulsing(onComplete);
+            Log.d(TAG, "💫 Recording LED pulsing stopped with callback (fading out)");
+        } else {
+            Log.w(TAG, "LED controller not available");
+            if (onComplete != null) {
+                onComplete.run();
+            }
+        }
+    }
+
+    @Override
+    public boolean isRecordingLedPulsing() {
+        if (ledController != null) {
+            return ledController.isPulsing();
+        }
+        return false;
+    }
+
+    // ============================================
     // RGB LED Control (BES Chipset)
     // ============================================
 

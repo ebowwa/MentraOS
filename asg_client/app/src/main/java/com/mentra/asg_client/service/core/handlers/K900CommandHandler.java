@@ -425,6 +425,16 @@ public class K900CommandHandler {
                 Log.d(TAG, "⏹️ Stopping video recording (short press during recording)");
                 captureService.stopVideoRecording();
             } else {
+                // Check if battery is too low to take photo
+                if (batteryLevel >= 0 && batteryLevel < BatteryConstants.MIN_BATTERY_LEVEL) {
+                    Log.w(TAG, "🚫 Battery too low to take photo: " + batteryLevel + "% (minimum " + BatteryConstants.MIN_BATTERY_LEVEL + "% required)");
+
+                    // Play audio feedback
+                    captureService.playBatteryLowSound();
+
+                    return;
+                }
+
                 Log.d(TAG, "📸 Taking photo locally (short press) with LED: " + ledEnabled);
                 // Get saved photo size for button press
                 String photoSize = serviceManager.getAsgSettings().getButtonPhotoSize();

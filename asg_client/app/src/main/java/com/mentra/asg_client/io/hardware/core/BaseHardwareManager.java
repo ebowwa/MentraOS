@@ -135,6 +135,33 @@ public class BaseHardwareManager implements IHardwareManager {
     }
 
     // ============================================
+    // MTK LED Pulsing Animation (Not Supported)
+    // ============================================
+
+    @Override
+    public void setRecordingLedPulsing() {
+        Log.d(TAG, "setRecordingLedPulsing() called - no-op on base hardware");
+    }
+
+    @Override
+    public void stopRecordingLedPulsing() {
+        Log.d(TAG, "stopRecordingLedPulsing() called - no-op on base hardware");
+    }
+
+    @Override
+    public void stopRecordingLedPulsing(Runnable onComplete) {
+        Log.d(TAG, "stopRecordingLedPulsing(callback) called - no-op on base hardware");
+        if (onComplete != null) {
+            onComplete.run();
+        }
+    }
+
+    @Override
+    public boolean isRecordingLedPulsing() {
+        return false;
+    }
+
+    // ============================================
     // RGB LED Control (Not Supported)
     // ============================================
 

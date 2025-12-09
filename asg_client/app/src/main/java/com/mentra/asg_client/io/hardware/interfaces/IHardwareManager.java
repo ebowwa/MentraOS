@@ -137,6 +137,35 @@ public interface IHardwareManager {
     int getRecordingLedBrightness();
 
     // ============================================
+    // MTK LED Pulsing Animation
+    // ============================================
+
+    /**
+     * Start the recording LED pulsing animation.
+     * The LED will fade in smoothly, then oscillate between min and max brightness.
+     * This creates a gentle "breathing" effect suitable for recording indicators.
+     */
+    void setRecordingLedPulsing();
+
+    /**
+     * Stop the recording LED pulsing animation with a smooth fade-out.
+     * The LED will gracefully fade to off.
+     */
+    void stopRecordingLedPulsing();
+
+    /**
+     * Stop the recording LED pulsing animation with a smooth fade-out and callback.
+     * @param onComplete Callback to execute after fade-out completes
+     */
+    void stopRecordingLedPulsing(Runnable onComplete);
+
+    /**
+     * Check if the recording LED is currently pulsing
+     * @return true if LED is in pulsing mode (any phase including fade-out)
+     */
+    boolean isRecordingLedPulsing();
+
+    // ============================================
     // RGB LED Control (BES Chipset)
     // ============================================
 
