@@ -146,10 +146,12 @@ public class MentraLive extends SGCManager {
     private static final UUID LC3_WRITE_UUID = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E");
 
     // Reconnection parameters
-    private static final int BASE_RECONNECT_DELAY_MS = 1000; // Start with 1 second
-    private static final int MAX_RECONNECT_DELAY_MS = 30000; // Max 30 seconds
-    private static final int MAX_RECONNECT_ATTEMPTS = 10;
+    private static final int BASE_RECONNECT_DELAY_MS = 500; // Start with 0.5 seconds (faster initial retry)
+    private static final int MAX_RECONNECT_DELAY_MS = 20000; // Max 20 seconds (more aggressive)
+    private static final int MAX_RECONNECT_ATTEMPTS = 20; // Increased from 10 for better persistence
+    private static final int RECONNECT_SCAN_TIMEOUT_MS = 10000; // 10 seconds for reconnection scans (faster than 60s default)
     private int reconnectAttempts = 0;
+    private boolean isReconnecting = false; // Track if we're in reconnection mode
 
     // Keep-alive parameters
     private static final int KEEP_ALIVE_INTERVAL_MS = 5000; // 5 seconds
@@ -522,23 +524,40 @@ public class MentraLive extends SGCManager {
 
         // Start scanning
         try {
-            Bridge.log("LIVE: Starting BLE scan for Mentra Live glasses");
+            // Use different timeout based on whether we're reconnecting
+            long scanTimeout = isReconnecting ? RECONNECT_SCAN_TIMEOUT_MS : 60000;
+            
+            if (isReconnecting) {
+                Log.i(TAG, "🔌 ⚡ FAST RECONNECT SCAN - timeout: " + scanTimeout + "ms (attempt #" + reconnectAttempts + ")");
+                Bridge.log("LIVE: Starting FAST BLE scan for reconnection (timeout: " + scanTimeout + "ms)");
+            } else {
+                Bridge.log("LIVE: Starting BLE scan for Mentra Live glasses (timeout: " + scanTimeout + "ms)");
+            }
+            
             isScanning = true;
             bluetoothScanner.startScan(filters, settings, scanCallback);
 
-            // Set a timeout to stop scanning after 60 seconds (increased from 30 seconds)
-            // After timeout, just stop scanning but DON'T automatically try to connect
+            // Set a timeout to stop scanning
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     if (isScanning) {
-                        Bridge.log("LIVE: Scan timeout reached - stopping BLE scan");
+                        if (isReconnecting) {
+                            Log.w(TAG, "🔌 ⏰ RECONNECT SCAN TIMEOUT after " + scanTimeout + "ms - Device not found (attempt #" + reconnectAttempts + ")");
+                            Bridge.log("LIVE: 🔌 ⏰ Reconnect scan timeout - device not found, will retry");
+                        } else {
+                            Bridge.log("LIVE: Scan timeout reached - stopping BLE scan");
+                        }
                         stopScan();
-                        // NOTE: Removed automatic reconnection to last device
-                        // Now waits for explicit connection request from UI
+                        
+                        // If reconnecting and scan timed out, trigger next reconnection attempt
+                        if (isReconnecting) {
+                            Log.i(TAG, "🔌 🔄 Scan timeout - scheduling next reconnection attempt...");
+                            handleReconnection();
+                        }
                     }
                 }
-            }, 60000); // 60 seconds (increased from 30)
+            }, scanTimeout);
         } catch (Exception e) {
             Log.e(TAG, "Error starting BLE scan", e);
             isScanning = false;
@@ -616,7 +635,9 @@ public class MentraLive extends SGCManager {
 
                 // If this is the specific device we want to connect to by name, connect to it
                 if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
-                    Bridge.log("LIVE: Found our remembered device by name, connecting: " + deviceName);
+                    Log.i(TAG, "🔌 🎯 RECONNECT TARGET FOUND - Device: " + deviceName + " (Attempt #" + reconnectAttempts + ")");
+                    Bridge.log("LIVE: 🔌 🎯 Found our remembered device by name, connecting: " + deviceName + 
+                              " (Reconnect attempt #" + reconnectAttempts + ")");
                     stopScan();
                     connectToDevice(result.getDevice());
                 }
@@ -648,7 +669,8 @@ public class MentraLive extends SGCManager {
             @Override
             public void run() {
                 if (isConnecting && !isConnected) {
-                    Bridge.log("LIVE: Connection timeout - closing GATT connection");
+                    Log.w(TAG, "🔌 ⏰ CONNECTION TIMEOUT after " + CONNECTION_TIMEOUT_MS + "ms - Reconnect attempt #" + reconnectAttempts + " TIMED OUT");
+                    Bridge.log("LIVE: 🔌 ⏰ Connection timeout - closing GATT connection and retrying");
                     isConnecting = false;
 
                     if (bluetoothGatt != null) {
@@ -658,6 +680,7 @@ public class MentraLive extends SGCManager {
                     }
 
                     // Try to reconnect with exponential backoff
+                    Log.i(TAG, "🔌 🔄 Scheduling next reconnection attempt after timeout...");
                     handleReconnection();
                 }
             }
@@ -668,17 +691,21 @@ public class MentraLive extends SGCManager {
         // Update connection state
         isConnecting = true;
         updateConnectionState(ConnTypes.CONNECTING);
-        Bridge.log("LIVE: Connecting to device: " + device.getAddress());
+        Log.i(TAG, "🔌 🔗 ATTEMPTING CONNECTION to device: " + device.getAddress() + " (" + device.getName() + ") - Reconnect attempt #" + reconnectAttempts);
+        Bridge.log("LIVE: 🔌 🔗 Connecting to device: " + device.getAddress() + " (Attempt #" + reconnectAttempts + ")");
 
         // Connect to the device
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE);
+                Log.d(TAG, "🔌 GATT connection initiated with TRANSPORT_LE (Android M+)");
             } else {
                 bluetoothGatt = device.connectGatt(context, false, gattCallback);
+                Log.d(TAG, "🔌 GATT connection initiated (legacy Android)");
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error connecting to GATT server", e);
+            Log.e(TAG, "🔌 ❌ ERROR connecting to GATT server - Exception: " + e.getMessage(), e);
+            Bridge.log("LIVE: 🔌 ❌ Failed to connect to GATT server: " + e.getMessage());
             isConnecting = false;
             // connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
         }
@@ -712,22 +739,30 @@ public class MentraLive extends SGCManager {
     private void handleReconnection() {
         // Don't attempt reconnection if we've been killed/forgotten
         if (isKilled) {
-            Bridge.log("LIVE: Skipping reconnection - device has been killed/forgotten");
+            Bridge.log("LIVE: 🔌 RECONNECT ABORTED - device has been killed/forgotten");
+            isReconnecting = false;
             return;
         }
 
         if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-            Bridge.log("LIVE: Maximum reconnection attempts reached (" + MAX_RECONNECT_ATTEMPTS + ")");
+            Log.e(TAG, "🔌 ❌ RECONNECTION FAILED - Maximum attempts reached (" + MAX_RECONNECT_ATTEMPTS + ")");
+            Bridge.log("LIVE: 🔌 ❌ RECONNECTION FAILED - Gave up after " + MAX_RECONNECT_ATTEMPTS + " attempts");
             reconnectAttempts = 0;
+            isReconnecting = false;
             return;
         }
+
+        // Set reconnecting flag for faster scan timeout
+        isReconnecting = true;
 
         // Calculate delay with exponential backoff
         long delay = Math.min(BASE_RECONNECT_DELAY_MS * (1L << reconnectAttempts), MAX_RECONNECT_DELAY_MS);
         reconnectAttempts++;
 
-        Bridge.log("LIVE: Scheduling reconnection attempt " + reconnectAttempts +
-              " in " + delay + "ms (max " + MAX_RECONNECT_ATTEMPTS + ")");
+        Log.i(TAG, "🔌 📅 SCHEDULING RECONNECT #" + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + 
+              " in " + delay + "ms (base=" + BASE_RECONNECT_DELAY_MS + "ms, max=" + MAX_RECONNECT_DELAY_MS + "ms, scan_timeout=" + RECONNECT_SCAN_TIMEOUT_MS + "ms)");
+        Bridge.log("LIVE: 🔌 📅 Scheduling reconnection attempt " + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS +
+              " in " + delay + "ms (fast scan: " + RECONNECT_SCAN_TIMEOUT_MS + "ms)");
 
         // Schedule reconnection attempt
         handler.postDelayed(new Runnable() {
@@ -739,18 +774,29 @@ public class MentraLive extends SGCManager {
                     String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
 
                     if (lastDeviceName != null && bluetoothAdapter != null) {
-                        Bridge.log("LIVE: Reconnection attempt " + reconnectAttempts + " - looking for device with name: " + lastDeviceName);
-                        // Start scan to find this device
+                        Log.i(TAG, "🔌 🔍 STARTING RECONNECT #" + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + 
+                              " - Fast scan (" + RECONNECT_SCAN_TIMEOUT_MS + "ms) for device: " + lastDeviceName);
+                        Bridge.log("LIVE: 🔌 🔍 Reconnection attempt " + reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + 
+                              " - Starting FAST BLE scan for: " + lastDeviceName);
+                        // Start scan to find this device (will use fast timeout)
                         startScan();
                         // The scan will automatically connect if it finds a device with the saved name
                     } else {
-                        Bridge.log("LIVE: Reconnection attempt " + reconnectAttempts + " - no last device name available, scheduling next attempt");
+                        Log.w(TAG, "🔌 ⚠️ RECONNECT #" + reconnectAttempts + " SKIPPED - No saved device name available");
+                        Bridge.log("LIVE: 🔌 ⚠️ Reconnection attempt " + reconnectAttempts + 
+                              " - No last device name available, scheduling next attempt");
                         // Schedule another reconnection attempt - maybe the name will be available later
                         handleReconnection();
                     }
                 } else if (isConnected) {
-                    Bridge.log("LIVE: Reconnection successful - already connected");
+                    Log.i(TAG, "🔌 ✅ RECONNECTION SUCCESSFUL - Already connected (attempt " + reconnectAttempts + ")");
+                    Bridge.log("LIVE: 🔌 ✅ Reconnection successful - Already connected");
                     reconnectAttempts = 0;
+                    isReconnecting = false;
+                } else {
+                    Log.d(TAG, "🔌 ⏭️ RECONNECT SKIPPED - State changed (connected=" + isConnected + 
+                          ", connecting=" + isConnecting + ", killed=" + isKilled + ")");
+                    isReconnecting = false;
                 }
             }
         }, delay);
@@ -770,7 +816,7 @@ public class MentraLive extends SGCManager {
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
-                    Bridge.log("LIVE: Connected to GATT server, discovering services...");
+                    Bridge.log("LIVE: 🔌 ✅ RECONNECTION SUCCESSFUL - Connected to GATT server, discovering services...");
                     isConnecting = false;
                     isConnected = true;
                     connectedDevice = gatt.getDevice();
@@ -779,6 +825,7 @@ public class MentraLive extends SGCManager {
                     if (connectedDevice != null && connectedDevice.getName() != null) {
                         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                         prefs.edit().putString(PREF_DEVICE_NAME, connectedDevice.getName()).apply();
+                        Log.i(TAG, "🔌 💾 Saved device name for future reconnection: " + connectedDevice.getName());
                         Bridge.log("LIVE: Saved device name for future reconnection: " + connectedDevice.getName());
                     }
 
@@ -800,9 +847,13 @@ public class MentraLive extends SGCManager {
                     gatt.discoverServices();
 
                     // Reset reconnect attempts on successful connection
+                    int previousAttempts = reconnectAttempts;
                     reconnectAttempts = 0;
+                    isReconnecting = false; // Clear reconnection mode
+                    Log.i(TAG, "🔌 ✅ Reconnection counter reset (was at " + previousAttempts + " attempts)");
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                    Bridge.log("LIVE: Disconnected from GATT server");
+                    Log.w(TAG, "🔌 ⚠️ DISCONNECTED from GATT server - Initiating reconnection sequence");
+                    Bridge.log("LIVE: 🔌 ⚠️ Disconnected from GATT server - Will attempt reconnection");
                     isConnected = false;
                     isConnecting = false;
 
@@ -840,6 +891,7 @@ public class MentraLive extends SGCManager {
                     }
 
                     // Attempt reconnection
+                    Log.i(TAG, "🔌 🔄 Starting automatic reconnection procedure...");
                     handleReconnection();
 
                     // Close LC3 audio logging
@@ -852,7 +904,8 @@ public class MentraLive extends SGCManager {
                 }
             } else {
                 // Connection error
-                Log.e(TAG, "GATT connection error: " + status);
+                Log.e(TAG, "🔌 ❌ GATT connection error: status=" + status + " - Reconnect attempt #" + reconnectAttempts + " FAILED");
+                Bridge.log("LIVE: 🔌 ❌ GATT connection error (status=" + status + ") - Will retry reconnection");
                 isConnected = false;
                 isConnecting = false;
                 glassesReady = false;
@@ -875,6 +928,7 @@ public class MentraLive extends SGCManager {
                 }
 
                 // Attempt reconnection
+                Log.i(TAG, "🔌 🔄 Retrying after GATT error...");
                 handleReconnection();
             }
         }
@@ -2789,6 +2843,9 @@ public class MentraLive extends SGCManager {
     @Override
     public void findCompatibleDevices() {
         Bridge.log("LIVE: Finding compatible Mentra Live glasses");
+        
+        // Clear reconnection mode when user manually scans
+        isReconnecting = false;
 
         if (bluetoothAdapter == null) {
             Log.e(TAG, "Bluetooth not available");
@@ -2818,8 +2875,9 @@ public class MentraLive extends SGCManager {
         prefs.edit().remove(PREF_DEVICE_NAME).apply();
         Bridge.log("LIVE: Cleared saved device name");
 
-        // Reset reconnection attempts
+        // Reset reconnection state
         reconnectAttempts = 0;
+        isReconnecting = false;
 
         stopScan();
         disconnect();
@@ -2861,6 +2919,9 @@ public class MentraLive extends SGCManager {
     public void connectToSmartGlasses() {
         Bridge.log("LIVE: Connecting to Mentra Live glasses");
         updateConnectionState(ConnTypes.CONNECTING);
+        
+        // Clear reconnection mode when user manually initiates connection
+        isReconnecting = false;
 
         if (isConnected) {
             Bridge.log("LIVE: #@32 Already connected to Mentra Live glasses");
@@ -3342,6 +3403,7 @@ public class MentraLive extends SGCManager {
 
         // Reset state variables
         reconnectAttempts = 0;
+        isReconnecting = false;
         glassesReady = false;
         ready = false;
         updateConnectionState(ConnTypes.DISCONNECTED);
