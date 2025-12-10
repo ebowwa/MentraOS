@@ -1,10 +1,13 @@
-"on":
+name: 🚀 Deploy cloud-debug
+
+on:
+  workflow_dispatch: # Manual trigger fallback
   push:
     branches:
-      - cloud/captions-clean
+      - cloud/giga-lag
     paths:
       - "cloud/**"
-name: 🚀 [debug] Porter.run Deploy
+      - ".github/workflows/porter-debug.yml"
 jobs:
   porter-deploy:
     runs-on: ubuntu-latest

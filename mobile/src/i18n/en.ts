@@ -232,6 +232,8 @@ const en = {
       "Take a photo by pressing the action button on your glasses, then sync here to view your photos.",
     loadingPhotos: "Loading photos...",
     loadingVideos: "Loading videos...",
+    loadingPhotosAndVideos: "Loading photos and videos...",
+    loadingMedia: "Loading media...",
     loadingItems: "Loading items...",
     success: "Success",
     photoTaken: "Photo taken! Refreshing gallery...",

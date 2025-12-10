@@ -1,4 +1,5 @@
 import ExpoModulesCore
+import Photos
 
 public class CoreModule: Module {
     public func definition() -> ModuleDefinition {
@@ -205,6 +206,60 @@ public class CoreModule: Module {
 
         AsyncFunction("getInstalledAppsForNotifications") { () -> [[String: Any]] in
             return []
+        }
+
+        // MARK: - Media Library Commands
+
+        AsyncFunction("saveToGalleryWithDate") { (filePath: String, captureTimeMillis: Int64?) -> [String: Any] in
+            do {
+                let fileURL = URL(fileURLWithPath: filePath)
+                
+                guard FileManager.default.fileExists(atPath: filePath) else {
+                    return ["success": false, "error": "File does not exist"]
+                }
+
+                var assetIdentifier: String?
+                let semaphore = DispatchSemaphore(value: 0)
+                var resultError: Error?
+
+                PHPhotoLibrary.shared().performChanges({
+                    let creationRequest: PHAssetChangeRequest
+                    let pathExtension = fileURL.pathExtension.lowercased()
+                    
+                    if ["mp4", "mov", "avi", "m4v"].contains(pathExtension) {
+                        // Video
+                        creationRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileURL)!
+                    } else {
+                        // Photo
+                        creationRequest = PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: fileURL)!
+                    }
+
+                    // Set the creation date if provided
+                    if let captureMillis = captureTimeMillis {
+                        let captureDate = Date(timeIntervalSince1970: TimeInterval(captureMillis) / 1000.0)
+                        creationRequest.creationDate = captureDate
+                        Bridge.log("CoreModule: Setting creation date to: \(captureDate)")
+                    }
+
+                    assetIdentifier = creationRequest.placeholderForCreatedAsset?.localIdentifier
+                }, completionHandler: { success, error in
+                    resultError = error
+                    semaphore.signal()
+                })
+
+                semaphore.wait()
+
+                if let error = resultError {
+                    Bridge.log("CoreModule: Error saving to gallery: \(error.localizedDescription)")
+                    return ["success": false, "error": error.localizedDescription]
+                }
+
+                Bridge.log("CoreModule: Successfully saved to gallery with proper creation date")
+                return ["success": true, "identifier": assetIdentifier ?? ""]
+            } catch {
+                Bridge.log("CoreModule: Exception saving to gallery: \(error.localizedDescription)")
+                return ["success": false, "error": error.localizedDescription]
+            }
         }
     }
 }

@@ -657,9 +657,8 @@ export class TranscriptionManager {
       }
 
       // Validate subscription (cached after first validation)
-      const validation = await this.providerSelector.validateSubscription(
-        subscription,
-      );
+      const validation =
+        await this.providerSelector.validateSubscription(subscription);
       if (!validation.valid) {
         throw new InvalidSubscriptionError(
           validation.error!,
@@ -777,6 +776,15 @@ export class TranscriptionManager {
         totalTranscriptEndMs: 0,
         processingDeficitMs: 0,
       },
+      // NEW: Activity tracking metrics - distinguishes silence from actual lag
+      activity: {
+        isReceivingTokens: false,
+        realtimeLatencyMs: 0,
+        avgRealtimeLatencyMs: 0,
+        timeSinceLastTokenMs: 0,
+        audioSentSinceLastTokenMs: 0,
+        tokenBatchesReceived: 0,
+      },
     };
 
     let totalLag = 0;
@@ -831,6 +839,46 @@ export class TranscriptionManager {
           metrics.backlog.totalTranscriptEndMs,
           stream.metrics.lastTranscriptEndMs,
         );
+      }
+
+      // NEW: Aggregate activity metrics
+      // Use the "worst case" values across all streams for monitoring
+      if (stream.metrics.isReceivingTokens) {
+        metrics.activity.isReceivingTokens = true;
+      }
+      if (
+        stream.metrics.realtimeLatencyMs &&
+        stream.metrics.realtimeLatencyMs > metrics.activity.realtimeLatencyMs
+      ) {
+        metrics.activity.realtimeLatencyMs = stream.metrics.realtimeLatencyMs;
+      }
+      if (
+        stream.metrics.avgRealtimeLatencyMs &&
+        stream.metrics.avgRealtimeLatencyMs >
+          metrics.activity.avgRealtimeLatencyMs
+      ) {
+        metrics.activity.avgRealtimeLatencyMs =
+          stream.metrics.avgRealtimeLatencyMs;
+      }
+      if (
+        stream.metrics.timeSinceLastTokenMs &&
+        stream.metrics.timeSinceLastTokenMs >
+          metrics.activity.timeSinceLastTokenMs
+      ) {
+        metrics.activity.timeSinceLastTokenMs =
+          stream.metrics.timeSinceLastTokenMs;
+      }
+      if (
+        stream.metrics.audioSentSinceLastTokenMs &&
+        stream.metrics.audioSentSinceLastTokenMs >
+          metrics.activity.audioSentSinceLastTokenMs
+      ) {
+        metrics.activity.audioSentSinceLastTokenMs =
+          stream.metrics.audioSentSinceLastTokenMs;
+      }
+      if (stream.metrics.tokenBatchesReceived) {
+        metrics.activity.tokenBatchesReceived +=
+          stream.metrics.tokenBatchesReceived;
       }
     }
 
@@ -1167,9 +1215,8 @@ export class TranscriptionManager {
       }
 
       // Validate subscription
-      const validation = await this.providerSelector.validateSubscription(
-        subscription,
-      );
+      const validation =
+        await this.providerSelector.validateSubscription(subscription);
       if (!validation.valid) {
         throw new InvalidSubscriptionError(
           validation.error!,
@@ -1826,6 +1873,11 @@ export class TranscriptionManager {
 
   /**
    * Log latency and backlog metrics for monitoring
+   *
+   * NOTE: We use processingDeficitMs as the PRIMARY lag metric.
+   * This measures how far behind Soniox is on processing audio we've sent.
+   * The old "transcriptLagMs" compared wall-clock time vs transcript position,
+   * which gave false positives during VAD gaps (silence periods).
    */
   private logLatencyMetrics(): void {
     const metrics = this.getMetrics();
@@ -1835,39 +1887,88 @@ export class TranscriptionManager {
       return;
     }
 
-    // Log summary of latency metrics
-    if (metrics.latency.avgTranscriptLagMs > 0) {
-      const logLevel =
-        metrics.latency.maxTranscriptLagMs > 5000 ? "warn" : "info";
-      const logData = {
-        activeStreams: metrics.activeStreams,
-        avgLagMs: metrics.latency.avgTranscriptLagMs,
-        maxLagMs: metrics.latency.maxTranscriptLagMs,
-        lagWarnings: metrics.latency.totalLagWarnings,
-        processingDeficitMs: metrics.backlog.processingDeficitMs,
-        audioSentBytes: metrics.backlog.totalAudioBytesSent,
-        transcriptEndMs: metrics.backlog.totalTranscriptEndMs,
-      };
+    // NEW: Use activity-based metrics to distinguish silence from actual lag
+    // This prevents false "60 minute lag" warnings when user is simply silent
+    const isReceivingTokens = metrics.activity?.isReceivingTokens ?? false;
+    const realtimeLatencyMs = metrics.activity?.realtimeLatencyMs ?? 0;
+    const avgRealtimeLatencyMs = metrics.activity?.avgRealtimeLatencyMs ?? 0;
+    const timeSinceLastTokenMs = metrics.activity?.timeSinceLastTokenMs ?? 0;
+    const audioSentSinceLastTokenMs =
+      metrics.activity?.audioSentSinceLastTokenMs ?? 0;
 
-      if (logLevel === "warn") {
+    // CASE 1: Actively receiving tokens - check actual latency
+    if (isReceivingTokens) {
+      if (realtimeLatencyMs > 5000) {
+        // Real lag detected - Soniox is behind on processing
         this.logger.warn(
-          logData,
+          {
+            status: "SONIOX_PROCESSING_BEHIND",
+            realtimeLatencyMs: Math.round(realtimeLatencyMs),
+            avgRealtimeLatencyMs: Math.round(avgRealtimeLatencyMs),
+            activeStreams: metrics.activeStreams,
+            lagWarnings: metrics.latency.totalLagWarnings,
+            audioSentBytes: metrics.backlog.totalAudioBytesSent,
+            transcriptEndMs: metrics.backlog.totalTranscriptEndMs,
+          },
           "⚠️ HIGH LATENCY: Transcription is significantly lagging",
         );
       } else {
-        this.logger.debug(logData, "Transcription latency metrics");
+        // Healthy - receiving tokens with acceptable latency
+        this.logger.debug(
+          {
+            status: "HEALTHY",
+            realtimeLatencyMs: Math.round(realtimeLatencyMs),
+            avgRealtimeLatencyMs: Math.round(avgRealtimeLatencyMs),
+            activeStreams: metrics.activeStreams,
+          },
+          "Transcription latency healthy",
+        );
       }
+
+      // Also log processing backlog warning if latency exceeds higher threshold
+      if (realtimeLatencyMs > 10000) {
+        this.logger.warn(
+          {
+            status: "PROCESSING_BACKLOG",
+            realtimeLatencyMs: Math.round(realtimeLatencyMs),
+            audioSentBytes: metrics.backlog.totalAudioBytesSent,
+            transcriptEndMs: metrics.backlog.totalTranscriptEndMs,
+          },
+          "⚠️ PROCESSING BACKLOG: Provider is falling behind on transcription",
+        );
+      }
+      return;
     }
 
-    // Alert if processing deficit is high (audio sent but not transcribed)
-    if (metrics.backlog.processingDeficitMs > 10000) {
-      this.logger.warn(
+    // CASE 2: Not receiving tokens - could be silence or problem
+    // This is the key improvement: we no longer report huge "lag" during silence
+
+    if (timeSinceLastTokenMs > 60000 && audioSentSinceLastTokenMs > 60000) {
+      // Extended period (>60s) with no tokens despite sending audio
+      // Most likely: user is silent. Could also be: dead stream
+      this.logger.info(
         {
-          deficitMs: metrics.backlog.processingDeficitMs,
-          audioSentBytes: metrics.backlog.totalAudioBytesSent,
-          transcriptEndMs: metrics.backlog.totalTranscriptEndMs,
+          status: "EXTENDED_SILENCE",
+          timeSinceLastTokenMs: Math.round(timeSinceLastTokenMs),
+          audioSentSinceLastTokenMs: Math.round(audioSentSinceLastTokenMs),
+          activeStreams: metrics.activeStreams,
+          // Include legacy metric for backwards compatibility, but de-emphasize
+          legacyProcessingDeficitMs: Math.round(
+            metrics.backlog.processingDeficitMs,
+          ),
         },
-        "⚠️ PROCESSING BACKLOG: Provider is falling behind on transcription",
+        "ℹ️ NO TRANSCRIPTION ACTIVITY: 60s+ without tokens despite audio being sent (likely user silence)",
+      );
+    } else if (timeSinceLastTokenMs > 30000) {
+      // Moderate period with no tokens
+      this.logger.debug(
+        {
+          status: "NO_RECENT_ACTIVITY",
+          timeSinceLastTokenMs: Math.round(timeSinceLastTokenMs),
+          audioSentSinceLastTokenMs: Math.round(audioSentSinceLastTokenMs),
+          activeStreams: metrics.activeStreams,
+        },
+        "No recent transcription activity - possibly silence",
       );
     }
   }

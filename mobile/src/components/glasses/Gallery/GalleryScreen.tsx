@@ -341,7 +341,7 @@ export function GalleryScreen() {
         return
       }
 
-      // Initialize photo sync states
+      // Initialize photo sync states and show all files immediately
       const initialSyncStates = new Map()
       syncData.changed_files.forEach(photo => {
         initialSyncStates.set(photo.name, {
@@ -350,6 +350,15 @@ export function GalleryScreen() {
         })
       })
       setPhotoSyncStates(initialSyncStates)
+
+      // Show all files from the start (already sorted by size from server)
+      // This prevents jarring reordering after download completes
+      const initialServerPhotos = new Map<number, PhotoInfo>()
+      syncData.changed_files.forEach((photo, index) => {
+        initialServerPhotos.set(index, photo)
+      })
+      setLoadedServerPhotos(initialServerPhotos)
+      setTotalServerCount(syncData.changed_files.length)
 
       setSyncProgress({
         current: 0,
@@ -360,68 +369,80 @@ export function GalleryScreen() {
       const downloadResult = await asgCameraApi.batchSyncFiles(
         syncData.changed_files,
         true,
-        (current, total, fileName, fileProgress) => {
+        async (current, total, fileName, fileProgress, downloadedFile) => {
           console.log(`[GalleryScreen] Progress callback: ${fileName} - ${fileProgress}% (${current}/${total})`)
 
           // Use requestAnimationFrame to ensure immediate UI updates
           requestAnimationFrame(() => {
-            // Add thumbnail to gallery when we start downloading this file (first progress update)
-            if (fileProgress === 0 || fileProgress === undefined) {
-              const fileInfo = syncData.changed_files.find(f => f.name === fileName)
-              if (fileInfo) {
-                setLoadedServerPhotos(prev => {
-                  const newMap = new Map(prev)
-                  // Add with index based on current position
-                  newMap.set(current - 1, fileInfo)
-                  return newMap
-                })
-              }
-            }
-
             // Update individual photo progress
             setPhotoSyncStates(prev => {
               const newStates = new Map(prev)
 
-              // Update the current file being downloaded
-              newStates.set(fileName, {
-                status: "downloading",
-                progress: fileProgress || 0,
-              })
-
-              // Mark previously completed files as completed (if not already marked)
-              for (let i = 0; i < current - 1; i++) {
-                const completedFileName = syncData.changed_files[i]?.name
-                if (completedFileName && !newStates.has(completedFileName)) {
-                  newStates.set(completedFileName, {
-                    status: "completed",
-                    progress: 100,
-                  })
+              if (fileProgress === 100) {
+                // Remove completed files from sync states immediately (no green ring)
+                newStates.delete(fileName)
+                // Also remove previously completed files
+                for (let i = 0; i < current - 1; i++) {
+                  const completedFileName = syncData.changed_files[i]?.name
+                  if (completedFileName) {
+                    newStates.delete(completedFileName)
+                  }
                 }
-              }
-
-              // If this is the last file and progress is 100%, mark it as completed
-              if (current === total && fileProgress === 100) {
+              } else {
+                // Update the current file being downloaded
                 newStates.set(fileName, {
-                  status: "completed",
-                  progress: 100,
+                  status: "downloading",
+                  progress: fileProgress || 0,
                 })
-              }
-
-              // Mark previous files as completed when moving to next file
-              if (fileProgress === 0 && current > 1) {
-                // Mark the previous file as completed
-                const previousFileName = syncData.changed_files[current - 2]?.name
-                if (previousFileName) {
-                  newStates.set(previousFileName, {
-                    status: "completed",
-                    progress: 100,
-                  })
-                }
               }
 
               console.log(`[GalleryScreen] Updated sync states:`, Array.from(newStates.entries()))
               return newStates
             })
+
+            // When file is completed (100% progress), update loadedServerPhotos and save immediately
+            if (fileProgress === 100 && downloadedFile) {
+              // Update loadedServerPhotos with downloaded file paths immediately
+              setLoadedServerPhotos(prev => {
+                const newMap = new Map(prev)
+                const index = Array.from(prev.entries()).find(([_, p]) => p.name === fileName)?.[0]
+                if (index !== undefined) {
+                  // Update with file paths and also update URL to point to local file
+                  const localFileUrl = downloadedFile.filePath
+                    ? downloadedFile.filePath.startsWith("file://")
+                      ? downloadedFile.filePath
+                      : `file://${downloadedFile.filePath}`
+                    : downloadedFile.url
+
+                  // Format thumbnailPath with file:// protocol for videos
+                  const localThumbnailUrl = downloadedFile.thumbnailPath
+                    ? downloadedFile.thumbnailPath.startsWith("file://")
+                      ? downloadedFile.thumbnailPath
+                      : `file://${downloadedFile.thumbnailPath}`
+                    : undefined
+
+                  newMap.set(index, {
+                    ...downloadedFile,
+                    filePath: downloadedFile.filePath,
+                    thumbnailPath: localThumbnailUrl,
+                    url: localFileUrl, // Update URL to local file for images
+                    download: localFileUrl, // Update download URL for videos (MediaViewer uses this)
+                  })
+                }
+                return newMap
+              })
+
+              // Save to storage immediately so file is accessible
+              const downloadedFileData = localStorageService.convertToDownloadedFile(
+                downloadedFile,
+                downloadedFile.filePath || "",
+                downloadedFile.thumbnailPath,
+                defaultWearable,
+              )
+              localStorageService.saveDownloadedFile(downloadedFileData).catch((err: any) => {
+                console.error(`[GalleryScreen] Failed to save ${fileName} to storage:`, err)
+              })
+            }
 
             setSyncProgress({
               current,
@@ -433,21 +454,46 @@ export function GalleryScreen() {
         },
       )
 
-      // Save downloaded files but keep progress states visible
-      for (const photoInfo of downloadResult.downloaded) {
-        const downloadedFile = localStorageService.convertToDownloadedFile(
-          photoInfo,
-          photoInfo.filePath || "",
-          photoInfo.thumbnailPath,
-          defaultWearable,
-        )
-        await localStorageService.saveDownloadedFile(downloadedFile)
-      }
+      // Files are already saved and updated in loadedServerPhotos as they complete
+      // This section is just for any files that might have been missed (shouldn't happen)
+      // Update loadedServerPhotos for any files that weren't updated during progress
+      setLoadedServerPhotos(prev => {
+        const newMap = new Map(prev)
+        downloadResult.downloaded.forEach(downloadedFile => {
+          // Only update if not already updated (filePath should already be set)
+          const existingPhoto = Array.from(prev.values()).find(p => p.name === downloadedFile.name)
+          if (existingPhoto && !existingPhoto.filePath) {
+            const index = Array.from(prev.entries()).find(([_, p]) => p.name === downloadedFile.name)?.[0]
+            if (index !== undefined) {
+              const localFileUrl = downloadedFile.filePath
+                ? downloadedFile.filePath.startsWith("file://")
+                  ? downloadedFile.filePath
+                  : `file://${downloadedFile.filePath}`
+                : downloadedFile.url
+              const localThumbnailUrl = downloadedFile.thumbnailPath
+                ? downloadedFile.thumbnailPath.startsWith("file://")
+                  ? downloadedFile.thumbnailPath
+                  : `file://${downloadedFile.thumbnailPath}`
+                : undefined
+              newMap.set(index, {
+                ...downloadedFile,
+                filePath: downloadedFile.filePath,
+                thumbnailPath: localThumbnailUrl,
+                url: localFileUrl,
+                download: localFileUrl,
+              })
+            }
+          }
+        })
+        return newMap
+      })
 
       // Auto-save to camera roll if enabled
       const shouldAutoSave = await gallerySettingsService.getAutoSaveToCameraRoll()
       if (shouldAutoSave && downloadResult.downloaded.length > 0) {
-        console.log("[GalleryScreen] Auto-saving photos to camera roll...")
+        console.log(
+          `[GalleryScreen] Auto-saving ${downloadResult.downloaded.length} files to camera roll in chronological order...`,
+        )
 
         // Request permission if needed (this is a no-op on Android 10+)
         const hasPermission = await MediaLibraryPermissions.checkPermission()
@@ -459,12 +505,52 @@ export function GalleryScreen() {
           }
         }
 
+        // CRITICAL: Sort all downloaded files by capture time BEFORE saving to gallery
+        // This ensures gallery displays them in chronological order, not download order
+        // (photos download first, videos second, but we want chronological capture order)
+        const sortedFiles = [...downloadResult.downloaded].sort((a, b) => {
+          // Parse capture timestamps
+          const timeA =
+            typeof a.modified === "string" ? parseInt(a.modified, 10) : a.modified || Number.MAX_SAFE_INTEGER
+          const timeB =
+            typeof b.modified === "string" ? parseInt(b.modified, 10) : b.modified || Number.MAX_SAFE_INTEGER
+
+          // Sort oldest first (ascending) so they're added to gallery in chronological order
+          return timeA - timeB
+        })
+
+        console.log(`[GalleryScreen] Sorted ${sortedFiles.length} files by capture time:`)
+        sortedFiles.slice(0, 5).forEach((file, idx) => {
+          const captureTime = typeof file.modified === "string" ? parseInt(file.modified, 10) : file.modified || 0
+          const captureDate = new Date(captureTime)
+          const fileType = file.is_video ? "video" : "photo"
+          console.log(`  ${idx + 1}. ${file.name} - ${captureDate.toISOString()} (${fileType})`)
+        })
+        if (sortedFiles.length > 5) {
+          console.log(`  ... and ${sortedFiles.length - 5} more files`)
+        }
+
         let savedCount = 0
         let failedCount = 0
 
-        for (const photoInfo of downloadResult.downloaded) {
+        // Save files in chronological order
+        for (const photoInfo of sortedFiles) {
           const filePath = photoInfo.filePath || localStorageService.getPhotoFilePath(photoInfo.name)
-          const success = await MediaLibraryPermissions.saveToLibrary(filePath)
+
+          // Parse the capture timestamp from the photo metadata
+          // The 'modified' field contains the original capture time from the glasses
+          let captureTime: number | undefined
+          if (photoInfo.modified) {
+            // Handle both string and number formats
+            captureTime = typeof photoInfo.modified === "string" ? parseInt(photoInfo.modified, 10) : photoInfo.modified
+            if (isNaN(captureTime)) {
+              console.warn(`[GalleryScreen] Invalid modified timestamp for ${photoInfo.name}:`, photoInfo.modified)
+              captureTime = undefined
+            }
+          }
+
+          // Save to camera roll (files are added in chronological order)
+          const success = await MediaLibraryPermissions.saveToLibrary(filePath, captureTime)
           if (success) {
             savedCount++
           } else {
@@ -472,16 +558,17 @@ export function GalleryScreen() {
           }
         }
 
-        console.log(`[GalleryScreen] Saved ${savedCount}/${downloadResult.downloaded.length} photos to camera roll`)
+        console.log(
+          `[GalleryScreen] Saved ${savedCount}/${sortedFiles.length} files to camera roll in chronological order`,
+        )
         if (failedCount > 0) {
-          console.warn(`[GalleryScreen] Failed to save ${failedCount} photos to camera roll`)
+          console.warn(`[GalleryScreen] Failed to save ${failedCount} files to camera roll`)
         }
       }
 
-      // Keep all progress states visible for a moment to show completion
-      setTimeout(() => {
-        setPhotoSyncStates(new Map())
-      }, TIMING.PROGRESS_RING_DISPLAY_MS)
+      // Clear any remaining progress states immediately
+      // Completed files are already removed, this just ensures cleanup
+      setPhotoSyncStates(new Map())
 
       // Mark failed photos
       for (const failedFileName of downloadResult.failed) {
@@ -521,9 +608,6 @@ export function GalleryScreen() {
         total_size: syncState.total_size + downloadResult.total_size,
       })
 
-      // Load downloaded photos first to ensure smooth transition
-      await loadDownloadedPhotos()
-
       // Clear sync progress states (progress rings no longer needed)
       setPhotoSyncStates(new Map())
       setSyncProgress(null)
@@ -542,14 +626,24 @@ export function GalleryScreen() {
         }
       }
 
-      // Gradually clear server state after downloads are loaded
+      // Keep files in loadedServerPhotos to maintain sync order (size-based)
+      // Don't clear them immediately - they'll transition to downloadedPhotos naturally
+      // when user navigates away and comes back, or when screen refreshes
+      // This prevents jarring reordering after sync completes
+
+      // Load other downloaded photos (from previous syncs) without affecting current sync order
+      // Files from current sync are already in loadedServerPhotos and will be filtered out
+      await loadDownloadedPhotos()
+
+      // Clear server state after a longer delay to allow user to see the completed sync
+      // Files will have transitioned to downloadedPhotos by then
       setTimeout(() => {
         setLoadedServerPhotos(new Map())
         setTotalServerCount(0)
         loadedRanges.current.clear()
         loadingRanges.current.clear()
         transitionToState(GalleryState.NO_MEDIA_ON_GLASSES)
-      }, TIMING.SYNC_COMPLETE_DISPLAY_MS)
+      }, TIMING.SYNC_COMPLETE_DISPLAY_MS * 3) // Longer delay to prevent jarring transition
     } catch (err) {
       let errorMsg = "Sync failed"
       if (err instanceof Error) {
@@ -596,15 +690,13 @@ export function GalleryScreen() {
       return
     }
 
-    // Prevent opening photos that are currently being synced
+    // Prevent opening photos that are currently being downloaded (but allow completed ones)
     const syncState = photoSyncStates.get(item.photo.name)
-    if (
-      syncState &&
-      (syncState.status === "downloading" || syncState.status === "pending" || syncState.status === "completed")
-    ) {
+    if (syncState && (syncState.status === "downloading" || syncState.status === "pending")) {
       console.log(`[GalleryScreen] Photo ${item.photo.name} is being synced, preventing open`)
       return
     }
+    // Allow opening photos with status "completed" - they're already downloaded and accessible
 
     if (item.photo.is_video && item.isOnServer) {
       showAlert("Video Not Downloaded", "Please sync this video to your device to watch it", [
@@ -1262,20 +1354,25 @@ export function GalleryScreen() {
   const allPhotos = useMemo(() => {
     const items: GalleryItem[] = []
 
-    // Server photos - only show photos that have been loaded (no placeholders)
-    for (let i = 0; i < totalServerCount; i++) {
-      const photo = loadedServerPhotos.get(i)
-      // Only add items that have actually been loaded
-      if (photo) {
-        items.push({
-          id: `server-${i}`,
-          type: "server",
-          index: i,
-          photo,
-          isOnServer: true,
-        })
-      }
-    }
+    // Server photos - sort chronologically (newest first) for display
+    // Files are downloaded in size order (for performance), but displayed chronologically
+    const serverPhotosArray = Array.from(loadedServerPhotos.values()).sort((a, b) => {
+      const aTime = typeof a.modified === "string" ? new Date(a.modified).getTime() : a.modified || 0
+      const bTime = typeof b.modified === "string" ? new Date(b.modified).getTime() : b.modified || 0
+      return bTime - aTime // Newest first
+    })
+
+    serverPhotosArray.forEach((photo, displayIndex) => {
+      items.push({
+        id: `server-${photo.name}`,
+        type: "server",
+        index: displayIndex,
+        photo,
+        // Photo is only on server if it doesn't have a local file path
+        // Once downloaded, filePath is set and it's accessible locally
+        isOnServer: !photo.filePath,
+      })
+    })
 
     // Downloaded-only photos
     const serverPhotoNames = new Set<string>()
@@ -1293,14 +1390,14 @@ export function GalleryScreen() {
       items.push({
         id: `local-${photo.name}`,
         type: "local",
-        index: totalServerCount + i,
+        index: serverPhotosArray.length + i,
         photo,
         isOnServer: false,
       })
     })
 
     return items
-  }, [totalServerCount, loadedServerPhotos, downloadedPhotos])
+  }, [loadedServerPhotos, downloadedPhotos])
 
   // Viewability tracking
   const onViewableItemsChanged = useRef(({viewableItems}: {viewableItems: ViewToken[]}) => {
@@ -1401,13 +1498,23 @@ export function GalleryScreen() {
             </View>
           )
 
-        case GalleryState.CONNECTED_LOADING:
+        case GalleryState.CONNECTED_LOADING: {
+          const loadingText = (() => {
+            if (!glassesGalleryStatus) return translate("glasses:loadingMedia")
+            const hasPhotos = (glassesGalleryStatus.photos || 0) > 0
+            const hasVideos = (glassesGalleryStatus.videos || 0) > 0
+            if (hasPhotos && hasVideos) return translate("glasses:loadingPhotosAndVideos")
+            if (hasPhotos) return translate("glasses:loadingPhotos")
+            if (hasVideos) return translate("glasses:loadingVideos")
+            return translate("glasses:loadingMedia")
+          })()
           return (
             <View style={themed($syncButtonRow)}>
               <ActivityIndicator size="small" color={theme.colors.text} style={{marginRight: spacing.s2}} />
-              <Text style={themed($syncButtonText)}>Loading photos...</Text>
+              <Text style={themed($syncButtonText)}>{loadingText}</Text>
             </View>
           )
+        }
 
         case GalleryState.USER_CANCELLED_WIFI:
           // if (!hotspotSsid || !glassesGalleryStatus?.has_content) return null
@@ -1512,9 +1619,8 @@ export function GalleryScreen() {
     }
 
     const syncState = photoSyncStates.get(item.photo.name)
-    const isDownloading =
-      syncState &&
-      (syncState.status === "downloading" || syncState.status === "pending" || syncState.status === "completed")
+    const isDownloading = syncState && (syncState.status === "downloading" || syncState.status === "pending")
+    // Don't include "completed" - those are accessible and should allow interaction
     const isSelected = selectedPhotos.has(item.photo.name)
 
     return (

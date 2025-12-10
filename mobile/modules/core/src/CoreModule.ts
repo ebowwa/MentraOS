@@ -85,6 +85,17 @@ declare class CoreModule extends NativeModule<CoreModuleEvents> {
       icon: string | null
     }>
   >
+
+  // Media Library Commands
+  saveToGalleryWithDate(
+    filePath: string,
+    captureTimeMillis?: number,
+  ): Promise<{
+    success: boolean
+    uri?: string
+    identifier?: string
+    error?: string
+  }>
 }
 
 // This call loads the native module object from the JSI.

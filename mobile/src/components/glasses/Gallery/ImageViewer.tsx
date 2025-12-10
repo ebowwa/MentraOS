@@ -55,6 +55,14 @@ export function ImageViewer({visible, photo, onClose, onShare}: ImageViewerProps
 
   if (!photo) return null
 
+  // Use local file path if available, otherwise use URL
+  // This allows viewing photos immediately after download during sync
+  const imageUri = photo.filePath
+    ? photo.filePath.startsWith("file://")
+      ? photo.filePath
+      : `file://${photo.filePath}`
+    : photo.url
+
   const resetZoom = () => {
     "worklet"
     scale.value = withSpring(1)
@@ -203,7 +211,7 @@ export function ImageViewer({visible, photo, onClose, onShare}: ImageViewerProps
         {/* Image */}
         <GestureDetector gesture={composed}>
           <AnimatedImage
-            source={{uri: photo.url}}
+            source={{uri: imageUri}}
             style={[$image, animatedImageStyle]}
             contentFit="contain"
             transition={200}

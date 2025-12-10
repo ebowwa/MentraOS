@@ -362,7 +362,21 @@ class SonioxTranscriptionStream implements StreamInstance {
       lastTranscriptEndMs: 0,
       lastTranscriptLagMs: 0,
       maxTranscriptLagMs: 0,
+      processingDeficitMs: 0,
+      wallClockLagMs: 0,
       transcriptLagWarnings: 0,
+      // Activity tracking (NEW)
+      lastTokenReceivedAt: undefined,
+      tokenBatchesReceived: 0,
+      lastTokenBatchSize: 0,
+      audioBytesSentAtLastToken: 0,
+      // Silence detection (NEW)
+      timeSinceLastTokenMs: 0,
+      audioSentSinceLastTokenMs: 0,
+      isReceivingTokens: false,
+      // True latency (NEW)
+      realtimeLatencyMs: 0,
+      avgRealtimeLatencyMs: 0,
     };
   }
 
@@ -615,6 +629,20 @@ class SonioxTranscriptionStream implements StreamInstance {
   }
 
   private processTranscriptionTokens(tokens: SonioxApiToken[]): void {
+    const now = Date.now();
+
+    // NEW: Track token activity - we received tokens from Soniox
+    if (tokens.length > 0) {
+      this.metrics.lastTokenReceivedAt = now;
+      this.metrics.tokenBatchesReceived =
+        (this.metrics.tokenBatchesReceived || 0) + 1;
+      this.metrics.lastTokenBatchSize = tokens.length;
+      this.metrics.isReceivingTokens = true;
+      // Track audio bytes at time of token receipt for silence detection
+      this.metrics.audioBytesSentAtLastToken =
+        this.metrics.totalAudioBytesSent || 0;
+    }
+
     // New approach: append final tokens to stablePrefixText; keep only tail (non-final) tokens
     let hasEndToken = false;
     let avgConfidence = 0;
@@ -686,51 +714,72 @@ class SonioxTranscriptionStream implements StreamInstance {
 
     // Calculate transcript latency
     if (latestEndMs > 0) {
-      const now = Date.now();
       const streamAge = now - this.startTime;
-      const transcriptLag = streamAge - latestEndMs;
 
-      // Update metrics
-      this.metrics.lastTranscriptEndMs = latestEndMs;
-      this.metrics.lastTranscriptLagMs = transcriptLag;
-
-      if (
-        !this.metrics.maxTranscriptLagMs ||
-        transcriptLag > this.metrics.maxTranscriptLagMs
-      ) {
-        this.metrics.maxTranscriptLagMs = transcriptLag;
-      }
-
-      // Calculate processing deficit (audio sent vs transcribed)
+      // Calculate REAL lag: audio sent duration vs transcript position
+      // This is the TRUE measure of Soniox processing lag, unaffected by VAD gaps
       const audioSentDurationMs = (this.metrics.totalAudioBytesSent || 0) / 32; // 16kHz * 2 bytes = 32 bytes/ms
       const processingDeficit = audioSentDurationMs - latestEndMs;
 
-      // Log warning if lag exceeds threshold
-      if (transcriptLag > 5000) {
+      // Wall-clock lag (for debugging only - includes VAD gaps, NOT a true measure of Soniox lag)
+      const wallClockLag = streamAge - latestEndMs;
+
+      // NEW: Calculate realtime latency - this is the TRUE latency when actively receiving tokens
+      // Only meaningful when isReceivingTokens === true
+      this.metrics.realtimeLatencyMs = processingDeficit;
+
+      // Update rolling average (exponential moving average with alpha=0.2)
+      const alpha = 0.2;
+      this.metrics.avgRealtimeLatencyMs =
+        alpha * processingDeficit +
+        (1 - alpha) * (this.metrics.avgRealtimeLatencyMs || processingDeficit);
+
+      // Update legacy metrics for backwards compatibility
+      this.metrics.lastTranscriptEndMs = latestEndMs;
+      this.metrics.lastTranscriptLagMs = processingDeficit;
+      this.metrics.processingDeficitMs = processingDeficit; // Keep for backwards compat
+      this.metrics.wallClockLagMs = wallClockLag;
+
+      if (
+        !this.metrics.maxTranscriptLagMs ||
+        processingDeficit > this.metrics.maxTranscriptLagMs
+      ) {
+        this.metrics.maxTranscriptLagMs = processingDeficit;
+      }
+
+      // Log warning if REAL lag exceeds threshold AND we're actively receiving tokens
+      // This is actual Soniox lag, not silence
+      if (processingDeficit > 5000) {
         this.metrics.transcriptLagWarnings =
           (this.metrics.transcriptLagWarnings || 0) + 1;
 
         this.logger.warn(
           {
             streamId: this.id,
-            transcriptLagMs: Math.round(transcriptLag),
-            streamAgeMs: Math.round(streamAge),
-            transcriptEndMs: Math.round(latestEndMs),
-            processingDeficitMs: Math.round(processingDeficit),
+            realtimeLatencyMs: Math.round(processingDeficit),
+            avgRealtimeLatencyMs: Math.round(
+              this.metrics.avgRealtimeLatencyMs || 0,
+            ),
             audioSentDurationMs: Math.round(audioSentDurationMs),
+            transcriptEndMs: Math.round(latestEndMs),
+            wallClockLagMs: Math.round(wallClockLag),
+            streamAgeMs: Math.round(streamAge),
             maxLagMs: Math.round(this.metrics.maxTranscriptLagMs || 0),
             lagWarnings: this.metrics.transcriptLagWarnings,
+            isReceivingTokens: true,
             provider: "soniox",
           },
           "⚠️ HIGH TRANSCRIPTION LATENCY DETECTED - Soniox is lagging behind real-time",
         );
-      } else if (transcriptLag > 2000) {
+      } else if (processingDeficit > 2000) {
         // Info-level logging for moderate lag
         this.logger.info(
           {
             streamId: this.id,
-            transcriptLagMs: Math.round(transcriptLag),
-            processingDeficitMs: Math.round(processingDeficit),
+            realtimeLatencyMs: Math.round(processingDeficit),
+            audioSentDurationMs: Math.round(audioSentDurationMs),
+            wallClockLagMs: Math.round(wallClockLag),
+            isReceivingTokens: true,
             provider: "soniox",
           },
           "Moderate transcription latency detected",
@@ -1012,6 +1061,9 @@ class SonioxTranscriptionStream implements StreamInstance {
   }
 
   getHealth(): StreamHealth {
+    // Calculate activity metrics on-demand
+    this.updateActivityMetrics();
+
     return {
       isAlive:
         this.state === StreamState.READY || this.state === StreamState.ACTIVE,
@@ -1019,9 +1071,41 @@ class SonioxTranscriptionStream implements StreamInstance {
       consecutiveFailures: this.metrics.consecutiveFailures,
       lastSuccessfulWrite: this.metrics.lastSuccessfulWrite,
       providerHealth: this.provider.getHealthStatus(),
+      // Legacy metrics (kept for backwards compatibility)
       transcriptLagMs: this.metrics.lastTranscriptLagMs,
       maxTranscriptLagMs: this.metrics.maxTranscriptLagMs,
+      processingDeficitMs: this.metrics.processingDeficitMs,
+      wallClockLagMs: this.metrics.wallClockLagMs,
+      // NEW: Activity and true latency metrics
+      isReceivingTokens: this.metrics.isReceivingTokens,
+      realtimeLatencyMs: this.metrics.realtimeLatencyMs,
+      avgRealtimeLatencyMs: this.metrics.avgRealtimeLatencyMs,
+      timeSinceLastTokenMs: this.metrics.timeSinceLastTokenMs,
+      audioSentSinceLastTokenMs: this.metrics.audioSentSinceLastTokenMs,
     };
+  }
+
+  /**
+   * Update activity metrics for silence detection
+   * Called on-demand when health is requested
+   */
+  private updateActivityMetrics(): void {
+    const now = Date.now();
+    const lastTokenTime = this.metrics.lastTokenReceivedAt || this.startTime;
+
+    // Time since last token received
+    this.metrics.timeSinceLastTokenMs = now - lastTokenTime;
+
+    // Are we actively receiving tokens? (30 second window)
+    this.metrics.isReceivingTokens = this.metrics.timeSinceLastTokenMs < 30000;
+
+    // Calculate audio sent since last token (for silence detection)
+    const audioBytesSentAtLastToken =
+      this.metrics.audioBytesSentAtLastToken || 0;
+    const currentAudioBytesSent = this.metrics.totalAudioBytesSent || 0;
+    const bytesSinceLastToken =
+      currentAudioBytesSent - audioBytesSentAtLastToken;
+    this.metrics.audioSentSinceLastTokenMs = bytesSinceLastToken / 32; // 32 bytes per ms at 16kHz 16-bit
   }
 
   /**

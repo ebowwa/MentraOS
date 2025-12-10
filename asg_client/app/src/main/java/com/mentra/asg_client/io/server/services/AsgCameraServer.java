@@ -1093,6 +1093,16 @@ public class AsgCameraServer extends AsgServer {
                 }
             }
 
+            // Sort files by size (smallest first) for faster perceived sync
+            // This ensures photos sync before videos, providing immediate feedback
+            changedFiles.sort((file1, file2) -> {
+                Long size1 = (Long) file1.get("size");
+                Long size2 = (Long) file2.get("size");
+                if (size1 == null) size1 = 0L;
+                if (size2 == null) size2 = 0L;
+                return Long.compare(size1, size2);
+            });
+
             // Calculate sync statistics
             long currentTime = System.currentTimeMillis();
             long totalSize = changedFiles.stream()

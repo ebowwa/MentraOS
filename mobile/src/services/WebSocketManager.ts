@@ -1,8 +1,8 @@
 import {EventEmitter} from "events"
 
-import {BackgroundTimer} from "react-native-nitro-bg-timer"
-
 import {useConnectionStore} from "@/stores/connection"
+import {BackgroundTimer} from "@/utils/timers"
+
 // import mantle from "@/services/MantleManager"
 
 export enum WebSocketStatus {
