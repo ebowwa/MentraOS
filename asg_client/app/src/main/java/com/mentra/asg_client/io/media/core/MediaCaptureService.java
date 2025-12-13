@@ -12,6 +12,7 @@ import com.mentra.asg_client.io.media.upload.MediaUploadService;
 import com.mentra.asg_client.io.media.managers.MediaUploadQueueManager;
 import com.mentra.asg_client.io.media.interfaces.ServiceCallbackInterface;
 import com.mentra.asg_client.camera.CameraNeo;
+import com.mentra.asg_client.camera.ToneMapper;
 import com.mentra.asg_client.settings.VideoSettings;
 import com.mentra.asg_client.io.hardware.interfaces.IHardwareManager;
 import com.mentra.asg_client.io.hardware.core.HardwareManagerFactory;
@@ -1388,7 +1389,13 @@ public class MediaCaptureService {
                     performDirectUpload(originalPath, requestId, webhookUrl, authToken);
                     return;
                 }
-                
+
+                // Apply tone mapping if enabled (improves dynamic range)
+                if (ToneMapper.isEnabled()) {
+                    Log.d(TAG, "🎨 Applying tone mapping to image");
+                    original = ToneMapper.apply(original);
+                }
+
                 // Calculate compression parameters based on SDK compression level
                 int originalWidth = original.getWidth();
                 int originalHeight = original.getHeight();
@@ -1482,7 +1489,13 @@ public class MediaCaptureService {
                     performDirectUpload(originalPath, requestId, webhookUrl, authToken);
                     return;
                 }
-                
+
+                // Apply tone mapping if enabled (improves dynamic range)
+                if (ToneMapper.isEnabled()) {
+                    Log.d(TAG, "🎨 Applying tone mapping to image");
+                    original = ToneMapper.apply(original);
+                }
+
                 // Calculate compression parameters for poor connection
                 int originalWidth = original.getWidth();
                 int originalHeight = original.getHeight();
@@ -2178,6 +2191,12 @@ public class MediaCaptureService {
                 android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
                 if (original == null) {
                     throw new Exception("Failed to decode image file");
+                }
+
+                // 1.5. Apply tone mapping if enabled (improves dynamic range)
+                if (ToneMapper.isEnabled()) {
+                    Log.d(TAG, "🎨 Applying tone mapping to BLE image");
+                    original = ToneMapper.apply(original);
                 }
 
                 // 2. Resolve BLE resize and quality parameters based on requested size

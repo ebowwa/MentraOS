@@ -23,6 +23,7 @@ public class AsgSettings {
     private static final String KEY_ZSL_ENABLED = "zsl_enabled";
     private static final String KEY_MFNR_ENABLED = "mfnr_enabled";
     private static final String KEY_MCU_FIRMWARE_VERSION = "mcu_firmware_version";
+    private static final String KEY_TONE_MAPPING_ENABLED = "tone_mapping_enabled";
 
     private final SharedPreferences prefs;
     private final Context context;
@@ -235,5 +236,26 @@ public class AsgSettings {
         Log.i(TAG, "📋 Setting MCU firmware version to: " + version);
         // Using commit() for immediate persistence
         prefs.edit().putString(KEY_MCU_FIRMWARE_VERSION, version).commit();
+    }
+
+    /**
+     * Get the tone mapping enabled setting.
+     * Tone mapping improves dynamic range by compressing highlights and lifting shadows.
+     * @return true if tone mapping should be applied to photos (default: true)
+     */
+    public boolean isToneMappingEnabled() {
+        boolean enabled = prefs.getBoolean(KEY_TONE_MAPPING_ENABLED, true);
+        Log.d(TAG, "Retrieved tone mapping enabled setting: " + enabled);
+        return enabled;
+    }
+
+    /**
+     * Set the tone mapping enabled setting.
+     * @param enabled true to enable tone mapping, false to disable
+     */
+    public void setToneMappingEnabled(boolean enabled) {
+        Log.d(TAG, "Setting tone mapping enabled to: " + enabled);
+        // Using commit() for immediate persistence
+        prefs.edit().putBoolean(KEY_TONE_MAPPING_ENABLED, enabled).commit();
     }
 }
