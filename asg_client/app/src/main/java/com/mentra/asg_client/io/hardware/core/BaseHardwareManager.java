@@ -133,6 +133,16 @@ public class BaseHardwareManager implements IHardwareManager {
     public int getRecordingLedBrightness() {
         return 0;
     }
+    
+    @Override
+    public void startRecordingLedBreathing() {
+        Log.d(TAG, "startRecordingLedBreathing() called - no-op on base hardware");
+    }
+    
+    @Override
+    public void stopRecordingLedBreathing() {
+        Log.d(TAG, "stopRecordingLedBreathing() called - no-op on base hardware");
+    }
 
     // ============================================
     // RGB LED Control (Not Supported)

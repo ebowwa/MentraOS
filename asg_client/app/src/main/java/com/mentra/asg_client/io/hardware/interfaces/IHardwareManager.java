@@ -135,6 +135,17 @@ public interface IHardwareManager {
      * @return Current brightness level 0-100%
      */
     int getRecordingLedBrightness();
+    
+    /**
+     * Start breathing pattern for recording LED (sine wave pulse 0-100%)
+     * Used for video recording indicator
+     */
+    void startRecordingLedBreathing();
+    
+    /**
+     * Stop breathing pattern for recording LED
+     */
+    void stopRecordingLedBreathing();
 
     // ============================================
     // RGB LED Control (BES Chipset)

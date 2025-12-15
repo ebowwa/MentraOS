@@ -215,6 +215,26 @@ public class K900HardwareManager extends BaseHardwareManager {
         }
         return 0;
     }
+    
+    @Override
+    public void startRecordingLedBreathing() {
+        if (ledController != null) {
+            ledController.startBreathing();
+            Log.d(TAG, "🌊 Recording LED breathing pattern started");
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
+    
+    @Override
+    public void stopRecordingLedBreathing() {
+        if (ledController != null) {
+            ledController.stopBreathing();
+            Log.d(TAG, "🌊 Recording LED breathing pattern stopped");
+        } else {
+            Log.w(TAG, "LED controller not available");
+        }
+    }
 
     // ============================================
     // RGB LED Control (BES Chipset)

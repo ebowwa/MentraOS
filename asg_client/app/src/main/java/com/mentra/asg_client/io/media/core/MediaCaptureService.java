@@ -441,8 +441,20 @@ public class MediaCaptureService {
     
     /**
      * Flash privacy LED synchronized with shutter sound for photo capture
+     * Uses default duration (2200ms) and full brightness (100%)
      */
     private void flashPrivacyLedForPhoto() {
+        Log.d(TAG, "flashPrivacyLedForPhoto called");
+        // First flash
+        flashPrivacyLedForPhoto(2200, 50);
+    }
+    
+    /**
+     * Flash privacy LED synchronized with shutter sound for photo capture
+     * @param durationMs Flash duration in milliseconds
+     * @param brightnessPercent LED brightness percentage (0-100, where 100=full brightness)
+     */
+    private void flashPrivacyLedForPhoto(int durationMs, int brightnessPercent) {
         if (hardwareManager == null) {
             Log.w(TAG, "⚠️ hardwareManager is null, cannot flash privacy LED");
             return;
@@ -453,8 +465,8 @@ public class MediaCaptureService {
             return;
         }
 
-        Log.d(TAG, "📸 Flashing privacy LED synchronized with shutter sound");
-        hardwareManager.flashRecordingLed(2200); // 300ms flash duration
+        Log.d(TAG, String.format("📸 Flashing privacy LED at %d%% brightness for %dms synchronized with shutter sound", brightnessPercent, durationMs));
+        hardwareManager.setRecordingLedBrightness(brightnessPercent, durationMs);
     }
     
     /**
@@ -472,30 +484,43 @@ public class MediaCaptureService {
     }
     
     /**
-     * Trigger solid white LED for video recording duration
+     * Trigger breathing LED pattern for video recording (privacy LED)
+     * Uses sine wave breathing pattern (0-100% brightness) instead of solid white
      */
     private void triggerVideoRecordingLed() {
         Log.i(TAG, "🎥 triggerVideoRecordingLed() called");
 
+        // Start breathing pattern on privacy LED (MTK LED with brightness control)
+        if (hardwareManager != null && hardwareManager.supportsLedBrightness()) {
+            hardwareManager.startRecordingLedBreathing();
+            Log.i(TAG, "🌊 Video recording privacy LED breathing pattern started (0-100% sine wave)");
+        } else {
+            Log.w(TAG, "⚠️ Privacy LED brightness control not supported on this device");
+        }
+        
+        // Also turn on RGB LED solid white on glasses
         if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
             hardwareManager.setRgbLedSolidWhite(1800000); // 30 minute solid white LED
-            Log.i(TAG, "🎥 Video recording LED (solid white) triggered via hardware manager");
-        } else {
-            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+            Log.i(TAG, "🎥 Video recording RGB LED (solid white) triggered on glasses");
         }
     }
     
     /**
-     * Stop video recording LED (turn off LED)
+     * Stop video recording LED (turn off both privacy LED breathing and RGB LED)
      */
     private void stopVideoRecordingLed() {
         Log.d(TAG, "stopVideoRecordingLed called");
 
+        // Stop breathing pattern on privacy LED
+        if (hardwareManager != null && hardwareManager.supportsLedBrightness()) {
+            hardwareManager.stopRecordingLedBreathing();
+            Log.d(TAG, "🌊 Video recording privacy LED breathing pattern stopped");
+        }
+        
+        // Turn off RGB LED on glasses
         if (hardwareManager != null && hardwareManager.supportsRgbLed()) {
             hardwareManager.setRgbLedOff();
-            Log.d(TAG, "🎥 Video recording LED stopped via hardware manager");
-        } else {
-            Log.w(TAG, "⚠️ RGB LED not supported on this device");
+            Log.d(TAG, "🎥 Video recording RGB LED stopped");
         }
     }
 

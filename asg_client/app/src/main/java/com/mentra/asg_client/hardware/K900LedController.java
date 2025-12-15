@@ -24,12 +24,20 @@ public class K900LedController {
     // LED states (for local MTK LED)
     private boolean isLedOn = false;
     private boolean isBlinking = false;
+    private boolean isBreathing = false;
     private boolean isInitialized = false;
     private int currentBrightness = 100; // Default to full brightness (0-100)
     
     // Blinking parameters
     private static final long BLINK_ON_DURATION_MS = 500;
     private static final long BLINK_OFF_DURATION_MS = 500;
+    
+    // Breathing parameters
+    private static final long BREATHING_UPDATE_INTERVAL_MS = 50; // Update every 50ms for smooth animation
+    private static final double BREATHING_PERIOD_MS = 2000.0; // Complete sine wave cycle every 2 seconds
+    private static final int BREATHING_MIN_BRIGHTNESS = 50; // Minimum brightness (0% - off)
+    private static final int BREATHING_MAX_BRIGHTNESS = 70; // Maximum brightness (100% - full)
+    private long breathingStartTime = 0;
     
     private final Runnable blinkRunnable = new Runnable() {
         @Override
@@ -45,6 +53,49 @@ public class K900LedController {
             // Schedule next blink
             long delay = isLedOn ? BLINK_ON_DURATION_MS : BLINK_OFF_DURATION_MS;
             ledHandler.postDelayed(this, delay);
+        }
+    };
+    
+    private final Runnable breathingRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isBreathing) {
+                return;
+            }
+            
+            // Calculate elapsed time since breathing started
+            long elapsedMs = System.currentTimeMillis() - breathingStartTime;
+            
+            // Calculate position in sine wave (0 to 2π)
+            double angle = (2.0 * Math.PI * elapsedMs) / BREATHING_PERIOD_MS;
+            
+            // Calculate brightness using sine wave
+            // sin(angle) ranges from -1 to 1, we map it to MIN to MAX brightness
+            double sineValue = Math.sin(angle);
+            double brightnessRange = BREATHING_MAX_BRIGHTNESS - BREATHING_MIN_BRIGHTNESS;
+            int brightness = (int) (BREATHING_MIN_BRIGHTNESS + (brightnessRange * (sineValue + 1.0) / 2.0));
+            
+            // Clamp to ensure we stay within bounds
+            brightness = Math.max(BREATHING_MIN_BRIGHTNESS, Math.min(BREATHING_MAX_BRIGHTNESS, brightness));
+            
+            // Set the brightness
+            try {
+                DevApi.setLedCustomBright(brightness, (int)BREATHING_UPDATE_INTERVAL_MS);
+                currentBrightness = brightness;
+                isLedOn = true;
+            } catch (UnsatisfiedLinkError e) {
+                Log.e(TAG, "Failed to set breathing LED brightness - libxydev.so not loaded", e);
+                isBreathing = false;
+                isInitialized = false;
+                return;
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to set breathing LED brightness", e);
+                isBreathing = false;
+                return;
+            }
+            
+            // Schedule next update
+            ledHandler.postDelayed(this, BREATHING_UPDATE_INTERVAL_MS);
         }
     };
     
@@ -186,17 +237,69 @@ public class K900LedController {
      */
     public void stopBlinking() {
         isBlinking = false;
+        isBreathing = false;  // Also stop breathing if active
         ledHandler.removeCallbacksAndMessages(null);
         setLedStateInternal(false);
         Log.d(TAG, "LED blinking stopped");
     }
     
     /**
+     * Start breathing pattern (sine wave pulse between 50-70% brightness)
+     * Used for video recording indicator
+     */
+    public void startBreathing() {
+        if (!isInitialized) {
+            Log.w(TAG, "LED controller not initialized, attempting to initialize...");
+            initializeLed();
+        }
+        
+        ledHandler.post(() -> {
+            if (isBreathing) {
+                Log.d(TAG, "LED already breathing");
+                return;
+            }
+            
+            // Stop any blinking patterns
+            isBlinking = false;
+            ledHandler.removeCallbacksAndMessages(null);
+            
+            isBreathing = true;
+            breathingStartTime = System.currentTimeMillis();
+            Log.i(TAG, "🌊 LED breathing pattern started (0-100% sine wave)");
+            ledHandler.post(breathingRunnable);
+        });
+    }
+    
+    /**
+     * Stop breathing pattern (turns LED off)
+     */
+    public void stopBreathing() {
+        ledHandler.post(() -> {
+            if (!isBreathing) {
+                return;
+            }
+            
+            isBreathing = false;
+            ledHandler.removeCallbacksAndMessages(null);
+            setLedStateInternal(false);
+            Log.i(TAG, "🌊 LED breathing pattern stopped");
+        });
+    }
+    
+    /**
+     * Check if LED is currently in breathing mode
+     * @return true if LED is breathing
+     */
+    public boolean isBreathing() {
+        return isBreathing;
+    }
+    
+    /**
      * Get current LED state
-     * @return true if LED is on (or blinking), false if off
+     * @return true if LED is on (or blinking/breathing), false if off
      */
     public boolean isLedOn() {
-        return isLedOn || isBlinking;
+        return isLedOn || isBlinking || isBreathing;
     }
     
     /**
