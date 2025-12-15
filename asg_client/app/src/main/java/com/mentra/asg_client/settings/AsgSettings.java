@@ -24,16 +24,17 @@ public class AsgSettings {
     private static final String KEY_MFNR_ENABLED = "mfnr_enabled";
     private static final String KEY_MCU_FIRMWARE_VERSION = "mcu_firmware_version";
     private static final String KEY_TONE_MAPPING_ENABLED = "tone_mapping_enabled";
+    private static final String KEY_EXPOSURE_COMPENSATION = "exposure_compensation";
 
     private final SharedPreferences prefs;
     private final Context context;
-    
+
     public AsgSettings(Context context) {
         this.context = context;
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Log.d(TAG, "AsgSettings initialized");
     }
-    
+
     /**
      * Get the video recording settings for button-initiated recording
      * @return VideoSettings with the saved resolution and fps
@@ -46,7 +47,7 @@ public class AsgSettings {
         Log.d(TAG, "Retrieved button video settings: " + settings);
         return settings;
     }
-    
+
     /**
      * Set the video recording settings for button-initiated recording
      * @param settings VideoSettings to save
@@ -68,7 +69,7 @@ public class AsgSettings {
             .putInt(KEY_BUTTON_VIDEO_FPS, settings.fps)
             .commit();
     }
-    
+
     /**
      * Set button video settings from width, height, and fps values
      * @param width Video width
@@ -114,7 +115,7 @@ public class AsgSettings {
         Log.d(TAG, "Retrieved button photo size: " + size);
         return size;
     }
-    
+
     /**
      * Set the photo size setting for button-initiated photos
      * @param size Photo size ("small", "medium", or "large")
@@ -129,7 +130,7 @@ public class AsgSettings {
         // Using commit() for immediate persistence
         prefs.edit().putString(KEY_BUTTON_PHOTO_SIZE, size).commit();
     }
-    
+
     /**
      * Get the camera LED setting for button-initiated recordings
      * @return true if LED should be enabled, false otherwise
@@ -139,7 +140,7 @@ public class AsgSettings {
         Log.d(TAG, "Retrieved button camera LED setting: " + enabled);
         return enabled;
     }
-    
+
     /**
      * Set the camera LED setting for button-initiated recordings
      * @param enabled true to enable LED, false to disable
@@ -149,7 +150,7 @@ public class AsgSettings {
         // Using commit() for immediate persistence
         prefs.edit().putBoolean(KEY_BUTTON_CAMERA_LED, enabled).commit();
     }
-    
+
     /**
      * Check if currently in gallery mode (save/capture mode active)
      * Persisted state set by the phone when camera/gallery app is active
@@ -257,5 +258,40 @@ public class AsgSettings {
         Log.d(TAG, "Setting tone mapping enabled to: " + enabled);
         // Using commit() for immediate persistence
         prefs.edit().putBoolean(KEY_TONE_MAPPING_ENABLED, enabled).commit();
+    }
+
+    /**
+     * Get the exposure compensation setting for photos and videos.
+     * This is measured in steps (typically 1/6 EV per step on most devices).
+     * Negative values = darker (underexposed), helps preserve highlights.
+     * Positive values = brighter (overexposed).
+     *
+     * Common values:
+     *   0 = normal exposure (default)
+     *  -1 = slightly darker (~-0.17 EV)
+     *  -2 = darker (~-0.33 EV)
+     *  -3 = ~-0.5 EV (good for highlight preservation)
+     *  -6 = ~-1 EV (significant underexposure)
+     *
+     * @return Exposure compensation in steps (default: -5 for aggressive highlight preservation, ~-0.8 EV)
+     */
+    public int getExposureCompensation() {
+        int compensation = prefs.getInt(KEY_EXPOSURE_COMPENSATION, -5);
+        Log.d(TAG, "Retrieved exposure compensation: " + compensation + " steps");
+        return compensation;
+    }
+
+    /**
+     * Set the exposure compensation for photos and videos.
+     * Value is clamped to typical camera range of -12 to +12 steps.
+     * @param steps Exposure compensation in steps (negative = darker)
+     */
+    public void setExposureCompensation(int steps) {
+        // Clamp to reasonable range (most cameras support at least -12 to +12)
+        if (steps < -12) steps = -12;
+        if (steps > 12) steps = 12;
+        Log.d(TAG, "Setting exposure compensation to: " + steps + " steps");
+        // Using commit() for immediate persistence
+        prefs.edit().putInt(KEY_EXPOSURE_COMPENSATION, steps).commit();
     }
 }

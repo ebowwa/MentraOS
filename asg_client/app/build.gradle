@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
     id 'androidx.navigation.safeargs'
 
     id 'io.sentry.android.gradle' version '5.8.0'

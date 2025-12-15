@@ -41,6 +41,8 @@ import android.view.Display;
 import android.view.Surface;
 
 import com.mentra.asg_client.settings.VideoSettings;
+import com.mentra.asg_client.camera.gl.ToneMappingProcessor;
+import com.mentra.asg_client.camera.AdaptiveExposureController;
 import android.view.WindowManager;
 
 import com.mentra.asg_client.utils.WakeLockManager;
@@ -221,7 +223,8 @@ public class CameraNeo extends LifecycleService {
     private final SimplifiedAeCallback aeCallback = new SimplifiedAeCallback();
 
     // User-settable exposure compensation (apply BEFORE capture, not during)
-    private int userExposureCompensation = 0;
+    // Default to -5 (~-0.8 EV) for aggressive highlight preservation, can be changed via setExposureCompensation()
+    private static int sExposureCompensation = -5;
 
     // Callback and execution handling
     private final Executor executor = Executors.newSingleThreadExecutor();
@@ -283,6 +286,8 @@ public class CameraNeo extends LifecycleService {
     // Video recording components
     private MediaRecorder mediaRecorder;
     private Surface recorderSurface;
+    private ToneMappingProcessor toneMappingProcessor;  // GPU tone mapping for video
+    private AdaptiveExposureController adaptiveExposureController;  // Scene-based exposure adjustment
     private boolean isRecording = false;
     private String currentVideoId;
     private String currentVideoPath;
@@ -407,10 +412,153 @@ public class CameraNeo extends LifecycleService {
         hardwareManager = HardwareManagerFactory.getInstance(this);
         // Initialize camera settings for vendor-specific features (ZSL, MFNR)
         mCameraSettings = new CameraSettings(this);
+
+        // Initialize adaptive exposure controller for scene-based exposure adjustment
+        adaptiveExposureController = AdaptiveExposureController.getInstance();
+        adaptiveExposureController.setBaseExposureCompensation(sExposureCompensation);
+        adaptiveExposureController.setCallback(totalCompensation -> {
+            // Update exposure when adaptive controller decides to change it
+            Log.d(TAG, "Adaptive exposure adjustment: total EC = " + totalCompensation);
+            updateExposureCompensationLive();
+        });
+
         createNotificationChannel();
         showNotification("Camera Service", "Service is running");
         startBackgroundThread();
     }
+
+    /**
+     * Set the base exposure compensation for all subsequent photos and videos.
+     * This method can be called at any time - if a video recording is in progress,
+     * the exposure will be updated immediately (mid-recording).
+     *
+     * Note: If adaptive exposure is enabled, the actual exposure may be adjusted
+     * dynamically based on scene brightness. Use setAdaptiveExposureEnabled() to
+     * toggle adaptive behavior.
+     *
+     * @param steps Exposure compensation in steps (typically 1/6 EV per step).
+     *              Negative = darker (helps preserve highlights)
+     *              Positive = brighter
+     *              Common values: -1 to -3 for highlight preservation
+     */
+    public static void setExposureCompensation(int steps) {
+        sExposureCompensation = steps;
+        Log.d(TAG, "📷 Base exposure compensation set to: " + steps + " steps");
+
+        // Update adaptive controller's base if instance exists
+        if (sInstance != null && sInstance.adaptiveExposureController != null) {
+            sInstance.adaptiveExposureController.setBaseExposureCompensation(steps);
+        }
+
+        // If there's an active instance with a live session, update it immediately
+        if (sInstance != null) {
+            sInstance.updateExposureCompensationLive();
+        }
+    }
+
+    /**
+     * Enable or disable adaptive exposure (scene-based exposure adjustment).
+     * When enabled, the camera will analyze scene brightness and adjust exposure
+     * dynamically to preserve highlights in bright scenes and recover shadows
+     * in dark scenes.
+     *
+     * @param enabled true to enable adaptive exposure, false to disable
+     */
+    public static void setAdaptiveExposureEnabled(boolean enabled) {
+        if (sInstance != null && sInstance.adaptiveExposureController != null) {
+            sInstance.adaptiveExposureController.setEnabled(enabled);
+            Log.d(TAG, "📷 Adaptive exposure enabled: " + enabled);
+        }
+    }
+
+    /**
+     * Check if adaptive exposure is enabled.
+     * @return true if adaptive exposure is enabled
+     */
+    public static boolean isAdaptiveExposureEnabled() {
+        if (sInstance != null && sInstance.adaptiveExposureController != null) {
+            return sInstance.adaptiveExposureController.isEnabled();
+        }
+        return false;
+    }
+
+    /**
+     * Get the current exposure compensation setting.
+     * @return Current exposure compensation in steps
+     */
+    public static int getExposureCompensation() {
+        return sExposureCompensation;
+    }
+
+    /**
+     * Update exposure compensation on the live capture session.
+     * Called when setExposureCompensation() is invoked while recording,
+     * or when adaptive exposure controller adjusts the value.
+     * Posts to background thread to ensure thread safety with camera operations.
+     */
+    private void updateExposureCompensationLive() {
+        if (backgroundHandler == null) {
+            Log.d(TAG, "No background handler available for exposure update");
+            return;
+        }
+
+        // Post to background thread for thread-safe camera operations
+        backgroundHandler.post(() -> {
+            if (previewBuilder == null || cameraCaptureSession == null) {
+                Log.d(TAG, "No active session to update exposure");
+                return;
+            }
+
+            try {
+                // Get effective exposure: use adaptive controller if enabled, otherwise base value
+                int effectiveCompensation = sExposureCompensation;
+                if (adaptiveExposureController != null && adaptiveExposureController.isEnabled()) {
+                    effectiveCompensation = adaptiveExposureController.getTotalExposureCompensation();
+                }
+
+                // Update the preview builder with new exposure value
+                previewBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, effectiveCompensation);
+
+                // Re-submit the repeating request with capture callback for adaptive exposure analysis
+                cameraCaptureSession.setRepeatingRequest(previewBuilder.build(), adaptiveAeCaptureCallback, backgroundHandler);
+
+                Log.d(TAG, "📷 Live exposure compensation updated to: " + effectiveCompensation + " steps" +
+                        (adaptiveExposureController != null && adaptiveExposureController.isEnabled() ?
+                                " (adaptive: base=" + sExposureCompensation + ", adjustment=" + adaptiveExposureController.getAdaptiveAdjustment() + ")" : ""));
+            } catch (CameraAccessException e) {
+                Log.e(TAG, "Failed to update exposure compensation live", e);
+            } catch (IllegalStateException e) {
+                Log.w(TAG, "Camera session not ready for exposure update: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Capture callback for adaptive exposure analysis during video recording.
+     * Analyzes each frame's exposure data and adjusts exposure compensation dynamically.
+     */
+    private final CameraCaptureSession.CaptureCallback adaptiveAeCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+        private int frameCount = 0;
+
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result) {
+            frameCount++;
+
+            // Only analyze every 10th frame to reduce overhead
+            if (frameCount % 10 != 0) {
+                return;
+            }
+
+            // Analyze scene and adjust exposure if adaptive is enabled
+            if (adaptiveExposureController != null && adaptiveExposureController.isEnabled() && isRecording) {
+                boolean changed = adaptiveExposureController.analyzeCaptureResult(result, exposureCompensationRange);
+                // If exposure changed, the callback will trigger updateExposureCompensationLive()
+                // which is already handled in the controller's callback
+            }
+        }
+    };
 
     /**
      * Primary entry point for photo requests - uses global queue to prevent race conditions
@@ -922,9 +1070,19 @@ public class CameraNeo extends LifecycleService {
                     }
                 }
                 
+                // Stop tone mapping processor first
+                if (toneMappingProcessor != null) {
+                    toneMappingProcessor.stop();
+                    Log.d(TAG, "Tone mapping processor stopped");
+                }
+
                 mediaRecorder.stop();
                 mediaRecorder.reset();
             }
+
+            // Release tone mapping processor
+            releaseToneMappingProcessor();
+
             Log.d(TAG, "Video recording stopped for: " + currentVideoId);
             if (sVideoCallback != null) {
                 sVideoCallback.onRecordingStopped(currentVideoId, currentVideoPath);
@@ -1578,7 +1736,27 @@ public class CameraNeo extends LifecycleService {
             mediaRecorder.prepare();
 
             // Get the surface from the recorder
-            recorderSurface = mediaRecorder.getSurface();
+            Surface mediaRecorderSurface = mediaRecorder.getSurface();
+
+            // Create GPU tone mapping processor for real-time video processing
+            try {
+                toneMappingProcessor = new ToneMappingProcessor(mediaRecorderSurface, videoSize);
+                toneMappingProcessor.initialize();  // Blocks until initialization completes
+
+                // Use the tone mapping processor's input surface for camera
+                recorderSurface = toneMappingProcessor.getInputSurface();
+                if (recorderSurface == null) {
+                    Log.w(TAG, "ToneMappingProcessor input surface null, falling back to direct recording");
+                    recorderSurface = mediaRecorderSurface;
+                    releaseToneMappingProcessor();
+                } else {
+                    Log.d(TAG, "GPU tone mapping enabled for video recording");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to create ToneMappingProcessor, falling back to direct recording", e);
+                recorderSurface = mediaRecorderSurface;
+                releaseToneMappingProcessor();
+            }
 
             Log.d(TAG, "MediaRecorder setup complete for: " + filePath);
         } catch (Exception e) {
@@ -1754,7 +1932,12 @@ public class CameraNeo extends LifecycleService {
             }
 
             // Apply user exposure compensation BEFORE capture (not during)
-            previewBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
+            // Use adaptive controller's total compensation if enabled, otherwise base value
+            int effectiveExposure = sExposureCompensation;
+            if (adaptiveExposureController != null && adaptiveExposureController.isEnabled()) {
+                effectiveExposure = adaptiveExposureController.getTotalExposureCompensation();
+            }
+            previewBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, effectiveExposure);
 
             // Use center-weighted metering for better subject exposure
             Size sizeForMetering = forVideo ? videoSize : jpegSize;
@@ -1904,6 +2087,12 @@ public class CameraNeo extends LifecycleService {
                         return;
                     }
                     
+                    // Start tone mapping processor if available
+                    if (toneMappingProcessor != null) {
+                        toneMappingProcessor.start();
+                        Log.d(TAG, "Tone mapping processor started for video");
+                    }
+
                     mediaRecorder.start();
                     isRecording = true;
                     recordingStartTime = System.currentTimeMillis();
@@ -2097,6 +2286,21 @@ public class CameraNeo extends LifecycleService {
     }
 
     /**
+     * Release the tone mapping processor if it exists.
+     */
+    private void releaseToneMappingProcessor() {
+        if (toneMappingProcessor != null) {
+            try {
+                toneMappingProcessor.release();
+                Log.d(TAG, "Tone mapping processor released");
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing tone mapping processor", e);
+            }
+            toneMappingProcessor = null;
+        }
+    }
+
+    /**
      * Close camera resources
      */
     private void closeCamera() {
@@ -2118,6 +2322,8 @@ public class CameraNeo extends LifecycleService {
                 mediaRecorder.release();
                 mediaRecorder = null;
             }
+            // Release tone mapping processor before releasing recorder surface
+            releaseToneMappingProcessor();
             if (recorderSurface != null) {
                 recorderSurface.release();
                 recorderSurface = null;
@@ -2757,7 +2963,12 @@ public class CameraNeo extends LifecycleService {
             stillBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
             stillBuilder.set(CaptureRequest.CONTROL_AE_LOCK, true);  // Lock AE for capture (XyCamera2 pattern)
             stillBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
-            stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, userExposureCompensation);
+            // Use adaptive controller's total compensation if enabled
+            int stillExposure = sExposureCompensation;
+            if (adaptiveExposureController != null && adaptiveExposureController.isEnabled()) {
+                stillExposure = adaptiveExposureController.getTotalExposureCompensation();
+            }
+            stillBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, stillExposure);
             stillBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, selectedFpsRange);
 
             // Set up continuous autofocus (no manual triggers needed)

@@ -1390,7 +1390,7 @@ public class MediaCaptureService {
                     return;
                 }
 
-                // Apply tone mapping if enabled (improves dynamic range)
+                // Apply tone mapping if enabled (highlight rolloff + shadow lift)
                 if (ToneMapper.isEnabled()) {
                     Log.d(TAG, "🎨 Applying tone mapping to image");
                     original = ToneMapper.apply(original);
@@ -1481,7 +1481,7 @@ public class MediaCaptureService {
             try {
                 Log.d(TAG, "🗜️ Compressing image for poor connection: " + originalPath);
                 long compressionStartTime = System.currentTimeMillis();
-                
+
                 // Load original image
                 android.graphics.Bitmap original = android.graphics.BitmapFactory.decodeFile(originalPath);
                 if (original == null) {
@@ -1490,7 +1490,7 @@ public class MediaCaptureService {
                     return;
                 }
 
-                // Apply tone mapping if enabled (improves dynamic range)
+                // Apply tone mapping if enabled (highlight rolloff + shadow lift)
                 if (ToneMapper.isEnabled()) {
                     Log.d(TAG, "🎨 Applying tone mapping to image");
                     original = ToneMapper.apply(original);
@@ -2193,7 +2193,7 @@ public class MediaCaptureService {
                     throw new Exception("Failed to decode image file");
                 }
 
-                // 1.5. Apply tone mapping if enabled (improves dynamic range)
+                // Apply tone mapping if enabled (highlight rolloff + shadow lift)
                 if (ToneMapper.isEnabled()) {
                     Log.d(TAG, "🎨 Applying tone mapping to BLE image");
                     original = ToneMapper.apply(original);
