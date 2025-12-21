@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 // Bridge for core communication between Expo modules and native iOS code
 // Has commands for the core to use to send messages to JavaScript
@@ -263,6 +264,44 @@ class Bridge {
             "timestamp": timestamp,
         ]
         Bridge.sendTypedMessage("mtk_update_complete", body: eventBody)
+    }
+
+    // MARK: - Video Frame Streaming
+    
+    private static var lastFrameTime: Date = .distantPast
+    private static var frameInterval: TimeInterval = 0.1 // 10 fps default
+    private static var cloudStreamingEnabled: Bool = true
+    
+    /// Configure video frame streaming settings
+    static func configureVideoStreaming(enabled: Bool, fps: Int = 10) {
+        cloudStreamingEnabled = enabled
+        frameInterval = 1.0 / Double(max(1, min(fps, 30))) // Clamp 1-30 fps
+        log("Bridge: Video streaming configured - enabled: \(enabled), fps: \(fps)")
+    }
+    
+    /// Send a video frame to the cloud server via React Native bridge
+    /// Automatically throttles based on configured frame rate
+    static func sendVideoFrame(_ imageData: Data, quality: Double = 0.5) {
+        guard cloudStreamingEnabled else { return }
+        
+        // Throttle frames
+        let now = Date()
+        guard now.timeIntervalSince(lastFrameTime) >= frameInterval else { return }
+        lastFrameTime = now
+        
+        let base64String = imageData.base64EncodedString()
+        let body: [String: Any] = [
+            "base64": base64String,
+            "quality": quality,
+            "timestamp": Int(now.timeIntervalSince1970 * 1000),
+        ]
+        Bridge.sendTypedMessage("video_frame", body: body)
+    }
+    
+    /// Send a video frame from UIImage (convenience method)
+    static func sendVideoFrame(_ image: UIImage, quality: Double = 0.5) {
+        guard let jpegData = image.jpegData(compressionQuality: CGFloat(quality)) else { return }
+        sendVideoFrame(jpegData, quality: quality)
     }
 
     // Arbitrary WS Comms (dont use these, make a dedicated function for your use case):
