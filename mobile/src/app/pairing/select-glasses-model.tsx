@@ -40,6 +40,8 @@ export default function SelectGlassesModelScreen() {
         return <MentraLogo color={theme.colors.text} />
       case DeviceTypes.Z100:
         return <VuzixLogo color={theme.colors.text} />
+      case DeviceTypes.META_RAYBAN:
+        return <Text style={{fontSize: 14, fontWeight: "600", color: theme.colors.text}}>Meta</Text>
       default:
         return null
     }
@@ -54,6 +56,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: DeviceTypes.LIVE, key: "mentra_live"},
           {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           {modelName: DeviceTypes.Z100, key: "vuzix-z100"},
+          {modelName: DeviceTypes.META_RAYBAN, key: "meta_rayban"},
           // {modelName: DeviceTypes.NEX, key: "mentra_nex"},
           //{modelName: "Brilliant Labs Frame", key: "frame"},
         ]
@@ -64,6 +67,7 @@ export default function SelectGlassesModelScreen() {
           {modelName: DeviceTypes.LIVE, key: "mentra_live"},
           {modelName: DeviceTypes.MACH1, key: "mentra_mach1"},
           {modelName: DeviceTypes.Z100, key: "vuzix-z100"},
+          {modelName: DeviceTypes.META_RAYBAN, key: "meta_rayban"},
           // {modelName: "Mentra Nex", key: "mentra_nex"},
           // {modelName: "Brilliant Labs Frame", key: "frame"},
         ]
