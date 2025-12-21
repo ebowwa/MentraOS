@@ -4,6 +4,7 @@
 //
 //  Created by Matthew Fosse on 3/5/25.
 //
+// (Elijah) TODO: Client Relay service, useful for bluetooth, and or integrating vision pros
 
 import AVFoundation
 import Combine
@@ -664,6 +665,8 @@ struct ViewState {
             sgc?.type = DeviceTypes.Z100 // Override type to Z100
         } else if wearable.contains(DeviceTypes.FRAME) {
             // sgc = FrameManager()
+        } else if wearable.contains(DeviceTypes.META_RAYBAN) {
+            sgc = MetaRayBan()
         }
     }
 
@@ -1449,6 +1452,31 @@ struct ViewState {
         {
             deviceAddress = newDeviceAddress
         }
+    }
+
+    // MARK: - Meta URL Handling
+    
+    /// Handle URL callbacks from Meta AI app.
+    /// Call this from AppDelegate's application(_:open:options:) when receiving URLs.
+    /// - Parameter url: The callback URL from Meta AI app
+    /// - Returns: true if the URL was handled as a Meta callback
+    @objc static func handleMetaURLCallback(_ url: URL) -> Bool {
+        // Check if this URL is related to Meta DAT SDK workflows
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.queryItems?.contains(where: { $0.name == "metaWearablesAction" }) == true
+        else {
+            return false
+        }
+        
+        Bridge.log("META: Received callback URL from Meta AI app: \(url)")
+        
+        // Post notification for MetaRayBan SGC to handle
+        NotificationCenter.default.post(
+            name: Notification.Name("MetaAICallback"),
+            object: url
+        )
+        
+        return true
     }
 
     // MARK: - Cleanup

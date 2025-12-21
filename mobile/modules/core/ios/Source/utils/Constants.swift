@@ -6,6 +6,7 @@ struct DeviceTypes {
     static let Z100 = "Vuzix Z100"
     static let NEX = "Mentra Nex"
     static let FRAME = "Brilliant Frame"
+    static let META_RAYBAN = "Meta Ray-Ban"
 
     static let ALL = [
         SIMULATED,
@@ -15,6 +16,7 @@ struct DeviceTypes {
         Z100,
         NEX,
         FRAME,
+        META_RAYBAN,
     ]
 
     // Private init to prevent instantiation

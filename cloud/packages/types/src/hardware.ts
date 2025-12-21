@@ -4,6 +4,7 @@
 
 import { evenRealitiesG1 } from "./capabilities/even-realities-g1";
 import { mentraLive } from "./capabilities/mentra-live";
+import { metaRayBan } from "./capabilities/meta-rayban";
 import { simulatedGlasses } from "./capabilities/simulated-glasses";
 import { vuzixZ100 } from "./capabilities/vuzix-z100";
 import { DeviceTypes, HardwareRequirementLevel, HardwareType } from "./enums";
@@ -156,6 +157,7 @@ export interface Capabilities {
 export const HARDWARE_CAPABILITIES: Record<string, Capabilities> = {
   [evenRealitiesG1.modelName]: evenRealitiesG1,
   [mentraLive.modelName]: mentraLive,
+  [metaRayBan.modelName]: metaRayBan,
   [simulatedGlasses.modelName]: simulatedGlasses,
   [vuzixZ100.modelName]: vuzixZ100,
 };
@@ -169,4 +171,4 @@ export const getModelCapabilities = (deviceType: DeviceTypes): Capabilities => {
 };
 
 // export * from "./capabilities"
-export { simulatedGlasses, evenRealitiesG1, mentraLive, vuzixZ100 };
+export { simulatedGlasses, evenRealitiesG1, mentraLive, metaRayBan, vuzixZ100 };

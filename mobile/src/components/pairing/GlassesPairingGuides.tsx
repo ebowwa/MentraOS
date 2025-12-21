@@ -1,9 +1,9 @@
 // GlassesPairingGuides.tsx
 
-import {DeviceTypes} from "@/../../cloud/packages/types/src"
-import {MaterialCommunityIcons} from "@expo/vector-icons"
-import {useEffect, useState} from "react"
-import {View, Image, TouchableOpacity, Linking, ImageStyle, ViewStyle, TextStyle} from "react-native"
+import { DeviceTypes } from "@/../../cloud/packages/types/src"
+import { MaterialCommunityIcons } from "@expo/vector-icons"
+import { useEffect, useState } from "react"
+import { View, Image, TouchableOpacity, Linking, ImageStyle, ViewStyle, TextStyle } from "react-native"
 import Animated, {
   Easing,
   runOnJS,
@@ -13,8 +13,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated"
 
-import {GlassesFeatureList} from "@/components/glasses/GlassesFeatureList"
-import {Button, Text} from "@/components/ignite"
+import { GlassesFeatureList } from "@/components/glasses/GlassesFeatureList"
+import { Button, Text } from "@/components/ignite"
 import GlassesDisplayMirror from "@/components/mirror/GlassesDisplayMirror"
 import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import {Spacer} from "@/components/ui/Spacer"
@@ -24,7 +24,7 @@ import {showAlert} from "@/utils/AlertUtils"
 import {useAppTheme} from "@/contexts/ThemeContext"
 
 export function MentraNextGlassesPairingGuide() {
-  const {theme, themed} = useAppTheme()
+  const { theme, themed } = useAppTheme()
 
   // Animation values
   const glassesOpacity = useSharedValue(1)
@@ -62,15 +62,15 @@ export function MentraNextGlassesPairingGuide() {
         }),
       )
 
-      glassesOpacity.value = withDelay(1000, withTiming(0, {duration: 400}))
+      glassesOpacity.value = withDelay(1000, withTiming(0, { duration: 400 }))
 
       finalImageOpacity.value = withDelay(
         1000,
-        withTiming(1, {duration: 600}, finished => {
+        withTiming(1, { duration: 600 }, finished => {
           if (finished) {
             finalImageOpacity.value = withDelay(
               1000,
-              withTiming(0, {duration: 400}, finished => {
+              withTiming(0, { duration: 400 }, finished => {
                 if (finished) {
                   runOnJS(startAnimation)()
                 }
@@ -78,7 +78,7 @@ export function MentraNextGlassesPairingGuide() {
             )
             glassesTranslateY.value = 0
             glassesScale.value = 1
-            glassesOpacity.value = withDelay(1000, withTiming(1, {duration: 400}))
+            glassesOpacity.value = withDelay(1000, withTiming(1, { duration: 400 }))
           }
         }),
       )
@@ -90,7 +90,7 @@ export function MentraNextGlassesPairingGuide() {
 
   const animatedGlassesStyle = useAnimatedStyle(() => ({
     opacity: glassesOpacity.value,
-    transform: [{translateY: glassesTranslateY.value}, {scale: glassesScale.value}],
+    transform: [{ translateY: glassesTranslateY.value }, { scale: glassesScale.value }],
   }))
 
   const animatedCaseStyle = useAnimatedStyle(() => ({
@@ -139,7 +139,7 @@ export function MentraNextGlassesPairingGuide() {
 }
 
 export function G1PairingGuide() {
-  const {theme, themed} = useAppTheme()
+  const { theme, themed } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
@@ -151,7 +151,7 @@ export function G1PairingGuide() {
 
       <Spacer height={theme.spacing.s6} />
 
-      <View style={{justifyContent: "flex-start", flexDirection: "column"}}>
+      <View style={{ justifyContent: "flex-start", flexDirection: "column" }}>
         <Text tx="pairing:instructions" style={themed($guideTitle)} />
         <Text
           text="1. Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app"
@@ -163,7 +163,7 @@ export function G1PairingGuide() {
   )
 }
 
-const $guideContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $guideContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   marginTop: spacing.s6,
   width: "100%",
   alignSelf: "center",
@@ -171,20 +171,20 @@ const $guideContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   justifyContent: "space-between",
 })
 
-const $guideTitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $guideTitle: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   fontSize: 24,
   fontWeight: 600,
   marginBottom: spacing.s3 + 2,
   color: colors.secondary_foreground,
 })
 
-const $guideStep: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $guideStep: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   fontSize: 16,
   marginBottom: spacing.s3,
   color: colors.text,
 })
 
-const $guideDescription: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+const $guideDescription: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   fontSize: 14,
   lineHeight: 20,
   marginBottom: spacing.s6,
@@ -192,18 +192,18 @@ const $guideDescription: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   color: colors.text,
 })
 
-const $guideImage: ThemedStyle<ImageStyle> = ({spacing}) => ({
+const $guideImage: ThemedStyle<ImageStyle> = ({ spacing }) => ({
   height: 180,
   marginVertical: spacing.s4,
   resizeMode: "contain",
   width: "100%",
 })
 
-const $buySection: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $buySection: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   marginTop: spacing.s4,
 })
 
-const $preorderButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $preorderButton: ThemedStyle<ViewStyle> = ({ colors }) => ({
   alignItems: "center",
   borderRadius: 30,
   justifyContent: "center",
@@ -214,12 +214,12 @@ const $preorderButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.tint,
 })
 
-const $buyButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+const $buyButtonText: ThemedStyle<TextStyle> = ({ colors }) => ({
   fontSize: 16,
   color: colors.background,
 })
 
-const $shippingText: ThemedStyle<TextStyle> = ({colors}) => ({
+const $shippingText: ThemedStyle<TextStyle> = ({ colors }) => ({
   fontSize: 12,
   marginTop: 4,
   color: colors.background,
@@ -235,7 +235,7 @@ const $shippingText: ThemedStyle<TextStyle> = ({colors}) => ({
 //   padding: spacing.s6,
 // })
 
-const $animationContainer: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+const $animationContainer: ThemedStyle<ViewStyle> = ({ spacing, colors }) => ({
   // height: 400,
   // marginVertical: spacing.s6,
   position: "relative",
@@ -282,7 +282,7 @@ const $arrowContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 export function MentraMach1PairingGuide() {
-  const {themed} = useAppTheme()
+  const { themed } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
@@ -301,11 +301,11 @@ export function MentraMach1PairingGuide() {
 }
 
 export function MentraLivePairingGuide() {
-  const {themed} = useAppTheme()
+  const { themed } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
-      <View style={{justifyContent: "flex-start", flexDirection: "column"}}>
+      <View style={{ justifyContent: "flex-start", flexDirection: "column" }}>
         <Text text="Mentra Live" style={themed($guideTitle)} />
 
         {/* Product image would go here */}
@@ -350,7 +350,7 @@ export function MentraLivePairingGuide() {
 }
 
 export function AudioWearablePairingGuide() {
-  const {themed} = useAppTheme()
+  const { themed } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
@@ -370,7 +370,7 @@ export function AudioWearablePairingGuide() {
 }
 
 export function VuzixZ100PairingGuide() {
-  const {themed} = useAppTheme()
+  const { themed } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
@@ -389,7 +389,7 @@ export function VuzixZ100PairingGuide() {
 }
 
 export function SimulatedPairingGuide() {
-  const {themed} = useAppTheme()
+  const { themed } = useAppTheme()
   return (
     <View style={themed($guideContainer)}>
       <Text text="Preview MentraOS" style={themed($guideTitle)} />
@@ -438,7 +438,7 @@ export function SimulatedPairingGuide() {
 }
 
 export function BrilliantLabsFramePairingGuide() {
-  const {themed, theme} = useAppTheme()
+  const { themed, theme } = useAppTheme()
 
   return (
     <View style={themed($guideContainer)}>
@@ -448,9 +448,9 @@ export function BrilliantLabsFramePairingGuide() {
       <View
         style={[
           themed($guideImage),
-          {backgroundColor: theme.colors.border, justifyContent: "center", alignItems: "center"},
+          { backgroundColor: theme.colors.border, justifyContent: "center", alignItems: "center" },
         ]}>
-        <Text text="Frame" style={{color: theme.colors.text, fontSize: 24}} />
+        <Text text="Frame" style={{ color: theme.colors.text, fontSize: 24 }} />
       </View>
 
       {/* Feature list */}
@@ -470,7 +470,42 @@ export function BrilliantLabsFramePairingGuide() {
   )
 }
 
-export const PairingGuide = ({model}: {model: string}) => {
+export function MetaRayBanPairingGuide() {
+  const { themed } = useAppTheme()
+
+  return (
+    <View style={themed($guideContainer)}>
+      <Text text="Meta Ray-Ban" style={themed($guideTitle)} />
+
+      {/* Product image - using Mentra Live Final image */}
+      <Image
+        source={require("../../../assets/glasses/meta_rayban.png")}
+        style={themed($guideImage)}
+        onError={() => console.log("Meta glasses image failed to load")}
+      />
+
+      {/* Feature list */}
+      <GlassesFeatureList glassesModel="Meta Ray-Ban" />
+
+      {/* Connection instructions */}
+      <View style={{ marginTop: 16 }}>
+        <Text text="How it works:" style={themed($guideStep)} weight="bold" />
+        <Text text="1. Pair your glasses with the Meta AI app first" style={themed($guideStep)} />
+        <Text text="2. Tap 'Continue' to authorize MentraOS" style={themed($guideStep)} />
+        <Text text="3. Approve the connection when Meta AI opens" style={themed($guideStep)} />
+        <Text text="4. Grant camera access for video streaming" style={themed($guideStep)} />
+      </View>
+
+      {/* Note about Meta AI app */}
+      <Text
+        text="Note: You must have the Meta AI app installed and your glasses already paired with it. MentraOS connects through the Meta AI app - not directly via Bluetooth."
+        style={themed($guideDescription)}
+      />
+    </View>
+  )
+}
+
+export const PairingGuide = ({ model }: { model: string }) => {
   switch (model) {
     case DeviceTypes.G1:
       return <G1PairingGuide />
@@ -486,13 +521,15 @@ export const PairingGuide = ({model}: {model: string}) => {
       return <SimulatedPairingGuide />
     case DeviceTypes.FRAME:
       return <BrilliantLabsFramePairingGuide />
+    case DeviceTypes.META_RAYBAN:
+      return <MetaRayBanPairingGuide />
     default:
       return <View />
   }
 }
 
-export const PairingOptions = ({model, continueFn}: {model: string; continueFn?: () => void}) => {
-  const {themed} = useAppTheme()
+export const PairingOptions = ({ model, continueFn }: { model: string; continueFn?: () => void }) => {
+  const { themed } = useAppTheme()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   switch (model) {
     case DeviceTypes.G1:
@@ -518,7 +555,7 @@ export const PairingOptions = ({model, continueFn}: {model: string; continueFn?:
   }
 }
 
-const $buttonsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $buttonsContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   gap: spacing.s6,
   marginBottom: spacing.s6,
 })

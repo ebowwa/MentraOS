@@ -1,15 +1,16 @@
 import CoreModule from "core"
 import Toast from "react-native-toast-message"
 
-import {translate} from "@/i18n"
+import { translate } from "@/i18n"
 import livekit from "@/services/Livekit"
 import mantle from "@/services/MantleManager"
 import restComms from "@/services/RestComms"
 import socketComms from "@/services/SocketComms"
-import {useGlassesStore} from "@/stores/glasses"
-import {SETTINGS, useSettingsStore} from "@/stores/settings"
-import {INTENSE_LOGGING} from "@/utils/Constants"
-import {CoreStatusParser} from "@/utils/CoreStatusParser"
+import { useGlassesStore } from "@/stores/glasses"
+import { useVideoFrameStore } from "@/stores/videoFrame"
+import { SETTINGS, useSettingsStore } from "@/stores/settings"
+import { INTENSE_LOGGING } from "@/utils/Constants"
+import { CoreStatusParser } from "@/utils/CoreStatusParser"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 
 export class MantleBridge {
@@ -192,7 +193,7 @@ export class MantleBridge {
           const enabled = !!data.enabled
           const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
           socketComms.sendSwipeVolumeStatus(enabled, timestamp)
-          GlobalEventEmitter.emit("SWIPE_VOLUME_STATUS", {enabled, timestamp})
+          GlobalEventEmitter.emit("SWIPE_VOLUME_STATUS", { enabled, timestamp })
           break
         }
         case "switch_status": {
@@ -200,7 +201,7 @@ export class MantleBridge {
           const switchValue = typeof data.switch_value === "number" ? data.switch_value : (data.switchValue ?? -1)
           const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now()
           socketComms.sendSwitchStatus(switchType, switchValue, timestamp)
-          GlobalEventEmitter.emit("SWITCH_STATUS", {switchType, switchValue, timestamp})
+          GlobalEventEmitter.emit("SWITCH_STATUS", { switchType, switchValue, timestamp })
           break
         }
         case "rgb_led_control_response": {
@@ -322,6 +323,12 @@ export class MantleBridge {
             fwVersion: data.firmware_version,
             btMacAddress: data.bt_mac_address,
           })
+          break
+        case "video_frame":
+          // Video frame from Meta glasses camera
+          if (data.base64) {
+            useVideoFrameStore.getState().setFrame(data.base64)
+          }
           break
         default:
           console.log("Unknown event type:", data.type)
