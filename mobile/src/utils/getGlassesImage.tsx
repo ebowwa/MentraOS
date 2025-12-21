@@ -35,6 +35,10 @@ export const getGlassesImage = (glasses: string | null) => {
     case "Brilliant Labs Frame":
     case "frame":
       return require("../../assets/glasses/frame.png")
+    case "Meta Ray-Ban":
+    case "meta_rayban":
+      // TODO: Add actual Meta Ray-Ban image asset
+      return require("../../assets/glasses/g1.png") // Placeholder until Meta image is added
     default:
       return require("../../assets/glasses/g1.png")
   }

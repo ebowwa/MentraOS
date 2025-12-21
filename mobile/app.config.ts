@@ -58,7 +58,7 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
       icon: "./assets/app-icons/ic_launcher.png",
       supportsTablet: false,
       requireFullScreen: true,
-      bundleIdentifier: "com.mentra.mentra",
+      bundleIdentifier: "com.ebowwa.mentraos.dev",
       associatedDomains: ["applinks:apps.mentra.glass"],
       infoPlist: {
         NSCameraUsageDescription: "This app needs access to your camera to capture images.",
