@@ -1,24 +1,24 @@
-import {DeviceTypes} from "@/../../cloud/packages/types/src"
-import {useRoute} from "@react-navigation/native"
+import { DeviceTypes } from "@/../../cloud/packages/types/src"
+import { useRoute } from "@react-navigation/native"
 import CoreModule from "core"
-import {Linking, PermissionsAndroid, Platform, ScrollView} from "react-native"
+import { Linking, PermissionsAndroid, Platform, ScrollView } from "react-native"
 
-import {MentraLogoStandalone} from "@/components/brands/MentraLogoStandalone"
-import {Header} from "@/components/ignite"
-import {Screen} from "@/components/ignite/Screen"
-import {PairingGuide, PairingOptions} from "@/components/pairing/GlassesPairingGuides"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {translate} from "@/i18n"
-import {$styles} from "@/theme"
-import {showAlert} from "@/utils/AlertUtils"
-import {PermissionFeatures, checkConnectivityRequirementsUI, requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import {useAppTheme} from "@/utils/useAppTheme"
+import { MentraLogoStandalone } from "@/components/brands/MentraLogoStandalone"
+import { Header } from "@/components/ignite"
+import { Screen } from "@/components/ignite/Screen"
+import { PairingGuide, PairingOptions } from "@/components/pairing/GlassesPairingGuides"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import { translate } from "@/i18n"
+import { $styles } from "@/theme"
+import { showAlert } from "@/utils/AlertUtils"
+import { PermissionFeatures, checkConnectivityRequirementsUI, requestFeaturePermissions } from "@/utils/PermissionsUtils"
+import { useAppTheme } from "@/utils/useAppTheme"
 
 export default function PairingPrepScreen() {
   const route = useRoute()
-  const {themed, theme} = useAppTheme()
-  const {glassesModelName} = route.params as {glassesModelName: string}
-  const {goBack, replace, clearHistoryAndGoHome} = useNavigationHistory()
+  const { themed, theme } = useAppTheme()
+  const { glassesModelName } = route.params as { glassesModelName: string }
+  const { goBack, replace, clearHistoryAndGoHome } = useNavigationHistory()
 
   const advanceToPairing = async () => {
     if (glassesModelName == null || glassesModelName == "") {
@@ -121,7 +121,7 @@ export default function PairingPrepScreen() {
                 showAlert(
                   translate("pairing:bluetoothPermissionRequiredTitle"),
                   translate("pairing:bluetoothPermissionRequiredMessage"),
-                  [{text: translate("common:ok")}],
+                  [{ text: translate("common:ok") }],
                 )
               }
               return
@@ -149,7 +149,7 @@ export default function PairingPrepScreen() {
           showAlert(
             translate("pairing:bluetoothPermissionRequiredTitle"),
             translate("pairing:bluetoothPermissionRequiredMessageAlt"),
-            [{text: translate("common:ok")}],
+            [{ text: translate("common:ok") }],
           )
           return // Stop the connection process
         }
@@ -189,7 +189,7 @@ export default function PairingPrepScreen() {
     } catch (error) {
       console.error("Error requesting permissions:", error)
       showAlert(translate("pairing:errorTitle"), translate("pairing:permissionsError"), [
-        {text: translate("common:ok")},
+        { text: translate("common:ok") },
       ])
       return
     }
@@ -211,7 +211,13 @@ export default function PairingPrepScreen() {
       return
     }
 
-    replace("/pairing/scan", {glassesModelName})
+    // Route Meta glasses to dedicated connect screen (no Bluetooth scan needed)
+    if (glassesModelName === DeviceTypes.META_RAYBAN) {
+      replace("/pairing/meta-connect", { glassesModelName })
+      return
+    }
+
+    replace("/pairing/scan", { glassesModelName })
   }
 
   return (
@@ -222,7 +228,7 @@ export default function PairingPrepScreen() {
         onLeftPress={goBack}
         RightActionComponent={<MentraLogoStandalone />}
       />
-      <ScrollView style={{marginRight: -theme.spacing.s6, paddingRight: theme.spacing.s6}}>
+      <ScrollView style={{ marginRight: -theme.spacing.s6, paddingRight: theme.spacing.s6 }}>
         <PairingGuide model={glassesModelName} />
       </ScrollView>
       <PairingOptions model={glassesModelName} continueFn={advanceToPairing} />

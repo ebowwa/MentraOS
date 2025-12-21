@@ -1,5 +1,5 @@
 import "tsx/cjs"
-import {ExpoConfig, ConfigContext} from "@expo/config"
+import { ExpoConfig, ConfigContext } from "@expo/config"
 
 /**
  * @param config ExpoConfig coming from the static config app.json if it exists
@@ -7,7 +7,7 @@ import {ExpoConfig, ConfigContext} from "@expo/config"
  * You can read more about Expo's Configuration Resolution Rules here:
  * https://docs.expo.dev/workflow/configuration/#configuration-resolution-rules
  */
-module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
+module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
   return {
     ...config,
     name: "MentraOS",
@@ -92,7 +92,8 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
             },
           },
         },
-        UIBackgroundModes: ["bluetooth-central", "audio", "location"],
+        // Meta DAT SDK background modes
+        UIBackgroundModes: ["bluetooth-central", "bluetooth-peripheral", "external-accessory", "audio", "location"],
         NSLocationAlwaysAndWhenInUseUsageDescription:
           "MentraOS requires background location access to deliver continuous updates for apps like navigation and running, even when the app isn't in the foreground.",
         UIRequiresFullScreen: true,
@@ -100,6 +101,26 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown",
         ],
+        // Meta DAT SDK - Required to query if Meta AI app is installed
+        LSApplicationQueriesSchemes: ["fb-viewapp"],
+        // Meta DAT SDK - External accessory protocol for glasses
+        UISupportedExternalAccessoryProtocols: ["com.meta.ar.wearable"],
+        // Meta DAT SDK Configuration
+        MWDAT: {
+          // URL scheme for Meta AI app to call back to MentraOS
+          AppLinkURLScheme: "com.mentra://",
+          // Set to 0 for Developer Mode (no app registration required)
+          MetaAppID: "0",
+          // Client token from Wearables Developer Center (empty for dev mode)
+          ClientToken: "",
+          // Apple Developer Team ID - required for Meta AI to return to our app
+          // This will be set from Xcode's Signing & Capabilities
+          TeamID: "$(DEVELOPMENT_TEAM)",
+          // Opt out of analytics
+          Analytics: {
+            OptOut: true,
+          },
+        },
       },
       config: {
         usesNonExemptEncryption: false,
@@ -191,24 +212,15 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
           },
         },
       ],
-      [
-        "@sentry/react-native/expo",
-        {
-          url: "https://sentry.io/",
-          project: "mentra-os",
-          organization: "mentra-labs",
-          experimental_android: {
-            enableAndroidGradlePlugin: false,
-            autoUploadProguardMapping: true,
-            includeProguardMapping: true,
-            dexguardEnabled: true,
-            uploadNativeSymbols: true,
-            autoUploadNativeSymbols: true,
-            includeNativeSources: true,
-            includeSourceContext: true,
-          },
-        },
-      ],
+      // Sentry disabled - uncomment when auth token is configured
+      // [
+      //   "@sentry/react-native/expo",
+      //   {
+      //     url: "https://sentry.io/",
+      //     project: "mentra-os",
+      //     organization: "mentra-labs",
+      //   },
+      // ],
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc",
       [

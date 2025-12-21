@@ -1,4 +1,4 @@
-import {Platform} from "react-native"
+import { Platform } from "react-native"
 
 export const getGlassesImage = (glasses: string | null) => {
   switch (glasses) {
@@ -37,8 +37,7 @@ export const getGlassesImage = (glasses: string | null) => {
       return require("../../assets/glasses/frame.png")
     case "Meta Ray-Ban":
     case "meta_rayban":
-      // TODO: Add actual Meta Ray-Ban image asset
-      return require("../../assets/glasses/g1.png") // Placeholder until Meta image is added
+      return require("../../assets/glasses/meta_rayban.png")
     default:
       return require("../../assets/glasses/g1.png")
   }
@@ -59,13 +58,13 @@ export const getEvenRealitiesG1Image = (
   // console.log("dark", dark)
 
   // Map style names to file prefixes
-  const styleMap: {[key: string]: string} = {
+  const styleMap: { [key: string]: string } = {
     Round: "a",
     Rectangular: "b",
   }
 
   // Map color names to file suffixes
-  const colorMap: {[key: string]: string} = {
+  const colorMap: { [key: string]: string } = {
     Grey: "grey1",
     Brown: "brown1",
     Green: "green1",
@@ -104,7 +103,7 @@ export const getEvenRealitiesG1Image = (
 
   // console.log("imageKey", imageKey)
   // Static mapping of all possible image combinations (regular + dark)
-  const imageMap: {[key: string]: any} = {
+  const imageMap: { [key: string]: any } = {
     // Round Brown Left - Regular
     a_brown1_l_wearing: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_wearing.png"),
     a_brown1_l_folded: require("../../assets/glasses/even_realities/g1/image_g1_a_brown1_l_folded.png"),
