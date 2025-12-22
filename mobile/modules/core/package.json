@@ -30,7 +30,9 @@
   "author": "fossephate <6175367+fossephate@users.noreply.github.com> (https://github.com/fossephate)",
   "license": "MIT",
   "homepage": "https://github.com/fossephate/core#readme",
-  "dependencies": {},
+  "dependencies": {
+    "xcode": "^3.0.1"
+  },
   "devDependencies": {
     "expo-module-scripts": "^5.0.7"
   },

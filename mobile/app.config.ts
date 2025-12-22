@@ -1,5 +1,5 @@
 import "tsx/cjs"
-import { ExpoConfig, ConfigContext } from "@expo/config"
+import {ExpoConfig, ConfigContext} from "@expo/config"
 
 /**
  * @param config ExpoConfig coming from the static config app.json if it exists
@@ -7,7 +7,7 @@ import { ExpoConfig, ConfigContext } from "@expo/config"
  * You can read more about Expo's Configuration Resolution Rules here:
  * https://docs.expo.dev/workflow/configuration/#configuration-resolution-rules
  */
-module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
+module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
   return {
     ...config,
     name: "MentraOS",
@@ -212,15 +212,24 @@ module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
           },
         },
       ],
-      // Sentry disabled - uncomment when auth token is configured
-      // [
-      //   "@sentry/react-native/expo",
-      //   {
-      //     url: "https://sentry.io/",
-      //     project: "mentra-os",
-      //     organization: "mentra-labs",
-      //   },
-      // ],
+      [
+        "@sentry/react-native/expo",
+        {
+          url: "https://sentry.io/",
+          project: "mentra-os",
+          organization: "mentra-labs",
+          experimental_android: {
+            enableAndroidGradlePlugin: false,
+            autoUploadProguardMapping: true,
+            includeProguardMapping: true,
+            dexguardEnabled: true,
+            uploadNativeSymbols: true,
+            autoUploadNativeSymbols: true,
+            includeNativeSources: true,
+            includeSourceContext: true,
+          },
+        },
+      ],
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc",
       [

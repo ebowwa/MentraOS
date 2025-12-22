@@ -3,6 +3,23 @@
     "version": ">= 3.15.1"
   },
   "build": {
+    "release:local": {
+      "extends": "production",
+      "distribution": "internal",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": false
+      }
+    },
+    "release:local:simulator": {
+      "extends": "release:local",
+      "ios": {
+        "simulator": true
+      }
+    },
     "development": {
       "extends": "production",
       "distribution": "internal",
@@ -25,12 +42,18 @@
     "preview": {
       "extends": "production",
       "distribution": "internal",
-      "ios": {"simulator": true},
-      "android": {"buildType": "apk"}
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "preview:device": {
       "extends": "preview",
-      "ios": {"simulator": false}
+      "ios": {
+        "simulator": false
+      }
     },
     "production": {}
   },

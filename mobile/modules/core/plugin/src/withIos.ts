@@ -1,8 +1,8 @@
-import { execSync } from "child_process"
+import {execSync} from "child_process"
 import fs from "fs"
 import path from "path"
 
-import { type ConfigPlugin, withPodfile, withDangerousMod, withAppDelegate } from "expo/config-plugins"
+import {type ConfigPlugin, withPodfile, withDangerousMod, withAppDelegate} from "expo/config-plugins"
 
 /**
  * Add project specification after platform declaration
@@ -90,7 +90,7 @@ const withXcodeEnvLocal: ConfigPlugin = config => {
     async config => {
       try {
         // Get node executable path
-        const nodeExecutable = execSync("which node", { encoding: "utf-8" }).trim()
+        const nodeExecutable = execSync("which node", {encoding: "utf-8"}).trim()
 
         // Path to .xcode.env.local
         const iosPath = path.join(config.modRequest.platformProjectRoot)
@@ -136,7 +136,8 @@ const withMetaUrlHandler: ConfigPlugin = config => {
     // Look for the existing openURL method and inject Meta handling at the start
     // Pattern: public override func application(_ app: UIApplication, open url: URL, options: ...) -> Bool {
     //            return super.application(app, open: url, options: options) || RCTLinkingManager...
-    const openUrlMethodRegex = /(public override func application\(\s*_ app: UIApplication,\s*open url: URL,\s*options:[^)]+\)\s*->\s*Bool\s*\{\s*\n)(\s*return )/
+    const openUrlMethodRegex =
+      /(public override func application\(\s*_ app: UIApplication,\s*open url: URL,\s*options:[^)]+\)\s*->\s*Bool\s*\{\s*\n)(\s*return )/
 
     const match = contents.match(openUrlMethodRegex)
     if (match) {
@@ -160,7 +161,8 @@ const withMetaUrlHandler: ConfigPlugin = config => {
 
 /**
  * Add Meta Wearables DAT SDK Swift Package to Xcode project
- * This automates adding the SPM dependency so you don't have to do it manually after prebuild
+ * Uses regex-based manipulation (xcode package has serialization issues with SPM structures)
+ * @see https://x.com/simulationapi
  */
 const withMetaWearablesSPM: ConfigPlugin = config => {
   return withDangerousMod(config, [
@@ -184,172 +186,180 @@ const withMetaWearablesSPM: ConfigPlugin = config => {
 
       console.log("[withMetaWearablesSPM] Adding MetaWearablesDAT Swift Package...")
 
-      // Generate UUIDs for the package reference and dependencies
-      const packageRefId = generatePbxUUID()
-      const mwdatCoreDepId = generatePbxUUID()
-      const mwdatCameraDepId = generatePbxUUID()
-      const mwdatCoreProdId = generatePbxUUID()
-      const mwdatCameraProdId = generatePbxUUID()
-      const frameworkBuildPhaseId = findFrameworksBuildPhaseId(projectContent)
+      // Generate UUIDs (24 hex characters)
+      const generateUuid = (): string => {
+        const chars = "0123456789ABCDEF"
+        let uuid = ""
+        for (let i = 0; i < 24; i++) {
+          uuid += chars[Math.floor(Math.random() * 16)]
+        }
+        return uuid
+      }
 
-      // 1. Add XCRemoteSwiftPackageReference to the project
-      const packageReference = `
-		${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/facebook/meta-wearables-dat-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.3.0;
-			};
-		};`
+      const packageRefId = generateUuid()
+      const mwdatCoreDepId = generateUuid()
+      const mwdatCameraDepId = generateUuid()
+      const mwdatCoreBuildFileId = generateUuid()
+      const mwdatCameraBuildFileId = generateUuid()
 
-      // 2. Add XCSwiftPackageProductDependency entries
-      const productDependencies = `
-		${mwdatCoreDepId} /* MWDATCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
-			productName = MWDATCore;
-		};
-		${mwdatCameraDepId} /* MWDATCamera */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
-			productName = MWDATCamera;
-		};`
+      // Find project root object UUID using regex
+      const rootObjMatch = projectContent.match(/rootObject = ([A-F0-9]{24})/)
+      const projectUuid = rootObjMatch ? rootObjMatch[1] : null
 
-      // 3. Add PBXBuildFile entries for the frameworks
-      const buildFileEntries = `
-		${mwdatCoreProdId} /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = ${mwdatCoreDepId} /* MWDATCore */; };
-		${mwdatCameraProdId} /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = ${mwdatCameraDepId} /* MWDATCamera */; };`
+      // Find main target UUID (look for PBXNativeTarget with productType = application)
+      const targetMatch = projectContent.match(/([A-F0-9]{24}) \/\* MentraOS \*\/ = \{\s*isa = PBXNativeTarget/)
+      const targetUuid = targetMatch ? targetMatch[1] : null
 
-      // Insert package reference into XCRemoteSwiftPackageReference section (or create it)
-      if (projectContent.includes("/* Begin XCRemoteSwiftPackageReference section */")) {
+      // Find Frameworks build phase ID
+      const frameworksMatch = projectContent.match(
+        /([A-F0-9]{24}) \/\* Frameworks \*\/ = \{\s*isa = PBXFrameworksBuildPhase/,
+      )
+      const frameworksBuildPhaseId = frameworksMatch ? frameworksMatch[1] : null
+
+      // 1. Add PBXBuildFile entries
+      const buildFileEntry = `\t\t${mwdatCoreBuildFileId} /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = ${mwdatCoreDepId} /* MWDATCore */; };
+\t\t${mwdatCameraBuildFileId} /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = ${mwdatCameraDepId} /* MWDATCamera */; };`
+
+      projectContent = projectContent.replace(
+        "/* Begin PBXBuildFile section */",
+        `/* Begin PBXBuildFile section */\n${buildFileEntry}`,
+      )
+
+      // 2. Add to Frameworks build phase files
+      if (frameworksBuildPhaseId) {
+        const frameworkFilesRegex = new RegExp(`(${frameworksBuildPhaseId}[^}]+files = \\()`, "s")
         projectContent = projectContent.replace(
-          "/* Begin XCRemoteSwiftPackageReference section */",
-          `/* Begin XCRemoteSwiftPackageReference section */${packageReference}`
+          frameworkFilesRegex,
+          `$1\n\t\t\t\t${mwdatCoreBuildFileId} /* MWDATCore in Frameworks */,\n\t\t\t\t${mwdatCameraBuildFileId} /* MWDATCamera in Frameworks */,`,
         )
-      } else {
-        // Create the section before XCSwiftPackageProductDependency or at end
-        const insertPoint = projectContent.lastIndexOf("/* End XCConfigurationList section */")
-        if (insertPoint !== -1) {
-          const sectionToInsert = `
-/* Begin XCRemoteSwiftPackageReference section */${packageReference}
-/* End XCRemoteSwiftPackageReference section */
+      }
 
-`
-          projectContent = projectContent.slice(0, insertPoint) + sectionToInsert + projectContent.slice(insertPoint)
+      // 3. Add packageReferences to PBXProject (insert after targets array)
+      if (projectUuid) {
+        // Find the targets = (...); line in PBXProject and add packageReferences after it
+        const targetsEndRegex = new RegExp(`(${projectUuid}[\\s\\S]*?targets = \\([\\s\\S]*?\\);)`, "m")
+        if (!projectContent.includes("packageReferences = (")) {
+          projectContent = projectContent.replace(
+            targetsEndRegex,
+            `$1\n\t\t\tpackageReferences = (\n\t\t\t\t${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,\n\t\t\t);`,
+          )
         }
       }
 
-      // Insert product dependencies into XCSwiftPackageProductDependency section (or create it)
+      // 4. Add packageProductDependencies to target
+      if (targetUuid) {
+        const targetRegex = new RegExp(`(${targetUuid}[^}]+)(productName)`, "s")
+        if (!projectContent.match(new RegExp(`${targetUuid}[^}]+packageProductDependencies`))) {
+          projectContent = projectContent.replace(
+            targetRegex,
+            `$1packageProductDependencies = (\n\t\t\t\t${mwdatCoreDepId} /* MWDATCore */,\n\t\t\t\t${mwdatCameraDepId} /* MWDATCamera */,\n\t\t\t);\n\t\t\t$2`,
+          )
+        }
+      }
+
+      // 5. Add XCRemoteSwiftPackageReference section
+      const packageRefSection = `/* Begin XCRemoteSwiftPackageReference section */
+\t\t${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+\t\t\tisa = XCRemoteSwiftPackageReference;
+\t\t\trepositoryURL = "https://github.com/facebook/meta-wearables-dat-ios";
+\t\t\trequirement = {
+\t\t\t\tkind = upToNextMajorVersion;
+\t\t\t\tminimumVersion = 0.3.0;
+\t\t\t};
+\t\t};
+/* End XCRemoteSwiftPackageReference section */
+
+`
+      if (projectContent.includes("/* Begin XCRemoteSwiftPackageReference section */")) {
+        projectContent = projectContent.replace(
+          /\/\* Begin XCRemoteSwiftPackageReference section \*\/\n/,
+          `/* Begin XCRemoteSwiftPackageReference section */
+\t\t${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+\t\t\tisa = XCRemoteSwiftPackageReference;
+\t\t\trepositoryURL = "https://github.com/facebook/meta-wearables-dat-ios";
+\t\t\trequirement = {
+\t\t\t\tkind = upToNextMajorVersion;
+\t\t\t\tminimumVersion = 0.3.0;
+\t\t\t};
+\t\t};
+`,
+        )
+      } else {
+        const insertPoint = projectContent.lastIndexOf("/* End XCConfigurationList section */")
+        if (insertPoint !== -1) {
+          const endOfSection = projectContent.indexOf("\n", insertPoint) + 1
+          projectContent =
+            projectContent.slice(0, endOfSection) + "\n" + packageRefSection + projectContent.slice(endOfSection)
+        }
+      }
+
+      // 6. Add XCSwiftPackageProductDependency section
+      const productDepSection = `/* Begin XCSwiftPackageProductDependency section */
+\t\t${mwdatCoreDepId} /* MWDATCore */ = {
+\t\t\tisa = XCSwiftPackageProductDependency;
+\t\t\tpackage = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+\t\t\tproductName = MWDATCore;
+\t\t};
+\t\t${mwdatCameraDepId} /* MWDATCamera */ = {
+\t\t\tisa = XCSwiftPackageProductDependency;
+\t\t\tpackage = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+\t\t\tproductName = MWDATCamera;
+\t\t};
+/* End XCSwiftPackageProductDependency section */
+
+`
       if (projectContent.includes("/* Begin XCSwiftPackageProductDependency section */")) {
         projectContent = projectContent.replace(
-          "/* Begin XCSwiftPackageProductDependency section */",
-          `/* Begin XCSwiftPackageProductDependency section */${productDependencies}`
+          /\/\* Begin XCSwiftPackageProductDependency section \*\/\n/,
+          `/* Begin XCSwiftPackageProductDependency section */
+\t\t${mwdatCoreDepId} /* MWDATCore */ = {
+\t\t\tisa = XCSwiftPackageProductDependency;
+\t\t\tpackage = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+\t\t\tproductName = MWDATCore;
+\t\t};
+\t\t${mwdatCameraDepId} /* MWDATCamera */ = {
+\t\t\tisa = XCSwiftPackageProductDependency;
+\t\t\tpackage = ${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */;
+\t\t\tproductName = MWDATCamera;
+\t\t};
+`,
         )
       } else {
         const insertPoint = projectContent.lastIndexOf("/* End XCRemoteSwiftPackageReference section */")
         if (insertPoint !== -1) {
           const endOfSection = projectContent.indexOf("\n", insertPoint) + 1
-          const sectionToInsert = `
-/* Begin XCSwiftPackageProductDependency section */${productDependencies}
-/* End XCSwiftPackageProductDependency section */
-
-`
-          projectContent = projectContent.slice(0, endOfSection) + sectionToInsert + projectContent.slice(endOfSection)
-        }
-      }
-
-      // Insert build file entries into PBXBuildFile section
-      projectContent = projectContent.replace(
-        "/* Begin PBXBuildFile section */",
-        `/* Begin PBXBuildFile section */${buildFileEntries}`
-      )
-
-      // Add to packageReferences in PBXProject section
-      const packageRefsMatch = projectContent.match(/packageReferences = \(\s*\n([^)]*)\);/)
-      if (packageRefsMatch) {
-        const newPackageRef = `				${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,\n`
-        projectContent = projectContent.replace(
-          packageRefsMatch[0],
-          packageRefsMatch[0].replace("packageReferences = (\n", `packageReferences = (\n${newPackageRef}`)
-        )
-      } else {
-        // Add packageReferences array to PBXProject if it doesn't exist
-        const projectSectionMatch = projectContent.match(/(\s+buildConfigurationList = [^;]+;)(\s+compatibilityVersion)/)
-        if (projectSectionMatch) {
-          const newPackageRefs = `\n				packageReferences = (\n					${packageRefId} /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,\n				);`
-          projectContent = projectContent.replace(
-            projectSectionMatch[0],
-            projectSectionMatch[1] + newPackageRefs + projectSectionMatch[2]
-          )
-        }
-      }
-
-      // Add packageProductDependencies to target
-      const targetPackageDepsMatch = projectContent.match(/packageProductDependencies = \(\s*\n([^)]*)\);/)
-      if (targetPackageDepsMatch) {
-        const newDeps = `				${mwdatCoreDepId} /* MWDATCore */,\n				${mwdatCameraDepId} /* MWDATCamera */,\n`
-        projectContent = projectContent.replace(
-          targetPackageDepsMatch[0],
-          targetPackageDepsMatch[0].replace("packageProductDependencies = (\n", `packageProductDependencies = (\n${newDeps}`)
-        )
-      } else {
-        // Add packageProductDependencies array to target
-        const targetMatch = projectContent.match(/(name = MentraOS;\s+packageProductDependencies)|(productName = MentraOS;\s+productReference)/)
-        if (targetMatch) {
-          // Find the target section and add packageProductDependencies
-          const buildRulesMatch = projectContent.match(/buildRules = \(\s*\);/)
-          if (buildRulesMatch) {
-            const newDeps = `\n				packageProductDependencies = (\n					${mwdatCoreDepId} /* MWDATCore */,\n					${mwdatCameraDepId} /* MWDATCamera */,\n				);`
-            projectContent = projectContent.replace(
-              buildRulesMatch[0],
-              buildRulesMatch[0] + newDeps
-            )
-          }
-        }
-      }
-
-      // Add to Frameworks build phase
-      if (frameworkBuildPhaseId) {
-        const frameworkFilesMatch = projectContent.match(new RegExp(`${frameworkBuildPhaseId}[^}]+files = \\(\\s*\\n([^)]*)`))
-        if (frameworkFilesMatch) {
-          const newFiles = `				${mwdatCoreProdId} /* MWDATCore in Frameworks */,\n				${mwdatCameraProdId} /* MWDATCamera in Frameworks */,\n`
-          projectContent = projectContent.replace(
-            frameworkFilesMatch[0],
-            frameworkFilesMatch[0].replace("files = (\n", `files = (\n${newFiles}`)
-          )
+          projectContent =
+            projectContent.slice(0, endOfSection) + "\n" + productDepSection + projectContent.slice(endOfSection)
         }
       }
 
       fs.writeFileSync(projectPath, projectContent, "utf-8")
       console.log("[withMetaWearablesSPM] Successfully added MetaWearablesDAT Swift Package!")
 
+      // Resolve SPM package dependencies (download from GitHub)
+      console.log("[withMetaWearablesSPM] Resolving package dependencies...")
+      try {
+        const xcprojPath = path.join(projectRoot, "MentraOS.xcodeproj")
+        execSync(`xcodebuild -project "${xcprojPath}" -resolvePackageDependencies`, {
+          cwd: projectRoot,
+          stdio: "pipe",
+          timeout: 120000, // 2 minute timeout
+        })
+        console.log("[withMetaWearablesSPM] Package dependencies resolved successfully!")
+      } catch (error: any) {
+        console.warn("[withMetaWearablesSPM] Failed to resolve package dependencies automatically.")
+        console.warn("[withMetaWearablesSPM] You may need to open Xcode and let it resolve packages.")
+        if (error.message) {
+          console.warn("[withMetaWearablesSPM] Error:", error.message.slice(0, 200))
+        }
+      }
+
       return config
     },
   ])
 }
 
-/**
- * Generate a unique ID for pbxproj entries (24 hex chars)
- */
-function generatePbxUUID(): string {
-  const chars = "0123456789ABCDEF"
-  let uuid = ""
-  for (let i = 0; i < 24; i++) {
-    uuid += chars[Math.floor(Math.random() * 16)]
-  }
-  return uuid
-}
-
-/**
- * Find the Frameworks build phase ID for the main target
- */
-function findFrameworksBuildPhaseId(content: string): string | null {
-  const match = content.match(/([A-F0-9]{24}) \/\* Frameworks \*\/ = \{\s*isa = PBXFrameworksBuildPhase/)
-  return match ? match[1] : null
-}
-
-export const withIosConfiguration: ConfigPlugin<{ node?: boolean }> = (config, props) => {
+export const withIosConfiguration: ConfigPlugin<{node?: boolean}> = (config, props) => {
   config = modifyPodfile(config)
   config = withMetaUrlHandler(config)
   config = withMetaWearablesSPM(config)
