@@ -71,6 +71,14 @@ public final class MetaStreamSession: ObservableObject {
         streamingStatus != .stopped
     }
     
+    // MARK: - Configuration Properties
+    
+    /// Configured streaming resolution (low, medium, high)
+    public private(set) var configuredResolution: StreamingResolution
+    
+    /// Configured frame rate (15-30 fps)
+    public private(set) var configuredFrameRate: UInt
+    
     // MARK: - Private Properties
     
     private var streamSession: StreamSession?
@@ -85,18 +93,23 @@ public final class MetaStreamSession: ObservableObject {
     
     private var timerTask: Task<Void, Never>?
     
-    // MARK: - Initialization
-    
     /// Create a new streaming session.
-    /// - Parameter wearables: The wearables interface from the SDK
-    public init(wearables: WearablesInterface) {
+    /// - Parameters:
+    ///   - wearables: The wearables interface from the SDK
+    ///   - resolution: Streaming resolution (default: .medium)
+    ///   - frameRate: Frame rate 15-30 fps (default: 24)
+    public init(wearables: WearablesInterface, resolution: StreamingResolution = .medium, frameRate: UInt = 24) {
         self.wearables = wearables
+        self.configuredResolution = resolution
+        self.configuredFrameRate = max(15, min(30, frameRate))
         setupStreamSession(with: wearables)
     }
     
     /// Create a mock streaming session for testing
     public init() {
         self.wearables = nil
+        self.configuredResolution = .medium
+        self.configuredFrameRate = 24
     }
     
     deinit {
@@ -111,11 +124,12 @@ public final class MetaStreamSession: ObservableObject {
         let deviceSelector = AutoDeviceSelector(wearables: wearables)
         self.deviceSelector = deviceSelector
         
-        // Configure stream session
+        // Configure stream session with specified resolution and frame rate
+        Bridge.log("META: Configuring stream - resolution: \(configuredResolution), frameRate: \(configuredFrameRate)")
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
-            resolution: StreamingResolution.low,
-            frameRate: 24
+            resolution: configuredResolution,
+            frameRate: configuredFrameRate
         )
         
         let streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
@@ -137,7 +151,7 @@ public final class MetaStreamSession: ObservableObject {
         }
         
         // Subscribe to video frames
-        videoFrameListenerToken = streamSession.videoFramePublisher.listen { [weak self] videoFrame in
+        videoFrameListenerToken = streamSession.videoFramePublisher.listen { [weak self] (videoFrame: VideoFrame) in
             Bridge.log("META: Frame received from glasses")
             Task { @MainActor [weak self] in
                 guard let self = self else {
@@ -158,7 +172,7 @@ public final class MetaStreamSession: ObservableObject {
         }
         
         // Subscribe to errors
-        errorListenerToken = streamSession.errorPublisher.listen { [weak self] error in
+        errorListenerToken = streamSession.errorPublisher.listen { [weak self] (error: StreamSessionError) in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 let newErrorMessage = self.formatStreamingError(error)
@@ -169,7 +183,7 @@ public final class MetaStreamSession: ObservableObject {
         }
         
         // Subscribe to photo captures
-        photoDataListenerToken = streamSession.photoDataPublisher.listen { [weak self] photoData in
+        photoDataListenerToken = streamSession.photoDataPublisher.listen { [weak self] (photoData: PhotoData) in
             Task { @MainActor [weak self] in
                 guard let self = self else { return }
                 if let uiImage = UIImage(data: photoData.data) {

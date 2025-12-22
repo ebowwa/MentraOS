@@ -1,30 +1,31 @@
 import CoreModule from "core"
-import {Platform, View, ViewStyle} from "react-native"
+import { Platform, View, ViewStyle } from "react-native"
 
 import OtaProgressSection from "@/components/glasses/OtaProgressSection"
-import {BatteryStatus} from "@/components/glasses/info/BatteryStatus"
-import {EmptyState} from "@/components/glasses/info/EmptyState"
-import {ButtonSettings} from "@/components/glasses/settings/ButtonSettings"
-import {Icon} from "@/components/ignite"
+import { BatteryStatus } from "@/components/glasses/info/BatteryStatus"
+import { EmptyState } from "@/components/glasses/info/EmptyState"
+import { ButtonSettings } from "@/components/glasses/settings/ButtonSettings"
+import { MetaStreamingSettings } from "@/components/glasses/settings/MetaStreamingSettings"
+import { Icon } from "@/components/ignite"
 import BrightnessSetting from "@/components/settings/BrightnessSetting"
-import {Group} from "@/components/ui/Group"
-import {RouteButton} from "@/components/ui/RouteButton"
-import {Spacer} from "@/components/ui/Spacer"
-import {useCoreStatus} from "@/contexts/CoreStatusProvider"
-import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import {translate} from "@/i18n/translate"
-import {useApplets} from "@/stores/applets"
-import {useGlassesStore} from "@/stores/glasses"
-import {SETTINGS, useSetting} from "@/stores/settings"
-import {ThemedStyle} from "@/theme"
+import { Group } from "@/components/ui/Group"
+import { RouteButton } from "@/components/ui/RouteButton"
+import { Spacer } from "@/components/ui/Spacer"
+import { useCoreStatus } from "@/contexts/CoreStatusProvider"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import { translate } from "@/i18n/translate"
+import { useApplets } from "@/stores/applets"
+import { useGlassesStore } from "@/stores/glasses"
+import { SETTINGS, useSetting } from "@/stores/settings"
+import { ThemedStyle } from "@/theme"
 import showAlert from "@/utils/AlertUtils"
-import {useAppTheme} from "@/utils/useAppTheme"
+import { useAppTheme } from "@/utils/useAppTheme"
 
-import {Capabilities, DeviceTypes, getModelCapabilities} from "@/../../cloud/packages/types/src"
+import { Capabilities, DeviceTypes, getModelCapabilities } from "@/../../cloud/packages/types/src"
 
 export default function DeviceSettings() {
-  const {theme, themed} = useAppTheme()
-  const {status} = useCoreStatus()
+  const { theme, themed } = useAppTheme()
+  const { status } = useCoreStatus()
   const [defaultWearable] = useSetting(SETTINGS.default_wearable.key)
   const [autoBrightness, setAutoBrightness] = useSetting(SETTINGS.auto_brightness.key)
   const [brightness, setBrightness] = useSetting(SETTINGS.brightness.key)
@@ -35,7 +36,7 @@ export default function DeviceSettings() {
   const glassesConnected = useGlassesStore(state => state.connected)
   const glassesModelName = useGlassesStore(state => state.modelName)
 
-  const {push, goBack} = useNavigationHistory()
+  const { push, goBack } = useNavigationHistory()
   const applets = useApplets()
   const features: Capabilities = getModelCapabilities(defaultWearable)
 
@@ -57,7 +58,7 @@ export default function DeviceSettings() {
       translate("settings:forgetGlasses"),
       translate("settings:forgetGlassesConfirm"),
       [
-        {text: translate("common:cancel"), style: "cancel"},
+        { text: translate("common:cancel"), style: "cancel" },
         {
           text: "Unpair",
           onPress: () => {
@@ -77,7 +78,7 @@ export default function DeviceSettings() {
       translate("settings:disconnectGlassesTitle"),
       translate("settings:disconnectGlassesConfirm"),
       [
-        {text: translate("common:cancel"), style: "cancel"},
+        { text: translate("common:cancel"), style: "cancel" },
         {
           text: "Disconnect",
           onPress: () => {
@@ -101,7 +102,7 @@ export default function DeviceSettings() {
       {/* Screen settings for binocular glasses */}
       <Group
         title={translate("deviceSettings:display")}
-        // subtitle={translate("settings:screenDescription")}
+      // subtitle={translate("settings:screenDescription")}
       >
         {defaultWearable && (features?.display?.count ?? 0 > 1) && (
           <RouteButton
@@ -128,7 +129,7 @@ export default function DeviceSettings() {
             autoBrightnessValue={autoBrightness}
             brightnessValue={brightness}
             onAutoBrightnessChange={setAutoBrightness}
-            onBrightnessChange={() => {}}
+            onBrightnessChange={() => { }}
             onBrightnessSet={setBrightness}
           />
         )}
@@ -167,7 +168,7 @@ export default function DeviceSettings() {
           icon={<Icon name="wifi" size={24} color={theme.colors.secondary_foreground} />}
           label={translate("settings:glassesWifiSettings")}
           onPress={() => {
-            push("/pairing/glasseswifisetup", {deviceModel: defaultWearable || "Glasses"})
+            push("/pairing/glasseswifisetup", { deviceModel: defaultWearable || "Glasses" })
           }}
         />
       )}
@@ -177,6 +178,11 @@ export default function DeviceSettings() {
       {/* OTA Progress Section - Only show for Mentra Live glasses */}
       {defaultWearable && glassesConnected && defaultWearable.includes(DeviceTypes.LIVE) && (
         <OtaProgressSection otaProgress={status.ota_progress} />
+      )}
+
+      {/* Meta Streaming Settings - Only show for Meta Ray-Ban glasses */}
+      {defaultWearable && glassesConnected && defaultWearable.includes(DeviceTypes.META_RAYBAN) && (
+        <MetaStreamingSettings />
       )}
 
       <Group title={translate("deviceSettings:general")}>
@@ -230,6 +236,6 @@ export default function DeviceSettings() {
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $container: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   gap: spacing.s6,
 })

@@ -11,6 +11,7 @@ import Foundation
 import SwiftUI
 import Combine
 import MWDATCore
+import MWDATCamera
 
 /// Manager for Meta Ray-Ban smart glasses integration.
 ///
@@ -59,6 +60,14 @@ public final class MetaGlassesManager: ObservableObject {
     private var activeDeviceTask: Task<Void, Never>?
     private var deviceSelector: AutoDeviceSelector?
     private var compatibilityListenerTokens: [DeviceIdentifier: AnyListenerToken] = [:]
+    
+    // MARK: - Streaming Configuration
+    
+    /// Configured streaming resolution (default: .medium)
+    public private(set) var streamingResolution: StreamingResolution = .medium
+    
+    /// Configured frame rate (default: 24 fps)
+    public private(set) var streamingFrameRate: UInt = 24
     
     // MARK: - Initialization
     
@@ -327,8 +336,35 @@ public final class MetaGlassesManager: ObservableObject {
             Bridge.log("META: createStreamSession - wearables is nil, returning mock session")
             return MetaStreamSession()
         }
-        Bridge.log("META: createStreamSession - creating real session with wearables")
-        return MetaStreamSession(wearables: wearables)
+        Bridge.log("META: createStreamSession - creating real session with resolution: \(streamingResolution), frameRate: \(streamingFrameRate)")
+        return MetaStreamSession(wearables: wearables, resolution: streamingResolution, frameRate: streamingFrameRate)
+    }
+    
+    /// Configure streaming resolution and frame rate.
+    /// - Parameters:
+    ///   - resolution: Streaming resolution (low, medium, high)
+    ///   - frameRate: Frame rate in fps (15-30)
+    public func configureStreaming(resolution: StreamingResolution, frameRate: UInt) {
+        streamingResolution = resolution
+        streamingFrameRate = max(15, min(30, frameRate))
+        Bridge.log("META: Configured streaming - resolution: \(streamingResolution), frameRate: \(streamingFrameRate)")
+    }
+    
+    /// Configure streaming from string resolution name.
+    /// - Parameters:
+    ///   - resolutionName: Resolution name ("low", "medium", "high")
+    ///   - frameRate: Frame rate in fps (15-30)
+    public func configureStreaming(resolutionName: String, frameRate: Int) {
+        let resolution: StreamingResolution
+        switch resolutionName.lowercased() {
+        case "low":
+            resolution = .low
+        case "high":
+            resolution = .high
+        default:
+            resolution = .medium
+        }
+        configureStreaming(resolution: resolution, frameRate: UInt(max(15, min(30, frameRate))))
     }
     
     // MARK: - Private Helpers

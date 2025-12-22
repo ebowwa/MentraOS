@@ -1,6 +1,9 @@
-import {NativeModule, requireNativeModule} from "expo"
+import { NativeModule, requireNativeModule } from "expo"
 
-import {CoreModuleEvents} from "./Core.types"
+import { CoreModuleEvents } from "./Core.types"
+
+/** Available streaming resolution options for Meta glasses */
+export type MetaStreamingResolution = "low" | "medium" | "high"
 
 declare class CoreModule extends NativeModule<CoreModuleEvents> {
   // status:
@@ -46,6 +49,10 @@ declare class CoreModule extends NativeModule<CoreModuleEvents> {
   startRtmpStream(params: Record<string, any>): Promise<void>
   stopRtmpStream(): Promise<void>
   keepRtmpStreamAlive(params: Record<string, any>): Promise<void>
+
+  // Meta Streaming Configuration
+  /** Configure Meta glasses streaming resolution and frame rate */
+  configureMetaStreaming(resolution: MetaStreamingResolution, frameRate: number): Promise<void>
 
   // Microphone Commands
   microphoneStateChange(requiredDataStrings: string[], bypassVad: boolean): Promise<void>

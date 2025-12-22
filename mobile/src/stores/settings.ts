@@ -1,10 +1,10 @@
-import {getTimeZone} from "react-native-localize"
-import {AsyncResult, result as Res, Result} from "typesafe-ts"
-import {create} from "zustand"
-import {subscribeWithSelector} from "zustand/middleware"
+import { getTimeZone } from "react-native-localize"
+import { AsyncResult, result as Res, Result } from "typesafe-ts"
+import { create } from "zustand"
+import { subscribeWithSelector } from "zustand/middleware"
 
 import restComms from "@/services/RestComms"
-import {storage} from "@/utils/storage"
+import { storage } from "@/utils/storage"
 
 interface Setting {
   key: string
@@ -22,7 +22,7 @@ interface Setting {
 
 export const SETTINGS: Record<string, Setting> = {
   // feature flags / mantle settings:
-  dev_mode: {key: "dev_mode", defaultValue: () => __DEV__, writable: true, saveOnServer: true, persist: true},
+  dev_mode: { key: "dev_mode", defaultValue: () => __DEV__, writable: true, saveOnServer: true, persist: true },
   enable_squircles: {
     key: "enable_squircles",
     defaultValue: () => true,
@@ -82,9 +82,9 @@ export const SETTINGS: Record<string, Setting> = {
     saveOnServer: true,
     persist: true,
   },
-  location_tier: {key: "location_tier", defaultValue: () => "", writable: true, saveOnServer: true, persist: true},
+  location_tier: { key: "location_tier", defaultValue: () => "", writable: true, saveOnServer: true, persist: true },
   // state:
-  core_token: {key: "core_token", defaultValue: () => "", writable: true, saveOnServer: true, persist: true},
+  core_token: { key: "core_token", defaultValue: () => "", writable: true, saveOnServer: true, persist: true },
   default_wearable: {
     key: "default_wearable",
     defaultValue: () => "",
@@ -92,7 +92,7 @@ export const SETTINGS: Record<string, Setting> = {
     saveOnServer: true,
     persist: true,
   },
-  device_name: {key: "device_name", defaultValue: () => "", writable: true, saveOnServer: true, persist: true},
+  device_name: { key: "device_name", defaultValue: () => "", writable: true, saveOnServer: true, persist: true },
   device_address: {
     key: "device_address",
     defaultValue: () => "",
@@ -225,8 +225,8 @@ export const SETTINGS: Record<string, Setting> = {
     saveOnServer: true,
     persist: true,
   },
-  head_up_angle: {key: "head_up_angle", defaultValue: () => 45, writable: true, saveOnServer: true, persist: true},
-  brightness: {key: "brightness", defaultValue: () => 50, writable: true, saveOnServer: true, persist: true},
+  head_up_angle: { key: "head_up_angle", defaultValue: () => 45, writable: true, saveOnServer: true, persist: true },
+  brightness: { key: "brightness", defaultValue: () => 50, writable: true, saveOnServer: true, persist: true },
   auto_brightness: {
     key: "auto_brightness",
     defaultValue: () => true,
@@ -249,7 +249,7 @@ export const SETTINGS: Record<string, Setting> = {
     persist: true,
   },
   // button settings
-  button_mode: {key: "button_mode", defaultValue: () => "photo", writable: true, saveOnServer: true, persist: true},
+  button_mode: { key: "button_mode", defaultValue: () => "photo", writable: true, saveOnServer: true, persist: true },
   button_photo_size: {
     key: "button_photo_size",
     defaultValue: () => "large",
@@ -259,7 +259,7 @@ export const SETTINGS: Record<string, Setting> = {
   },
   button_video_settings: {
     key: "button_video_settings",
-    defaultValue: () => ({width: 1920, height: 1080, fps: 30}),
+    defaultValue: () => ({ width: 1920, height: 1080, fps: 30 }),
     writable: true,
     saveOnServer: true,
     persist: true,
@@ -281,6 +281,21 @@ export const SETTINGS: Record<string, Setting> = {
   button_max_recording_time: {
     key: "button_max_recording_time",
     defaultValue: () => 10,
+    writable: true,
+    saveOnServer: true,
+    persist: true,
+  },
+  // Meta glasses streaming settings
+  meta_streaming_resolution: {
+    key: "meta_streaming_resolution",
+    defaultValue: () => "medium",
+    writable: true,
+    saveOnServer: true,
+    persist: true,
+  },
+  meta_streaming_fps: {
+    key: "meta_streaming_fps",
+    defaultValue: () => 24,
     writable: true,
     saveOnServer: true,
     persist: true,
@@ -309,7 +324,7 @@ export const SETTINGS: Record<string, Setting> = {
     persist: true,
   },
   // offline applets
-  offline_mode: {key: "offline_mode", defaultValue: () => false, writable: true, saveOnServer: true, persist: true},
+  offline_mode: { key: "offline_mode", defaultValue: () => false, writable: true, saveOnServer: true, persist: true },
   offline_captions_running: {
     key: "offline_captions_running",
     defaultValue: () => false,
@@ -317,7 +332,7 @@ export const SETTINGS: Record<string, Setting> = {
     saveOnServer: true,
     persist: true,
   },
-  gallery_mode: {key: "gallery_mode", defaultValue: () => false, writable: true, saveOnServer: true, persist: true},
+  gallery_mode: { key: "gallery_mode", defaultValue: () => false, writable: true, saveOnServer: true, persist: true },
   // button action settings
   default_button_action_enabled: {
     key: "default_button_action_enabled",
@@ -450,7 +465,7 @@ export const useSettingsStore = create<SettingsState>()(
         // Update store immediately for optimistic UI
         console.log(`SETTINGS: SET: ${key} = ${value}`)
         set(state => ({
-          settings: {...state.settings, [key]: value},
+          settings: { ...state.settings, [key]: value },
         }))
 
         if (setting.persist) {
@@ -461,7 +476,7 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Sync with server if needed
           if (updateServer) {
-            const result = await restComms.writeUserSettings({[key]: value})
+            const result = await restComms.writeUserSettings({ [key]: value })
             if (result.is_error()) {
               throw new Error(`SETTINGS: couldn't sync setting to server: ${result.error}`)
             }
@@ -497,7 +512,7 @@ export const useSettingsStore = create<SettingsState>()(
       } catch (e) {
         // for dynamically created settings, we need to create a new setting in SETTINGS:
         console.log(`Failed to get setting, creating new setting:(${key}):`, e)
-        SETTINGS[key] = {key: key, defaultValue: () => undefined, writable: true, saveOnServer: false, persist: true}
+        SETTINGS[key] = { key: key, defaultValue: () => undefined, writable: true, saveOnServer: false, persist: true }
         return SETTINGS[key].defaultValue()
       }
     },
@@ -518,7 +533,7 @@ export const useSettingsStore = create<SettingsState>()(
         }
 
         set(state => ({
-          settings: {...state.settings, ...settingsToLoad},
+          settings: { ...state.settings, ...settingsToLoad },
         }))
 
         // save to storage:
@@ -555,7 +570,7 @@ export const useSettingsStore = create<SettingsState>()(
 
             let subKeys: Record<string, unknown> = res.value
             console.log(`SETTINGS: LOAD: ${setting.key} subkeys are set!`, subKeys)
-            loadedSettings = {...loadedSettings, ...subKeys}
+            loadedSettings = { ...loadedSettings, ...subKeys }
             continue
           }
 
@@ -577,7 +592,7 @@ export const useSettingsStore = create<SettingsState>()(
 
         set(state => ({
           isInitialized: true,
-          settings: {...state.settings, ...loadedSettings},
+          settings: { ...state.settings, ...loadedSettings },
         }))
         migrateSettings()
       })

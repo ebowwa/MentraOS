@@ -123,6 +123,12 @@ public class CoreModule: Module {
             CoreManager.shared.handle_keep_rtmp_stream_alive(params)
         }
 
+        // MARK: - Meta Streaming Configuration
+        
+        AsyncFunction("configureMetaStreaming") { (resolution: String, frameRate: Int) in
+            CoreManager.shared.handle_configure_meta_streaming(resolution, frameRate)
+        }
+
         // MARK: - Microphone Commands
 
         AsyncFunction("microphoneStateChange") { (requiredDataStrings: [String], bypassVad: Bool) in

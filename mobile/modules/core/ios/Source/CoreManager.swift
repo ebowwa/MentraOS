@@ -1023,6 +1023,17 @@ struct ViewState {
         Bridge.log("MAN: sendRtmpKeepAlive: \(message)")
         sgc?.sendRtmpKeepAlive(message)
     }
+    
+    // MARK: - Meta Streaming Configuration
+    
+    func handle_configure_meta_streaming(_ resolution: String, _ frameRate: Int) {
+        Bridge.log("MAN: Configuring Meta streaming - resolution: \(resolution), frameRate: \(frameRate)")
+        if let metaSGC = sgc as? MetaRayBan {
+            metaSGC.configureStreaming(resolution: resolution, frameRate: frameRate)
+        } else {
+            Bridge.log("MAN: Cannot configure Meta streaming - SGC is not MetaRayBan")
+        }
+    }
 
     func handle_request_wifi_scan() {
         Bridge.log("MAN: Requesting wifi scan")
