@@ -343,6 +343,19 @@ class MetaRayBan: SGCManager {
         Bridge.log("META: sendButtonModeSetting - not applicable")
     }
     
+    // MARK: - Streaming Configuration
+    
+    /// Configure streaming resolution and frame rate.
+    /// - Parameters:
+    ///   - resolution: Resolution name ("low", "medium", "high")
+    ///   - frameRate: Frame rate in fps (15-30)
+    func configureStreaming(resolution: String, frameRate: Int) {
+        Bridge.log("META: configureStreaming - resolution: \(resolution), frameRate: \(frameRate)")
+        Task { @MainActor in
+            glassesManager?.configureStreaming(resolutionName: resolution, frameRate: frameRate)
+        }
+    }
+    
     func sendButtonVideoRecordingSettings() {
         Bridge.log("META: sendButtonVideoRecordingSettings - not applicable")
     }

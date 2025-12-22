@@ -171,6 +171,12 @@ public class CoreModule: Module {
             }
         }
 
+        // MARK: - Meta Streaming Configuration
+        
+        AsyncFunction("configureMetaStreaming") { (resolution: String, frameRate: Int) in
+            CoreManager.shared.handle_configure_meta_streaming(resolution, frameRate)
+        }
+
         // MARK: - Microphone Commands
 
         AsyncFunction("setMicState") { (sendPcmData: Bool, sendTranscript: Bool, bypassVad: Bool) in
