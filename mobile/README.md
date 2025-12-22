@@ -51,6 +51,53 @@ bun run start
 for pure JS changes once you have a build installed all you need to run is
 `bun run start`
 
+## EAS Build Profiles
+
+MentraOS uses [EAS Build](https://docs.expo.dev/build/introduction/) for creating optimized builds. The following profiles are available:
+
+| Profile                   | Description                              | Use Case                                                       |
+| ------------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `development`             | Debug build for simulator                | Local development with hot reload                              |
+| `development:device`      | Debug build for physical device          | Local development on real hardware                             |
+| `preview`                 | Release build for simulator              | Testing optimized builds locally                               |
+| `preview:device`          | Release build for physical device        | Testing optimized builds on device                             |
+| `release:local`           | **Release build without Sentry uploads** | Local Release builds when Sentry credentials aren't configured |
+| `release:local:simulator` | Same as above for simulator              | Testing Release builds in simulator                            |
+| `production`              | Full production build                    | App Store / Play Store submission                              |
+
+### Building for iOS Device (Without Sentry)
+
+If you don't have Sentry credentials configured, use the `release:local` profile to build an optimized Release version:
+
+```bash
+# Install EAS CLI if not already installed
+npm install -g eas-cli
+
+# Login to your Expo account
+eas login
+
+# Build for iOS device (Release mode, no Sentry uploads)
+eas build --profile release:local --platform ios --local
+
+# Or build for simulator
+eas build --profile release:local:simulator --platform ios --local
+```
+
+The `--local` flag runs the build on your machine instead of EAS servers.
+
+> **Note:** The `release:local` profile sets `SENTRY_DISABLE_AUTO_UPLOAD=true` to skip symbol uploads, allowing builds to succeed without `SENTRY_AUTH_TOKEN`.
+
+### Installing the Build
+
+After the build completes, you'll have an `.ipa` file (device) or `.app` file (simulator):
+
+```bash
+# For simulator builds
+xcrun simctl install booted path/to/MentraOS.app
+
+# For device builds, use Xcode or Apple Configurator to install the .ipa
+```
+
 ## IF YOU HAVE ISSUES BUILDING DUE TO UI REFRESH, SEE HERE:
 
 Due to the UI refresh there will be some weird cache issues. Do this to fix them...
