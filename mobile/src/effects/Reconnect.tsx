@@ -14,24 +14,29 @@ export function Reconnect() {
         // Check if user has Meta glasses set as default wearable
         const defaultWearable = await useSettingsStore.getState().getSetting(SETTINGS.default_wearable.key)
 
+        console.log("RECONNECT: 🔍 Auto-connect check - defaultWearable:", defaultWearable)
+        console.log("RECONNECT: 🔍 DeviceTypes.META_RAYBAN:", DeviceTypes.META_RAYBAN)
+        console.log("RECONNECT: 🔍 Includes check:", defaultWearable?.includes(DeviceTypes.META_RAYBAN))
+
         if (defaultWearable?.includes(DeviceTypes.META_RAYBAN)) {
-          console.log("RECONNECT: Meta glasses detected as default, attempting auto-connect...")
+          console.log("RECONNECT: ✅ Meta glasses detected as default, attempting auto-connect...")
 
           // Check Bluetooth/location permissions first
           const hasPermissions = await checkConnectivityRequirementsUI()
           if (!hasPermissions) {
-            console.log("RECONNECT: Missing permissions for Meta glasses auto-connect")
+            console.log("RECONNECT: ❌ Missing permissions for Meta glasses auto-connect")
             return
           }
+          console.log("RECONNECT: ✅ Permissions granted, calling CoreModule.initializeDefault()...")
 
           // Initialize Meta glasses - SDK will auto-connect to registered glasses
-          console.log("RECONNECT: Calling CoreModule.initializeDefault() for Meta glasses")
           await CoreModule.initializeDefault()
+          console.log("RECONNECT: ✅ initializeDefault() completed")
         } else {
-          console.log("RECONNECT: No Meta glasses configured as default wearable")
+          console.log("RECONNECT: ℹ️ No Meta glasses configured as default wearable")
         }
       } catch (error) {
-        console.error("RECONNECT: Error during auto-connect:", error)
+        console.error("RECONNECT: ❌ Error during auto-connect:", error)
       }
     }
 

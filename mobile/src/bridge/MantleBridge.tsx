@@ -321,6 +321,14 @@ export class MantleBridge {
         case "video_frame":
           // Video frame from Meta glasses camera
           if (data.base64) {
+            // Log frame relay (throttled to every 30th frame)
+            if (!this.videoFrameCount) this.videoFrameCount = 0
+            this.videoFrameCount++
+            if (this.videoFrameCount % 30 === 0) {
+              console.log(
+                `MantleBridge: 📹 Received video_frame #${this.videoFrameCount} from Core, relaying to cloud (base64: ${data.base64.length} chars)`,
+              )
+            }
             useVideoFrameStore.getState().setFrame(data.base64)
             // Relay to cloud server for Meta glasses streaming
             socketComms.sendVideoFrame(data.base64, data.timestamp, data.quality)
