@@ -251,6 +251,19 @@ class SocketComms {
    */
   public sendVideoFrame(base64: string, timestamp?: number, quality?: number) {
     try {
+      // Check WebSocket connection state
+      const wsState = this.ws.readyState
+      if (wsState !== 1) {
+        // 1 = WebSocket.OPEN
+        if (this.frameCount === undefined) this.frameCount = 0
+        this.frameCount++
+        // Log connection errors only periodically
+        if (this.frameCount % 30 === 1) {
+          console.error(`SOCKET: ❌ Cannot send video frame - WebSocket not connected (state: ${wsState})`)
+        }
+        return
+      }
+
       const msg = {
         type: "video_frame",
         base64: base64,
@@ -258,9 +271,17 @@ class SocketComms {
         quality: quality ?? 0.5,
         source: "meta_glasses",
       }
+      // Throttle logging - only log every 30th frame to avoid spam
+      if (this.frameCount === undefined) this.frameCount = 0
+      this.frameCount++
+      if (this.frameCount % 30 === 0) {
+        console.log(
+          `SOCKET: 📹 Sending video frame to cloud - frame #${this.frameCount}, base64 length: ${base64.length}`,
+        )
+      }
       this.ws.sendText(JSON.stringify(msg))
     } catch (error) {
-      console.log(`SOCKET: Failed to send video frame: ${error}`)
+      console.error(`SOCKET: ❌ Failed to send video frame: ${error}`)
     }
   }
 
