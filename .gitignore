@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 local/*
 K900_server_sdk/*
 AugmentOS-Cloud-Example-App/*
@@ -343,3 +344,12 @@ mobile/ios/Packages/SherpaOnnx/sherpa-onnx.xcframework/
 
 # ONNX Model files (large ML models)
 mobile/ios/Packages/SherpaOnnx/Model/*
+=======
+node_modules/
+.env
+._*
+.DS_Store
+exports/
+>>>>>>> server-backup-20251227
+._*
+exports/

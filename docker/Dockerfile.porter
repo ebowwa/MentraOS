@@ -1,0 +1,41 @@
+# Single-stage build with Bun
+FROM oven/bun:latest
+
+# Install ca-certificates for SSL/TLS connections
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Install dependencies and ensure correct bun-types version
+RUN bun install && \
+    rm -rf node_modules/@types/bun && \
+    bun add -d bun-types@1.0.17
+
+# Build packages in sequence
+RUN echo "🚀 Starting build process..." && \
+    echo "⚙️ Building packages/types..." && \
+    cd packages/types && bun run build && \
+    echo "✅ Built packages/types..." && \
+    echo "⚙️ Building packages/sdk..." && \
+    cd ../sdk && bun run build && \
+    echo "✅ Built packages/sdk..." && \
+    # echo "⚙️ Building packages/utils..." && \
+    # cd ../utils && bun run build && \
+    # echo "✅ Building packages/utils..." && \
+    # echo "⚙️ Building packages/agents..." && \
+    # cd ../agents && bun run build && \
+    # echo "✅ Building packages/agents..." && \
+    echo "⚙️ Building packages/cloud..." && \
+    cd ../cloud && bun run build && \
+    echo "✅ Built packages/cloud..." && \
+    echo "🎉 All packages built successfully! 🎉"
+
+# Skip running tests in CI for now
+RUN echo "⚠️ Skipping tests in CI build"
+
+# Use Bun to run the application
+ENV NODE_ENV=production
+CMD ["echo", "Ready to run services"]
