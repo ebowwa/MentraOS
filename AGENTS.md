@@ -1,109 +1,128 @@
-# MentraOS Cloud Development Guide
+# AGENTS.md
+
+Repository implementation guidelines for coding agents working with MentraOS.
+
+## Project Overview
+
+MentraOS is an open source operating system, app store, and development framework for smart glasses.
+
+- Architecture: Smart glasses connect to user's phone via BLE; phone connects to backend; backend connects to third-party app servers running the MentraOS SDK
+- Mobile app: `mobile` (React Native with native modules)
+- Android logic: `android_core`
+- iOS native module: `mobile/ios`
+- Backend & web portals: `cloud` (includes developer portal & app store)
+- Android-based smart glasses client: `asg_client` (uses `android_core` as a library)
+- MentraOS Store: `cloud/store/` (web app for app discovery)
+- Developer Console: `cloud/websites/console/` (web app for app management)
+
+## Monorepo Structure
+
+This is a monorepo with module-specific guidance:
+
+- `/mobile/AGENTS.md` - React Native mobile app guidelines
+- `/cloud/AGENTS.md` - Backend services guidelines
+- `/cloud/websites/console/AGENTS.md` - Developer portal guidelines
+- `/cloud/websites/store/AGENTS.md` - Store frontend guidelines
+
+Consult module-specific AGENTS.md when working within that module.
+
+## Project Structure & Module Organization
+
+Core client app lives in `mobile/` (Expo React Native). Backend services, the TypeScript SDK, and the store front end sit in `cloud/packages/`, with integration tests in `cloud/tests/`. Platform SDKs are in `android_core/`, `android_library/`, `sdk_ios/`; hardware tooling lives in `mcu_client/`. Notes and plans live in `agents/` and `docs/`.
 
 ## Build Commands
 
-- **Build**: `bun run build` (Builds sdk, utils, and agents packages)
-- **Dev**: `bun run dev` (Starts Docker dev environment)
-- **Dev Rebuild**: `bun run dev:rebuild` (Rebuilds and starts Docker containers)
-- **Lint**: `cd packages/cloud && bun run lint` (ESLint for cloud package)
-- **App Dev**: `cd packages/apps/<app-name> && bun run dev` (Start App in dev mode)
+### React Native (mobile)
 
-## Environment Setup
+- Start dev server: `npm start` or `bun start`
+- Run on platforms: `npm run android`, `npm run ios` or `bun android`, `bun ios`
+- Build Android: `npm run build-android`, `npm run build-android-release`
+- Run tests: `npm test`, `npm test -- -t "test name"` (single test)
+- Lint code: `npm run lint` or `bun lint`
+- iOS setup: `cd ios && pod install && cd ..`
+- Prebuild: `bun expo prebuild` (syncs native projects - NEVER use --clean or --clear flags!)
 
-- **Quick Setup**: `./scripts/docker-setup.sh` (Sets up network, cleans resources, and starts services)
-- **Setup Dependencies**: `bun run setup-deps` (Install dependencies with optimizations)
-- **Dev Network**: `bun run dev:setup-network` (Create Docker network)
-- **Dev Logs**:
-  - `bun run logs` (View all Docker logs)
-  - `bun run logs:cloud` (View cloud service logs)
-  - `bun run logs:service <service-name>` (View specific service logs)
-- **Clean Environment**: `bun run dev:clean` (Remove volumes and prune unused resources)
-- **Debugging**: `docker-compose -f docker-compose.dev.yml -p dev logs -f <service-name>`
+### Cloud Backend (cloud)
 
-## Docker Tips
+- Install deps: `bun install`
+- Setup environment: `./scripts/docker-setup.sh` or `bun run setup-deps && bun run dev`
+- Dev: `bun run dev` (starts Docker dev environment)
+- Setup Docker network: `bun run dev:setup-network` (run once)
+- Build: `bun run build` (builds sdk, utils, and agents packages)
+- Test: `bun run test` (runs backend test suites)
+- Lint: `cd packages/cloud && bun run lint`
 
-- Each service uses a shared node_modules volume to prevent duplicate installations
-- The shared-packages service builds all dependencies first
-- Use `--no-link` flag with bun install to prevent "Failed to link" errors
-- Use Dockerfile.dev for development (more optimized for local development)
-- Use `dev:rebuild` when changing dependencies or Docker configuration
+## Prerequisites
+
+### Recommended Platform
+
+- **macOS or Linux** (recommended for mobile development) - Windows has known issues with this project
+- Use **nvm** (Node Version Manager) to manage Node.js versions
+- **Node.js 20.x** (recommended version)
+
+### Required Software
+
+- Node.js ^18.18.0 || >=20.0.0 (20.x recommended)
+- nvm (Node Version Manager - highly recommended)
+- npm/yarn/bun (bun preferred)
+- Android Studio (for Android development)
+- Xcode (for iOS development on macOS)
+- Docker and Docker Compose (for cloud development)
+- Java SDK 17 (for Android components)
 
 ## Code Style Guidelines
 
-- **TypeScript**: Strict typing with interfaces for message types
-- **Imports**: Group external/internal, sort alphabetically
-- **Naming**: PascalCase for classes/interfaces/types, camelCase for variables/functions
-- **Error Handling**: Use try/catch with appropriate logger.error calls
-- **Formatting**: 2-space indentation, semicolons
-- **Documentation**: JSDoc comments for functions/classes
-- **Logging**: Use logger from @mentra/utils package
-- **WebSockets**: Follow the message type patterns from the SDK
+### Java/Android
 
-## Communication Architecture
+- Java SDK 17 required
+- Classes: PascalCase
+- Methods: camelCase
+- Constants: UPPER_SNAKE_CASE
+- Member variables: mCamelCase (with m prefix)
+- Javadoc for public methods and classes
+- 2-space indentation
+- EventBus for component communication
 
-- **Glasses → Cloud**: Smart glasses connect via websocket to send events
-- **Cloud → Apps**: Cloud routes events to third-party apps via websockets
-- **Apps → UI**: Apps can display content via layouts API in the SDK
-- **Subscription Model**: Apps subscribe to specific event streams (audio, notifications, etc.)
+### TypeScript/React Native
 
-## Project Structure
+- Functional components with React hooks
+- Imports: Group by external/internal, alphabetize within groups
+- Formatting: Prettier with single quotes, no bracket spacing, trailing commas (2-space indent)
+- Navigation: React Navigation with typed params (expo-router for mobile)
+- Context API for app-wide state
+- Feature-based organization under src/
+- Use try/catch with meaningful error messages
+- Strict typing with interfaces for message types
+- PascalCase for components/classes/interfaces/types, camelCase for variables/functions/hooks
+- UPPER_SNAKE_CASE for environment keys
 
-- **/packages/cloud**: Server implementation (Express routes, WebSocket)
-- **/packages/sdk**: TypeScript interfaces and App communication framework
-- **/packages/utils**: Shared utilities (logger, LLM provider)
-- **/packages/agents**: Agent implementation (Mira, News, Notifications)
-- **/packages/apps**: Third-party applications using the SDK
+### Swift
 
-## Recent Improvements
+- Use `swiftformat` for formatting
 
-The following improvements have been implemented to enhance system reliability:
+## Naming Conventions
 
-### App Server Registration System
+- User-facing names: CamelCase ("MentraOS App", "MentraOS Store", "MentraOS Manager")
+- Code follows language-specific conventions (Java, TypeScript, Swift)
 
-- Apps can register their servers with MentraOS Cloud
-- Tracks sessions by App server to enable recovery after restarts
-- Provides automatic reconnection when App servers restart
-- Documentation in `/docs/App-SERVER-REGISTRATION.md`
+## Testing Guidelines
 
-### Enhanced Error Handling in SDK
+Cloud services use Jest via `bun run test`; add suites in `cloud/tests/` mirroring package names and mock external providers. Mobile UI logic uses Jest (`bun test`, `bun test:watch`) with files colocated in `mobile/test/` and snapshots beside components. Device flows rely on Maestro (`bun test:maestro`), so update scripts whenever navigation or pairing shifts. Features touching pairing, BLE, or transcription need unit coverage plus an end-to-end path.
 
-- Prevents Apps from crashing when receiving invalid data
-- Adds robust validation and sanitization of all messages
-- Improves error recovery for WebSocket connections
-- Documentation in `/docs/sdk/ERROR-HANDLING-ENHANCEMENTS.md`
+## Commit & Pull Request Guidelines
 
-### Automatic Resource Management
+Write imperative, present-tense commit subjects (e.g., "Add BLE retry delay") and keep scope focused. Reference issue IDs or Slack threads in the body when applicable. Before opening a PR, run relevant `bun run test` suites and platform builds, attach log excerpts for hardware-dependent steps, and call out configuration updates. PR descriptions should outline scope, test evidence, and screenshots or screen recordings for UI-impacting changes.
 
-- Automatically tracks and cleans up resources to prevent memory leaks
-- Provides a unified API for managing timers, event handlers, and connections
-- Integrated with AppSession for better connection management
-- Documentation in `/docs/sdk/RESOURCE-TRACKER.md`
+## Environment & Security Notes
 
-### Connection Health Monitoring
+Cloud services require `.env` files copied from `.env.example` that stay local. Mobile secrets belong in `mobile/app.config.ts` or the secure config service—avoid committing device-specific tokens. Rebuild native projects after modifying BLE or camera modules to keep generated code in sync, and install Java 17, Android Studio, Xcode, Docker, and Bun/Node before the first build.
 
-- Implements WebSocket ping/pong heartbeat mechanism
-- Tracks connection activity and detects stale connections
-- Automatically closes dead connections to prevent resource wastage
-- Provides system health statistics for monitoring
-- Documentation in `/docs/CONNECTION-HEALTH-MONITORING.md`
+## Project Resources
 
-## Planned Improvements
+- [GitHub Project Board - General Tasks](https://github.com/orgs/Mentra-Community/projects/2)
+- [Discord Community](https://discord.gg/5ukNvkEAqT)
 
-### Display System Enhancements (In Progress)
+## Additional Documentation
 
-- ✅ Created configuration system for DisplayManager
-- ✅ Added enhanced logging and metrics collection
-- ✅ Improved request validation and error handling
-- ✅ Implemented robust throttling with proper queue management
-- ◻️ Complete integration and testing
-- ◻️ Optimize performance based on metrics
-- Documentation in `/docs/DISPLAY-MANAGER-IMPROVEMENTS.md`
-
-## Working with Smart Glasses Hardware
-
-- **Display Limitations**: Single color (green) text-only displays
-- **Update Frequency**: Must respect 200-300ms minimum delay between updates
-- **Bandwidth**: Bluetooth connection has limited bandwidth and can drop if overloaded
-- **Verification**: No confirmation mechanism to verify display updates were received
-
-This project uses Bun as the package manager and runtime.
+- Architecture specs and design docs: `/docs/`
+- Module-specific implementation details: See module-specific `AGENTS.md` files

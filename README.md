@@ -1,195 +1,180 @@
-# MentraOS Cloud
+<div align="center">
+  <p>
+    <img src="./mobile/assets/glasses/mentra-mach1-glasses.png" alt="Mentra Mach 1" height="80" style="margin: 0 15px;" />
+    <img src="./mobile/assets/glasses/g1.png" alt="Even Realities G1" height="80" style="margin: 0 15px;" />
+    <img src="./images/MentraLiveFinal.png" alt="Mentra Live" height="80" style="margin: 0 15px;" />
+  </p>
+  <h1>MentraOS</h1>
+  <h3>The open source operating system for smart glasses</h3>
+  
+  <p>
+    <a href="https://mentra.glass">Website</a> •
+    <a href="https://docs.mentra.glass">Documentation</a> •
+    <a href="https://console.mentra.glass">Developer Console</a> •
+    <a href="https://apps.mentra.glass">Mentra Store</a>
+  </p>
 
-MentraOS Cloud is the backend infrastructure for MentraOS - an open-source operating system for smart glasses. It orchestrates communication between glasses, mobile apps, and third-party applications, enabling real-time augmented reality experiences.
+  <p>
+    <img src="https://img.shields.io/github/contributors/TeamOpenSmartGlasses/DiscussPlusPlus" alt="Contributors" />
+    <img src="https://img.shields.io/github/license/TeamOpenSmartGlasses/DiscussPlusPlus" alt="License" />
+    <img src="https://img.shields.io/github/stars/TeamOpenSmartGlasses/DiscussPlusPlus?style=social" alt="GitHub Stars" />
+    <img src="https://img.shields.io/github/v/release/TeamOpenSmartGlasses/DiscussPlusPlus" alt="GitHub Release Version" />
+    <img src="https://img.shields.io/github/last-commit/TeamOpenSmartGlasses/DiscussPlusPlus" alt="Last Updated" />
+  </p>
+</div>
 
-## Quick Start
+<div align="center">
+  <a href="https://apps.apple.com/us/app/mentra-the-smart-glasses-app/id6747363193">
+    <img src="./images/AppStoreBadge.png" alt="Download on the App Store" width="180">
+  </a>
+  <a href="https://play.google.com/store/apps/details?id=com.mentra.mentra">
+    <img src="./images/GooglePlayBadge.png" alt="Get it on Google Play" width="180">
+  </a>
+</div>
 
-### Prerequisites
+## Supported Smart Glasses
 
-- [Docker](https://www.docker.com/get-started)
-- [Bun](https://bun.sh/docs/installation)
-- [Node.js](https://nodejs.org/) 18+ (for some tools)
+Works with Even Realities G1, Mentra Mach 1, Mentra Live. See [smart glasses compatibility list here](./glasses-compatibility.md).
 
-### Development Setup
+## Apps on Mentra Store
 
-1. **Clone the repository:**
+The Mentra Store already has a ton of useful apps that real users are running everyday. Here are some apps already published by developers on the Mentra Store:
 
-   ```bash
-   git clone https://github.com/Mentra-Community/MentraOS.git
-   cd MentraOS/cloud
-   ```
+<div align="center">
+  <table border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; border-collapse: collapse;">
+    <tbody>
+    <tr style="border: 0 !important; background: transparent;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.augmentos.livecaptions" style="text-decoration: none; color: inherit;">
+          <img src="https://appstore.augmentos.org/app-icons/captions.png" alt="Live Captions" width="80" style="border-radius: 18px;" />
+          <br /><b>Captions</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.link" style="text-decoration: none; color: inherit;">
+          <img src="https://appstore.augmentos.org/app-icons/mentra-link.png" alt="Link" width="80" style="border-radius: 18px;" />
+          <br /><b>Link</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.merge" style="text-decoration: none; color: inherit;">
+          <img src="https://appstore.augmentos.org/app-icons/mentra-merge.png" alt="Merge" width="80" style="border-radius: 18px;" />
+          <br /><b>Merge</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.notes" style="text-decoration: none; color: inherit;">
+          <img src="./images/MentraNotes.png" alt="Notes" width="80" style="border-radius: 18px;" />
+          <br /><b>Notes</b>
+        </a>
+      </td>
+    </tr>
+    <tr style="border: 0 !important; background: transparent;">
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.calendarreminder" style="text-decoration: none; color: inherit;">
+          <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/32095bee-2bbd-4564-4777-4f99fcf73700/square" alt="Calendar Reminder" width="80" style="border-radius: 18px;" />
+          <br /><b>Calendar</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.dash" style="text-decoration: none; color: inherit;">
+          <img src="./images/MentraDash.png" alt="Dash" width="80" style="border-radius: 18px;" />
+          <br /><b>Dash</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass/package/com.mentra.translation" style="text-decoration: none; color: inherit;">
+          <img src="https://imagedelivery.net/nrc8B2Lk8UIoyW7fY8uHVg/b5891997-3e90-4bdc-398a-834e3318b900/square" alt="Live Translation" width="80" style="border-radius: 18px;" />
+          <br /><b>Translation</b>
+        </a>
+      </td>
+      <td align="center" style="border: 0 !important; padding: 15px; background: transparent;">
+        <a href="https://apps.mentra.glass" style="text-decoration: none; color: inherit;">
+          <img src="./images/MentraLogoSquareRound.png" alt="Mentra Store" width="80" style="border-radius: 18px;" />
+          <br /><b>See All</b>
+        </a>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+</div>
 
-2. **Start development environment:**
+## Write Once, Run on Any Smart Glasses
 
-   ```bash
-   bun install
+**MentraOS is how developers build smart glasses apps.** We handle the pairing, connection, data streaming, and cross-compatibility, so you can focus on creating amazing apps. Every component is 100% open source (MIT license).
 
-   bun run dev
-   ```
+### Why Build with MentraOS?
 
-3. **View logs:**
+- **Cross Compatibility**: Your app runs on any pair of smart glasses
+- **Speed**: TypeScript SDK means you're making apps in minutes, not months
+- **Control**: Access smart glasses I/O - displays, microphones, cameras, speakers
+- **Distribution**: Get your app in front of everyone using smart glasses
 
-   ```bash
-   # All logs
-   bun run logs
+## Development Setup
 
-   # Cloud service logs
-   bun run logs:cloud
+### Quick Start
 
-   # Specific service logs
-   bun run logs:service <service-name>
-   ```
+For detailed setup instructions, see [CLAUDE.md](./CLAUDE.md) in the repository root.
 
-### Useful Commands
+### Recommended Development Environment (Mobile)
 
-- **Rebuild Docker containers:**
+- **Platform**: macOS or Linux (Windows has known issues with this project)
+- **Node.js**: Version 20.x (use nvm for version management)
+- **Package Manager**: bun (preferred) or npm
+- **Android**: Android Studio with Java SDK 17
+- **iOS**: Xcode (macOS only)
+- **Cloud**: Docker and Docker Compose
 
-  ```bash
-  bun run dev:rebuild
-  ```
+### Key Commands
 
-- **Stop all services:**
+**Mobile App** (`mobile/`):
 
-  ```bash
-  bun run dev:stop
-  ```
-
-- **Clean environment (remove volumes and prune):**
-
-  ```bash
-  bun run dev:clean
-  ```
-
-- **Build shared packages:**
-
-  ```bash
-  bun run build
-  ```
-
-- **Run linting:**
-
-  ```bash
-  cd packages/cloud && bun run lint
-  ```
-
-- **Run tests:**
-  ```bash
-  bun run test
-  ```
-
-## 📚 Documentation
-
-### [View Full Documentation → https://cloud-docs.mentra.glass/](https://cloud-docs.mentra.glass/)
-
-Our comprehensive documentation includes:
-
-- 🏗️ **Architecture Overview** - Understand the system design
-- 🔧 **Local Development Setup** - Get running locally with ngrok
-- 📡 **WebSocket APIs** - Glasses and app connection protocols
-- 🗄️ **Data Models** - MongoDB schemas and relationships
-- 📦 **SDK Reference** - Build apps with our TypeScript SDK
-- 🚀 **Deployment Guide** - Production deployment instructions
-
-## Project Structure
-
+```bash
+bun install
+bun start              # Start dev server
+bun android            # Run on Android
+bun ios                # Run on iOS
+bun test               # Run tests
 ```
-cloud/
-├── packages/
-│   ├── cloud/          # Main cloud service
-│   └── sdk/            # TypeScript SDK for apps
-├── store/              # App Store web interface
-├── developer-portal/   # Developer console web app
-└── docs/               # Documentation (Mintlify)
+
+**Cloud Backend** (`cloud/`):
+
+```bash
+bun install
+bun run dev            # Start Docker dev environment
+bun run test           # Run tests
 ```
 
-## Key Features
+For complete build instructions, testing guidelines, and code style requirements, see [CLAUDE.md](./CLAUDE.md).
 
-- **Real-time Communication**: WebSocket-based architecture for low-latency glasses ↔ cloud ↔ app communication
-- **Multi-Provider Transcription**: Supports Azure Speech, Soniox, and Deepgram for speech-to-text
-- **Flexible AI Integration**: Compatible with OpenAI, Azure OpenAI, and Anthropic for LLM features
-- **App Ecosystem**: SDK and APIs for third-party developers to build apps
-- **Display Management**: Intelligent throttling and prioritization for glasses displays
-- **Session Management**: Robust user session handling with automatic reconnection
+## MentraOS Community
 
-## Development Workflow
+The MentraOS Community is a group of developers, companies, and users dedicated to ensuring the next personal computer is open, cross-compatible, and user-controlled. That's why we're building MentraOS.
 
-1. **Environment Setup:**
-   - Copy `.env.example` to `.env` and configure services
-   - For internal team: Get pre-configured `.env` from Slack
-   - For contributors: See [documentation](https://cloud-docs.mentra.glass/development/local-setup) for service setup
+To get involved, join the [MentraOS Community Discord server](https://mentra.glass/discord).
 
-2. **Work on Cloud Core:**
+## Contact
 
-   ```bash
-   # Start development environment
-   bun run dev
+Have questions or ideas? We'd love to hear from you!
 
-   # View logs
-   bun run logs:cloud
-
-   # Run tests
-   bun test
-   ```
-
-3. **Build Apps:**
-
-   ```bash
-   # Navigate to app directory
-   cd packages/apps/your-app
-
-   # Start development
-   bun run dev
-
-   # See SDK documentation for app development
-   ```
-
-4. **Run Web Portals:**
-
-   ```bash
-   # App Store
-   cd store/web && bun run dev
-
-   # Developer Portal
-   cd developer-portal && bun run dev
-   ```
+- **Email**: [team@mentra.glass](mailto:team@mentra.glass)
+- **Discord**: [Join our community](http://mentra.glass/discord)
+- **Twitter**: [Follow @mentralabs](https://x.com/mentralabs)
 
 ## Contributing
 
-We welcome contributions! Please:
+MentraOS is made by a community and we welcome PRs. Here's the Contributors Guide: [docs.mentra.glass/contributing](https://docs.mentra.glass/contributing)
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-See our [Contributing Guide](../CONTRIBUTING.md) for more details.
-
-## Architecture Overview
-
-```mermaid
-graph TD
-    G[Smart Glasses] -->|BLE| M[Mobile App]
-    M -->|WebSocket| C[Cloud]
-    C -->|WebSocket| A1[App 1]
-    C -->|WebSocket| A2[App 2]
-    C -->|WebSocket| A3[App 3]
-
-    C --> DB[(MongoDB)]
-    C --> S3[S3 Storage]
-    C --> AI[AI Services]
-```
-
-## Support
-
-- 💬 [Discord Community](https://discord.gg/5ukNvkEAqT)
-- 📖 [Documentation](https://cloud-docs.mentra.glass/)
-- 🐛 [Issue Tracker](https://github.com/Mentra-Community/MentraOS/issues)
-- 📧 Email: support@augmentos.com
+Looking for ways to contribute? We mark issues we'd love the community to help with using the **"Help Wanted"** tag. Check them out here: [Help Wanted Issues](https://github.com/Mentra-Community/MentraOS/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22help%20wanted%22)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
+MIT License Copyright 2025 MentraOS Community
 
-Update the below count to trigger CI/CD cloud redeployment without making any real code changes.
-Redeploy cloud: 5
+---
+
+<div align="center">
+  <br />
+  <img width="100" alt="MentraOS" src="./images/MentraLogoSquareRound.png" style="border-radius: 20%;" />
+  <h3>© 2025 Mentra Labs</h3>
+</div>
