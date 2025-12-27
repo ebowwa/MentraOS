@@ -242,6 +242,28 @@ class SocketComms {
     }
   }
 
+  /**
+   * Sends a video frame to the cloud server for Meta glasses streaming.
+   * Meta glasses don't have onboard RTMP streaming, so the iOS app relays frames.
+   * @param base64 - Base64 encoded JPEG image data
+   * @param timestamp - Optional timestamp in milliseconds
+   * @param quality - Optional quality value (0.0-1.0)
+   */
+  public sendVideoFrame(base64: string, timestamp?: number, quality?: number) {
+    try {
+      const msg = {
+        type: "video_frame",
+        base64: base64,
+        timestamp: timestamp ?? Date.now(),
+        quality: quality ?? 0.5,
+        source: "meta_glasses",
+      }
+      this.ws.sendText(JSON.stringify(msg))
+    } catch (error) {
+      console.log(`SOCKET: Failed to send video frame: ${error}`)
+    }
+  }
+
   public sendTouchEvent(event: {device_model: string; gesture_name: string; timestamp: number}) {
     try {
       const payload = {

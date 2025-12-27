@@ -43,6 +43,11 @@ public class CoreModule: Module {
             }
         }
 
+        AsyncFunction("initializeDefault") {
+            Bridge.log("calling initializeDefault!")
+            CoreManager.shared.handle_initialize_default()
+        }
+
         AsyncFunction("connectByName") { (deviceName: String) in
             await MainActor.run {
                 CoreManager.shared.connectByName(deviceName)
@@ -172,7 +177,7 @@ public class CoreModule: Module {
         }
 
         // MARK: - Meta Streaming Configuration
-        
+
         AsyncFunction("configureMetaStreaming") { (resolution: String, frameRate: Int) in
             CoreManager.shared.handle_configure_meta_streaming(resolution, frameRate)
         }
