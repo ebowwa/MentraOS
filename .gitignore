@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 local/*
 K900_server_sdk/*
 AugmentOS-Cloud-Example-App/*
@@ -103,7 +104,7 @@ docs/_build/
 eggs
 htmlcov
 #include/
-.lib/
+lib/
 man/
 nosetests.xml
 parts
@@ -166,7 +167,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-.lib/
+lib/
 lib64/
 parts/
 sdist/
@@ -343,4 +344,13 @@ mobile/ios/Packages/SherpaOnnx/sherpa-onnx.xcframework/
 
 # ONNX Model files (large ML models)
 mobile/ios/Packages/SherpaOnnx/Model/*
-nicelogs.txt
+=======
+node_modules/
+.env
+._*
+.DS_Store
+exports/
+>>>>>>> server-backup-20251227
+._*
+exports/
+mobile/SENTRY_RESTORATION.md
