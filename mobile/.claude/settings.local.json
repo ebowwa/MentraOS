@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh ebowwa-deptwar \"cd /root/server && grep 'VIDEO_FRAME' packages/sdk/src/types/message-types.ts\":*)",
+      "Bash(ssh:*)"
+    ]
+  }
+}
