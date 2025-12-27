@@ -1023,9 +1023,9 @@ struct ViewState {
         Bridge.log("MAN: sendRtmpKeepAlive: \(message)")
         sgc?.sendRtmpKeepAlive(message)
     }
-    
+
     // MARK: - Meta Streaming Configuration
-    
+
     func handle_configure_meta_streaming(_ resolution: String, _ frameRate: Int) {
         Bridge.log("MAN: Configuring Meta streaming - resolution: \(resolution), frameRate: \(frameRate)")
         if let metaSGC = sgc as? MetaRayBan {
@@ -1250,6 +1250,21 @@ struct ViewState {
         isSearching = true
         handle_request_status()
         sgc?.connectById(deviceName)
+    }
+
+    // Initialize the SGC for Meta glasses auto-connect on app startup
+    // Meta SDK handles device discovery and reconnection automatically once initialized
+    func handle_initialize_default() {
+        if defaultWearable.isEmpty {
+            Bridge.log("MAN: No default wearable, cannot initialize")
+            return
+        }
+
+        Bridge.log("MAN: Initializing default wearable: \(defaultWearable)")
+
+        // Initialize the SGC - MetaRayBan.init() will set up the SDK
+        // The SDK will automatically detect registered glasses and call handleConnectionStateChanged
+        initSGC(defaultWearable)
     }
 
     func handle_connect_by_name(_ dName: String) {
@@ -1600,7 +1615,7 @@ struct ViewState {
     }
 
     // MARK: - Meta URL Handling
-    
+
     /// Handle URL callbacks from Meta AI app.
     /// Call this from AppDelegate's application(_:open:options:) when receiving URLs.
     /// - Parameter url: The callback URL from Meta AI app
@@ -1612,15 +1627,15 @@ struct ViewState {
         else {
             return false
         }
-        
+
         Bridge.log("META: Received callback URL from Meta AI app: \(url)")
-        
+
         // Post notification for MetaRayBan SGC to handle
         NotificationCenter.default.post(
             name: Notification.Name("MetaAICallback"),
             object: url
         )
-        
+
         return true
     }
 
