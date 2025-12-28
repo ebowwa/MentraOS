@@ -27,7 +27,12 @@ export function Reconnect() {
             console.log("RECONNECT: ❌ Missing permissions for Meta glasses auto-connect")
             return
           }
-          console.log("RECONNECT: ✅ Permissions granted, calling CoreModule.initializeDefault()...")
+          console.log("RECONNECT: ✅ Permissions granted, syncing settings to native...")
+
+          // Sync settings to native side first (including defaultWearable)
+          await CoreModule.updateSettings(useSettingsStore.getState().getCoreSettings())
+
+          console.log("RECONNECT: ✅ Settings synced, calling CoreModule.initializeDefault()...")
 
           // Initialize Meta glasses - SDK will auto-connect to registered glasses
           await CoreModule.initializeDefault()
